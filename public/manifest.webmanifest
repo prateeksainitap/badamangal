@@ -1,0 +1,33 @@
+{
+  "name": "BadaMangal — Lucknow's Bada Mangal Bhandara directory",
+  "short_name": "BadaMangal",
+  "description": "Find every Bada Mangal Bhandara in Lucknow. 8 Tuesdays, one map.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FBF7F0",
+  "theme_color": "#FBF7F0",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/brand/favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "lang": "hi-IN",
+  "categories": ["lifestyle", "religion", "food", "events"]
+}

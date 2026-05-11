@@ -1,0 +1,649 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* No maplibre-gl CSS import needed — the Ola Maps Web SDK bundles its
+   own copy and self-injects a `<style>` tag at SDK load time. */
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+    /* Sticky-header offset for in-page anchor links (e.g. /#map).
+       Without this, anchored sections land BEHIND the floating header
+       and their heading is hidden. ~5 rem covers the header band on
+       desktop; mobile drawer header sits on top so 4.5rem fits. */
+    scroll-padding-top: 5rem;
+    /* Hard guard against horizontal scroll bleed on mobile from any
+       stray full-bleed element. Lets vertical scroll work normally. */
+    overflow-x: clip;
+  }
+  body {
+    @apply bg-cream-50 text-ink-900 font-mukta antialiased;
+    overflow-x: clip;
+  }
+  :lang(hi),
+  :lang(hi-IN) {
+    font-feature-settings: "kern", "liga", "clig";
+  }
+  /* Make focus visible everywhere; Tailwind resets default outlines. */
+  :focus-visible {
+    outline: 2px solid #E07A1F;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  /* Editorial Fraunces large display: lean into the optical-size axis. */
+  .font-fraunces.optical-display {
+    font-optical-sizing: auto;
+    font-variation-settings: "opsz" 144;
+  }
+}
+
+@layer components {
+  .bm-pin {
+    background: transparent !important;
+    border: 0 !important;
+  }
+
+  /* ── Brand button system ────────────────────────────────────────────────
+     Used everywhere we previously had ad-hoc rounded-full Tailwind chains.
+     `.btn` is the base; combine with one variant. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    /* Optical centering for Mukta: text sits visually high because the
+       font's cap-height occupies the upper part of the line-box, while
+       the descender area is mostly empty. A hair more padding-TOP than
+       -bottom drops the glyph cluster into the visual centre of the pill. */
+    padding: 0.78rem 1.4rem 0.62rem;
+    min-height: 44px;
+    font-family: var(--font-mukta), system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    border: 1px solid transparent;
+    transition:
+      transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      background-color 180ms ease-out,
+      color 180ms ease-out,
+      border-color 180ms ease-out;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    position: relative;
+  }
+  .btn:disabled,
+  .btn[aria-disabled="true"] {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  .btn:focus-visible {
+    outline: 2px solid #E07A1F;
+    outline-offset: 3px;
+  }
+  /* Gentle press feedback for all variants */
+  .btn:active {
+    transform: translateY(1px);
+  }
+
+  /* Sizes — keep the same optical-center asymmetry as the base .btn. */
+  .btn-sm { padding: 0.58rem 1rem 0.42rem; min-height: 36px; font-size: 0.8rem; }
+  .btn-lg { padding: 0.98rem 1.7rem 0.82rem; min-height: 52px; font-size: 1rem; }
+
+  /* Primary — textured saffron with warm shadow + 1px gold inset highlight
+     so it reads like a hand-pressed button, not a flat SaaS pill. */
+  .btn-primary {
+    background-color: #E07A1F;
+    background-image:
+      linear-gradient(180deg, rgba(255,246,238,0.18) 0%, rgba(255,246,238,0) 60%),
+      radial-gradient(120% 80% at 50% -20%, rgba(255,246,238,0.45), transparent 60%),
+      linear-gradient(180deg, #F2944C 0%, #E07A1F 100%);
+    color: #FBF7F0;
+    border-color: rgba(156, 42, 42, 0.35);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 246, 238, 0.45),
+      0 1px 0 rgba(201, 162, 74, 0.35),
+      0 6px 18px -6px rgba(156, 42, 42, 0.35),
+      0 14px 28px -14px rgba(26, 20, 16, 0.18);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 246, 238, 0.55),
+      0 1px 0 rgba(201, 162, 74, 0.45),
+      0 10px 22px -6px rgba(156, 42, 42, 0.42),
+      0 22px 36px -16px rgba(26, 20, 16, 0.22);
+    filter: brightness(1.04);
+  }
+
+  /* Sindoor — used for high-emphasis devotional CTAs (Sponsor, Submit) */
+  .btn-sindoor {
+    background-image: linear-gradient(180deg, #B23332 0%, #9C2A2A 100%);
+    color: #FBF7F0;
+    border-color: rgba(26, 20, 16, 0.25);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 246, 238, 0.25),
+      0 1px 0 rgba(201, 162, 74, 0.25),
+      0 6px 18px -6px rgba(156, 42, 42, 0.45),
+      0 14px 28px -14px rgba(26, 20, 16, 0.22);
+  }
+  .btn-sindoor:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 246, 238, 0.35),
+      0 10px 22px -6px rgba(156, 42, 42, 0.5),
+      0 22px 36px -16px rgba(26, 20, 16, 0.26);
+  }
+
+  /* Ghost / outline — gold-bordered cream button. Use on dark backgrounds
+     and as the secondary CTA next to a primary. */
+  .btn-ghost {
+    background: #FBF7F0;
+    color: #1A1410;
+    border-color: #C9A24A;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 246, 238, 0.85),
+      0 1px 0 rgba(201, 162, 74, 0.18),
+      0 4px 12px -6px rgba(26, 20, 16, 0.10);
+  }
+  .btn-ghost:hover {
+    transform: translateY(-1px);
+    color: #9C2A2A;
+    border-color: #9C2A2A;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 246, 238, 0.85),
+      0 1px 0 rgba(156, 42, 42, 0.18),
+      0 8px 18px -6px rgba(156, 42, 42, 0.18);
+  }
+
+  /* Soft — barely-there button for tertiary actions (Back, link-style). */
+  .btn-soft {
+    background: transparent;
+    color: #5A4F46;
+    border-color: transparent;
+    box-shadow: none;
+    font-weight: 500;
+  }
+  .btn-soft:hover {
+    color: #9C2A2A;
+    background: rgba(245, 234, 201, 0.5);
+  }
+
+  /* Leaf — used for WhatsApp / share actions */
+  .btn-leaf {
+    background: #FBF7F0;
+    color: #3F7A3F;
+    border-color: #3F7A3F;
+    box-shadow: 0 4px 12px -6px rgba(63, 122, 63, 0.25);
+  }
+  .btn-leaf:hover {
+    background: #3F7A3F;
+    color: #FBF7F0;
+    transform: translateY(-1px);
+  }
+
+  /* ── Bhandara card warmth (matches the resources/companion cards) ─── */
+  .bm-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: #FFFFFF;
+    border: 1px solid rgba(201, 162, 74, 0.35);
+    border-radius: 1.25rem;
+    box-shadow:
+      0 1px 0 rgba(201, 162, 74, 0.12),
+      0 6px 18px -10px rgba(156, 42, 42, 0.10),
+      0 18px 36px -22px rgba(26, 20, 16, 0.10);
+    transition:
+      transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 220ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      border-color 220ms ease-out;
+    overflow: hidden;
+  }
+  .bm-card:hover {
+    transform: translateY(-3px);
+    border-color: #C9A24A;
+    box-shadow:
+      0 1px 0 rgba(201, 162, 74, 0.25),
+      0 10px 22px -8px rgba(156, 42, 42, 0.18),
+      0 30px 44px -22px rgba(26, 20, 16, 0.14);
+  }
+  .bm-card-photo {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    background-image:
+      radial-gradient(circle at 50% 30%, rgba(242, 148, 76, 0.25), transparent 60%),
+      linear-gradient(180deg, #FFF6EE 0%, #F5EAC9 100%);
+    border-bottom: 1px solid rgba(201, 162, 74, 0.35);
+    overflow: hidden;
+  }
+  .bm-card-sponsored-rail {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #C9A24A 0%, #9C2A2A 100%);
+  }
+
+  /* Warm Lucknow map tiles — softer saturation + sepia warmth + slight lift. */
+  .leaflet-tile {
+    filter: saturate(0.85) sepia(0.15) brightness(1.02);
+  }
+  /* Leaflet's default `.leaflet-top` / `.leaflet-bottom` containers sit at
+     z-index: 1000 — same as our sticky header, so the attribution rail
+     ("Leaflet | © OpenStreetMap") would float over the cream nav bar
+     while scrolling. Drop them well below the chrome. */
+  .leaflet-top,
+  .leaflet-bottom {
+    z-index: 600 !important;
+  }
+  .leaflet-control {
+    z-index: 600 !important;
+  }
+
+  /* Hand-textured saffron — replaces flat saffron-600 anywhere we want
+     depth. The bright cream wash at the top-left was previously washing
+     out cream-50 text in the player band on /resources/* pages; both
+     corners now use a sindoor shadow tint so cream text stays readable
+     across the whole surface. */
+  .textured-saffron {
+    background-color: #C56518;
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(156, 42, 42, 0.35), transparent 55%),
+      radial-gradient(circle at 80% 100%, rgba(60, 18, 18, 0.4), transparent 55%),
+      linear-gradient(180deg, #E07A1F 0%, #B25813 100%);
+  }
+  /* Tile a 5%-effective paper grain on top via ::after so it doesn't fight
+     other backgrounds. */
+  .textured-saffron {
+    position: relative;
+    isolation: isolate;
+  }
+  .textured-saffron::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("/textures/paper-grain.svg");
+    background-size: 240px;
+    background-repeat: repeat;
+    mix-blend-mode: multiply;
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .textured-saffron > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Page-wide cream paper feel. Apply to <body> via the layout. */
+  .paper {
+    background-color: #FBF7F0;
+    background-image: url("/textures/paper-grain.svg");
+    background-size: 240px;
+    background-repeat: repeat;
+    background-blend-mode: multiply;
+  }
+
+  /* Drop cap (96px Cormorant Garamond) — apply to opening <p> in long-form. */
+  .drop-cap::first-letter {
+    font-family: var(--font-cormorant), serif;
+    font-weight: 600;
+    font-size: 6rem;
+    line-height: 0.85;
+    float: left;
+    padding-right: 0.75rem;
+    padding-top: 0.25rem;
+    color: #E07A1F;
+  }
+
+  /* ── Microinteractions (design-system-v2 §7) ──────────────────────────── */
+
+  /* Letter-by-letter heading entrance.
+     Set --i (letter index) on each <span> via inline style.
+     Triggered by adding .reveal-letters to the parent. */
+  .reveal-letters > .letter {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(24px);
+    animation: reveal-letter 520ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+    animation-delay: calc(var(--i, 0) * 60ms);
+  }
+  .reveal-letters > .letter--space {
+    /* preserve spaces while still animating in step */
+    width: 0.32em;
+  }
+
+  /* Card hover lift + gold glow (apply via .card-warm utility).
+     Use the parent .group class to drive ornament rotation on grandchildren. */
+  .card-warm {
+    transition:
+      transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      border-color 220ms ease-out;
+    will-change: transform;
+  }
+  .card-warm:hover {
+    transform: translateY(-4px);
+    box-shadow:
+      0 1px 0 rgba(201, 162, 74, 0.35),
+      0 12px 28px -10px rgba(156, 42, 42, 0.18),
+      0 28px 56px -20px rgba(26, 20, 16, 0.14);
+  }
+  .card-warm .ornament-rotate {
+    transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform-origin: center;
+  }
+  .card-warm:hover .ornament-rotate {
+    transform: rotate(8deg);
+  }
+
+  /* Flipboard digit (CountdownTimer).
+     Toggle .flip-trigger to play the animation on a value change. */
+  .flip-card {
+    perspective: 320px;
+  }
+  .flip-card .flip-inner {
+    position: relative;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .flip-card.flip-trigger .flip-inner {
+    animation: digit-flip 520ms cubic-bezier(0.5, 0, 0.5, 1);
+  }
+
+  /* Map pin pulse (BhandaraMap).
+     We add this class to the iconHTML wrapper for ~700ms on click. */
+  .pin-pulse::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    border: 2px solid #C9A24A;
+    transform: scale(1);
+    opacity: 0.85;
+    pointer-events: none;
+    animation: pin-pulse 720ms ease-out forwards;
+  }
+
+  /* Marigold burst (sponsor button celebration).
+     Wrap the button in a .marigold-host; on success, append .marigold petals. */
+  .marigold-host {
+    position: relative;
+  }
+  .marigold {
+    position: absolute;
+    pointer-events: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 30% 30%, #F2944C, #E07A1F 60%, #9C2A2A 100%);
+    box-shadow: 0 0 0 2px rgba(255, 246, 238, 0.6);
+    opacity: 0;
+    animation: marigold-rise 1200ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  }
+
+  /* Diya morph on form submit success — used by the submit button. */
+  .diya-morph {
+    position: relative;
+    overflow: hidden;
+  }
+  .diya-morph::before {
+    content: "";
+    position: absolute;
+    inset: -120% -20% auto -20%;
+    height: 240%;
+    background:
+      radial-gradient(circle at 50% 100%, rgba(242, 148, 76, 0.65), transparent 55%),
+      radial-gradient(circle at 50% 100%, rgba(201, 162, 74, 0.55), transparent 70%);
+    transform: translateY(120%);
+    transition: transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    pointer-events: none;
+  }
+  .diya-morph.is-on::before {
+    transform: translateY(0);
+  }
+}
+
+@keyframes reveal-letter {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes digit-flip {
+  0% { transform: rotateX(0deg); }
+  50% { transform: rotateX(-90deg); }
+  100% { transform: rotateX(0deg); }
+}
+@keyframes pin-pulse {
+  0%   { transform: scale(0.85); opacity: 0.85; }
+  100% { transform: scale(2.6);  opacity: 0; }
+}
+/* Continuous ping ripple on live-spot map markers. */
+@keyframes bm-live-ping {
+  0%   { transform: scale(0.6); opacity: 0.95; }
+  80%  { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+/* Tighter pulse for the live-spot pin's outline ring. The shared
+   bm-live-ping above blooms to 2.2x, which was too wide once the pin
+   itself became the larger gada SVG instead of the small saffron disc.
+   This variant keeps the ripple close to the pin so it reads as a
+   warm halo rather than a wide wave. */
+@keyframes bm-pin-ring {
+  0%   { transform: scale(0.9); opacity: 0.9; }
+  80%  { transform: scale(1.45); opacity: 0; }
+  100% { transform: scale(1.45); opacity: 0; }
+}
+
+/* ── Live-spot popup on the city map ──────────────────────────────────
+   Overrides the default MapLibre popup chrome so the card reads as a
+   branded saffron-edged plaque instead of a plain white box. The
+   `.bm-spot-popup-wrap` class is applied via the SDK's `className`
+   popup option (see BhandaraMap.tsx). */
+/* Override the outer `.maplibregl-popup` max-width (default 240 px) so
+   our 296 px-wide content actually fits. Without this the Copy button
+   on the far right gets clipped. The `.bm-spot-popup-wrap` class is
+   applied directly to the outer `.maplibregl-popup` container by the
+   SDK's `className` option. */
+.bm-spot-popup-wrap {
+  max-width: 320px !important;
+}
+.bm-spot-popup-wrap .maplibregl-popup-content {
+  padding: 0;
+  /* White body — the surrounding map tiles already carry the warm cream
+     tone, so a cream-50 popup body amplified the yellowness. Keeping the
+     border gold-tinted preserves brand identity without flooding the
+     content area with warmth. */
+  background: #FFFFFF;
+  border: 1px solid rgba(201, 162, 74, 0.4);
+  border-radius: 18px;
+  box-shadow: 0 18px 42px rgba(26, 20, 16, 0.18),
+              0 4px 12px rgba(156, 42, 42, 0.08);
+  overflow: hidden;
+}
+.bm-spot-popup-wrap .maplibregl-popup-tip {
+  border-top-color: #FFFFFF !important;
+  border-bottom-color: #FFFFFF !important;
+  filter: drop-shadow(0 2px 1px rgba(26, 20, 16, 0.08));
+}
+.bm-spot-popup-wrap .maplibregl-popup-close-button {
+  /* Closer to the top-right corner, larger hit area, on top of the
+     saffron header strip so it reads as cream-on-saffron. */
+  top: 4px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  font-size: 18px;
+  line-height: 1;
+  color: #FBF7F0;
+  opacity: 0.85;
+  background: transparent;
+}
+.bm-spot-popup-wrap .maplibregl-popup-close-button:hover {
+  background: rgba(26, 20, 16, 0.08);
+  opacity: 1;
+  border-radius: 9999px;
+}
+
+/* Same chrome treatment for the listed-bhandara popup so both popup
+   variants feel like one card family with different content. The outer
+   `.maplibregl-popup` max-width is overridden too — same reason as the
+   spot variant above. */
+.bm-listed-popup-wrap {
+  max-width: 340px !important;
+}
+.bm-listed-popup-wrap .maplibregl-popup-content {
+  padding: 0;
+  background: #FFFFFF;
+  border: 1px solid rgba(201, 162, 74, 0.4);
+  border-radius: 18px;
+  box-shadow: 0 18px 42px rgba(26, 20, 16, 0.18),
+              0 4px 12px rgba(156, 42, 42, 0.08);
+  overflow: hidden;
+}
+.bm-listed-popup-wrap .maplibregl-popup-tip {
+  border-top-color: #FFFFFF !important;
+  border-bottom-color: #FFFFFF !important;
+  filter: drop-shadow(0 2px 1px rgba(26, 20, 16, 0.08));
+}
+.bm-listed-popup-wrap .maplibregl-popup-close-button {
+  top: 8px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  font-size: 18px;
+  line-height: 1;
+  color: #6B5E51;
+  opacity: 0.85;
+  background: transparent;
+}
+.bm-listed-popup-wrap .maplibregl-popup-close-button:hover {
+  background: rgba(26, 20, 16, 0.08);
+  opacity: 1;
+  border-radius: 9999px;
+}
+
+/* Success-tick stroke draw — runs once on the thank-you screen. */
+@keyframes bm-tick {
+  to { stroke-dashoffset: 0; }
+}
+/* Toast pill — small slide-up + fade-in when shown. */
+@keyframes bm-toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Slow continuous rotation for the gold spirals around Maharajji's portrait.
+   Idle state runs at 32s; on hover the wrapper bumps the duration down to
+   make the chakras feel like they "wake up" when the user leans in. */
+@keyframes bm-spiral-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes bm-spiral-spin-rev {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+@keyframes marigold-rise {
+  0%   { opacity: 0; transform: translate(var(--mx, 0), 0) scale(0.6); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--mx, 0), -120px) scale(1.05) rotate(var(--mr, 18deg)); }
+}
+
+/* Legal page typography. Used by /terms, /privacy, /disclaimers via the
+   shared LegalPage component; gives long-form prose comfortable rhythm
+   without per-element class noise. */
+.legal-prose {
+  @apply text-ink-900;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+.legal-prose h2 {
+  @apply font-fraunces text-sindoor-700;
+  font-weight: 600;
+  font-size: 1.35rem;
+  line-height: 1.3;
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+.legal-prose h2:first-child {
+  margin-top: 0;
+}
+.legal-prose h3 {
+  @apply font-fraunces text-ink-900;
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.4rem;
+}
+.legal-prose p {
+  margin-bottom: 1rem;
+}
+.legal-prose ul {
+  margin: 0 0 1.25rem 1.25rem;
+  padding-left: 0.5rem;
+  list-style: disc outside;
+}
+.legal-prose li {
+  margin-bottom: 0.4rem;
+}
+.legal-prose a {
+  @apply text-saffron-600 hover:text-sindoor-700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.legal-prose strong {
+  @apply text-sindoor-700;
+  font-weight: 600;
+}
+
+/* ─── Devanagari letter-spacing reset ──────────────────────────────────
+ * Tailwind tracking utilities (`tracking-wide`, `tracking-[0.18em]`
+ * etc.) were designed for uppercase Latin micro-labels and add
+ * positive letter-spacing. Devanagari is a complex script with
+ * conjuncts (क्ष, त्र, ज्ञ) and matras (ी, ू, ं) that visually
+ * shatter when letter-spaced — rendering "लालबाग" as "ला ल बा ग".
+ *
+ * When the page locale is Hindi (html[lang^="hi"]), suppress the
+ * positive tracking values across the site so any element styled
+ * for English uppercase (area chips, kickers, button labels) still
+ * renders Devanagari correctly. Negative tracking utilities
+ * (`tracking-tight`, `tracking-tighter`) are left alone — they
+ * compress without breaking conjuncts.
+ *
+ * Also suppress `text-transform: uppercase` on Hindi locale: it's a
+ * no-op for Devanagari but the matching `tracking-[0.x]` is usually
+ * paired with it, so we surface "intent to remove both". */
+html[lang^="hi"] .tracking-wide,
+html[lang^="hi"] .tracking-wider,
+html[lang^="hi"] .tracking-widest,
+html[lang^="hi"] [class*="tracking-["] {
+  letter-spacing: normal !important;
+}
+html[lang^="hi"] .uppercase {
+  text-transform: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

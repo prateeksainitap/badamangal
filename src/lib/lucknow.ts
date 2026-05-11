@@ -1,0 +1,43 @@
+export const AREAS = [
+  "Aishbagh",
+  "Alambagh",
+  "Aliganj",
+  "Aminabad",
+  "Bakshi Ka Talab",
+  "Charbagh",
+  "Chinhat",
+  "Chowk",
+  "Daliganj",
+  "Faizullaganj",
+  "Gomti Nagar",
+  "Gomti Nagar Extension",
+  "Hanuman Setu",
+  "Hazratganj",
+  "IIM Road",
+  "Indira Nagar",
+  "Jankipuram",
+  "Kaiserbagh",
+  "Kalyanpur",
+  "Kapoorthala",
+  "Krishna Nagar",
+  "Mahanagar",
+  "Mohanlalganj",
+  "Munshipulia",
+  "Naka Hindola",
+  "Nishatganj",
+  "Polytechnic",
+  "Rajajipuram",
+  "Sarojini Nagar",
+  "Sitapur Road",
+  "Sushant Golf City",
+  "Telibagh",
+  "University Road",
+  "Vibhuti Khand",
+  "Vikas Nagar",
+  "Vrindavan Yojna",
+] as const;
+
+export type Area = (typeof AREAS)[number];
+
+export const DEFAULT_CENTER = { lat: 26.8467, lng: 80.9462 } as const;
+export const DEFAULT_ZOOM = 12;

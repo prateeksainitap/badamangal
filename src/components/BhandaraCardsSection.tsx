@@ -1,0 +1,128 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import BhandaraCard from "@/components/BhandaraCard";
+import FancySelect from "@/components/FancySelect";
+import { trackEvent } from "@/lib/ga";
+import type { Bhandara } from "@/types/bhandara";
+import type { Locale } from "@/content/strings";
+import { strings } from "@/content/strings";
+import { AREAS } from "@/lib/lucknow";
+
+type Props = {
+  listings: Bhandara[];
+  locale: Locale;
+  heading: string;
+  isHi: boolean;
+};
+
+type Tuesday = "all" | string;
+
+export default function BhandaraCardsSection({
+  listings,
+  locale,
+  heading,
+  isHi,
+}: Props) {
+  const t = strings[locale];
+  const [area, setArea] = useState<"all" | string>("all");
+  const [tuesday, setTuesday] = useState<Tuesday>("all");
+
+  // Always show every Lucknow area we support, keeps the filter list
+  // identical to the Add-bhandara form regardless of which listings exist.
+  const areas = useMemo(
+    () =>
+      [...AREAS].sort((a, b) =>
+        (t.areas[a] ?? a).localeCompare(t.areas[b] ?? b),
+      ),
+    [t.areas],
+  );
+
+  const tuesdays = useMemo(() => {
+    const set = new Set<string>();
+    for (const b of listings) for (const d of b.tuesdayDates) set.add(d);
+    return Array.from(set).sort();
+  }, [listings]);
+
+  const filtered = useMemo(
+    () =>
+      listings.filter((b) => {
+        if (area !== "all" && b.area !== area) return false;
+        if (tuesday !== "all" && !b.tuesdayDates.includes(tuesday)) return false;
+        return true;
+      }),
+    [listings, area, tuesday],
+  );
+
+  const areaOptions = [
+    { value: "all", label: isHi ? "सभी क्षेत्र" : "All areas" },
+    ...areas.map((a) => ({
+      value: a,
+      label: t.areas[a as keyof typeof t.areas] ?? a,
+    })),
+  ];
+  const tuesdayOptions = [
+    { value: "all", label: isHi ? "सभी मंगलवार" : "All Tuesdays" },
+    ...tuesdays.map((d) => ({
+      value: d,
+      label: new Date(`${d}T04:30:00Z`).toLocaleDateString(
+        isHi ? "hi-IN" : "en-IN",
+        { day: "numeric", month: "short" },
+      ),
+    })),
+  ];
+
+  return (
+    <section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-16">
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <h2
+          className={`text-2xl sm:text-3xl ${
+            isHi ? "font-tiro text-sindoor-700" : "font-fraunces text-sindoor-700"
+          }`}
+        >
+          {heading}
+        </h2>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-[0.24em] text-ink-600">
+            {isHi ? "छाँटें" : "Filter"}
+          </span>
+          <FancySelect
+            ariaLabel={isHi ? "क्षेत्र" : "Area"}
+            value={area}
+            onChange={(v) => {
+              setArea(v);
+              trackEvent("filter_area_change", { value: v });
+            }}
+            options={areaOptions}
+          />
+          <FancySelect
+            ariaLabel={isHi ? "मंगलवार" : "Tuesday"}
+            value={tuesday}
+            onChange={(v) => {
+              setTuesday(v);
+              trackEvent("filter_tuesday_change", { value: v });
+            }}
+            options={tuesdayOptions}
+          />
+        </div>
+      </div>
+
+      {filtered.length > 0 ? (
+        <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
+          {filtered.map((b) => (
+            <div key={b.id} className="flex">
+              <BhandaraCard bhandara={b} locale={locale} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-8 rounded-2xl border border-dashed border-gold-500/50 bg-cream-50 px-5 py-6 text-center text-sm text-ink-600">
+          {isHi
+            ? "इस फ़िल्टर में कोई भंडारा नहीं मिला।"
+            : "No bhandaras match this filter yet."}
+        </p>
+      )}
+    </section>
+  );
+}
+

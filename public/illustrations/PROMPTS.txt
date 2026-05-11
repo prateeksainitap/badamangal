@@ -1,0 +1,162 @@
+================================================================================
+BadaMangal.com — image generation prompts
+================================================================================
+
+Generate the seven assets below using Midjourney v6, DALL-E 3, Imagen 3, Sora
+image, or Adobe Firefly. Generate 3-5 variations each, pick the best, upscale
+to >= 2400px on the long edge, then save with the EXACT filename listed beside
+each prompt into THIS folder (public/illustrations/). The site renders styled
+saffron placeholder blocks until each file exists.
+
+Religious-safety guardrail (do not skip):
+  Do NOT prompt for "photorealistic" Hanuman Ji. Use "painterly", "mural",
+  "line art", "hand-painted", "gouache", or "miniature" framing only.
+  Tools sometimes refuse religious imagery — if so, switch the framing to
+  "stylized line art mural inspired by Indian temple paintings" and retry.
+  Always end the prompt with: "no signature, no watermark, no text".
+
+Brand palette (eyedrop final files to match):
+  Saffron-600 #E07A1F · Saffron-500 #F2944C · Saffron-50 #FFF6EE
+  Sindoor-700 #9C2A2A · Gold-500   #C9A24A · Gold-100  #F5EAC9
+  Ink-900     #1A1410 · Ink-600    #5A4F46 · Cream-50  #FBF7F0
+
+================================================================================
+1. hero-hanuman.png   — Aspect 3:4   (homepage right side)
+================================================================================
+A devotional yet modern illustration of Hanuman Ji, painted in the style of a
+contemporary Indian textile mural — gentle line weight, hand-painted gold leaf
+accents, warm matte finish. Hanuman is shown in three-quarter view, gada (mace)
+resting against his shoulder, eyes closed in calm meditation. The background is
+a soft cream paper texture with a faint 8-pointed sun mandala glowing in
+saffron behind his silhouette. Marigold strings fall along the edges of the
+frame. Limited palette: cream, saffron orange, deep sindoor red, Awadhi gold,
+ink-black outlines. No text. No photorealism. Editorial, dignified, calm.
+Mughal-Awadh fusion influence. Suitable for a heritage city festival website.
+no signature, no watermark, no text
+
+Midjourney tail: --ar 3:4 --style raw --stylize 200
+
+================================================================================
+2. aliganj-dusk.png   — Aspect 16:9   (history page banner A)
+================================================================================
+A wide painterly illustration of an old north Indian temple courtyard at dusk
+in summer. Warm saffron sky, silhouettes of devotees walking toward an arched
+temple gateway, the dome of the Aliganj Hanuman Mandir visible in the
+background. Foreground: a row of clay diyas glowing on the temple steps. Style:
+hand-painted gouache with visible brushwork, palette of cream, saffron,
+sindoor, and Awadhi gold, soft ink outlines. No text. No specific identifiable
+people. Heritage, calm, devotional. Editorial poster quality.
+no signature, no watermark, no text
+
+Midjourney tail: --ar 16:9 --style raw --stylize 220
+
+================================================================================
+3. bhandara-line.png   — Aspect 16:9   (history page banner B)
+================================================================================
+A wide painterly illustration of a Lucknow street bhandara in summer. A long
+row of canopies in saffron and white, a stove with a large kadhai of puris
+steaming, hands of volunteers and devotees passing plates and cups of cold
+sherbet. Cropped tight on hands and plates rather than faces. Heat haze, warm
+afternoon light, some marigold strings overhead. Style: contemporary Indian
+gouache illustration, bold ink outlines, palette of cream, saffron, sindoor,
+gold, peepal-leaf green. No text, no logos, no recognizable brand signage.
+Documentary warmth.
+no signature, no watermark, no text
+
+Midjourney tail: --ar 16:9 --style raw --stylize 220
+
+================================================================================
+4. eight-mandala.png   — Aspect 16:9   (history page banner C)
+================================================================================
+A geometric mandala composition with eight equal points around a central sun.
+Each of the eight points contains a tiny illustrated symbol related to a Bada
+Mangal: a temple bell, a clay diya, a kadhai, a marigold flower, a glass of
+sherbet, an open palm offering a plate, a Hanuman gada, and an open Chalisa
+book. The center holds a stylized 8-pointed sun in saffron and gold.
+Background: cream paper with subtle jali pattern. Style: line-art with
+selective gold and saffron fills, like a contemporary Awadhi miniature. No
+text. Editorial.
+no signature, no watermark, no text
+
+Midjourney tail: --ar 16:9 --style raw --stylize 250
+
+================================================================================
+5. empty-state-plate.png   — Aspect 1:1   (used on empty list views)
+================================================================================
+A gentle illustration of an empty offering plate in cream and gold, viewed from
+above, with a single marigold flower placed on it. Cream paper background, soft
+ink lines, no text. Mood: hopeful pause, not error. Suitable for an
+empty-state illustration on a devotional website.
+no signature, no watermark, no text
+
+Midjourney tail: --ar 1:1 --style raw --stylize 200
+
+================================================================================
+6. 404-diya-smoke.png   — Aspect 1:1   (used on /not-found)
+================================================================================
+A gentle illustration of a tipped-over clay diya with a thin trail of smoke
+rising and dissolving into a small marigold blossom. Warm cream background,
+soft ink lines and saffron-gold fills, no text. Mood: humble apology, not
+failure.
+no signature, no watermark, no text
+
+Midjourney tail: --ar 1:1 --style raw --stylize 200
+
+================================================================================
+7. og-default.png   — Aspect 1200:630   (Open Graph fallback)
+================================================================================
+A horizontal social card composition for the website "BadaMangal — Lucknow's
+Bhandara map". Left side: stylized Hanuman Ji silhouette with a glowing
+8-pointed sun behind him, hand-painted illustration style with saffron,
+sindoor, and Awadhi gold on cream paper texture. Right side: empty space (will
+hold dynamic text). Subtle marigold string at the top edge. No baked-in text.
+Mood: heritage, modern, devotional.
+no signature, no watermark, no text
+
+Midjourney tail: --ar 1200:630 --style raw --stylize 230
+
+================================================================================
+8. nim-karoli-baba.png   — Aspect 1:1   (homepage closing-benediction medallion)
+================================================================================
+A reverent, painterly portrait illustration of Neem Karoli Baba (Maharajji),
+seated and wrapped in his recognisable white-and-grey check blanket, soft
+smile, eyes warm and half-closed in calm samadhi. Three-quarter view, head
+and upper torso only, composed to fit naturally inside a circular medallion
+(no hard background edges — let the figure float on a cream paper field that
+fades to nothing at the corners so it can sit in a round crop). Render the
+blanket with hand-painted brush strokes, not photographic detail. A faint
+Awadhi-gold halo glows behind his head; subtle 8-pointed sun mandala just
+visible behind the halo. No throne, no devotees, no text, no English or
+Devanagari letters anywhere.
+
+Style: contemporary Indian textile-mural illustration — gentle ink outlines,
+hand-painted gouache fills, hand-applied gold-leaf accents, warm matte
+finish. Limited brand palette: cream #FBF7F0, saffron #F2944C / #E07A1F,
+sindoor #9C2A2A, Awadhi gold #C9A24A, ink-black #1A1410 outlines, plus the
+neutral whites/greys of the blanket. Editorial, dignified, calm; Mughal-Awadh
+fusion influence — exactly the same illustrative family as the existing
+hero-hanuman.png on this site. Centred subject with generous breathing room
+around the figure so a circular crop reads cleanly. Suitable for a heritage
+city-festival website's closing blessing.
+
+Religious-safety reminder: do NOT prompt for "photorealistic". Stay in the
+"painterly mural / hand-painted / contemporary Indian illustration" family.
+If the tool refuses, reframe as "stylised line-art mural portrait of an
+elderly Indian saint in a check blanket, inspired by contemporary devotional
+illustration" and retry.
+
+no signature, no watermark, no text
+
+Midjourney tail: --ar 1:1 --style raw --stylize 220
+
+================================================================================
+POST-PROCESSING (do this before dropping files in)
+================================================================================
+1. Upscale to >= 2400px on long edge.
+2. Color-grade to match the brand palette above (eyedropper, +5% saturation).
+3. Optional: add a 4-6% paper-grain overlay layer to unify with the site.
+4. Compress: WebP @ 80 OR PNG (the page accepts both — check src tags).
+5. Drop the file into THIS folder using the exact filename listed.
+6. The site will pick them up automatically — placeholders disappear.
+
+================================================================================

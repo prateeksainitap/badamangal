@@ -1,0 +1,153 @@
+// BadaMangal — Prisma schema
+//
+// Production: Postgres on Neon.
+// Local dev: also Postgres (run a local docker container or just point at a
+// dev Neon branch). The schema is portable — JSON-shaped string columns
+// stay strings so the existing TS types don't need to change.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Bhandara {
+  id                String    @id @default(cuid())
+  slug              String    @unique
+  // names
+  name              String
+  nameHi            String?
+  description       String?
+  descriptionHi     String?
+  // location
+  address           String
+  addressHi         String?
+  area              String // user-facing curated tag (Aliganj, Hazratganj, ...)
+  landmark          String?
+  lat               Float
+  lng               Float
+  // geocoder-derived (truth from Nominatim/Google)
+  geoNeighborhood   String?
+  geoDistrict       String?
+  geoState          String?
+  googlePlaceId     String?
+  googleMapsUrl     String?
+  // schedule (JSON-encoded; SQLite has no native arrays)
+  tuesdayDates      String // JSON string[] of ISO dates
+  timeStart         String // "HH:MM" 24h
+  timeEnd           String // "HH:MM" 24h
+  // serving
+  menu              String // JSON string[] (English keys)
+  menuHi            String // JSON string[] (Devanagari labels)
+  // contact
+  organizerName     String
+  organizerPhone    String
+  organizerWhatsapp String?
+  upiId             String?
+  // media
+  photoUrl          String?
+  // moderation
+  // Listings go live as soon as the organizer's mobile is OTP-verified
+  // (status = APPROVED). A separate `isVerified` flag flips to true once
+  // the BadaMangal team independently confirms the details by phone, at
+  // which point a "Verified" badge appears on the listing.
+  status            String    @default("APPROVED") // APPROVED | REJECTED | ARCHIVED
+  isVerified        Boolean   @default(false)
+  isSponsored       Boolean   @default(false)
+  sponsorTier       String?
+  // metrics
+  viewCount         Int       @default(0)
+  shareCount        Int       @default(0)
+  // timestamps
+  createdAt         DateTime  @default(now())
+  approvedAt        DateTime?
+
+  // user-submitted spots that point at this bhandara
+  spots Spot[]
+
+  @@index([status])
+  @@index([area])
+}
+
+// Single-row counter table for site-wide stats (visitor count, etc.).
+// Keyed by name so we can add more counters later (homeVisits, listings, …).
+model SiteCounter {
+  id        String   @id
+  count     Int      @default(0)
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+// ── Spotted bhandaras (live, ephemeral) ─────────────────────────────────
+//
+// A "Spot" is a quick crowd-sourced report: someone walking past a bhandara
+// snaps a photo and drops a pin so the city map can show what's actually
+// happening RIGHT NOW. Unlike a Bhandara listing, a Spot:
+//  - has no schedule, organizer, menu (optional caption only)
+//  - auto-expires after `expiresAt` (defaults to 8 hours)
+//  - is OK to submit anonymously (no OTP gate by default)
+//
+// The map and "Happening now" feed read these where status=APPROVED and
+// expiresAt > now().
+model Spot {
+  id                String    @id @default(cuid())
+  // location
+  lat               Float
+  lng               Float
+  area              String? // optional curated tag (Aliganj, Gomti Nagar, …)
+  address           String? // free-text or reverse-geocoded
+  // content
+  photoUrl          String? // optional — bhandaras can be reported without a photo
+  caption           String? // 0–200 chars
+  language          String    @default("en") // "hi" | "en" | "mixed"
+  // optional reporter (we don't require it but record if given)
+  reporterName      String?
+  reporterPhoneHash String?
+  // moderation
+  status            String    @default("APPROVED") // PENDING | APPROVED | REJECTED
+  rejectReason      String?
+  reportCount       Int       @default(0)
+  // lifecycle
+  createdAt         DateTime  @default(now())
+  expiresAt         DateTime // typically createdAt + 8h
+  // optional link to a fully-listed bhandara (if one matches)
+  bhandaraId        String?
+  bhandara          Bhandara? @relation(fields: [bhandaraId], references: [id])
+  // metadata
+  ipHash            String
+  userAgent         String?
+
+  @@index([status, expiresAt])
+  @@index([area, status])
+}
+
+// ── Contact-form messages ───────────────────────────────────────────────
+//
+// Submissions from the public /contact form. We store rather than email so
+// nothing is lost if mail-out fails, and the team can triage from /admin.
+// Honeypot field + IP hash deter the cheapest spam — real abuse will need
+// a Captcha bolted on later.
+model ContactMessage {
+  id             String   @id @default(cuid())
+  name           String
+  email          String
+  phone          String?
+  subject        String?
+  message        String
+  // optional supporting document (PDF or image), uploaded via /api/uploads
+  // and referenced here by its public URL. Original filename kept so the
+  // moderator sees the user's intent (e.g. "school-id.pdf").
+  attachmentUrl  String?
+  attachmentName String?
+  attachmentType String? // "pdf" | "image"
+  // moderation
+  status         String   @default("NEW") // NEW | READ | REPLIED | SPAM
+  // metadata
+  createdAt      DateTime @default(now())
+  ipHash         String
+  userAgent      String?
+
+  @@index([status, createdAt])
+}

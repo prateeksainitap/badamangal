@@ -1,0 +1,451 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo } from "react";
+import { type NearMeState } from "@/components/NearMeButton";
+import { haversineKm } from "@/lib/geo";
+import type { Bhandara } from "@/types/bhandara";
+import type { Locale } from "@/content/strings";
+import { strings } from "@/content/strings";
+import { trackEvent } from "@/lib/ga";
+import { useToast } from "@/components/Toast";
+
+export type SideListSpot = {
+  id: string;
+  lat: number;
+  lng: number;
+  area: string | null;
+  caption: string | null;
+  photoUrl: string | null;
+  createdAt: string;
+  bhandaraSlug: string | null;
+  bhandaraName: string | null;
+  bhandaraNameHi: string | null;
+};
+
+export type SideListFilter = "all" | "listed" | "spotted";
+
+type Props = {
+  listings: Bhandara[];
+  liveSpots?: SideListSpot[];
+  locale: Locale;
+  isHi: boolean;
+  /** Currently active map filter, drives the side-list heading. */
+  filter?: SideListFilter;
+  /** Lifted near-me state, owned by the parent so the trigger button can
+   *  live elsewhere in the layout. */
+  near?: NearMeState;
+};
+
+const NEAR_ME_RADIUS_KM = 3;
+
+function format12h(time: string): string {
+  if (!time) return "";
+  const m = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+  if (!m) return "";
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (Number.isNaN(h) || Number.isNaN(min)) return "";
+  const period = h >= 12 ? "PM" : "AM";
+  const display = ((h + 11) % 12) + 1;
+  return `${display}:${String(min).padStart(2, "0")} ${period}`;
+}
+
+const HINDI_MONTHS_SHORT = [
+  "जन", "फ़र", "मार्च", "अप्रैल", "मई", "जून",
+  "जुल", "अग", "सित", "अक्ट", "नव", "दिस",
+];
+const EN_MONTHS_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/** Today's date as YYYY-MM-DD in IST. */
+function istTodayIso(): string {
+  return new Date(Date.now() + 5.5 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+/** Format an ISO date (YYYY-MM-DD) as "12 May" / "12 मई", or "Today"/"आज" if it's today. */
+function shortDate(iso: string, isHi: boolean): string {
+  if (!iso) return "";
+  if (iso === istTodayIso()) return isHi ? "आज" : "Today";
+  // Treat the YYYY-MM-DD as a calendar date (no timezone shift).
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m || !d) return "";
+  const month = (isHi ? HINDI_MONTHS_SHORT : EN_MONTHS_SHORT)[m - 1];
+  return `${d} ${month}`;
+}
+
+/** Pick the next upcoming Tuesday from a listing's tuesdayDates,
+ *  or — if the listing serves today — return today. */
+function nextServingDate(dates: string[]): string | null {
+  if (!Array.isArray(dates) || dates.length === 0) return null;
+  const today = istTodayIso();
+  // Same-day match wins.
+  if (dates.includes(today)) return today;
+  const upcoming = dates.filter((d) => d > today).sort();
+  if (upcoming.length > 0) return upcoming[0];
+  // Whole season is in the past — show the most recent so the row isn't dateless.
+  const past = [...dates].sort();
+  return past[past.length - 1] ?? null;
+}
+
+/** Unified row shape so the same template renders both kinds of pin. */
+type Entry = {
+  key: string;
+  type: "organized" | "spotted";
+  name: string;
+  area: string | null;
+  /** Pre-formatted date label (e.g. "12 May" or "Today"). null = no date. */
+  dateLabel: string | null;
+  meta: string;
+  href: string | null;
+  lat: number;
+  lng: number;
+  km?: number;
+  // Sharing
+  shareText: string;
+  mapsUrl: string;
+};
+
+export default function MapSideList({
+  listings,
+  liveSpots = [],
+  locale,
+  isHi,
+  filter = "all",
+  near = { status: "idle", coords: null },
+}: Props) {
+  const t = strings[locale];
+  const langSuffix = locale === "en" ? "?lang=en" : "";
+
+  // Build a single entry list out of listed bhandaras + live spots so the
+  // sidebar mirrors what's on the map.
+  const entries = useMemo<Entry[]>(() => {
+    const fromListings: Entry[] = listings.map((b) => {
+      const name = isHi ? b.nameHi : b.name;
+      const mapsUrl = `https://www.google.com/maps?q=${b.lat},${b.lng}&z=18`;
+      const serveOn = nextServingDate(b.tuesdayDates ?? []);
+      return {
+        key: `org:${b.id}`,
+        type: "organized",
+        name,
+        area: t.areas[b.area] ?? b.area,
+        dateLabel: serveOn ? shortDate(serveOn, isHi) : null,
+        meta: [
+          format12h(b.timeStart),
+          b.timeEnd ? `– ${format12h(b.timeEnd)}` : "",
+        ]
+          .filter(Boolean)
+          .join(" "),
+        href: `/bhandara/${b.slug}${langSuffix}`,
+        lat: b.lat,
+        lng: b.lng,
+        shareText: `${name} · ${b.area} · ${mapsUrl}`,
+        mapsUrl,
+      };
+    });
+
+    const fromSpots: Entry[] = liveSpots.map((s) => {
+      const name =
+        (isHi ? s.bhandaraNameHi ?? s.bhandaraName : s.bhandaraName) ??
+        (isHi ? "स्पॉट किया गया भंडारा" : "Spotted bhandara");
+      const mapsUrl = `https://www.google.com/maps?q=${s.lat},${s.lng}&z=18`;
+      // Spots are date-stamped at creation; treat it as today if the IST
+      // calendar day matches.
+      const spottedIstIso = new Date(
+        new Date(s.createdAt).getTime() + 5.5 * 60 * 60 * 1000,
+      )
+        .toISOString()
+        .slice(0, 10);
+      return {
+        key: `spot:${s.id}`,
+        type: "spotted",
+        name,
+        area: s.area ? t.areas[s.area] ?? s.area : null,
+        dateLabel: shortDate(spottedIstIso, isHi),
+        meta: s.caption ?? (isHi ? "लाइव" : "Live now"),
+        href: s.bhandaraSlug ? `/bhandara/${s.bhandaraSlug}${langSuffix}` : null,
+        lat: s.lat,
+        lng: s.lng,
+        shareText: s.caption
+          ? `${s.caption} · live at ${mapsUrl}`
+          : `Live bhandara spotted: ${mapsUrl}`,
+        mapsUrl,
+      };
+    });
+
+    return [...fromListings, ...fromSpots];
+  }, [listings, liveSpots, isHi, t.areas, langSuffix]);
+
+  const filtered = useMemo(() => {
+    if (near.status !== "active" || !near.coords) return entries;
+    const c = near.coords;
+    return entries
+      .map((e) => ({ ...e, km: haversineKm(c, { lat: e.lat, lng: e.lng }) }))
+      .filter((e) => (e.km ?? Infinity) <= NEAR_ME_RADIUS_KM)
+      .sort((a, b) => (a.km ?? 0) - (b.km ?? 0));
+  }, [entries, near]);
+
+  const isFiltering = near.status === "active";
+
+  // Heading switches with the active filter (and is overridden by the
+  // Near-me toggle when active, since proximity is the stronger lens).
+  const heading = (() => {
+    if (isFiltering) return isHi ? "मेरे पास के भंडारे" : "Bhandaras near me";
+    if (filter === "listed")
+      return isHi ? "सूचीबद्ध भंडारे" : "Listed bhandaras";
+    if (filter === "spotted")
+      return isHi ? "स्पॉट किए गए भंडारे" : "Spotted bhandaras";
+    return isHi ? "सभी भंडारे" : "All bhandaras";
+  })();
+
+  return (
+    <aside className="rounded-2xl border border-gold-500/40 bg-cream-50 overflow-hidden flex flex-col h-[420px] sm:h-[520px]">
+      <header className="px-4 py-3 border-b border-gold-500/30 bg-saffron-50/60 flex items-center justify-between gap-2">
+        <p
+          className={`text-sm ${
+            isHi
+              ? "font-tiro text-sindoor-700"
+              : "font-fraunces text-sindoor-700 font-semibold"
+          }`}
+        >
+          {heading}
+        </p>
+        <span className="text-[11px] text-ink-600 font-numerals tabular-nums">
+          {isHi
+            ? `${filtered.length} दिख रहे हैं`
+            : `${filtered.length} showing`}
+        </span>
+      </header>
+
+      {isFiltering ? (
+        <div className="px-4 py-2 border-b border-gold-500/20 bg-saffron-50/40 text-[10px] text-ink-600">
+          {isHi
+            ? `3 कि.मी. के दायरे में, सबसे पास से क्रम में।`
+            : `Within 3 km, sorted by distance.`}
+        </div>
+      ) : null}
+
+      <ul className="overflow-y-auto divide-y divide-gold-500/20">
+        {filtered.map((e) => (
+          <SideRow
+            key={e.key}
+            entry={e}
+            isHi={isHi}
+          />
+        ))}
+        {filtered.length === 0 ? (
+          <li className="px-4 py-6 text-center text-xs text-ink-600">
+            {isFiltering
+              ? isHi
+                ? "3 कि.मी. के अंदर कोई भंडारा नहीं मिला।"
+                : "No bhandaras within 3 km of you yet."
+              : isHi
+                ? "अभी कोई भंडारा नहीं"
+                : "No bhandaras yet"}
+          </li>
+        ) : null}
+      </ul>
+    </aside>
+  );
+}
+
+function SideRow({ entry: e, isHi }: { entry: Entry; isHi: boolean }) {
+  const toast = useToast();
+  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lng}`;
+  const waUrl = `https://wa.me/?text=${encodeURIComponent(e.shareText)}`;
+
+  // Header row content (name + tag + distance) is wrapped in the bhandara
+  // link when there's one, else falls back to a plain block.
+  const head = (
+    <div className="flex items-start justify-between gap-2">
+      <div className="min-w-0">
+        <p
+          className={`text-sm leading-snug line-clamp-1 ${
+            isHi
+              ? "font-deva font-semibold text-sindoor-700"
+              : "font-fraunces font-semibold text-sindoor-700"
+          }`}
+        >
+          {e.name}
+        </p>
+        <p className="mt-0.5 text-[11px] text-ink-600 flex items-center flex-wrap gap-x-1.5">
+          {e.area ? <span>{e.area}</span> : null}
+          {e.area && (e.dateLabel || e.meta) ? (
+            <span aria-hidden>·</span>
+          ) : null}
+          {e.dateLabel ? (
+            <span
+              className={
+                // "Today" / "आज" gets a soft saffron emphasis so the row
+                // reads as freshly relevant; other dates stay quiet.
+                e.dateLabel === "Today" || e.dateLabel === "आज"
+                  ? "font-semibold text-saffron-600"
+                  : ""
+              }
+            >
+              {e.dateLabel}
+            </span>
+          ) : null}
+          {e.dateLabel && e.meta ? <span aria-hidden>·</span> : null}
+          <span className="line-clamp-1">{e.meta}</span>
+        </p>
+      </div>
+      <div className="shrink-0 flex flex-col items-end gap-1">
+        {/* Type tag */}
+        <span
+          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] uppercase tracking-[0.22em] font-mukta font-semibold ${
+            e.type === "spotted"
+              ? "bg-saffron-50 border border-saffron-500/45 text-saffron-600"
+              : "bg-cream-50 border border-gold-500/55 text-gold-500"
+          }`}
+        >
+          {e.type === "spotted" ? (
+            <span
+              aria-hidden
+              className="block w-1 h-1 rounded-full bg-saffron-600 motion-safe:animate-pulse"
+            />
+          ) : null}
+          {e.type === "spotted"
+            ? isHi
+              ? "स्पॉट"
+              : "Spotted"
+            : isHi
+              ? "लिस्टेड"
+              : "Listed"}
+        </span>
+        {/* Distance pill (when Near Me filter is active) */}
+        {typeof e.km === "number" ? (
+          <span className="inline-flex items-center rounded-full bg-saffron-50 border border-saffron-500/40 px-2 py-0.5 text-[10px] text-saffron-600 font-semibold font-numerals tabular-nums">
+            {e.km < 1
+              ? `${Math.round(e.km * 1000)} m`
+              : `${e.km.toFixed(1)} km`}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  return (
+    <li className="px-4 py-3 hover:bg-saffron-50/60 transition-colors">
+      {e.href ? (
+        <Link
+          href={e.href}
+          className="block"
+          data-ga="map_list_open"
+          data-ga-type={e.type}
+        >
+          {head}
+        </Link>
+      ) : (
+        head
+      )}
+
+      {/* Round CTA cluster — same icon-only language as the spot cards */}
+      <div className="mt-2 flex items-center gap-1.5">
+        <a
+          href={directionsUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label={isHi ? "रास्ता बताएँ" : "Get directions"}
+          title={isHi ? "रास्ता बताएँ" : "Get directions"}
+          onClick={() =>
+            trackEvent("map_list_directions", { type: e.type })
+          }
+          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 shadow-warm transition-colors"
+        >
+          <IconPin />
+        </a>
+        <a
+          href={waUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label={isHi ? "व्हाट्सएप पर शेयर" : "Share on WhatsApp"}
+          title={isHi ? "व्हाट्सएप पर शेयर" : "Share on WhatsApp"}
+          onClick={() => trackEvent("map_list_share", { type: e.type })}
+          className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-leaf-600/55 bg-cream-50 hover:bg-leaf-600/10 text-leaf-600 transition-colors"
+        >
+          <IconWhatsapp />
+        </a>
+        <button
+          type="button"
+          onClick={async (ev) => {
+            const btn = ev.currentTarget;
+            try {
+              await navigator.clipboard.writeText(e.mapsUrl);
+              trackEvent("map_list_copy", { type: e.type });
+              btn.dataset.copied = "1";
+              window.setTimeout(() => {
+                delete btn.dataset.copied;
+              }, 1200);
+              toast.show(isHi ? "लिंक कॉपी हो गया" : "Link copied");
+            } catch {
+              toast.show(
+                isHi ? "कॉपी नहीं हुआ" : "Couldn't copy",
+                "error",
+              );
+            }
+          }}
+          aria-label={isHi ? "लिंक कॉपी करें" : "Copy link"}
+          title={isHi ? "लिंक कॉपी करें" : "Copy link"}
+          className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-saffron-500/45 bg-cream-50 hover:bg-saffron-50 text-saffron-600 transition-colors data-[copied]:bg-leaf-600 data-[copied]:border-leaf-600 data-[copied]:text-cream-50"
+        >
+          <IconCopy />
+        </button>
+      </div>
+    </li>
+  );
+}
+
+function IconPin() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 21s-6.5-7-6.5-12a6.5 6.5 0 1 1 13 0c0 5-6.5 12-6.5 12z" />
+      <circle cx="12" cy="9" r="2.25" />
+    </svg>
+  );
+}
+function IconWhatsapp() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 32 32"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M16 3C8.82 3 3 8.82 3 16c0 2.29.6 4.43 1.65 6.3L3 29l6.86-1.62A12.95 12.95 0 0 0 16 29c7.18 0 13-5.82 13-13S23.18 3 16 3zm0 23.5c-1.93 0-3.74-.5-5.32-1.4l-.38-.22-4.07.96.97-3.96-.25-.4A10.5 10.5 0 1 1 16 26.5zm6.06-7.86c-.33-.17-1.96-.97-2.27-1.08-.3-.11-.52-.17-.74.17-.22.33-.85 1.07-1.04 1.29-.19.22-.38.25-.71.08-.33-.17-1.4-.52-2.66-1.65-.98-.88-1.65-1.96-1.84-2.29-.19-.33-.02-.51.15-.67.15-.15.33-.39.5-.58.16-.19.22-.33.33-.55.11-.22.06-.41-.03-.58-.08-.17-.74-1.79-1.01-2.45-.27-.66-.55-.57-.74-.58l-.63-.01a1.21 1.21 0 0 0-.88.41c-.3.33-1.15 1.13-1.15 2.75 0 1.62 1.18 3.19 1.34 3.41.16.22 2.32 3.55 5.62 4.97 2.61 1.13 3.14 1.06 3.71.99.57-.06 1.84-.75 2.1-1.48.26-.73.26-1.36.18-1.49-.08-.13-.3-.21-.63-.38z" />
+    </svg>
+  );
+}
+function IconCopy() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="9" y="9" width="13" height="13" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+    </svg>
+  );
+}
