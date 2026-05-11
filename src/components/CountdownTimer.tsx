@@ -3,10 +3,11 @@
 import { Suspense, useEffect, useState } from "react";
 import {
   breakdownMs,
+  currentBadaMangalOrdinal,
   formatEnglishDate,
   formatHindiDate,
   msUntil,
-  nextBadaMangal,
+  nextBadaMangalAfterToday,
   type Countdown,
 } from "@/lib/dates";
 import { useT } from "@/lib/useT";
@@ -15,14 +16,30 @@ function CountdownInner() {
   const { locale, t } = useT();
   const [target, setTarget] = useState<Date | null>(null);
   const [now, setNow] = useState<Date | null>(null);
+  /** 1-8 if today (IST) is a Bada Mangal Tuesday; else null. Lifted
+   *  into state so it's stable across renders without re-computing
+   *  every tick — IST day boundary rolls over once per day so we only
+   *  need to refresh this on mount + at midnight. */
+  const [liveOrdinal, setLiveOrdinal] = useState<number | null>(null);
 
   useEffect(() => {
-    const next = nextBadaMangal();
+    // Always count down to the NEXT future Bada Mangal — never today's,
+    // even when today IS a Bada Mangal (the banner above handles that
+    // case visually so the timer doesn't shrink to zero mid-day).
+    const next = nextBadaMangalAfterToday();
     setTarget(next);
     setNow(new Date());
+    setLiveOrdinal(currentBadaMangalOrdinal());
     if (!next) return;
 
-    const id = window.setInterval(() => setNow(new Date()), 1000);
+    const id = window.setInterval(() => {
+      const n = new Date();
+      setNow(n);
+      // Cheap: recompute the live flag every tick so the banner
+      // appears/disappears at the IST midnight boundary without
+      // needing a separate timer.
+      setLiveOrdinal(currentBadaMangalOrdinal(n));
+    }, 1000);
     return () => window.clearInterval(id);
   }, []);
 
@@ -41,8 +58,47 @@ function CountdownInner() {
   const cd: Countdown = breakdownMs(msUntil(target, now));
   const dateLabel = locale === "hi" ? formatHindiDate(target) : formatEnglishDate(target);
 
+  // Build the live-day headline when applicable: "Today is the 2nd
+  // Bada Mangal" / "आज दूसरा बड़ा मंगल है". `{ordinal}` is the
+  // placeholder both string variants share.
+  const liveHeadline =
+    liveOrdinal !== null
+      ? t.countdown.liveToday.replace(
+          "{ordinal}",
+          t.countdown.liveOrdinals[liveOrdinal - 1] ?? String(liveOrdinal),
+        )
+      : null;
+
   return (
     <div className="flex flex-col items-center gap-4">
+      {/* Live-day headline. Big, bold, saffron-pulsed dot so the visitor
+          instantly registers "this is happening today" before their eyes
+          drop to the timer-to-next-one below. Hidden on non-live days. */}
+      {liveHeadline ? (
+        // Sized up to `text-3xl sm:text-4xl` to match the page's
+        // standardised section-heading scale — on a Bada Mangal day
+        // this should be the loudest element in the band, not equal
+        // to the date pill or the trivia kicker above it.
+        <div className="flex items-center gap-3 max-w-full px-2">
+          <span
+            aria-hidden
+            className="relative inline-flex h-3 w-3 shrink-0"
+          >
+            <span className="absolute inset-0 rounded-full bg-saffron-500 opacity-75 motion-safe:animate-ping" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-saffron-600" />
+          </span>
+          <h3
+            className={`text-center text-3xl sm:text-4xl leading-tight ${
+              locale === "hi"
+                ? "font-tiro text-sindoor-700"
+                : "font-fraunces font-bold text-sindoor-700"
+            }`}
+          >
+            {liveHeadline}
+          </h3>
+        </div>
+      ) : null}
+
       {/* Date pill — saffron-bordered editorial chip so the "next
           Tuesday" date reads as a proper headline, not a tiny caption.
           Two-line layout: a small uppercase kicker on top, the date

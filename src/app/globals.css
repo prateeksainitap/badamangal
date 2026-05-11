@@ -429,6 +429,25 @@
   0%   { transform: scale(0.85); opacity: 0.85; }
   100% { transform: scale(2.6);  opacity: 0; }
 }
+
+/* MapLibre applies `transform: translate(...)` to .maplibregl-marker
+   every frame during a zoom / pan gesture. Force `transition: none`
+   so any stray Tailwind utility / global "transition: all" rule
+   can't delay the per-frame transform update and cause pins to lag
+   behind the map.
+   NOTE: deliberately NOT setting `will-change: transform` here. On
+   our map (19 markers at once), promoting every marker to its own
+   compositor layer breaks MapLibre's positioning at extreme zoom-out
+   where many markers project to near-identical sub-pixel positions —
+   the GPU layers lose precision and the pins drift apart along the
+   DOM-flow axis (vertical with `display: block`, horizontal with
+   `display: inline-block`). Without the hint, the compositor stays
+   conservative, sub-pixel snapping behaves, and pins cluster as
+   expected at every zoom. */
+.maplibregl-marker {
+  transition: none !important;
+}
+
 /* Continuous ping ripple on live-spot map markers. */
 @keyframes bm-live-ping {
   0%   { transform: scale(0.6); opacity: 0.95; }

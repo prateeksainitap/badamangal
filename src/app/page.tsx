@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import {
   SITE_URL,
   eventSchemaBatch,
+  faqSchema,
   localised,
   organizationSchema,
   websiteSchema,
@@ -28,6 +29,7 @@ import {
   BADA_MANGAL_DATES_2026,
   formatEnglishDate,
   formatHindiDate,
+  hasUpcomingDate,
   nextBadaMangal,
 } from "@/lib/dates";
 
@@ -86,7 +88,13 @@ export default async function HomePage({
     where: { status: "APPROVED" },
     orderBy: [{ isSponsored: "desc" }, { createdAt: "asc" }],
   });
-  const listings = records.map(toBhandara);
+  // Auto-delist bhandaras whose every service date has passed (IST
+  // calendar boundary). The DB row stays APPROVED so admins still
+  // see it in /admin and historical /bhandara/[slug] links keep
+  // working; only the public map + counters trim to what's still
+  // upcoming. As the calendar advances, rows drop off this list
+  // organically — no cron, no manual flips, no data loss.
+  const listings = records.map(toBhandara).filter((b) => hasUpcomingDate(b));
   const stats = await getHomepageStats();
 
   // Pick the Tuesday this rule under the hero refers to.
@@ -167,6 +175,11 @@ export default async function HomePage({
   const jsonLdBlocks = [
     websiteSchema(),
     organizationSchema(),
+    // FAQPage targets "People also ask" SERP boxes for high-intent
+    // Bada Mangal queries ("what is bada mangal", "why 8 tuesdays
+    // 2026", "next bada mangal lucknow"). Pure top-of-search real
+    // estate when Google decides to render it.
+    faqSchema(),
     ...eventSchemaBatch(ALL_TUESDAY_ISO),
   ];
 
@@ -257,22 +270,57 @@ export default async function HomePage({
                   : "Every Tuesday of Jyeshtha, Lucknow becomes one giant kitchen. In this rare 8-Tuesday year, every bhandara on one map."}
               </p>
 
+              {/* Hero CTAs — both pinned to the same min-width so the
+                  primary sindoor pill and the secondary ghost pill read
+                  as a balanced pair. Each carries a leading glyph that
+                  matches its action (magnifier for find, plus-circle
+                  for add). On mobile the row stays centred and the
+                  buttons keep equal width via `w-[240px]` so they
+                  align in a single column when wrap kicks in. */}
               <div className="mt-7 sm:mt-8 flex flex-wrap gap-3 justify-center lg:justify-start">
                 <Link
                   href="#map"
-                  className="btn btn-sindoor btn-lg"
+                  className="btn btn-sindoor btn-lg w-[240px] justify-center gap-2"
                   data-ga="cta_hero_find_bhandara"
                   data-ga-source="hero"
                 >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m21 21-4.3-4.3" />
+                  </svg>
                   {t.cta.findBhandara}
-                  <span aria-hidden>→</span>
                 </Link>
                 <Link
                   href="/list-bhandara"
-                  className="btn btn-ghost btn-lg"
+                  className="btn btn-ghost btn-lg w-[240px] justify-center gap-2"
                   data-ga="cta_hero_list_bhandara"
                   data-ga-source="hero"
                 >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden
+                  >
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 8v8" />
+                    <path d="M8 12h8" />
+                  </svg>
                   {t.cta.listBhandara}
                 </Link>
               </div>
@@ -298,79 +346,31 @@ export default async function HomePage({
         </div>
       </section>
 
-      {/* COUNTDOWN + 8-MANGAL TIMELINE + STORY CTA */}
+      {/* COUNTDOWN + 8-MANGAL TIMELINE
+          Hierarchy rebuild: the previous version had a giant
+          "8 Bada Mangals in 2026: the rarest cycle in 19 years"
+          heading + body + two fact-pills competing for attention
+          with the countdown, the "Today is" banner, the date pill,
+          and the timeline. Seven focal points, all visually loud.
+          The rare-cycle framing is *interesting context* but not
+          *actionable info* — the actionable bits are "today is
+          happening" (live days) and "countdown to next" (other days).
+          So: rare-cycle is compressed into a single subtle kicker
+          line above the date pill, and everything actionable
+          (banner, date pill, timer, timeline) gets to breathe. */}
       <section className="mx-auto max-w-5xl px-4 sm:px-6 py-12 sm:py-16">
-        <div className="rounded-3xl border border-gold-500/40 bg-cream-50 px-6 py-10 sm:px-10 sm:py-12 shadow-sm">
-          <div className="text-center">
-            <h2
-              className={`text-2xl sm:text-3xl ${
-                isHi ? "font-tiro text-sindoor-700" : "font-fraunces text-sindoor-700"
-              }`}
-            >
-              {t.countdown.rareCycleHeading}
-            </h2>
-            <p className="mt-2 text-ink-600 max-w-2xl mx-auto">
-              {t.countdown.rareCycleBody}
-            </p>
+        <div className="rounded-3xl border border-gold-500/40 bg-cream-50 px-6 py-10 sm:px-10 sm:py-12">
+          {/* Countdown to the next Bada Mangal (or, on a Bada Mangal
+              day itself, a big "Today is the Nth" headline + timer
+              for the *next* one). The rare-cycle trivia line was
+              pulled out of this band and folded into the SeasonTimeline
+              kicker below — keeps the rarity context near the eight
+              dots that illustrate it, instead of duplicating focal
+              points at the top of the section. */}
+          <CountdownTimer />
 
-            {/* Two small fact pills bracketing the rarity claim with
-                concrete years — gives the "once in 19 years" line
-                something verifiable to point at. The Metonic cycle
-                puts the previous 8-Mangal year at 2007 and the next
-                at 2045 (≈ 19 lunar years apart). */}
-            <div className="mt-5 inline-flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-              <span className="inline-flex items-center gap-2 rounded-full border border-leaf-600/40 bg-leaf-600/8 px-3 py-1.5 text-[11px] sm:text-xs">
-                <span className="font-mukta uppercase tracking-[0.18em] text-leaf-600 font-semibold">
-                  {t.countdown.rareCycleFactLabel}
-                </span>
-                <span className="font-numerals tabular-nums font-bold text-ink-900">
-                  {t.countdown.rareCycleFactPast}
-                </span>
-              </span>
-              <span aria-hidden className="text-gold-500/55 text-xs">
-                →
-              </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-saffron-500/45 bg-saffron-50 px-3 py-1.5 text-[11px] sm:text-xs">
-                <span className="font-mukta uppercase tracking-[0.18em] text-saffron-600 font-semibold">
-                  {t.countdown.rareCycleFactNextLabel}
-                </span>
-                <span className="font-numerals tabular-nums font-bold text-sindoor-700">
-                  {t.countdown.rareCycleFactNext}
-                </span>
-              </span>
-            </div>
-          </div>
-          <div className="mt-8">
-            <CountdownTimer />
-          </div>
-
-          {/* 8-Mangal timeline */}
+          {/* 8-Mangal timeline + the rare-cycle subtitle */}
           <SeasonTimeline locale={locale} />
-
-          {/* Story CTA */}
-          <div className="mt-12 sm:mt-14 rounded-2xl bg-saffron-50 border border-gold-500/40 px-5 py-5 sm:px-7 sm:py-6 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
-            <div>
-              <p
-                className={`text-lg sm:text-xl ${
-                  isHi
-                    ? "font-deva font-semibold text-sindoor-700"
-                    : "font-fraunces font-semibold text-sindoor-700"
-                }`}
-              >
-                {t.countdown.storyLeadHeading}
-              </p>
-              <p className="mt-1 text-sm text-ink-600 leading-relaxed max-w-2xl">
-                {t.countdown.storyLeadBody}
-              </p>
-            </div>
-            <Link
-              href={isHi ? "/history" : "/history?lang=en"}
-              className="btn btn-sindoor"
-            >
-              {t.countdown.storyLeadCta}
-              <span aria-hidden>→</span>
-            </Link>
-          </div>
         </div>
       </section>
 
@@ -431,7 +431,7 @@ export default async function HomePage({
               className="mx-auto w-40 sm:w-48 aspect-square object-contain"
             />
             <div>
-              <p className="font-mukta uppercase tracking-[0.32em] text-gold-500 text-xs">
+              <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
                 {isHi ? "अभी कोई भंडारा नहीं" : "No bhandaras yet"}
               </p>
               <h3
@@ -473,13 +473,15 @@ export default async function HomePage({
           have audio + dedicated pages today. */}
       <section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-16">
         <div className="mb-7 text-center">
-          <p className="font-mukta uppercase tracking-[0.32em] text-gold-500 text-xs">
+          <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
             {t.resources.hubKicker}
           </p>
           <h2
             className={`mt-3 ${
-              isHi ? "font-tiro text-sindoor-700" : "font-fraunces text-sindoor-700"
-            } text-2xl sm:text-3xl`}
+              isHi
+                ? "font-tiro text-sindoor-700"
+                : "font-fraunces font-bold text-sindoor-700"
+            } text-3xl sm:text-4xl`}
           >
             {t.resources.hubHeading}
           </h2>
@@ -583,8 +585,10 @@ export default async function HomePage({
       <section className="mx-auto max-w-5xl px-4 sm:px-6 py-12 sm:py-16">
         <div className="rounded-3xl bg-saffron-50 border border-gold-500/40 px-6 py-10 sm:px-10 sm:py-14 text-center">
           <h2
-            className={`text-2xl sm:text-3xl ${
-              isHi ? "font-tiro text-sindoor-700" : "font-fraunces text-sindoor-700"
+            className={`text-3xl sm:text-4xl ${
+              isHi
+                ? "font-tiro text-sindoor-700"
+                : "font-fraunces font-bold text-sindoor-700"
             }`}
           >
             {t.history.teaserHeading}
@@ -614,7 +618,11 @@ export default async function HomePage({
         <p className="mt-5 font-tiro text-2xl sm:text-4xl text-sindoor-700 leading-tight">
           ॥ जय श्री राम · जय हनुमान ॥
         </p>
-        <p className="mt-3 font-fraunces italic text-base sm:text-lg text-ink-600">
+        {/* English transliteration of the slogan above. Promoted from
+            a muted italic caption to a bold sindoor headline so it
+            matches the editorial "section heading" family used across
+            the page — feels like a benediction, not a footnote. */}
+        <p className="mt-3 font-fraunces font-bold text-3xl sm:text-4xl text-sindoor-700">
           Jai Shri Ram &middot; Jai Hanuman
         </p>
         <p className="mt-4 max-w-xl mx-auto text-sm text-ink-600 leading-relaxed">

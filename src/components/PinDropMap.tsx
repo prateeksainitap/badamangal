@@ -45,14 +45,30 @@ export default function PinDropMap({ lat, lng, onChange, className }: Props) {
   // One-time init.
   useEffect(() => {
     if (!isOlaConfigured()) return;
+
     let cancelled = false;
-    void (async () => {
+
+    // Microtask-deferred init — same Strict-Mode race fix as
+    // BhandaraMap.tsx. See the long comment there for the full
+    // explanation. Short version: deferring past React's strict-mode
+    // mount/cleanup/remount cycle means the first (throw-away) mount
+    // never reaches `new maplibregl.Map(...)`, so the container only
+    // ever ends up with one canvas.
+    queueMicrotask(() => {
+      if (cancelled) return;
+      void runInit();
+    });
+
+    async function runInit() {
       try {
+        if (cancelled || !containerRef.current) return;
         const olaMaps = getOlaMapsClient();
-        if (!containerRef.current) return;
 
         const startLat = lat ?? DEFAULT_CENTER.lat;
         const startLng = lng ?? DEFAULT_CENTER.lng;
+
+        // Defensive: nuke any stray canvas from a previous run.
+        containerRef.current.replaceChildren();
 
         const map = await olaMaps.init({
           style: styleForLocale("en"),
@@ -73,13 +89,20 @@ export default function PinDropMap({ lat, lng, onChange, className }: Props) {
         // corner so they don't fight the form fields below the map.
         attachMapControls(map, { showGeolocate: true, position: "top-right" });
 
-        // Swallow non-fatal style errors so they don't surface in
-        // Next.js's dev overlay (Ola's "standard" style references
-        // tile layers that aren't always present; lite avoids most of
-        // these, but the handler is here as a defence in depth).
+        // Swallow non-fatal style errors. We filter out the two messages
+        // Ola's standard style produces on every map init since they're
+        // harmless noise (see BhandaraMap for the same handler).
         map.on("error", (e: { error?: { message?: string } }) => {
+          const msg = e?.error?.message ?? "";
+          if (
+            msg.includes("3d_model") ||
+            msg.includes("Source layer") ||
+            msg.includes("Expected value to be of type")
+          ) {
+            return;
+          }
           if (process.env.NODE_ENV !== "production") {
-            console.warn("[PinDropMap] non-fatal map error:", e?.error?.message ?? e);
+            console.warn("[PinDropMap] non-fatal map error:", msg || e);
           }
         });
 
@@ -116,7 +139,7 @@ export default function PinDropMap({ lat, lng, onChange, className }: Props) {
         // empty-map placeholder state.
         console.error("[PinDropMap] Ola Maps init failed:", err);
       }
-    })();
+    }
 
     return () => {
       cancelled = true;
@@ -173,10 +196,15 @@ export default function PinDropMap({ lat, lng, onChange, className }: Props) {
     }
 
     const el = createGadaMarkerElement({ size: 42 });
+    // `anchor: "bottom"` locks the gada's tip to the geographic point
+    // at every zoom (the previous pixel-offset hack drifted at
+    // non-default zooms because the offset stayed constant in pixels
+    // while each pixel covered different ground area). Mirror of the
+    // fix in BhandaraMap.tsx.
     const marker = olaMaps
       .addMarker({
         element: el,
-        offset: [0, -24], // anchor at the tip of the gada (centre-bottom)
+        anchor: "bottom",
         draggable: true,
       })
       .setLngLat([lngNum, latNum])

@@ -6,6 +6,7 @@ import NearMeButton, { type NearMeState } from "@/components/NearMeButton";
 import { haversineKm } from "@/lib/geo";
 import { trackEvent } from "@/lib/ga";
 import { useToast } from "@/components/Toast";
+import { SunburstSpark } from "@/components/ornaments";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 
@@ -98,13 +99,21 @@ export default function HappeningNow({ initial, locale }: Props) {
             {isHi ? "अभी हो रहा है" : "Happening now"}
           </p>
           <h2
-            className={`mt-2 text-2xl sm:text-3xl ${
-              isHi ? "font-tiro text-sindoor-700" : "font-fraunces font-semibold text-sindoor-700"
+            className={`mt-2 text-3xl sm:text-4xl ${
+              isHi
+                ? "font-tiro text-sindoor-700"
+                : "font-fraunces font-bold text-sindoor-700"
             }`}
           >
-            {isHi
-              ? `${nearbySpots.length} भंडारे लाइव`
-              : `${nearbySpots.length} bhandaras spotted live`}
+            {/* Saffron count prefix — mirrors the "19 Bhandaras listed
+                across the city" treatment so the live-spot count
+                shares the same editorial-number language. The span
+                inherits Fraunces / Tiro from the parent so the digit
+                reads as one continuous headline. */}
+            <span className="text-saffron-600 tabular-nums mr-1">
+              {nearbySpots.length}
+            </span>
+            {isHi ? "भंडारे लाइव" : "bhandaras spotted live"}
           </h2>
           <p className="mt-1 text-sm text-ink-600">
             {isHi
@@ -208,7 +217,13 @@ export default function HappeningNow({ initial, locale }: Props) {
           return <HappeningNowEmpty isHi={isHi} />;
         }
         return (
-          <ol className="mt-6 grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+          // Mobile-first grid: 1 column on the smallest phones so the
+          // cards have room for their photo + title + action row
+          // without clipping. Old 2-cols-on-mobile setup squeezed each
+          // card to ~136 px wide, which couldn't fit the 3-button action
+          // row. Two columns kick in at xs (475 px+, custom breakpoint
+          // in tailwind.config), three at sm (640 px+), four at lg.
+          <ol className="mt-6 grid gap-4 grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
             {filtered.slice(0, 8).map((s) => (
               <SpotCard
                 key={s.id}
@@ -277,34 +292,45 @@ function SpotCard({
 
   const inner = (
     <article className="group relative h-full rounded-2xl overflow-hidden border border-saffron-500/40 bg-cream-50 shadow-warm flex flex-col">
-      {/* Photo (optional, fall back to a saffron empty-state with a
-          temple-pin glyph when a spot was reported without a picture). */}
+      {/* Photo (optional). When present, render with the same blurred-
+          backdrop + object-contain treatment used by listed bhandara
+          cards so vertical posters and square photos both show their
+          full content. When absent, fall back to the saffron sunburst
+          ornament — matches BhandaraCard's no-photo state. */}
       {spot.photoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={spot.photoUrl}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          referrerPolicy="no-referrer"
-          className="aspect-square w-full object-cover bg-saffron-50"
-        />
-      ) : (
-        <div className="aspect-square w-full bg-saffron-50 flex items-center justify-center text-saffron-600">
-          <svg
-            width="42"
-            height="42"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        <div className="relative aspect-square w-full overflow-hidden bg-saffron-50">
+          <span
             aria-hidden
-          >
-            <path d="M12 21s7-7.58 7-13a7 7 0 1 0-14 0c0 5.42 7 13 7 13z" />
-            <circle cx="12" cy="9" r="2.5" />
-          </svg>
+            className="absolute inset-0 bg-center bg-cover scale-110"
+            style={{
+              backgroundImage: `url(${JSON.stringify(spot.photoUrl).slice(1, -1)})`,
+              filter: "blur(28px) saturate(1.1)",
+              opacity: 0.55,
+            }}
+          />
+          <span aria-hidden className="absolute inset-0 bg-cream-50/35" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={spot.photoUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            className="relative w-full h-full object-contain"
+          />
+        </div>
+      ) : (
+        <div
+          className="aspect-square w-full flex items-center justify-center"
+          style={{
+            background:
+              "radial-gradient(420px 260px at 50% 40%, rgba(242,148,76,0.22), transparent 70%), #FFF7EB",
+          }}
+        >
+          <SunburstSpark
+            size={72}
+            className="text-saffron-600 opacity-60 transition-transform duration-500 group-hover:scale-105 group-hover:rotate-[8deg]"
+          />
         </div>
       )}
       {/* Live badge */}
@@ -346,7 +372,12 @@ function SpotCard({
             right. Reads cleanly even on the smallest card width.
             `relative z-20` keeps these anchors above the stretched-link
             overlay so they remain independently clickable. */}
-        <div className="relative z-20 mt-1 flex items-stretch gap-1.5">
+        <div className="relative z-20 mt-1 flex items-stretch gap-1.5 flex-wrap">
+          {/* Directions = primary saffron CTA, styled with the same
+              shared `btn btn-primary btn-sm` classes that listed
+              bhandara cards use, so both card families share one CTA
+              language. Share + Copy stay as icon-only round chips on
+              the right since they're secondary actions. */}
           <a
             href={directionsUrl}
             target="_blank"
@@ -358,12 +389,10 @@ function SpotCard({
                 has_user_coords: userCoords ? 1 : 0,
               });
             }}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 text-[11px] font-semibold h-9 px-3 shadow-warm transition-colors min-w-0"
+            className="btn btn-primary btn-sm"
           >
             <IconPin />
-            <span className="truncate">
-              {isHi ? "रास्ता बताएँ" : "Get directions"}
-            </span>
+            {isHi ? "रास्ता बताएँ" : "Get directions"}
           </a>
           <a
             href={waUrl}

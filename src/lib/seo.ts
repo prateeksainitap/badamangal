@@ -204,3 +204,80 @@ export function bhandaraEventSchema(opts: {
     image: opts.photoUrl ?? `${SITE_URL}/illustrations/hanuman-sitting.webp`,
   }));
 }
+
+/**
+ * FAQPage JSON-LD targeting the highest-intent questions for Bada
+ * Mangal queries. When present, Google often surfaces these as
+ * expandable "People also ask" boxes directly on the SERP — pure
+ * top-of-search real estate that no amount of meta-keywords work
+ * can buy.
+ *
+ * Keep answers concise (under 300 chars each); Google truncates
+ * longer ones. The text should be substantively the same as what's
+ * on the page so the SERP excerpt matches the on-site content.
+ */
+export function faqSchema() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": `${SITE_URL}/#faq`,
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "What is Bada Mangal?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Bada Mangal is the Tuesday community-meal tradition of Lucknow, observed every Tuesday of the Hindu month of Jyeshtha (May–June). Free bhandaras open across the city to feed everyone who comes through Hanuman Ji's blessing. The tradition is around 400 years old, dating to Nawab Saadat Ali Khan's vow.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Why are there 8 Bada Mangals in 2026?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Adhik Maas, the leap month that occurs roughly once every 19 years, adds an extra Tuesday to Jyeshtha in 2026. So instead of the usual 4–5 Tuesdays, Lucknow gets 8 Bada Mangals. The last time this happened was 2007; the next will be 2045.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "When is the next Bada Mangal in Lucknow?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "The 2026 Bada Mangal Tuesdays are 5 May, 12 May, 19 May, 26 May, 2 June, 9 June, 16 June, and 23 June. The countdown on BadaMangal.com always shows the next upcoming one in real time.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "How do I find a Bada Mangal bhandara near me?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Open the city map on BadaMangal.com — every listed bhandara appears as a pin with the menu, time window, and organizer details. Use the 'Bhandaras near me' button to filter to a 3 km radius around you, or tap any pin to get directions.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "What food is served at a Bada Mangal bhandara?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Typical bhandara prasad includes puri, sabzi (often kala chana or aloo), halwa, kheer or rice-kheer, sometimes pulao, and water or sharbat. Each organizer's menu is listed on their bhandara card on the site, so visitors can plan what to expect.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Is participating in a Bada Mangal bhandara free?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes — every bhandara is free, open to anyone, and serves as long as the prasad lasts. The tradition is rooted in seva (selfless service); organizers cover all costs from their own resources or community donations.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Can I list my own bhandara on BadaMangal.com?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. Click 'List a bhandara' on the homepage and fill in the location, time, menu, and your contact details. The listing goes live on the city map within seconds; the team calls within 24 hours to phone-verify and add the green Verified badge.",
+        },
+      },
+    ],
+  };
+}

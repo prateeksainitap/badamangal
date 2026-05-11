@@ -26,6 +26,13 @@ type Dict = {
     minutes: string;
     seconds: string;
     seasonComplete: string;
+    /** Banner phrase rendered above the timer on a Bada Mangal day.
+     *  Use `{ordinal}` as the placeholder — replaced at runtime with
+     *  the ordinal phrase from `liveOrdinals`. e.g. "Today is the 2nd Bada Mangal". */
+    liveToday: string;
+    /** Ordinal phrases for "1st Bada Mangal" → "8th Bada Mangal".
+     *  Length must equal BADA_MANGAL_DATES_2026.length (= 8). */
+    liveOrdinals: readonly string[];
     timelineKicker: string;
     timelineLabelPast: string;
     timelineLabelNext: string;
@@ -232,6 +239,8 @@ const en: Dict = {
     minutes: "minutes",
     seconds: "seconds",
     seasonComplete: "The 2026 season is complete. Jai Hanuman.",
+    liveToday: "Today is the {ordinal} Bada Mangal",
+    liveOrdinals: ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"],
     timelineKicker: "Eight Tuesdays of 2026",
     timelineLabelPast: "Past",
     timelineLabelNext: "Next",
@@ -512,11 +521,24 @@ const hi: Dict = {
     rareCycleFactNextLabel: "अगली बार",
     rareCycleFactNext: "2045",
     nextBadaMangal: "अगला बड़ा मंगल",
+    // Live-day banner — `{ordinal}` is interpolated with one of
+    // liveOrdinals below ("दूसरा", "तीसरा" …) at runtime.
     days: "दिन",
     hours: "घंटे",
     minutes: "मिनट",
     seconds: "सेकंड",
     seasonComplete: "इस वर्ष का चक्र पूरा हुआ। जय हनुमान।",
+    liveToday: "आज {ordinal} बड़ा मंगल है",
+    liveOrdinals: [
+      "पहला",
+      "दूसरा",
+      "तीसरा",
+      "चौथा",
+      "पाँचवाँ",
+      "छठा",
+      "सातवाँ",
+      "आठवाँ",
+    ],
     timelineKicker: "2026 के आठ मंगलवार",
     timelineLabelPast: "बीत चुका",
     timelineLabelNext: "अगला",
@@ -591,7 +613,7 @@ const hi: Dict = {
     discoverHeading: "देखें",
     getInvolvedHeading: "जुड़ें",
     resourcesHeading: "संसाधन",
-    aboutHeading: "संपर्क",
+    aboutHeading: "हमारे बारे में",
     discoverMap: "भंडारा नक़्शा",
     discoverStory: "कहानी",
     discoverAreas: "लखनऊ के क्षेत्र",

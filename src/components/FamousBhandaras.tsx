@@ -55,7 +55,7 @@ export default function FamousBhandaras({ locale, isHi }: Props) {
             className={`mt-3 text-3xl sm:text-4xl ${
               isHi
                 ? "font-deva font-medium text-sindoor-700"
-                : "font-fraunces font-semibold text-sindoor-700"
+                : "font-fraunces font-bold text-sindoor-700"
             }`}
           >
             {isHi

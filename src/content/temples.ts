@@ -57,8 +57,10 @@ export const TEMPLES: Temple[] = [
       en: "Sector A, Aliganj, near Mahanagar Extension, Lucknow 226024",
       hi: "सेक्टर A, अलीगंज, महानगर एक्सटेंशन के पास, लखनऊ 226024",
     },
-    lat: 26.886,
-    lng: 80.943,
+    // Coords geocoded against Ola Maps — matches "Naya Hanuman Mandir,
+    // Kursi Rd, Mahanagar Extension, Shadab Colony, Lucknow 226024".
+    lat: 26.8838,
+    lng: 80.9497,
     timings: {
       en: "Daily darshan 5:00 AM – 12:00 PM, 4:00 PM – 10:30 PM",
       hi: "नित्य दर्शन प्रातः 5:00 – दोपहर 12:00, सायं 4:00 – रात्रि 10:30",
@@ -95,8 +97,10 @@ export const TEMPLES: Temple[] = [
       en: "Old Aliganj, Lucknow 226024",
       hi: "पुराना अलीगंज, लखनऊ 226024",
     },
-    lat: 26.881,
-    lng: 80.946,
+    // Coords geocoded against Ola Maps — matches "Purana Hanuman Mandir,
+    // Purani Khadra Chungi, Sector L, Aliganj, Lucknow 226024".
+    lat: 26.8906,
+    lng: 80.952,
     timings: {
       en: "Daily darshan 5:30 AM – 12:00 PM, 4:00 PM – 10:00 PM",
       hi: "नित्य दर्शन प्रातः 5:30 – दोपहर 12:00, सायं 4:00 – रात्रि 10:00",
@@ -129,8 +133,10 @@ export const TEMPLES: Temple[] = [
       en: "Hanuman Setu Marg, near Gomti riverbank, Daliganj, Lucknow 226020",
       hi: "हनुमान सेतु मार्ग, गोमती तट के पास, डालीगंज, लखनऊ 226020",
     },
-    lat: 26.876,
-    lng: 80.947,
+    // Coords geocoded against Ola Maps — matches "Hanuman Setu Mandir,
+    // Purana Haidarabad, Hasanganj, Lucknow 226007".
+    lat: 26.8605,
+    lng: 80.9376,
     timings: {
       en: "Daily darshan 5:00 AM – 12:30 PM, 3:30 PM – 10:30 PM",
       hi: "नित्य दर्शन प्रातः 5:00 – दोपहर 12:30, सायं 3:30 – रात्रि 10:30",
@@ -162,8 +168,10 @@ export const TEMPLES: Temple[] = [
       en: "Off Vidhan Sabha Marg, Hazratganj, Lucknow 226001",
       hi: "विधान सभा मार्ग के पास, हज़रतगंज, लखनऊ 226001",
     },
-    lat: 26.853,
-    lng: 80.943,
+    // Coords geocoded against Ola Maps — matches "Sankat Mochan Balaji
+    // Maharaj Hanuman Mandir, Park Road, Hazratganj, Lucknow 226001".
+    lat: 26.843946,
+    lng: 80.94926,
     timings: {
       en: "Daily darshan 5:30 AM – 12:00 PM, 4:00 PM – 10:00 PM",
       hi: "नित्य दर्शन प्रातः 5:30 – दोपहर 12:00, सायं 4:00 – रात्रि 10:00",
@@ -196,8 +204,11 @@ export const TEMPLES: Temple[] = [
       en: "Khun Khun Ji Road, Chowk, Lucknow 226003",
       hi: "खुनखुन जी रोड, चौक, लखनऊ 226003",
     },
-    lat: 26.872,
-    lng: 80.913,
+    // Coords geocoded against Ola Maps — matches the Khun-Khun Ji Road
+    // corridor in Chowk; venue itself isn't separately indexed so the
+    // pin lands on the same lane within ~150 m of the temple.
+    lat: 26.8655,
+    lng: 80.9107,
     timings: {
       en: "Daily darshan 5:30 AM – 12:00 PM, 4:00 PM – 9:30 PM",
       hi: "नित्य दर्शन प्रातः 5:30 – दोपहर 12:00, सायं 4:00 – रात्रि 9:30",

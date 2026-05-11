@@ -72,6 +72,31 @@ export default function MapBoard({
     [filter, liveSpots],
   );
 
+  /**
+   * Reshape spots into the prop-shape BhandaraMap expects, memoised
+   * so the reference is stable across unrelated re-renders. Without
+   * this memo, an inline `.map()` literal produced a fresh array on
+   * every parent render — Effect B in BhandaraMap then saw "new
+   * reference" → tore down every marker → fitBounds → any open
+   * popup closed and the camera snapped back to its default zoom.
+   * Now the array only changes when `filteredSpots` or `isHi` does.
+   */
+  const mappedLiveSpots = useMemo(
+    () =>
+      filteredSpots.map((s) => ({
+        id: s.id,
+        lat: s.lat,
+        lng: s.lng,
+        caption: s.caption,
+        photoUrl: s.photoUrl,
+        bhandaraSlug: s.bhandaraSlug,
+        bhandaraName: isHi
+          ? s.bhandaraNameHi ?? s.bhandaraName
+          : s.bhandaraName,
+      })),
+    [filteredSpots, isHi],
+  );
+
   // Pills in the filter strip; counts shown so users see how many of each
   // exist before clicking.
   const tabs: { key: Filter; label: string; count: number }[] = [
@@ -101,10 +126,10 @@ export default function MapBoard({
       <div className="mb-3 flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h2
-            className={`text-2xl sm:text-3xl ${
+            className={`text-3xl sm:text-4xl ${
               isHi
                 ? "font-tiro text-sindoor-700"
-                : "font-fraunces text-sindoor-700"
+                : "font-fraunces font-bold text-sindoor-700"
             }`}
           >
             {heading}
@@ -171,26 +196,52 @@ export default function MapBoard({
         </div>
       </div>
 
-      {/* Legend, two marker types on the map. Both icons mirror the
-          real markers so the user can mentally map legend → pin at a
-          glance: gada SVG for listed, gada + pulsing ring for spotted. */}
+      {/* Legend, two marker types on the map. The miniature glyphs
+          here mirror the real markers exactly — cream-disc backdrop
+          + gada SVG for listed, the same plus a saffron pulsing ring
+          for spotted — so the visitor can map "legend dot ↔ map pin"
+          at a glance. The pulse uses the same `bm-pin-ring` keyframe
+          the actual spot markers use, so the timing + circular
+          geometry stay in sync between legend and map. */}
       <div className="mb-5 flex flex-wrap items-center gap-4 text-xs text-ink-600">
-        <span className="inline-flex items-center gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/brand/map-pin-gada.svg" alt="" className="h-5 w-5" />
-          <span>{isHi ? "सूचीबद्ध भंडारा" : "Listed bhandara"}</span>
-        </span>
         <span className="inline-flex items-center gap-2">
           <span className="relative inline-flex h-5 w-5 items-center justify-center shrink-0">
             <span
               aria-hidden
-              className="absolute inset-[-3px] rounded-full border-2 border-saffron-500/70 motion-safe:animate-ping"
+              className="absolute inset-0 rounded-full bg-cream-50 border-[1.5px] border-gold-500/55 shadow-[inset_0_1px_2px_rgba(26,20,16,0.10)]"
             />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/brand/map-pin-gada.svg"
               alt=""
-              className="relative h-5 w-5"
+              className="relative h-[18px] w-[18px]"
+            />
+          </span>
+          <span>{isHi ? "सूचीबद्ध भंडारा" : "Listed bhandara"}</span>
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="relative inline-flex h-5 w-5 items-center justify-center shrink-0">
+            {/* Pulse ring — sized larger than the disc and anchored
+                concentrically. Inline-styles the keyframe so the
+                legend pulse and the marker pulse share one source
+                of truth (bm-pin-ring lives in globals.css). */}
+            <span
+              aria-hidden
+              className="absolute inset-[-3px] rounded-full border-2 border-saffron-500/80 pointer-events-none"
+              style={{
+                animation: "bm-pin-ring 1.6s ease-out infinite",
+                transformOrigin: "center center",
+              }}
+            />
+            <span
+              aria-hidden
+              className="absolute inset-0 rounded-full bg-cream-50 border-[1.5px] border-saffron-500/65 shadow-[inset_0_1px_2px_rgba(26,20,16,0.10)]"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/map-pin-gada.svg"
+              alt=""
+              className="relative h-[18px] w-[18px]"
             />
           </span>
           <span>
@@ -202,20 +253,7 @@ export default function MapBoard({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <BhandaraMap
-          listings={filteredListings}
-          liveSpots={filteredSpots.map((s) => ({
-            id: s.id,
-            lat: s.lat,
-            lng: s.lng,
-            caption: s.caption,
-            photoUrl: s.photoUrl,
-            bhandaraSlug: s.bhandaraSlug,
-            bhandaraName: isHi
-              ? s.bhandaraNameHi ?? s.bhandaraName
-              : s.bhandaraName,
-          }))}
-        />
+        <BhandaraMap listings={filteredListings} liveSpots={mappedLiveSpots} />
         <MapSideList
           listings={filteredListings}
           liveSpots={filteredSpots as SideListSpot[]}

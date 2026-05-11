@@ -10,21 +10,40 @@ export const runtime = "nodejs";
 const SPOT_TTL_HOURS = 8;
 const AREA_VALUES = [...AREAS] as [string, ...string[]];
 
-const bodySchema = z.object({
-  lat: z.number().min(26.6).max(27.0),
-  lng: z.number().min(80.7).max(81.2),
-  photoUrl: z
-    .string()
-    .trim()
-    .max(500)
-    .optional()
-    .or(z.literal("").transform(() => undefined)),
-  caption: z.string().trim().min(3, "Tell us a line about it").max(200),
-  area: z.enum(AREA_VALUES).optional(),
-  address: z.string().trim().max(200).optional(),
-  reporterName: z.string().trim().min(1).max(60).optional(),
-  language: z.enum(["hi", "en", "mixed"]).default("en"),
-});
+// Both `photoUrl` and `caption` are individually optional, but the
+// form (SpotQuickForm) requires AT LEAST one of them. The `.refine()`
+// below mirrors that gate on the server so a photo-only submission
+// (the common case — someone snaps a banner and posts it without
+// typing) goes through cleanly. Previously caption was required at
+// the schema level, which made every photo-only POST 400 with
+// "Validation failed" even though the UI explicitly labelled it
+// optional.
+const bodySchema = z
+  .object({
+    lat: z.number().min(26.6).max(27.0),
+    lng: z.number().min(80.7).max(81.2),
+    photoUrl: z
+      .string()
+      .trim()
+      .max(500)
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    caption: z
+      .string()
+      .trim()
+      .min(3, "Tell us a line about it")
+      .max(200)
+      .optional()
+      .or(z.literal("").transform(() => undefined)),
+    area: z.enum(AREA_VALUES).optional(),
+    address: z.string().trim().max(200).optional(),
+    reporterName: z.string().trim().min(1).max(60).optional(),
+    language: z.enum(["hi", "en", "mixed"]).default("en"),
+  })
+  .refine((d) => Boolean(d.photoUrl) || Boolean(d.caption), {
+    message: "Add a photo or write a line about the bhandara.",
+    path: ["caption"],
+  });
 
 /**
  * GET /api/spots, returns the live (active + non-expired) spots.
@@ -143,7 +162,7 @@ export async function POST(req: NextRequest) {
       area: data.area ?? null,
       address: data.address ?? null,
       photoUrl: data.photoUrl ?? null,
-      caption: data.caption,
+      caption: data.caption ?? null,
       language: data.language,
       reporterName: data.reporterName ?? null,
       reporterPhoneHash: null,

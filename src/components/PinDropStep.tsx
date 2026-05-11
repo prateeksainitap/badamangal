@@ -170,7 +170,7 @@ export default function PinDropStep({ value, onChange }: Props) {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Aliganj police chowki"
+            placeholder="Type address..."
             className="mt-1.5 w-full rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 placeholder:text-ink-600/60 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
             autoComplete="off"
           />

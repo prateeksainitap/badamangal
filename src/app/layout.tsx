@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import { cookies } from "next/headers";
 import {
   Bricolage_Grotesque,
@@ -12,8 +11,10 @@ import {
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import GAPageview from "@/components/GAPageview";
+import GAScripts from "@/components/GAScripts";
 import GAClickDelegate from "@/components/GAClickDelegate";
 import SpotFloatingCta from "@/components/SpotFloatingCta";
+import FirstVisitChant from "@/components/FirstVisitChant";
 import FirstVisitGreeting from "@/components/FirstVisitGreeting";
 import LiveActivityTicker from "@/components/LiveActivityTicker";
 import { ToastProvider } from "@/components/Toast";
@@ -112,6 +113,16 @@ export const metadata: Metadata = {
     ],
   },
   manifest: "/manifest.webmanifest",
+  // Search engine verification. Both env vars are NEXT_PUBLIC so they
+  // render server-side into the static <head>. Empty strings → meta
+  // tag simply doesn't render, so dev / preview environments don't
+  // accidentally claim ownership in someone's Search Console.
+  verification: {
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || undefined,
+    other: process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION
+      ? { "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION }
+      : undefined,
+  },
 };
 
 export const viewport: Viewport = {
@@ -153,6 +164,12 @@ export default async function RootLayout({
             Skip to content
           </a>
           <FirstVisitGreeting />
+          {/* First-ever-visit audio chant (cross-session). Pairs with
+              the per-session visual greeting above — visitor sees the
+              "जय श्री राम" text fade in AND hears the chant on their
+              very first landing on the site. Falls back to a tap-to-
+              play pill if browser autoplay is blocked. */}
+          <FirstVisitChant />
           <GAClickDelegate />
           <Header />
           <main id="main" className="flex-1">
@@ -166,33 +183,11 @@ export default async function RootLayout({
 
         {gaId ? (
           <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
-              strategy="afterInteractive"
-              // Silent-ignore the script-load error that ad-blockers,
-              // DNT extensions, and corporate proxies fire when they
-              // block googletagmanager.com. Without this handler,
-              // Next.js dev overlay surfaces the raw Event as
-              // `[object Event]` even though the failure is harmless.
-              onError={() => {
-                /* analytics blocked — page works fine without it */
-              }}
-            />
-            <Script
-              id="ga-init"
-              strategy="afterInteractive"
-              onError={() => {
-                /* see above */
-              }}
-            >
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                window.gtag = gtag;
-                gtag('js', new Date());
-                gtag('config', '${gaId}', { send_page_view: false });
-              `}
-            </Script>
+            {/* GA loader + init snippet — wrapped in a client component
+                so its onError function prop doesn't try to cross the
+                server/client boundary (which Next.js app-router
+                disallows). See components/GAScripts.tsx for the why. */}
+            <GAScripts gaId={gaId} />
             <GAPageview id={gaId} />
           </>
         ) : null}

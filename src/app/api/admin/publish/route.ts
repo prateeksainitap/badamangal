@@ -1,0 +1,213 @@
+/**
+ * Admin "publish from review form" endpoint. Creates a bhandara or
+ * spot row using the fields the admin just edited inside /admin/scan.
+ *
+ * Validation is looser than the public submit endpoint:
+ *   - No phone-realism check (admin often types "9999999999" as a
+ *     placeholder for bhandaras seeded from WhatsApp invites where the
+ *     organizer's number is not on the banner).
+ *   - Description/menu/photo are all optional.
+ *   - But: area must be from the enum, dates inside the season, coords
+ *     inside Lucknow's bounding box.
+ *
+ * Both kinds insert as APPROVED + approvedAt=now so the row goes live
+ * on the next request to the homepage (which is `force-dynamic`).
+ */
+import { NextResponse, type NextRequest } from "next/server";
+import { cookies } from "next/headers";
+import { z } from "zod";
+import { prisma } from "@/lib/db";
+import { AREAS } from "@/lib/lucknow";
+import { MENU_KEYS, menuHiFor } from "@/lib/menu";
+import { ensureUniqueSlug, slugify } from "@/lib/slugify";
+import { SEASON_START_ISO, SEASON_END_ISO } from "@/lib/dates";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+const COOKIE = "admin";
+async function isAdmin(): Promise<boolean> {
+  const expected = process.env.ADMIN_PASSWORD;
+  if (!expected) return false;
+  const c = await cookies();
+  return c.get(COOKIE)?.value === expected;
+}
+
+const AREA_VALUES = [...AREAS] as [string, ...string[]];
+const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
+
+const seasonDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
+  .refine((d) => d >= SEASON_START_ISO && d <= SEASON_END_ISO, {
+    message: "Pick a date inside the 2026 Bada Mangal season",
+  });
+
+const bhandaraInput = z.object({
+  name: z.string().trim().min(2),
+  nameHi: z.string().trim().min(1),
+  description: z.string().trim().optional().default(""),
+  descriptionHi: z.string().trim().optional().default(""),
+  area: z.enum(AREA_VALUES),
+  address: z.string().trim().min(5),
+  addressHi: z.string().trim().optional().default(""),
+  landmark: z.string().trim().optional().default(""),
+  lat: z.number().min(26.6).max(27.0),
+  lng: z.number().min(80.7).max(81.2),
+  tuesdayDates: z.array(seasonDate).min(1),
+  timeStart: z.string().regex(/^\d{2}:\d{2}$/),
+  timeEnd: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/)
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v === "" ? undefined : v)),
+  menu: z.array(z.enum(MENU_VALUES)).optional().default([]),
+  menuOther: z.array(z.string().trim().min(1).max(40)).max(20).optional().default([]),
+  organizerName: z.string().trim().min(1),
+  organizerPhone: z.string().trim().min(1),
+  photoUrl: z.string().trim().url(),
+  isVerified: z.boolean().optional().default(false),
+});
+
+const spotInput = z.object({
+  lat: z.number().min(26.6).max(27.0),
+  lng: z.number().min(80.7).max(81.2),
+  area: z.enum(AREA_VALUES).optional(),
+  address: z.string().trim().max(200).optional(),
+  caption: z.string().trim().max(200).optional(),
+  language: z.enum(["hi", "en", "mixed"]).default("en"),
+  photoUrl: z.string().trim().url(),
+  reporterName: z.string().trim().max(60).optional(),
+});
+
+const SPOT_TTL_HOURS = 8;
+
+export async function POST(req: NextRequest) {
+  if (!(await isAdmin())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const url = new URL(req.url);
+  const kind = url.searchParams.get("kind");
+  if (kind !== "bhandara" && kind !== "spot") {
+    return NextResponse.json(
+      { error: "kind must be 'bhandara' or 'spot'" },
+      { status: 400 },
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (kind === "bhandara") {
+    const parsed = bhandaraInput.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", issues: parsed.error.flatten() },
+        { status: 400 },
+      );
+    }
+    const d = parsed.data;
+
+    const slug = await ensureUniqueSlug(slugify(d.name));
+    // Dedupe free-form menu items against the curated keys.
+    const lowerCurated = new Set(d.menu.map((k) => k.toLowerCase()));
+    const others = d.menuOther.filter(
+      (s) => s && !lowerCurated.has(s.toLowerCase()),
+    );
+    const finalMenu = [...d.menu, ...others];
+    const finalMenuHi = [...menuHiFor(d.menu), ...others];
+
+    const created = await prisma.bhandara.create({
+      data: {
+        slug,
+        name: d.name,
+        nameHi: d.nameHi,
+        description: d.description || null,
+        descriptionHi: d.descriptionHi || null,
+        address: d.address,
+        addressHi: d.addressHi || null,
+        area: d.area,
+        landmark: d.landmark || null,
+        lat: d.lat,
+        lng: d.lng,
+        tuesdayDates: JSON.stringify(d.tuesdayDates),
+        timeStart: d.timeStart,
+        timeEnd: d.timeEnd ?? "",
+        menu: JSON.stringify(finalMenu),
+        menuHi: JSON.stringify(finalMenuHi),
+        organizerName: d.organizerName,
+        organizerPhone: d.organizerPhone,
+        photoUrl: d.photoUrl,
+        googleMapsUrl: `https://www.google.com/maps?q=${d.lat},${d.lng}&z=18`,
+        status: "APPROVED",
+        approvedAt: new Date(),
+        isVerified: d.isVerified,
+      },
+    });
+
+    return NextResponse.json(
+      { ok: true, id: created.id, slug: created.slug },
+      { status: 201 },
+    );
+  }
+
+  // ── kind === "spot" ───────────────────────────────────────────────
+  const parsed = spotInput.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", issues: parsed.error.flatten() },
+      { status: 400 },
+    );
+  }
+  const d = parsed.data;
+
+  // Auto-link to a nearby APPROVED bhandara within ~120 m — same logic
+  // as the public spot endpoint, so admin-uploaded spots also pin to a
+  // listed organizer when one is in range.
+  let bhandaraId: string | null = null;
+  try {
+    const near = await prisma.bhandara.findFirst({
+      where: {
+        status: "APPROVED",
+        lat: { gte: d.lat - 0.0011, lte: d.lat + 0.0011 },
+        lng: { gte: d.lng - 0.0012, lte: d.lng + 0.0012 },
+      },
+      select: { id: true },
+    });
+    if (near) bhandaraId = near.id;
+  } catch {
+    /* ignore best-effort link */
+  }
+
+  const expiresAt = new Date(Date.now() + SPOT_TTL_HOURS * 60 * 60 * 1000);
+
+  const created = await prisma.spot.create({
+    data: {
+      lat: d.lat,
+      lng: d.lng,
+      area: d.area ?? null,
+      address: d.address ?? null,
+      photoUrl: d.photoUrl,
+      caption: d.caption ?? null,
+      language: d.language,
+      reporterName: d.reporterName ?? null,
+      reporterPhoneHash: null,
+      bhandaraId,
+      ipHash: "admin-uploaded", // marker so we can audit admin-sourced spots
+      userAgent: "admin-scan",
+      status: "APPROVED",
+      expiresAt,
+    },
+  });
+
+  return NextResponse.json(
+    { ok: true, id: created.id, expiresAt: expiresAt.toISOString() },
+    { status: 201 },
+  );
+}

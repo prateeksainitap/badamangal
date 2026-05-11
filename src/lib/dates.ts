@@ -58,6 +58,74 @@ export function nextBadaMangal(now: Date = new Date()): Date | null {
   return null;
 }
 
+/** Today's date as YYYY-MM-DD in IST (Asia/Kolkata, UTC+5:30).
+ *  Exported so server-rendered pages can use the same calendar
+ *  boundary the user sees — important when "auto-delisting past
+ *  bhandaras" needs to agree with the visitor's local sense of "today".
+ *  Several components have inlined copies of this; over time we'll
+ *  collapse those onto this one.
+ */
+export function istTodayIso(now: Date = new Date()): string {
+  return new Date(now.getTime() + 5.5 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+/**
+ * Predicate: does this bhandara still have at least one service day
+ * that's today or in the future (IST)?
+ *
+ * Used to auto-hide bhandaras whose date has fully passed from every
+ * public-facing query (homepage listing, /api/bhandaras, etc.) without
+ * deleting the DB row. The data stays — admins see it under the
+ * /admin "All" tab, and historical share links to /bhandara/[slug]
+ * keep working — but the public map and counters only reflect what's
+ * still upcoming, no manual delisting needed.
+ *
+ * `tuesdayDates` is the unfortunate name for what's actually "all
+ * service days" — Tuesdays + the occasional Bade Shanivar — kept for
+ * back-compat with the DB column.
+ */
+export function hasUpcomingDate(
+  b: { tuesdayDates: string[] },
+  now: Date = new Date(),
+): boolean {
+  const today = istTodayIso(now);
+  return b.tuesdayDates.some((d) => d >= today);
+}
+
+/**
+ * If today's IST calendar date matches one of the 8 Bada Mangals,
+ * returns its 1-based ordinal (1 → 1st Bada Mangal, 2 → 2nd, …, 8 → 8th).
+ * Returns `null` on every other day.
+ *
+ * IST is the right frame: a user opening the homepage at 11 PM on a
+ * Bada Mangal Tuesday should still see the "Today is …" banner, even
+ * though by UTC clock it's already Wednesday.
+ */
+export function currentBadaMangalOrdinal(
+  now: Date = new Date(),
+): number | null {
+  const today = istTodayIso(now);
+  const idx = ALL_TUESDAY_ISO.indexOf(today);
+  return idx >= 0 ? idx + 1 : null;
+}
+
+/**
+ * The first Bada Mangal strictly AFTER today (IST). On live days this
+ * is needed for the countdown timer — `nextBadaMangal()` would return
+ * today's date earlier in the day (before its 10 AM IST anchor),
+ * giving a sub-1-day countdown that flips to the next one at 10 AM.
+ * This variant always points at the next future Tuesday.
+ */
+export function nextBadaMangalAfterToday(now: Date = new Date()): Date | null {
+  const today = istTodayIso(now);
+  for (let i = 0; i < BADA_MANGAL_DATES_2026.length; i += 1) {
+    if (ALL_TUESDAY_ISO[i] > today) return BADA_MANGAL_DATES_2026[i];
+  }
+  return null;
+}
+
 export type Countdown = {
   days: number;
   hours: number;

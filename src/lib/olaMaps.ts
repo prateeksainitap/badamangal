@@ -87,34 +87,70 @@ export function createGadaMarkerElement(opts?: {
   const width = opts?.size ?? 38;
   const height = Math.round((width * 46) / 38);
 
+  // CRITICAL: MapLibre adds the `maplibregl-marker` class DIRECTLY to
+  // the element we pass — it does NOT wrap our element in a parent.
+  // That class brings `position: absolute` (essential for the marker to
+  // float over the map canvas at its projected pixel) plus a per-frame
+  // `transform: translate(...)` update. If we set `position: relative`
+  // (or any other `position` value) inline on this element, our inline
+  // style wins over the class rule and the marker falls back to flowing
+  // in the document — at extreme zoom-out, where many markers project
+  // to the same pixel, this manifests as a vertical line of pins
+  // stacking by DOM order instead of clustering. THIS WAS THE BUG.
+  //
+  // Fix: do not set `position` on the outer element at all. Move the
+  // halo/ring children into an inner relatively-positioned wrapper so
+  // they still have a positioned ancestor to anchor to.
   const wrapper = document.createElement("div");
   wrapper.className = "bm-pin-wrap";
-  wrapper.style.cssText = `position:relative;display:inline-block;width:${width}px;height:${height}px;filter:drop-shadow(0 2px 3px rgba(26,20,16,0.32));cursor:pointer;`;
+  wrapper.style.cssText = `width:${width}px;height:${height}px;cursor:pointer;`;
+
+  // Inner positioning context. `position: relative` HERE is safe
+  // because this element is purely ours — MapLibre never touches it.
+  // The drop-shadow on this inner wrapper has been bumped (was
+  // `0 2px 3px rgba(...,0.32)`) so the gada has a stronger lift
+  // against the busier Ola base style — at high zoom, the tile
+  // already carries native POI labels and our pin needs more visual
+  // weight to win the focal contest.
+  const inner = document.createElement("span");
+  inner.style.cssText = `position:relative;display:block;width:${width}px;height:${height}px;filter:drop-shadow(0 3px 5px rgba(26,20,16,0.40)) drop-shadow(0 1px 1px rgba(26,20,16,0.30));`;
+  wrapper.appendChild(inner);
+
+  // Cream backdrop disc behind the gada head. Lifts the pin off any
+  // remaining POI noise (small shop labels, road shields) by giving
+  // the icon a high-contrast "sticker" surround. Sized to match the
+  // gada's head (~58% of total height); the mace handle below
+  // protrudes out naturally without a halo.
+  const backdrop = document.createElement("span");
+  backdrop.setAttribute("aria-hidden", "true");
+  const discSize = Math.round(width * 0.78);
+  const discLeft = Math.round((width - discSize) / 2);
+  backdrop.style.cssText = `position:absolute;top:0;left:${discLeft}px;width:${discSize}px;height:${discSize}px;border-radius:9999px;background:#FBF7F0;border:1.5px solid rgba(201,162,74,0.55);box-shadow:0 1px 2px rgba(26,20,16,0.10) inset;pointer-events:none;`;
+  inner.appendChild(backdrop);
 
   const img = document.createElement("img");
   img.src = "/brand/map-pin-gada.svg";
   img.alt = "";
   img.width = width;
   img.height = height;
-  img.style.cssText = `display:block;width:${width}px;height:${height}px;object-fit:contain;`;
-  wrapper.appendChild(img);
+  img.style.cssText = `position:relative;display:block;width:${width}px;height:${height}px;object-fit:contain;`;
+  inner.appendChild(img);
 
-  // Halo for click-pulse animation. CSS keyframe `bm-pin-pulse` is defined
-  // in globals.css; we add the `pin-pulse` class on marker click and
-  // remove it after the animation finishes.
+  // Halo for click-pulse animation. Sits inside `inner` so its
+  // `position: absolute; inset: -6px` anchors to the gada bounds.
   const halo = document.createElement("span");
   halo.className = "pin-halo";
   halo.setAttribute("aria-hidden", "true");
   halo.style.cssText =
     "position:absolute;inset:-6px;border-radius:9999px;pointer-events:none;";
-  wrapper.appendChild(halo);
+  inner.appendChild(halo);
 
   if (opts?.sponsored) {
     const ring = document.createElement("span");
     ring.setAttribute("aria-hidden", "true");
     ring.style.cssText =
       "position:absolute;inset:-4px;border-radius:9999px;border:2px solid #C9A24A;box-shadow:0 0 0 1px rgba(242,148,76,0.6);pointer-events:none;";
-    wrapper.appendChild(ring);
+    inner.appendChild(ring);
   }
 
   return wrapper;
@@ -131,43 +167,65 @@ export function createGadaMarkerElement(opts?: {
  * a different category of pin.
  */
 export function createLiveSpotMarkerElement(): HTMLDivElement {
+  // Same structural pattern as the listed-pin variant: outer element
+  // is the one MapLibre receives (must keep its `position: absolute`
+  // class rule, so we don't override `position` inline here), inner
+  // span owns the relative positioning context for the halo + ring.
   const wrapper = document.createElement("div");
-  // `bm-livepin` is kept on the wrapper so existing CSS / hover targets
-  // still hit. `bm-pin-wrap` is added too so the same hover-scale rule
-  // applies to spotted pins as to listed ones.
   wrapper.className = "bm-livepin bm-pin-wrap";
-  wrapper.style.cssText =
-    "position:relative;display:inline-block;width:42px;height:50px;filter:drop-shadow(0 2px 3px rgba(26,20,16,0.34));cursor:pointer;";
+  wrapper.style.cssText = "width:42px;height:50px;cursor:pointer;";
 
-  // Pulsing saffron ring sitting BEHIND the gada. Inset kept close to
-  // the pin (-3px) and animated with the tighter `bm-pin-ring` keyframe
-  // (scale 0.9 → 1.45) so the ripple reads as a warm halo, not a wide
-  // wave. The wider `bm-live-ping` keyframe stays available for the
-  // small saffron-disc legend dot in MapBoard.
-  const ring = document.createElement("span");
-  ring.setAttribute("aria-hidden", "true");
-  ring.style.cssText =
-    "position:absolute;inset:-3px;border-radius:9999px;border:2px solid #F2944C;opacity:0.85;animation:bm-pin-ring 1.6s ease-out infinite;pointer-events:none;";
-  wrapper.appendChild(ring);
+  const inner = document.createElement("span");
+  // Stronger stacked drop-shadow lifts the spot pin off Ola's busy
+  // base style — same treatment as the listed variant.
+  inner.style.cssText =
+    "position:relative;display:block;width:42px;height:50px;filter:drop-shadow(0 3px 5px rgba(26,20,16,0.42)) drop-shadow(0 1px 1px rgba(26,20,16,0.30));";
+  wrapper.appendChild(inner);
 
-  // Soft saffron halo (steady, no animation) — gives the pin a warm
-  // glow even between ping pulses.
+  // Cream backdrop disc behind the gada head — same "sticker ring"
+  // treatment used on the listed pin so spotted pins also stand out
+  // against any commercial POI noise the base style leaks through.
+  // The pulse ring and steady halo below are anchored to this disc's
+  // geometry rather than the wrapper's rectangle, so they read as
+  // concentric circles instead of stretched ovals.
+  const PIN_W = 42;
+  const PIN_H = 50;
+  const DISC_SIZE = Math.round(PIN_W * 0.78); // 33 px
+  const DISC_LEFT = Math.round((PIN_W - DISC_SIZE) / 2);
+  const DISC_CENTER_Y = Math.round(DISC_SIZE / 2); // disc anchored at top:0
+  const RING_SIZE = DISC_SIZE + 6; // a hair larger than the disc
+
+  // Steady saffron halo behind the disc — gives the pin a warm glow
+  // between pulse cycles. Centered on the disc, perfectly circular.
   const halo = document.createElement("span");
   halo.setAttribute("aria-hidden", "true");
-  halo.style.cssText =
-    "position:absolute;inset:-4px;border-radius:9999px;background:radial-gradient(closest-side, rgba(242,148,76,0.40), rgba(242,148,76,0) 70%);pointer-events:none;";
-  wrapper.appendChild(halo);
+  halo.style.cssText = `position:absolute;top:${DISC_CENTER_Y - Math.round((DISC_SIZE + 14) / 2)}px;left:${Math.round((PIN_W - (DISC_SIZE + 14)) / 2)}px;width:${DISC_SIZE + 14}px;height:${DISC_SIZE + 14}px;border-radius:9999px;background:radial-gradient(closest-side, rgba(242,148,76,0.40), rgba(242,148,76,0) 70%);pointer-events:none;`;
+  inner.appendChild(halo);
 
-  // The gada itself — same SVG, slightly smaller than the listed
-  // variant so the ring around it has visual breathing room.
+  // Pulsing saffron ring — fixed circular size centered on the disc,
+  // so the bm-pin-ring keyframe's uniform scale animates a TRUE
+  // circle rather than the previous wrapper-inset ellipse.
+  const ring = document.createElement("span");
+  ring.setAttribute("aria-hidden", "true");
+  ring.style.cssText = `position:absolute;top:${DISC_CENTER_Y - Math.round(RING_SIZE / 2)}px;left:${Math.round((PIN_W - RING_SIZE) / 2)}px;width:${RING_SIZE}px;height:${RING_SIZE}px;border-radius:9999px;border:2px solid #F2944C;opacity:0.85;animation:bm-pin-ring 1.6s ease-out infinite;pointer-events:none;transform-origin:center center;`;
+  inner.appendChild(ring);
+
+  // Cream backdrop disc — the high-contrast "sticker" behind the
+  // gada head. Drawn after halo + ring so the disc clips the animation
+  // visually (ring expands from behind the disc, not over it).
+  const backdrop = document.createElement("span");
+  backdrop.setAttribute("aria-hidden", "true");
+  backdrop.style.cssText = `position:absolute;top:0;left:${DISC_LEFT}px;width:${DISC_SIZE}px;height:${DISC_SIZE}px;border-radius:9999px;background:#FBF7F0;border:1.5px solid rgba(242,148,76,0.65);box-shadow:0 1px 2px rgba(26,20,16,0.10) inset;pointer-events:none;`;
+  inner.appendChild(backdrop);
+
+  // The gada itself — sits above the backdrop disc.
   const img = document.createElement("img");
   img.src = "/brand/map-pin-gada.svg";
   img.alt = "";
-  img.width = 42;
-  img.height = 50;
-  img.style.cssText =
-    "position:relative;display:block;width:42px;height:50px;object-fit:contain;";
-  wrapper.appendChild(img);
+  img.width = PIN_W;
+  img.height = PIN_H;
+  img.style.cssText = `position:relative;display:block;width:${PIN_W}px;height:${PIN_H}px;object-fit:contain;`;
+  inner.appendChild(img);
 
   return wrapper;
 }

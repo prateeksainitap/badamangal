@@ -34,7 +34,7 @@ export default function StatsSection({ stats, locale }: Props) {
 
       <div className="mx-auto max-w-5xl px-4 sm:px-6 py-10 sm:py-12">
         <header className="text-center max-w-2xl mx-auto">
-          <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-[0.65rem] font-semibold">
+          <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
             {t.stats.sectionKicker}
           </p>
           <h2

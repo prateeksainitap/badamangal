@@ -101,15 +101,35 @@ export default function BhandaraCard({ bhandara, locale }: Props) {
         />
 
         {bhandara.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={bhandara.photoUrl}
-            alt={displayName}
-            loading="lazy"
-            decoding="async"
-            referrerPolicy="no-referrer"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
+          // Same colour-aware backdrop pattern we use for the live-feed
+          // cards: a blurred + scaled copy of the photo fills the well,
+          // then the actual image renders on top with `object-contain`
+          // so vertical posters and square photos both show their full
+          // content without cropping.
+          <>
+            <span
+              aria-hidden
+              className="absolute inset-0 bg-center bg-cover scale-110"
+              style={{
+                backgroundImage: `url(${JSON.stringify(bhandara.photoUrl).slice(1, -1)})`,
+                filter: "blur(28px) saturate(1.1)",
+                opacity: 0.55,
+              }}
+            />
+            <span
+              aria-hidden
+              className="absolute inset-0 bg-cream-50/35"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={bhandara.photoUrl}
+              alt={displayName}
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              className="relative w-full h-full object-contain"
+            />
+          </>
         ) : (
           /* No-photo fallback: a centred sunburst on the warm gradient */
           <div className="absolute inset-0 flex items-center justify-center">

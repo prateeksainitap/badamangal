@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type NearMeState } from "@/components/NearMeButton";
 import { haversineKm } from "@/lib/geo";
 import type { Bhandara } from "@/types/bhandara";
@@ -202,8 +202,71 @@ export default function MapSideList({
     return isHi ? "सभी भंडारे" : "All bhandaras";
   })();
 
+  // Scroll-aware "N more below" indicator. Tracks the scrollable <ul>,
+  // counts items whose top edge sits below the visible viewport, and
+  // surfaces a sticky chip on top of the list bottom when count > 0.
+  // Without this, users on narrow phones reading the first 2–3 cards
+  // had no way to know more entries existed below the fold.
+  const listRef = useRef<HTMLUListElement>(null);
+  const [itemsBelow, setItemsBelow] = useState(0);
+
+  const recomputeItemsBelow = useCallback(() => {
+    const ul = listRef.current;
+    if (!ul) return;
+    const items = Array.from(ul.querySelectorAll<HTMLLIElement>(
+      "li[data-list-row]",
+    ));
+    if (items.length === 0) {
+      setItemsBelow(0);
+      return;
+    }
+    // Use viewport-relative coords for both the scroll container's
+    // bottom edge and each item's top edge. This is robust regardless
+    // of how the ancestors are positioned — `offsetTop` was returning
+    // values relative to the nearest positioned ancestor (the `aside`
+    // on desktop, the `ul` itself on some mobile layouts), which made
+    // the comparison silently wrong on desktop and the chip never
+    // appeared even when items were clearly below the fold.
+    const ulBottom = ul.getBoundingClientRect().bottom;
+    let below = 0;
+    for (const item of items) {
+      const itemTop = item.getBoundingClientRect().top;
+      if (itemTop >= ulBottom - 4) {
+        below += 1;
+      }
+    }
+    setItemsBelow(below);
+  }, []);
+
+  useEffect(() => {
+    const ul = listRef.current;
+    if (!ul) return;
+    recomputeItemsBelow();
+    const onScroll = () => recomputeItemsBelow();
+    ul.addEventListener("scroll", onScroll, { passive: true });
+    // Recompute on window resize too (clientHeight changes between
+    // mobile and tablet rotations).
+    window.addEventListener("resize", onScroll);
+    return () => {
+      ul.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [filtered.length, recomputeItemsBelow]);
+
+  const scrollDown = useCallback(() => {
+    const ul = listRef.current;
+    if (!ul) return;
+    // One viewport-worth of scroll feels right — same gesture the user
+    // would do with a mouse-wheel click. Smooth scroll on top of that
+    // for the gentle "there's more here" feedback.
+    ul.scrollBy({
+      top: ul.clientHeight - 32,
+      behavior: "smooth",
+    });
+  }, []);
+
   return (
-    <aside className="rounded-2xl border border-gold-500/40 bg-cream-50 overflow-hidden flex flex-col h-[420px] sm:h-[520px]">
+    <aside className="relative rounded-2xl border border-gold-500/40 bg-cream-50 overflow-hidden flex flex-col h-[420px] sm:h-[520px]">
       <header className="px-4 py-3 border-b border-gold-500/30 bg-saffron-50/60 flex items-center justify-between gap-2">
         <p
           className={`text-sm ${
@@ -229,7 +292,19 @@ export default function MapSideList({
         </div>
       ) : null}
 
-      <ul className="overflow-y-auto divide-y divide-gold-500/20">
+      <ul
+        ref={listRef}
+        // When the list has rows, behave as a normal scrollable
+        // divided list. When it's empty, flex-center the single
+        // empty-state child so the explainer sits in the vertical
+        // middle of the available panel space instead of clinging
+        // to the top with awkward whitespace below.
+        className={
+          filtered.length === 0
+            ? "flex-1 flex items-center justify-center"
+            : "overflow-y-auto divide-y divide-gold-500/20 flex-1"
+        }
+      >
         {filtered.map((e) => (
           <SideRow
             key={e.key}
@@ -238,18 +313,82 @@ export default function MapSideList({
           />
         ))}
         {filtered.length === 0 ? (
-          <li className="px-4 py-6 text-center text-xs text-ink-600">
-            {isFiltering
-              ? isHi
+          // Empty-state copy tailored to the active filter. The
+          // generic one-liner "No bhandaras yet" looked broken when a
+          // visitor landed on the Spotted tab and saw nothing — they
+          // had no way to know spots are a separate, live-only stream
+          // that requires someone in Lucknow to upload a photo. This
+          // explains the mechanic and gives them a CTA to be the first.
+          <li className="px-4 text-center text-xs text-ink-600 list-none">
+            {isFiltering ? (
+              isHi
                 ? "3 कि.मी. के अंदर कोई भंडारा नहीं मिला।"
                 : "No bhandaras within 3 km of you yet."
-              : isHi
-                ? "अभी कोई भंडारा नहीं"
-                : "No bhandaras yet"}
+            ) : filter === "spotted" ? (
+              <EmptySpotted isHi={isHi} />
+            ) : filter === "listed" ? (
+              <EmptyListed isHi={isHi} />
+            ) : isHi ? (
+              "अभी कोई भंडारा नहीं"
+            ) : (
+              "No bhandaras yet"
+            )}
           </li>
         ) : null}
       </ul>
+
+      {/* "N more bhandaras" sticky chip — only renders when there are
+          items below the fold inside the scrollable list. Click scrolls
+          the list down by one viewport's height. Sits above a gentle
+          cream→transparent fade so the chip lifts off the last visible
+          card without a hard divider. */}
+      {itemsBelow > 0 ? (
+        // Bottom overlay: a taller fade that fully covers the chip area
+        // so the row text behind the chip doesn't bleed through next to
+        // it. Previously the gradient was only 32px tall and sat *above*
+        // the chip, leaving a hard band of unfaded list rows directly
+        // behind the pill (visible as "...LISTED" peeking next to the
+        // saffron chip). Now the fade and the chip share a single
+        // overlay box that's tall enough to mask both visually.
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-cream-50 via-cream-50/95 to-transparent"
+        />
+      ) : null}
+      {itemsBelow > 0 ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center pb-3">
+          <button
+            type="button"
+            onClick={scrollDown}
+            className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 text-xs font-semibold px-3.5 py-1.5 shadow-warm transition-colors"
+            aria-label={
+              isHi
+                ? `और ${itemsBelow} भंडारे नीचे, स्क्रॉल करें`
+                : `${itemsBelow} more bhandaras below, scroll`
+            }
+          >
+            <span className="font-numerals tabular-nums">{itemsBelow}</span>
+            <span>
+              {isHi ? "और भंडारे" : `more ${itemsBelow === 1 ? "bhandara" : "bhandaras"}`}
+            </span>
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+        </div>
+      ) : null}
     </aside>
+
   );
 }
 
@@ -330,7 +469,10 @@ function SideRow({ entry: e, isHi }: { entry: Entry; isHi: boolean }) {
   );
 
   return (
-    <li className="px-4 py-3 hover:bg-saffron-50/60 transition-colors">
+    <li
+      data-list-row
+      className="px-4 py-3 hover:bg-saffron-50/60 transition-colors"
+    >
       {e.href ? (
         <Link
           href={e.href}
@@ -431,6 +573,154 @@ function IconWhatsapp() {
     </svg>
   );
 }
+/**
+ * Empty-state explainer for the "Spotted" tab when no spots are live.
+ * Carries: a mini illustrated marker (gada + pulse ring, mirrors the
+ * map legend), a one-line headline, a short body explaining the
+ * 8-hour live window mechanic, and a CTA pointing at /spot so the
+ * visitor can be the first to upload one. Two-language.
+ */
+function EmptySpotted({ isHi }: { isHi: boolean }) {
+  return (
+    <div className="text-center px-2 py-4">
+      {/* Marker icon — mirrors the actual spotted pin: cream disc +
+          gada + circular pulsing ring. Uses the same `bm-pin-ring`
+          keyframe the map markers use so the legend, this empty
+          state, and the live map all pulse on one rhythm. */}
+      <span
+        aria-hidden
+        className="relative inline-flex h-9 w-9 items-center justify-center mx-auto"
+      >
+        <span
+          className="absolute inset-[-4px] rounded-full border-2 border-saffron-500/75 pointer-events-none"
+          style={{
+            animation: "bm-pin-ring 1.6s ease-out infinite",
+            transformOrigin: "center center",
+          }}
+        />
+        <span className="absolute inset-0 rounded-full bg-cream-50 border-[1.5px] border-saffron-500/65 shadow-[inset_0_1px_2px_rgba(26,20,16,0.10)]" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/map-pin-gada.svg"
+          alt=""
+          className="relative h-[26px] w-[26px]"
+        />
+      </span>
+      <p
+        className={`mt-3 text-sm ${
+          isHi
+            ? "font-tiro text-sindoor-700"
+            : "font-fraunces font-semibold text-sindoor-700"
+        }`}
+      >
+        {isHi ? "अभी कोई स्पॉट नहीं" : "No live spots right now"}
+      </p>
+      <p className="mt-1.5 text-[11px] leading-relaxed text-ink-600 max-w-[240px] mx-auto">
+        {isHi
+          ? "जब लखनऊ-वाले किसी चल रहे भंडारे की तस्वीर खींचकर भेजते हैं, वह यहाँ 8 घंटों के लिए पल्स करते पिन के रूप में दिखता है।"
+          : "When someone in Lucknow snaps a photo of a bhandara happening right now, it appears here as a pulsing pin for 8 hours."}
+      </p>
+      <Link
+        href="/spot"
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-3.5 py-1.5 text-xs shadow-warm"
+      >
+        {/* Camera glyph evokes the "snap a photo" gesture that creates
+            a spot — clearer call-to-action than a bare arrow. */}
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+          <circle cx="12" cy="13" r="4" />
+        </svg>
+        {isHi ? "पहले बनो, स्पॉट करो" : "Be first, spot one"}
+      </Link>
+    </div>
+  );
+}
+
+/**
+ * Empty-state explainer for the "Listed" tab when no listed bhandaras
+ * are upcoming. Mirrors the EmptySpotted treatment so both tabs feel
+ * like part of the same family — but with copy + CTA tuned for a
+ * *planned* bhandara rather than a live-now spot.
+ *
+ * When this renders: either the season hasn't started yet, OR every
+ * listed bhandara's dates have already passed (the homepage filter
+ * auto-hides past entries). Either way the visitor needs to know
+ * what a "listed bhandara" is and how to bring the list back to
+ * life — by listing their own.
+ */
+function EmptyListed({ isHi }: { isHi: boolean }) {
+  return (
+    <div className="text-center px-2 py-4">
+      <span
+        aria-hidden
+        className="relative inline-flex h-9 w-9 items-center justify-center mx-auto"
+      >
+        {/* Cream disc + gada — mirrors the actual listed marker
+            (without the pulse, since listed pins are planned not
+            live). Same visual language as the legend chip + the
+            real map marker so the visitor can map this glyph to
+            what they'll see on the map at a glance. */}
+        <span className="absolute inset-0 rounded-full bg-cream-50 border-[1.5px] border-gold-500/55 shadow-[inset_0_1px_2px_rgba(26,20,16,0.10)]" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/map-pin-gada.svg"
+          alt=""
+          className="relative h-[26px] w-[26px]"
+        />
+      </span>
+      <p
+        className={`mt-3 text-sm ${
+          isHi
+            ? "font-tiro text-sindoor-700"
+            : "font-fraunces font-semibold text-sindoor-700"
+        }`}
+      >
+        {isHi ? "अभी कोई आगामी भंडारा नहीं" : "No upcoming bhandaras yet"}
+      </p>
+      <p className="mt-1.5 text-[11px] leading-relaxed text-ink-600 max-w-[240px] mx-auto">
+        {isHi
+          ? "कोई भी आयोजक अपना भंडारा यहाँ सूचीबद्ध कर सकता है, स्थान, समय और मेन्यू के साथ। सूची हर बड़े मंगल के पहले भर जाती है।"
+          : "Any organizer can list their bhandara here with location, time, and menu. The list fills up as each Bada Mangal approaches."}
+      </p>
+      <Link
+        href="/list-bhandara"
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-3.5 py-1.5 text-xs shadow-warm"
+      >
+        {/* Pencil/clipboard glyph: form-filling, planning. Distinct
+            from the camera glyph used in EmptySpotted so the two
+            CTAs read as different actions. */}
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="9" y1="13" x2="15" y2="13" />
+          <line x1="9" y1="17" x2="13" y2="17" />
+        </svg>
+        {isHi ? "अपना भंडारा सूचीबद्ध करें" : "List your bhandara"}
+      </Link>
+    </div>
+  );
+}
+
 function IconCopy() {
   return (
     <svg

@@ -54,9 +54,23 @@ export default function SeasonTimeline({ locale }: Props) {
       aria-label={t.countdown.timelineKicker}
       className="mt-10 sm:mt-12"
     >
-      <p className="text-center font-mukta uppercase tracking-[0.32em] text-gold-500 text-[0.7rem] mb-6">
-        {t.countdown.timelineKicker}
-      </p>
+      {/* Header for the timeline: small uppercase kicker on top, then
+          a quiet body-text subtitle carrying the "rare cycle"
+          framing (Adhik Maas → 8 Tuesdays · last 2007 / next 2045).
+          This used to be a separate full-width band above the timer;
+          folding it under the timeline kicker keeps the rarity-trivia
+          right where the visitor naturally lands while studying the
+          eight dots, without making it a focal point of its own. */}
+      <div className="text-center mb-6">
+        <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
+          {t.countdown.timelineKicker}
+        </p>
+        <p className="mt-2 text-xs sm:text-sm text-ink-600 max-w-2xl mx-auto leading-relaxed">
+          {isHi
+            ? "अधिक मास के कारण इस ज्येष्ठ में 8 बड़े मंगल, पिछली बार 2007, अगली बार 2045।"
+            : "Adhik Maas brings 8 Bada Mangals this season. Last seen in 2007, next in 2045."}
+        </p>
+      </div>
 
       {/* Single fluid 8-column grid at every breakpoint. The previous
           mobile fallback was a horizontal scroller that visibly cut

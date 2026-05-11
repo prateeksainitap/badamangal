@@ -53,3 +53,12 @@ prisma/migrations/dev.db*
 
 # user-uploaded photos (dev-only — production should use object storage)
 /public/uploads
+
+# Seeded bhandara photos exception: the 19 WhatsApp invites the seed
+# scripts reference via /uploads/whatsapp/<slug>.jpg are *not* runtime
+# user uploads — they're curated assets that need to live in the repo
+# so a fresh `npx tsx prisma/seed-whatsapp.ts` produces a site with
+# working photos on any machine. Override the /public/uploads block
+# above for this one sub-folder only.
+!/public/uploads/whatsapp/
+!/public/uploads/whatsapp/**

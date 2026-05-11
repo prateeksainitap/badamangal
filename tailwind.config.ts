@@ -3,6 +3,17 @@ import type { Config } from "tailwindcss";
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
+    // Custom `xs` breakpoint at 475 px so we can bump narrow-card grids
+    // (HappeningNow, FamousBhandaras, etc.) from 1 column → 2 columns
+    // right at the boundary where a typical phone has enough room.
+    screens: {
+      xs: "475px",
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
+    },
     extend: {
       colors: {
         saffron: { 50: "#FFF6EE", 500: "#F2944C", 600: "#E07A1F" },

@@ -1057,19 +1057,23 @@ function ThankYou(_props: { slug: string }) {
         </span>
       </div>
 
-      <p className="mt-6 font-mukta uppercase tracking-[0.3em] text-saffron-600 text-xs font-semibold">
-        जय हनुमान · Pranam
+      {/* Devanagari "जय हनुमान" needs tighter tracking than the rest of
+          the kicker line — the global Hindi tracking reset would let the
+          letters drift apart at this size, so we override locally. */}
+      <p className="mt-6 font-mukta uppercase text-saffron-600 text-xs font-semibold">
+        <span className="font-deva [letter-spacing:0.02em]">जय हनुमान</span>
+        <span className="mx-1.5">·</span>
+        <span className="tracking-[0.3em]">JAI HANUMAN</span>
       </p>
       <h2 className="mt-3 font-tiro text-3xl sm:text-4xl text-sindoor-700">
-        सेवा का संकल्प पहुँच गया!
+        भंडारा लाइव हो गया!
       </h2>
       <p className="mt-1 font-fraunces italic text-lg text-ink-900">
-        Your bhandara details have been received.
+        Your bhandara is now live on the city map.
       </p>
       <p className="mt-3 mx-auto max-w-md text-sm text-ink-600 leading-relaxed">
-        Our team will call you on the number you submitted to confirm the
-        details. Once confirmed, your bhandara goes live on the city map with
-        a{" "}
+        Our team will call you within 24 hours to confirm the details
+        and add a{" "}
         <span className="inline-flex items-center gap-1 align-middle px-1.5 py-0.5 rounded-full bg-leaf-600/10 border border-leaf-600/40 text-leaf-600 font-semibold text-[0.7rem]">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
             <path d="M12 2 14.39 4.39 17.66 3.66 18.39 6.93 21.66 7.66 20.93 10.93 23.32 12 20.93 13.07 21.66 16.34 18.39 17.07 17.66 20.34 14.39 19.61 12 22 9.61 19.61 6.34 20.34 5.61 17.07 2.34 16.34 3.07 13.07 0.68 12 3.07 10.93 2.34 7.66 5.61 6.93 6.34 3.66 9.61 4.39z" />
@@ -1077,13 +1081,12 @@ function ThankYou(_props: { slug: string }) {
           </svg>
           Verified
         </span>{" "}
-        badge — usually within 24 hours.
+        badge.
       </p>
 
-      {/* What-happens-next stepper. Replaces the old public-URL share row,
-          which used to send the soon-to-be-live URL on WhatsApp. The
-          listing is now PENDING until our team calls, so that URL would
-          404 if shared right away — much better UX to set expectations. */}
+      {/* What-happens-next stepper. Listing is live the moment the user
+          lands on this card, so steps 1 + 2 are both ticked; only the
+          team's confirmation call remains. */}
       <ol className="mt-7 mx-auto max-w-md grid gap-3 text-left">
         <NextStep
           n={1}
@@ -1093,13 +1096,14 @@ function ThankYou(_props: { slug: string }) {
         />
         <NextStep
           n={2}
-          title="हमारा कॉल"
-          en="Our team calls to confirm (within 24h)"
+          title="लाइव हो गया"
+          en="Live on the city map"
+          done
         />
         <NextStep
           n={3}
-          title="लाइव और सत्यापित"
-          en="Live on the city map with the Verified badge"
+          title="सत्यापन कॉल"
+          en="Our team calls to verify (within 24h)"
         />
       </ol>
 

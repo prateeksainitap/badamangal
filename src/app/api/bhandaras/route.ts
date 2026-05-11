@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma, toBhandara } from "@/lib/db";
+import { hasUpcomingDate } from "@/lib/dates";
 import { menuHiFor } from "@/lib/menu";
 import { ensureUniqueSlug, slugify } from "@/lib/slugify";
 import { submitSchema } from "@/lib/validation";
@@ -7,14 +8,16 @@ import { submitSchema } from "@/lib/validation";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  // Public listings are APPROVED only. PENDING listings (just submitted,
-  // awaiting team callback) are NOT exposed here — keeps junk and unconfirmed
-  // listings off the city map until a human signs off.
+  // Public listings are APPROVED AND have at least one upcoming
+  // service date (IST). PENDING / REJECTED listings stay hidden, AND
+  // rows whose every date has passed auto-fall off this list as the
+  // calendar advances — same behaviour as the homepage. Past rows
+  // stay in the DB for admin + historical permalinks.
   const records = await prisma.bhandara.findMany({
     where: { status: "APPROVED" },
     orderBy: [{ isSponsored: "desc" }, { createdAt: "asc" }],
   });
-  const bhandaras = records.map(toBhandara);
+  const bhandaras = records.map(toBhandara).filter((b) => hasUpcomingDate(b));
   return NextResponse.json(
     { count: bhandaras.length, bhandaras },
     {
@@ -85,12 +88,13 @@ export async function POST(req: NextRequest) {
       geoDistrict: data.geoDistrict ?? null,
       geoState: data.geoState ?? null,
       googleMapsUrl,
-      // Option-4 launch model: every new submission lands as PENDING and
-      // stays hidden from every public surface until the BadaMangal team
-      // calls the organizer to confirm. The admin "Publish & verify"
-      // action flips status → APPROVED and sets isVerified → true in one
-      // step, which is when the listing first appears on the city map.
-      status: "PENDING",
+      // New listings go LIVE immediately on submission so the organizer
+      // sees their bhandara on the city map within seconds. The team
+      // still calls the submitted phone within 24 h to confirm the
+      // details and flip `isVerified` → true, which is what surfaces
+      // the green "Verified" badge on the listing.
+      status: "APPROVED",
+      approvedAt: new Date(),
       isVerified: false,
     },
   });

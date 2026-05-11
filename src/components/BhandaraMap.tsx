@@ -13,7 +13,7 @@
  * familiar.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   attachMapControls,
@@ -26,6 +26,25 @@ import {
 } from "@/lib/olaMaps";
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from "@/lib/lucknow";
 import type { Bhandara } from "@/types/bhandara";
+
+// Popup offset relative to the marker anchor point (= the coord, since
+// markers are now bottom-anchored). The pin body extends ~46 px above
+// the coord, so a popup that floats ABOVE the pin needs to clear the
+// full pin height + a small breathing gap; a popup that flips below
+// (when the user pans the pin near the top of the viewport) gets a
+// smaller gap. MapLibre's anchor-keyed offset map handles all eight
+// auto-flip directions; the four diagonals split the difference.
+const PIN_POPUP_OFFSET: Record<string, [number, number]> = {
+  top: [0, 6],
+  bottom: [0, -54],
+  left: [12, -22],
+  right: [-12, -22],
+  "top-left": [6, 0],
+  "top-right": [-6, 0],
+  "bottom-left": [6, -46],
+  "bottom-right": [-6, -46],
+  center: [0, 0],
+};
 
 export type LiveSpotPin = {
   id: string;
@@ -65,36 +84,84 @@ export default function BhandaraMap({
    *  up a marker by its side-list entry key (`org:<id>` / `spot:<id>`).
    *  Currently unused but cheap to maintain. */
   const markerElByKey = useRef<Map<string, HTMLElement>>(new Map());
+  /** The persistent MapLibre instance. Mounted once via Effect A
+   *  below and reused for the component's entire lifetime — filter
+   *  changes (All / Listed / Spotted) only touch the marker layer,
+   *  never tear down the map itself. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapRef = useRef<any>(null);
+  /** Markers currently on the map. Replaced wholesale by Effect B on
+   *  every listings / liveSpots change — old markers `.remove()`,
+   *  new ones get added. The map + tiles stay put. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markersRef = useRef<any[]>([]);
+  /** Stable single-popup-at-a-time gate, shared across re-renders of
+   *  Effect B so a freshly-added marker's popup correctly closes the
+   *  previously-open one (the gate used to live inside the combined
+   *  effect's closure and reset on every prop change). */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const activePopupRef = useRef<any>(null);
+  /** Bumped to `true` once the async init resolves. Effect B watches
+   *  this so it can sync markers as soon as the map is ready, even
+   *  if listings/liveSpots haven't changed since mount. */
+  const [mapReady, setMapReady] = useState(false);
+  /** Flips to true the moment the user manually pans or zooms the
+   *  map. Effect B's fitBounds skips when this is set so the camera
+   *  doesn't yank itself back to the "all pins in view" shot every
+   *  time the user is mid-exploration. Reset to false implicitly on
+   *  filter changes that meaningfully reshape the pin set (handled
+   *  inside Effect B). */
+  const userMovedMapRef = useRef(false);
+  /** Set of marker IDs from the previous Effect B run. Used to
+   *  decide whether the pin set changed materially (so we re-fit
+   *  bounds) or whether it's the same set in a different reference
+   *  (so we don't refit, preserving the user's current view + any
+   *  open popup). */
+  const prevMarkerKeysRef = useRef<string>("");
 
+  // ────────────────────────────────────────────────────────────────
+  // Effect A: mount the map ONCE on first render
+  // ────────────────────────────────────────────────────────────────
+  //
+  // Previously this effect also rebuilt every marker, so its dep
+  // array included `listings` and `liveSpots` — which meant flipping
+  // the All/Listed/Spotted filter tore down the entire MapLibre
+  // instance (canvas, tiles, controls) and re-initialised it from
+  // scratch. Visible flash + 200-500 ms re-tile every click.
+  //
+  // The new split keeps this effect with empty deps so the map mounts
+  // exactly once per component lifecycle, and a sibling effect (B,
+  // below) handles marker sync when filters change. Marker `.remove()`
+  // and `.addTo(map)` are cheap; nothing else has to re-init.
+  //
+  // The microtask deferral + StrictMode-race fix is preserved — see
+  // the previous comment trail; that bug is structural to React 18
+  // dev mode + MapLibre's sync canvas construction inside async init.
   useEffect(() => {
     if (!isOlaConfigured()) return;
     if (!ref.current) return;
 
     let cancelled = false;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let map: any = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const markers: any[] = [];
 
-    void (async () => {
+    queueMicrotask(() => {
+      if (cancelled) return;
+      void runInit();
+    });
+
+    async function runInit() {
       try {
+        if (cancelled || !ref.current) return;
         const olaMaps = getOlaMapsClient();
-        if (!ref.current) return;
 
-        const initialLat = center
-          ? center.lat
-          : listings.length === 1
-            ? listings[0].lat
-            : DEFAULT_CENTER.lat;
-        const initialLng = center
-          ? center.lng
-          : listings.length === 1
-            ? listings[0].lng
-            : DEFAULT_CENTER.lng;
-        const initialZoom =
-          center || listings.length === 1 ? focusZoom : DEFAULT_ZOOM;
+        const initialLat = center ? center.lat : DEFAULT_CENTER.lat;
+        const initialLng = center ? center.lng : DEFAULT_CENTER.lng;
+        const initialZoom = center ? focusZoom : DEFAULT_ZOOM;
 
-        map = await olaMaps.init({
+        // Defensive: clear any stray canvas a previous run might have
+        // left behind (HMR / fast edits / dev tooling).
+        ref.current.replaceChildren();
+
+        const map = await olaMaps.init({
           style: styleForLocale("en"),
           container: ref.current,
           center: [initialLng, initialLat],
@@ -104,175 +171,118 @@ export default function BhandaraMap({
 
         if (cancelled) {
           map?.remove?.();
-          map = null;
           return;
         }
 
-        // Zoom + (optional) geolocate controls in the top-right corner.
         attachMapControls(map, { showGeolocate: true, position: "top-right" });
 
-        // Swallow non-fatal style errors (e.g. Ola's tile bundle
-        // occasionally references layers that aren't always shipped).
-        // Without this, MapLibre's default behaviour rethrows them and
-        // they surface in Next.js's dev overlay — looks broken even
-        // though the map renders fine.
-        map.on("error", (e: { error?: { message?: string } }) => {
-          if (process.env.NODE_ENV !== "production") {
-            console.warn("[BhandaraMap] non-fatal map error:", e?.error?.message ?? e);
+        // Once the user starts panning or pinch-zooming the map, lock
+        // in their viewport — Effect B's fitBounds will respect this
+        // and stop refitting on incidental re-renders. MapLibre fires
+        // `dragstart` for pans and `zoomstart` with an `originalEvent`
+        // for user-initiated zooms (programmatic camera moves leave
+        // `originalEvent` undefined, which is how we tell them apart).
+        map.on("dragstart", () => {
+          userMovedMapRef.current = true;
+        });
+        map.on("zoomstart", (e: { originalEvent?: Event }) => {
+          if (e.originalEvent) {
+            userMovedMapRef.current = true;
           }
         });
 
-        // Some Ola style layers reference sprite images that aren't
-        // shipped in the lite atlas (`pedestrian_polygon`, empty IDs,
-        // …). Provide a 1×1 transparent placeholder on demand so
-        // MapLibre stops logging "Image '…' could not be loaded".
-        // Using bind so we can detach if Ola fixes the style later.
-        map.on(
-          "styleimagemissing",
-          (e: { id: string }) => {
-            if (!map.hasImage?.(e.id)) {
-              try {
-                map.addImage(e.id, {
-                  width: 1,
-                  height: 1,
-                  data: new Uint8Array(4),
-                });
-              } catch {
-                /* concurrent add — ignore */
-              }
-            }
-          },
-        );
-
-        // Single-popup-at-a-time gate. Every popup we create below
-        // subscribes to its own `open` event and calls this helper,
-        // which closes any other popup already on the map. Without
-        // this, clicking pin A then pin B leaves popup A still open
-        // and popup B opens on top of it — they stack visually,
-        // especially when the pins are near each other.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let activePopup: any = null;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const registerExclusive = (popup: any) => {
-          popup.on?.("open", () => {
-            if (activePopup && activePopup !== popup) {
-              try {
-                activePopup.remove();
-              } catch {
-                /* already removed */
-              }
-            }
-            activePopup = popup;
-          });
-          popup.on?.("close", () => {
-            if (activePopup === popup) activePopup = null;
-          });
-        };
-
-        // Bhandara pins ────────────────────────────────────────────────
-        const bounds: [number, number][] = [];
-        markerElByKey.current.clear();
-        for (const l of listings) {
-          const el = createGadaMarkerElement({
-            size: 38,
-            sponsored: Boolean(l.isSponsored),
-          });
-          // Tooltip via native `title` attribute — MapLibre doesn't ship
-          // tooltips out of the box and a popup-on-hover would feel heavy.
-          el.title = `${l.name}, ${l.area}`;
-
-          // Build the popup once per listing — same editorial language
-          // as the live-spot popup, but without the "LIVE" treatment.
-          const popupHtml = buildListedBhandaraPopupHtml(l);
-          const popup = olaMaps
-            .addPopup({
-              offset: [0, -32],
-              closeButton: true,
-              className: "bm-listed-popup-wrap",
-              maxWidth: "340px",
-            })
-            .setHTML(popupHtml);
-          registerExclusive(popup);
-
-          // Create marker first — the click handler captures it in
-          // closure so it can call `marker.togglePopup()`. Calling the
-          // popup's own `.addTo(map)` from inside the click handler did
-          // not work because the popup, once bound via setPopup, takes
-          // its lat/lng + lifecycle from the marker, not the map.
-          const marker = olaMaps
-            .addMarker({ element: el, offset: [0, -22] })
-            .setLngLat([l.lng, l.lat])
-            .setPopup(popup)
-            .addTo(map);
-
-          el.addEventListener("click", (e) => {
-            e.stopPropagation();
-            pulseMarkerHalo(el);
-            if (onPinClick) {
-              onPinClick(l);
-              return;
-            }
-            try {
-              marker.togglePopup();
-            } catch {
-              router.push(`/bhandara/${l.slug}`);
-            }
-          });
-
-          markers.push(marker);
-          bounds.push([l.lng, l.lat]);
-          markerElByKey.current.set(`org:${l.id}`, el);
-        }
-
-        // Live spots ───────────────────────────────────────────────────
-        if (liveSpots && liveSpots.length > 0) {
-          for (const s of liveSpots) {
-            const el = createLiveSpotMarkerElement();
-            const popupHtml = buildSpotPopupHtml(s);
-
-            const popup = olaMaps
-              .addPopup({
-                offset: [0, -32],
-                closeButton: true,
-                className: "bm-spot-popup-wrap",
-                maxWidth: "320px",
-              })
-              .setHTML(popupHtml);
-            registerExclusive(popup);
-            const marker = olaMaps
-              .addMarker({ element: el, offset: [0, -22] })
-              .setLngLat([s.lng, s.lat])
-              .setPopup(popup)
-              .addTo(map);
-            markers.push(marker);
-            bounds.push([s.lng, s.lat]);
-            markerElByKey.current.set(`spot:${s.id}`, el);
+        // Known-benign Ola style noise filter — same list as before.
+        map.on("error", (e: { error?: { message?: string } }) => {
+          const msg = e?.error?.message ?? "";
+          if (
+            msg.includes("3d_model") ||
+            msg.includes("Source layer") ||
+            msg.includes("Expected value to be of type")
+          ) {
+            return;
           }
-        }
-
-        // Auto-fit to all points unless `center` was passed explicitly.
-        // MapLibre accepts a `[[sw_lng, sw_lat], [ne_lng, ne_lat]]` tuple
-        // directly, so we don't need to construct a LngLatBounds object
-        // (which lives behind a static getter on the OlaMaps SDK and
-        // is fragile to access dynamically).
-        if (!center && bounds.length > 1) {
-          const lngs = bounds.map((p) => p[0]);
-          const lats = bounds.map((p) => p[1]);
-          const sw: [number, number] = [Math.min(...lngs), Math.min(...lats)];
-          const ne: [number, number] = [Math.max(...lngs), Math.max(...lats)];
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[BhandaraMap] non-fatal map error:", msg || e);
+          }
+        });
+        // ── Strip POI clutter from the base style ─────────────────
+        // Ola's standard style ships every commercial POI label in
+        // the tile (gym, salon, ice-cream parlour, beer shop, …).
+        // For a city map focused on bhandara discovery these compete
+        // visually with our gada pins — the user's marker drowns
+        // among unrelated shop labels at street-level zoom. We hide
+        // every layer whose id flags it as POI / commercial / brand
+        // content via the MapLibre style spec, leaving roads, place
+        // labels, water bodies, parks, and transit stations untouched.
+        //
+        // Runs both on initial load and on style data updates (Ola
+        // can re-fetch sprite/style chunks lazily as the user zooms).
+        const POI_LAYER_PATTERNS = [
+          "poi",
+          "shop",
+          "amenity",
+          "leisure",
+          "commercial",
+          "brand",
+          "office",
+          "tourism",
+          "restaurant",
+          "cafe",
+          "fast_food",
+          "food",
+          "hotel",
+        ];
+        const hidePoiLayers = () => {
           try {
-            map.fitBounds([sw, ne], {
-              padding: 60,
-              maxZoom: 14,
-              duration: 0,
-            });
+            const layers = (map.getStyle?.()?.layers ?? []) as Array<{
+              id: string;
+              type?: string;
+            }>;
+            for (const layer of layers) {
+              const id = layer.id?.toLowerCase?.() ?? "";
+              if (layer.type !== "symbol" && layer.type !== "circle") continue;
+              if (POI_LAYER_PATTERNS.some((p) => id.includes(p))) {
+                try {
+                  map.setLayoutProperty(layer.id, "visibility", "none");
+                } catch {
+                  /* layer disappeared mid-iteration — ignore */
+                }
+              }
+            }
           } catch {
-            // fitBounds can throw if called before style loads; let the
-            // default centre (Lucknow) stand in that case.
+            /* style not ready yet — the styledata listener below
+               will pick it up on the next event */
           }
-        }
+        };
+        // Initial pass once the style first loads, then again on any
+        // styledata event (Ola sometimes ships layers in a later
+        // delta). `idle` is the most reliable "style fully ready"
+        // signal we have without a load-event subscription.
+        map.on("load", hidePoiLayers);
+        map.on("styledata", hidePoiLayers);
+        // Fire once now in case the style had already loaded between
+        // init() resolving and these listeners attaching.
+        hidePoiLayers();
 
-        // Delegated click handler for the spot-popup "Copy link" button.
+        map.on("styleimagemissing", (e: { id: string }) => {
+          if (!map.hasImage?.(e.id)) {
+            try {
+              map.addImage(e.id, {
+                width: 1,
+                height: 1,
+                data: new Uint8Array(4),
+              });
+            } catch {
+              /* concurrent add — ignore */
+            }
+          }
+        });
+
+        // Delegated click handler for popup "Copy link" buttons. Wired
+        // here (Effect A) rather than per-marker so it survives marker
+        // diffs in Effect B.
+        const CHECK_SVG =
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
         const onCopyClick = (ev: MouseEvent) => {
           const t = ev.target as HTMLElement | null;
           const btn = t?.closest?.<HTMLButtonElement>("button[data-bm-copy]");
@@ -282,48 +292,242 @@ export default function BhandaraMap({
           ev.preventDefault();
           try {
             void navigator.clipboard.writeText(url);
-            const original = btn.textContent;
-            btn.textContent = "Copied ✓";
+            const originalHTML = btn.innerHTML;
+            const originalColor = btn.style.color;
+            const originalBorderColor = btn.style.borderColor;
+            const originalBackground = btn.style.background;
+            btn.innerHTML = CHECK_SVG;
+            btn.style.color = "#6A8D44";
+            btn.style.borderColor = "rgba(106,141,68,0.55)";
+            btn.style.background = "rgba(106,141,68,0.10)";
             window.setTimeout(() => {
-              if (btn.isConnected) btn.textContent = original ?? "Copy link";
+              if (!btn.isConnected) return;
+              btn.innerHTML = originalHTML;
+              btn.style.color = originalColor;
+              btn.style.borderColor = originalBorderColor;
+              btn.style.background = originalBackground;
             }, 1400);
             window.dispatchEvent(
               new CustomEvent("bm:toast", { detail: { text: "Link copied" } }),
             );
           } catch {
-            /* clipboard unavailable; ignore */
+            /* ignore */
           }
         };
         ref.current?.addEventListener("click", onCopyClick);
-        // Stash so cleanup can detach.
         (map as { __bmCopyHandler?: typeof onCopyClick }).__bmCopyHandler =
           onCopyClick;
+
+        mapRef.current = map;
+        setMapReady(true);
       } catch (err) {
         console.error("[BhandaraMap] Ola Maps init failed:", err);
       }
-    })();
+    }
 
     return () => {
       cancelled = true;
-      const handler = (map as { __bmCopyHandler?: (ev: MouseEvent) => void })
-        ?.__bmCopyHandler;
-      if (handler && ref.current) {
-        ref.current.removeEventListener("click", handler);
-      }
-      for (const m of markers) {
+      const map = mapRef.current;
+      if (map) {
+        const handler = (map as { __bmCopyHandler?: (ev: MouseEvent) => void })
+          .__bmCopyHandler;
+        if (handler && ref.current) {
+          ref.current.removeEventListener("click", handler);
+        }
+        for (const m of markersRef.current) {
+          try {
+            m.remove?.();
+          } catch {
+            /* ignore */
+          }
+        }
+        markersRef.current = [];
         try {
-          m.remove?.();
+          map.remove?.();
+        } catch {
+          /* ignore */
+        }
+        mapRef.current = null;
+      }
+      setMapReady(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally empty — map mounts once for the page's life
+
+  // ────────────────────────────────────────────────────────────────
+  // Effect B: sync markers when listings / liveSpots / handlers change
+  // ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const olaMaps = getOlaMapsClient();
+
+    // Remove previous markers; they detach their own DOM + popups.
+    for (const m of markersRef.current) {
+      try {
+        m.remove?.();
+      } catch {
+        /* ignore */
+      }
+    }
+    markersRef.current = [];
+    markerElByKey.current.clear();
+
+    // Single-popup-at-a-time gate. Same logic as before but the
+    // active-popup pointer lives on a ref so it survives across
+    // Effect B re-runs (filter changes shouldn't reset who's open).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const registerExclusive = (popup: any) => {
+      popup.on?.("open", () => {
+        if (activePopupRef.current && activePopupRef.current !== popup) {
+          try {
+            activePopupRef.current.remove();
+          } catch {
+            /* already removed */
+          }
+        }
+        activePopupRef.current = popup;
+      });
+      popup.on?.("close", () => {
+        if (activePopupRef.current === popup) activePopupRef.current = null;
+      });
+    };
+
+    const bounds: [number, number][] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const newMarkers: any[] = [];
+
+    for (const l of listings) {
+      const el = createGadaMarkerElement({
+        size: 38,
+        sponsored: Boolean(l.isSponsored),
+      });
+      el.title = `${l.name}, ${l.area}`;
+
+      const popupHtml = buildListedBhandaraPopupHtml(l);
+      const popup = olaMaps
+        .addPopup({
+          offset: PIN_POPUP_OFFSET,
+          closeButton: true,
+          className: "bm-listed-popup-wrap",
+          maxWidth: "340px",
+        })
+        .setHTML(popupHtml);
+      registerExclusive(popup);
+
+      const marker = olaMaps
+        .addMarker({ element: el, anchor: "bottom" })
+        .setLngLat([l.lng, l.lat])
+        .setPopup(popup)
+        .addTo(map);
+
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        pulseMarkerHalo(el);
+        if (onPinClick) {
+          onPinClick(l);
+          return;
+        }
+        try {
+          marker.togglePopup();
+        } catch {
+          router.push(`/bhandara/${l.slug}`);
+        }
+      });
+
+      newMarkers.push(marker);
+      bounds.push([l.lng, l.lat]);
+      markerElByKey.current.set(`org:${l.id}`, el);
+    }
+
+    if (liveSpots && liveSpots.length > 0) {
+      for (const s of liveSpots) {
+        const el = createLiveSpotMarkerElement();
+        const popupHtml = buildSpotPopupHtml(s);
+        const popup = olaMaps
+          .addPopup({
+            offset: PIN_POPUP_OFFSET,
+            closeButton: true,
+            className: "bm-spot-popup-wrap",
+            maxWidth: "320px",
+          })
+          .setHTML(popupHtml);
+        registerExclusive(popup);
+        const marker = olaMaps
+          .addMarker({ element: el, anchor: "bottom" })
+          .setLngLat([s.lng, s.lat])
+          .setPopup(popup)
+          .addTo(map);
+        newMarkers.push(marker);
+        bounds.push([s.lng, s.lat]);
+        markerElByKey.current.set(`spot:${s.id}`, el);
+      }
+    }
+
+    markersRef.current = newMarkers;
+
+    // Compute a stable signature of the current pin set so we can
+    // decide whether to refit the camera. Joining sorted keys gives
+    // us "have the pins meaningfully changed?" without doing a
+    // membership diff. The shape includes counts so a same-IDs but
+    // different-coords scenario (admin edit) still triggers a refit.
+    const newKeys = [
+      ...listings.map((l) => `o:${l.id}`),
+      ...(liveSpots ?? []).map((s) => `s:${s.id}`),
+    ]
+      .sort()
+      .join(",");
+    const pinsChanged = newKeys !== prevMarkerKeysRef.current;
+    prevMarkerKeysRef.current = newKeys;
+
+    // Auto-fit rules:
+    //   1. Skip if `center` was explicitly passed (detail page case).
+    //   2. Skip if the pin set is identical to the previous render —
+    //      Effect B re-fires on unrelated prop changes; refitting in
+    //      that case is exactly the "map keeps zooming out + popup
+    //      closes" symptom the visitor was complaining about.
+    //   3. Skip if the user has manually panned / pinch-zoomed —
+    //      they've taken control; respect their viewport.
+    //   4. When a filter change DOES reshape the pin set, reset the
+    //      user-moved flag so the next refit will run, and ease the
+    //      camera with a 400 ms animation.
+    const shouldRefit =
+      !center && pinsChanged && bounds.length > 0;
+    if (shouldRefit) {
+      // Filter changed meaningfully — let the camera re-frame.
+      userMovedMapRef.current = false;
+    }
+    if (shouldRefit && !userMovedMapRef.current) {
+      if (bounds.length > 1) {
+        const lngs = bounds.map((p) => p[0]);
+        const lats = bounds.map((p) => p[1]);
+        const sw: [number, number] = [
+          Math.min(...lngs),
+          Math.min(...lats),
+        ];
+        const ne: [number, number] = [
+          Math.max(...lngs),
+          Math.max(...lats),
+        ];
+        try {
+          map.fitBounds([sw, ne], {
+            padding: 60,
+            maxZoom: 14,
+            duration: 400,
+          });
+        } catch {
+          /* style not loaded yet — fine, default centre stands */
+        }
+      } else if (bounds.length === 1) {
+        try {
+          map.easeTo({ center: bounds[0], duration: 400 });
         } catch {
           /* ignore */
         }
       }
-      try {
-        map?.remove?.();
-      } catch {
-        /* ignore */
-      }
-    };
-  }, [listings, onPinClick, router, center, focusZoom, liveSpots]);
+    }
+  }, [mapReady, listings, liveSpots, onPinClick, router, center]);
 
   return (
     <div
