@@ -51,14 +51,17 @@ prisma/dev.db
 prisma/dev.db-journal
 prisma/migrations/dev.db*
 
-# user-uploaded photos (dev-only — production should use object storage)
-/public/uploads
+# user-uploaded photos (dev-only — production uploads go to Supabase
+# Storage via /api/uploads). We ignore the *contents* of the folder
+# (`/*`) rather than the folder itself — Git stops descending into an
+# ignored *directory*, which means `!` re-include patterns inside it
+# would never fire. Targeting children-only keeps the `whatsapp/`
+# subfolder unblockable below.
+/public/uploads/*
 
 # Seeded bhandara photos exception: the 19 WhatsApp invites the seed
-# scripts reference via /uploads/whatsapp/<slug>.jpg are *not* runtime
-# user uploads — they're curated assets that need to live in the repo
-# so a fresh `npx tsx prisma/seed-whatsapp.ts` produces a site with
-# working photos on any machine. Override the /public/uploads block
-# above for this one sub-folder only.
+# scripts reference via /uploads/whatsapp/<slug>.jpg are curated
+# assets, not runtime uploads. Committing them lets a fresh
+# `npx tsx prisma/seed-whatsapp.ts` produce a site with working
+# photos on any machine.
 !/public/uploads/whatsapp/
-!/public/uploads/whatsapp/**
