@@ -84,7 +84,11 @@ export const metadata: Metadata = {
       "The map, the mic, and the manch for Lucknow's Bada Mangal: find, host, sponsor.",
     url: SITE_URL,
     siteName: "BadaMangal",
-    locale: "hi_IN",
+    // Site-wide OG default; per-page metadata can override. Set to
+    // en_IN to match the default locale rendered for first-time
+    // visitors (resolveLocale → "en").
+    locale: "en_IN",
+    alternateLocale: "hi_IN",
     type: "website",
   },
   twitter: {

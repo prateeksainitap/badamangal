@@ -64,8 +64,8 @@ export const metadata: Metadata = {
       "The directory of every Bada Mangal bhandara in Lucknow during the rare 8-Tuesday Jyeshtha season. Find, list, sponsor, spot.",
     url: SITE_URL,
     siteName: "BadaMangal",
-    locale: "hi_IN",
-    alternateLocale: "en_IN",
+    locale: "en_IN",
+    alternateLocale: "hi_IN",
     type: "website",
   },
 };
