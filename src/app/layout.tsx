@@ -14,7 +14,6 @@ import GAPageview from "@/components/GAPageview";
 import GAScripts from "@/components/GAScripts";
 import GAClickDelegate from "@/components/GAClickDelegate";
 import SpotFloatingCta from "@/components/SpotFloatingCta";
-import FirstVisitChant from "@/components/FirstVisitChant";
 import FirstVisitGreeting from "@/components/FirstVisitGreeting";
 import LiveActivityTicker from "@/components/LiveActivityTicker";
 import { ToastProvider } from "@/components/Toast";
@@ -168,12 +167,12 @@ export default async function RootLayout({
             Skip to content
           </a>
           <FirstVisitGreeting />
-          {/* First-ever-visit audio chant (cross-session). Pairs with
-              the per-session visual greeting above — visitor sees the
-              "जय श्री राम" text fade in AND hears the chant on their
-              very first landing on the site. Falls back to a tap-to-
-              play pill if browser autoplay is blocked. */}
-          <FirstVisitChant />
+          {/* First-ever-visit audio chant was retired — autoplay surprised
+              users on the home page (especially on mobile data) and the
+              visual "जय श्री राम" greeting above already carries the
+              welcome moment. The <FirstVisitChant /> component is left
+              in the repo in case we want to re-enable it later behind
+              an explicit opt-in. */}
           <GAClickDelegate />
           <Header />
           <main id="main" className="flex-1">
