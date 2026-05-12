@@ -1,12 +1,20 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import LiveFeedTimeline from "@/components/LiveFeedTimeline";
-import { strings } from "@/content/strings";
+import { strings, type Locale } from "@/content/strings";
 import { prisma } from "@/lib/db";
-import { LANG_COOKIE, resolveLocale } from "@/lib/i18n";
 import { localised } from "@/lib/seo";
 
-export const dynamic = "force-dynamic";
+// ISR. Previously force-dynamic because the page read `?bhandara=<slug>`
+// from searchParams on the server to pre-filter the feed — that gave
+// every click on a filter pill a Netlify Function cold-start. The
+// filter now lives inside <LiveFeedTimeline />, which reads it from
+// window.location.search on mount and updates as the user clicks
+// pills. Server fetches the full active-spot set; the client filters.
+//
+// 30s revalidate keeps the first-paint feed reasonably fresh; the
+// in-page poll (every 8s) is what actually drives "real time" — this
+// is just the initial server snapshot.
+export const revalidate = 30;
 
 export const metadata: Metadata = {
   title: "Live from the bhandara, Bada Mangal Lucknow today · BadaMangal",
@@ -23,30 +31,20 @@ export const metadata: Metadata = {
   },
 };
 
-type SearchParams = Promise<{ lang?: string; bhandara?: string }>;
-
-export default async function LivePage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
-  const sp = await searchParams;
-  const c = await cookies();
-  const locale = resolveLocale({
-    urlLang: sp.lang,
-    cookieLang: c.get(LANG_COOKIE)?.value,
-  });
+export default async function LivePage() {
+  // Server renders English; client components consume the real locale
+  // from <LocaleProvider />.
+  const locale = "en" as Locale;
   const t = strings[locale];
-  const isHi = locale === "hi";
+  const isHi = false;
 
-  // Spots-only feed. The Post model (per-bhandara comments) was removed,
-  // so the live timeline now shows just crowd-sourced photo/pin reports
-  // that passers-by drop via the /spot form, auto-expiring after 8h.
+  // Spots-only feed. The Post model (per-bhandara comments) was retired;
+  // the live timeline now shows just crowd-sourced photo/pin reports
+  // dropped via /spot that auto-expire after 8 hours.
   const spotRecords = await prisma.spot.findMany({
     where: {
       status: "APPROVED",
       expiresAt: { gt: new Date() },
-      ...(sp.bhandara ? { bhandara: { slug: sp.bhandara } } : {}),
     },
     orderBy: { createdAt: "desc" },
     take: 50,
@@ -59,29 +57,21 @@ export default async function LivePage({
 
   const spots = spotRecords.map((s) => ({
     id: `spot:${s.id}`,
-    // Spots have their own coordinates even when not linked to a bhandara,
-    // so the feed's "Get directions" CTA always works.
     bhandaraSlug: s.bhandara?.slug ?? null,
-    bhandaraName:
-      (locale === "hi" ? s.bhandara?.nameHi : s.bhandara?.name) ??
-      s.bhandara?.name ??
-      null,
+    bhandaraName: s.bhandara?.name ?? null,
     bhandaraLat: s.bhandara?.lat ?? s.lat,
     bhandaraLng: s.bhandara?.lng ?? s.lng,
-    authorName:
-      s.reporterName?.trim() ||
-      (locale === "hi" ? "स्पॉटर" : "Spotter"),
+    authorName: s.reporterName?.trim() || "Spotter",
     text: s.caption,
     photoUrl: s.photoUrl,
     language: s.language,
     createdAt: s.createdAt.toISOString(),
   }));
 
-
   const feed = spots.slice(0, 50);
 
-  // For the "filter by bhandara" pill list, surface every approved bhandara
-  // that has a currently-live spot tied to it.
+  // For the "filter by bhandara" pill list, surface every approved
+  // bhandara that has at least one currently-live spot tied to it.
   const bhandarasWithActivity = await prisma.bhandara.findMany({
     where: {
       status: "APPROVED",
@@ -120,9 +110,8 @@ export default async function LivePage({
         initial={feed}
         bhandaras={bhandarasWithActivity.map((b) => ({
           slug: b.slug,
-          name: (locale === "hi" ? (b.nameHi ?? b.name) : b.name) ?? b.name,
+          name: b.name,
         }))}
-        activeBhandara={sp.bhandara ?? null}
         locale={locale}
         kicker={t.stats.sectionKicker}
         emptyHi="अभी कोई पोस्ट नहीं। बहुत जल्द भंडारा से तस्वीरें यहाँ दिखेंगी।"

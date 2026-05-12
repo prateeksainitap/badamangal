@@ -28,7 +28,11 @@ type Bhandara = { slug: string; name: string };
 type Props = {
   initial: FeedPost[];
   bhandaras: Bhandara[];
-  activeBhandara: string | null;
+  /** Optional override — when present, takes priority over the URL.
+   *  Kept for tests / non-routed callers. The /live page no longer
+   *  passes this so the page can stay statically cached; the value
+   *  is read from `window.location.search` on mount instead. */
+  activeBhandara?: string | null;
   locale: Locale;
   kicker: string;
   emptyHi: string;
@@ -41,13 +45,39 @@ const MAX_KEEP = 60;
 export default function LiveFeedTimeline({
   initial,
   bhandaras,
-  activeBhandara,
+  activeBhandara: activeBhandaraProp,
   locale,
   emptyHi,
   emptyEn,
 }: Props) {
   const isHi = locale === "hi";
   const [posts, setPosts] = useState<FeedPost[]>(initial);
+  // Filter slug now lives in client state, sourced from the URL. The
+  // /live page used to read this on the server, which forced it to be
+  // force-dynamic (every navigation paid a Netlify Function cold start
+  // -- visible to the user as a ~3s click-to-paint pause). Now the
+  // page is statically prerendered with the full active-spot set and
+  // we apply the slug filter here, in JS.
+  const [activeBhandara, setActiveBhandara] = useState<string | null>(
+    activeBhandaraProp ?? null,
+  );
+  useEffect(() => {
+    if (activeBhandaraProp !== undefined) {
+      setActiveBhandara(activeBhandaraProp);
+      return;
+    }
+    const read = () => {
+      try {
+        const u = new URL(window.location.href);
+        setActiveBhandara(u.searchParams.get("bhandara"));
+      } catch {
+        setActiveBhandara(null);
+      }
+    };
+    read();
+    window.addEventListener("popstate", read);
+    return () => window.removeEventListener("popstate", read);
+  }, [activeBhandaraProp]);
   /** Image lightbox state, lifted to the parent so only ONE modal is
    *  ever mounted at a time regardless of how many cards have photos. */
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
@@ -61,13 +91,16 @@ export default function LiveFeedTimeline({
   const seenIds = useRef<Set<string>>(new Set(initial.map((p) => p.id)));
   const isVisibleRef = useRef(true);
 
-  // Apply "Near me" filter on top of everything else: keeps only posts whose
-  // linked bhandara has coordinates within the configured radius. Posts
-  // without a linked bhandara are dropped while the filter is active.
+  // Apply filters: bhandara-slug from URL first (so the user's pill
+  // pick is respected), then the optional "Near me" radius filter.
   const visiblePosts = useMemo(() => {
-    if (near.status !== "active" || !near.coords) return posts;
+    let pool = posts;
+    if (activeBhandara) {
+      pool = pool.filter((p) => p.bhandaraSlug === activeBhandara);
+    }
+    if (near.status !== "active" || !near.coords) return pool;
     const c = near.coords;
-    return posts.filter(
+    return pool.filter(
       (p) =>
         typeof p.bhandaraLat === "number" &&
         typeof p.bhandaraLng === "number" &&
