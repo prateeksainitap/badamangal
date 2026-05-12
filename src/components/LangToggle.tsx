@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import { trackEvent } from "@/lib/ga";
+import { LANG_COOKIE, LANG_COOKIE_MAX_AGE } from "@/lib/i18n";
 import type { Locale } from "@/content/strings";
 
 export default function LangToggle() {
@@ -20,37 +21,41 @@ export default function LangToggle() {
     urlLang === "en" ? "en" : urlLang === "hi" ? "hi" : ctxLocale;
 
   const setLang = useCallback(
-    async (next: "hi" | "en") => {
+    (next: "hi" | "en") => {
       if (next === lang || pending) return;
       trackEvent("lang_change", { from: lang, to: next });
       setPending(true);
 
+      // ── Optimistic, client-first cookie write ────────────────────
+      // Previously we `await`-ed a server round-trip to `/api/lang`
+      // before updating the URL — that added ~200-500ms of latency
+      // (Netlify Function cold start) on every toggle, making the
+      // language switch feel laggy. Modern browsers commit
+      // `document.cookie` synchronously, so we can write client-side
+      // first (instant) and fire-and-forget the server sync in the
+      // background as a belt-and-suspenders backup. The next render
+      // sees the cookie immediately because it's the same document.
       try {
-        // Write the cookie via a server endpoint that returns
-        // `Set-Cookie`. Going through the server (instead of
-        // document.cookie + router.refresh) guarantees the cookie is
-        // fully committed in the browser before any follow-up render
-        // — no race condition, no page reload.
-        await fetch(`/api/lang?to=${next}`, {
-          method: "POST",
-          credentials: "same-origin",
-          cache: "no-store",
-        });
+        const secure =
+          window.location.protocol === "https:" ? "; secure" : "";
+        document.cookie = `${LANG_COOKIE}=${next}; max-age=${LANG_COOKIE_MAX_AGE}; path=/; samesite=lax${secure}`;
       } catch {
-        // Network blip — fall through to client-side cookie write so
-        // the toggle still works offline-first.
-        try {
-          const secure =
-            window.location.protocol === "https:" ? "; secure" : "";
-          document.cookie = `bm_lang=${next}; max-age=${60 * 60 * 24 * 365}; path=/; samesite=lax${secure}`;
-        } catch {
-          /* ignore */
-        }
+        /* private mode — server sync below covers it */
       }
+      // Background sync; we don't wait for it.
+      void fetch(`/api/lang?to=${next}`, {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+      }).catch(() => {
+        /* network blip — client-side cookie above is enough */
+      });
 
       // Update the URL (soft — no scroll, no full reload), then
       // refresh the server tree so layout + page re-render in the
-      // newly-set locale.
+      // newly-set locale. With `?lang=en` or `?lang=hi` in the URL,
+      // `resolveLocale` picks up the new locale immediately on the
+      // next server render even if the cookie hasn't synced yet.
       const updated = new URLSearchParams(params.toString());
       if (next === "hi") updated.delete("lang");
       else updated.set("lang", "en");

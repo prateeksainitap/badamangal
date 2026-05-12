@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { ipHash, readClientIp } from "@/lib/crypto";
+import { sendContactEmail } from "@/lib/email";
 
 /**
  * Public contact-form endpoint. Accepts name + email + message (+ optional
@@ -93,7 +94,7 @@ export async function POST(req: Request) {
 
   const ua = req.headers.get("user-agent")?.slice(0, 240) ?? null;
 
-  await prisma.contactMessage.create({
+  const saved = await prisma.contactMessage.create({
     data: {
       name,
       email,
@@ -106,6 +107,25 @@ export async function POST(req: Request) {
       ipHash: ip,
       userAgent: ua,
     },
+  });
+
+  // Fire-and-forget email forwarding to the team inbox via Resend.
+  // We `await` here only because Netlify Functions terminate the
+  // process the moment we return — a dangling promise would be
+  // cancelled mid-flight. The send itself is fast (~150ms) and the
+  // helper swallows its own errors, so a misconfigured / down email
+  // service can never block the contact form HTTP response.
+  await sendContactEmail({
+    name,
+    email,
+    phone: phone || undefined,
+    subject: subject || undefined,
+    message,
+    attachmentUrl: attachmentUrl || undefined,
+    attachmentName: attachmentName || undefined,
+    attachmentType,
+    contactMessageId: saved.id,
+    ipHash: ip,
   });
 
   return NextResponse.json({ ok: true });
