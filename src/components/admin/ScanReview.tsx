@@ -144,6 +144,12 @@ export default function ScanReview({
     "idle",
   );
   const [error, setError] = useState<string | null>(null);
+  // Raw server-side detail (e.g. "ANTHROPIC_API_KEY is not set", a
+  // model error, or a network message). Hidden behind a small "show
+  // detail" toggle so the friendly message stays primary but the
+  // admin can dig in when something looks weird.
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
   const [scan, setScan] = useState<ScanResponse | null>(null);
   const [publishResult, setPublishResult] = useState<{
     slug?: string;
@@ -194,6 +200,8 @@ export default function ScanReview({
     if (!file) return;
     setPhase("scanning");
     setError(null);
+    setErrorDetail(null);
+    setShowDetail(false);
     try {
       const form = new FormData();
       form.append("file", file);
@@ -208,6 +216,9 @@ export default function ScanReview({
           data?.error ??
             "Scan failed. Check the server logs for the Claude error.",
         );
+        if (typeof data?.detail === "string" && data.detail.length > 0) {
+          setErrorDetail(data.detail);
+        }
         setPhase("idle");
         return;
       }
@@ -352,7 +363,25 @@ export default function ScanReview({
           ) : null}
 
           {error ? (
-            <p className="mt-4 text-sm text-alert-500">{error}</p>
+            <div className="mt-4">
+              <p className="text-sm text-alert-500">{error}</p>
+              {errorDetail ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowDetail((v) => !v)}
+                    className="mt-1 text-[11px] uppercase tracking-[0.18em] text-ink-600 hover:text-sindoor-700"
+                  >
+                    {showDetail ? "hide detail" : "show detail"}
+                  </button>
+                  {showDetail ? (
+                    <pre className="mt-2 max-h-40 overflow-auto rounded-lg border border-gold-500/30 bg-cream-50/70 p-2 text-[11px] leading-snug text-ink-700 whitespace-pre-wrap break-words">
+                      {errorDetail}
+                    </pre>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}
