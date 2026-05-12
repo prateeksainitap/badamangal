@@ -1,8 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
-import BhandaraMap from "@/components/BhandaraMap";
+
+// BhandaraMap wraps Ola Maps / MapLibre GL — ~200 KB of compressed JS
+// that's only needed once the visitor scrolls to the map. Lazy-import
+// it so the homepage's initial JS bundle stays light, and show a paper
+// placeholder while the chunk downloads on demand. The map render is
+// purely client-side (no SEO content lives inside <canvas>), so we
+// skip SSR entirely.
+const BhandaraMap = dynamic(() => import("@/components/BhandaraMap"), {
+  ssr: false,
+  loading: () => (
+    <div
+      aria-hidden
+      className="h-[560px] sm:h-[640px] w-full rounded-3xl border border-gold-500/40 bg-cream-50/70 animate-pulse"
+    />
+  ),
+});
 import MapSideList, {
   type SideListFilter,
   type SideListSpot,

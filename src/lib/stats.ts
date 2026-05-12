@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { ALL_TUESDAY_ISO } from "@/lib/dates";
 
 export type SiteStats = {
-  /** Visitor number for this request (1-indexed). */
+  /** Total visits to the homepage so far (across all visitors). */
   visitorNumber: number;
   /** Total APPROVED listings. */
   bhandarasListed: number;
@@ -13,15 +13,23 @@ export type SiteStats = {
 };
 
 /**
- * Compute homepage stats and atomically bump the visitor counter for this
- * request. Safe to call on every server-side render of the homepage.
+ * Read-only homepage stats — safe to call from a cacheable (ISR) page.
+ *
+ * We deliberately do NOT mutate the visitor counter here anymore. Bumping
+ * inside the page render forced the route to be `force-dynamic` (every
+ * request did a DB write), which meant Netlify had to cold-start a
+ * Function for every visitor and the homepage took 4-6s to TTFB.
+ *
+ * The counter is now bumped client-side via a small beacon after first
+ * paint (see `src/components/VisitorBeacon.tsx` POSTing to `/api/visit`),
+ * which keeps the page itself fully cacheable while still tracking real
+ * traffic. The visible number lags by a few seconds for the first
+ * visitor of a new revalidate window — fine for a homepage stat.
  */
 export async function getHomepageStats(): Promise<SiteStats> {
-  // Bump + read visitor count atomically.
-  const counter = await prisma.siteCounter.upsert({
+  // Pure read on the counter; if the row doesn't exist yet, treat as 0.
+  const counter = await prisma.siteCounter.findUnique({
     where: { id: "home" },
-    update: { count: { increment: 1 } },
-    create: { id: "home", count: 1 },
     select: { count: true },
   });
 
@@ -42,9 +50,24 @@ export async function getHomepageStats(): Promise<SiteStats> {
   }
 
   return {
-    visitorNumber: counter.count,
+    visitorNumber: counter?.count ?? 0,
     bhandarasListed: records.length,
     areasCovered: areas.size,
     tuesdaysSoFar: pastTuesdays.length,
   };
+}
+
+/**
+ * Atomic +1 on the homepage visitor counter. Called from `POST /api/visit`
+ * which is fired client-side after first paint, so the homepage HTML stays
+ * cacheable. Returns the new count for clients that want to display it.
+ */
+export async function bumpVisitorCounter(): Promise<number> {
+  const counter = await prisma.siteCounter.upsert({
+    where: { id: "home" },
+    update: { count: { increment: 1 } },
+    create: { id: "home", count: 1 },
+    select: { count: true },
+  });
+  return counter.count;
 }

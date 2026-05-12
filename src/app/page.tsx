@@ -20,6 +20,7 @@ import MaharajjiBlessing from "@/components/MaharajjiBlessing";
 import SeasonTimeline from "@/components/SeasonTimeline";
 import StatsSection from "@/components/StatsSection";
 import FamousBhandaras from "@/components/FamousBhandaras";
+import VisitorBeacon from "@/components/VisitorBeacon";
 import { MarigoldDivider } from "@/components/ornaments";
 import { strings } from "@/content/strings";
 import { prisma, toBhandara } from "@/lib/db";
@@ -35,7 +36,14 @@ import {
 
 type SearchParams = Promise<{ lang?: string }>;
 
-export const dynamic = "force-dynamic";
+// ISR, not force-dynamic. Previously the page rendered through a
+// Netlify Function on every request (4-6s TTFB on cold start) because
+// `getHomepageStats()` did a DB write to bump the visitor counter.
+// We moved that write to a fire-and-forget POST /api/visit beacon
+// (<VisitorBeacon /> below) — now this page is a pure read and Next
+// can serve cached HTML at the edge in ~200ms, revalidating every
+// 60 seconds to pick up new bhandaras / spots / counter ticks.
+export const revalidate = 60;
 
 // Homepage-specific metadata. Overrides the layout default with a
 // keyword-rich title + description that targets the queries we want
@@ -84,10 +92,27 @@ export default async function HomePage({
   const t = strings[locale];
   const isHi = locale === "hi";
 
-  const records = await prisma.bhandara.findMany({
-    where: { status: "APPROVED" },
-    orderBy: [{ isSponsored: "desc" }, { createdAt: "asc" }],
-  });
+  // Fire all three DB reads in parallel. Previously they were awaited
+  // sequentially (bhandaras → stats → spots) which serialised three
+  // round-trips through the Supabase pooler — ~600-900ms of pure wait
+  // on cold-start cold-pool. Running them together cuts that to one
+  // round-trip's worth of latency.
+  const [records, statsRaw, spotRecords] = await Promise.all([
+    prisma.bhandara.findMany({
+      where: { status: "APPROVED" },
+      orderBy: [{ isSponsored: "desc" }, { createdAt: "asc" }],
+    }),
+    getHomepageStats(),
+    prisma.spot.findMany({
+      where: { status: "APPROVED", expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: "desc" },
+      take: 24,
+      include: {
+        bhandara: { select: { slug: true, name: true, nameHi: true } },
+      },
+    }),
+  ]);
+
   // Auto-delist bhandaras whose every service date has passed (IST
   // calendar boundary). The DB row stays APPROVED so admins still
   // see it in /admin and historical /bhandara/[slug] links keep
@@ -95,7 +120,7 @@ export default async function HomePage({
   // upcoming. As the calendar advances, rows drop off this list
   // organically — no cron, no manual flips, no data loss.
   const listings = records.map(toBhandara).filter((b) => hasUpcomingDate(b));
-  const stats = await getHomepageStats();
+  const stats = statsRaw;
 
   // Pick the Tuesday this rule under the hero refers to.
   // - If today (IST) is itself a Bada Mangal Tuesday, surface it as "Today".
@@ -126,16 +151,9 @@ export default async function HomePage({
       ? `${formatHindiDate(upcomingBadaMangal)}, सुबह से शाम तक, शहर भर के द्वार खुले रहेंगे।`
       : `${formatEnglishDate(upcomingBadaMangal)}, gates open across the city, dawn to dusk.`;
 
-  // Live "spots", crowd-sourced sightings of bhandaras happening right now
-  // (auto-expire after 8 hours).
-  const spotRecords = await prisma.spot.findMany({
-    where: { status: "APPROVED", expiresAt: { gt: new Date() } },
-    orderBy: { createdAt: "desc" },
-    take: 24,
-    include: {
-      bhandara: { select: { slug: true, name: true, nameHi: true } },
-    },
-  });
+  // Live "spots", crowd-sourced sightings of bhandaras happening right
+  // now (auto-expire after 8 hours). Already fetched above in the
+  // Promise.all batch — just shape into the wire format here.
   const liveSpots = spotRecords.map((s) => ({
     id: s.id,
     lat: s.lat,
@@ -185,6 +203,10 @@ export default async function HomePage({
 
   return (
     <>
+      {/* Fire-and-forget visitor counter bump, runs once per tab after
+          first paint. Replaces the per-render DB write that used to
+          force the homepage to be server-dynamic. */}
+      <VisitorBeacon />
       {/* JSON-LD structured data — embedded inline so search-engine
           crawlers (which usually don't run client JS) see them on
           first paint. */}
@@ -424,7 +446,7 @@ export default async function HomePage({
           <div className="mt-8 rounded-3xl border border-gold-500/40 bg-saffron-50 px-6 py-10 sm:py-14 grid gap-6 sm:grid-cols-[200px_1fr] items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/illustrations/empty-state-plate.png"
+              src="/illustrations/empty-state-plate.webp"
               alt=""
               loading="lazy"
               decoding="async"

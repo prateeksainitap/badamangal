@@ -56,11 +56,14 @@ const notoDeva = Noto_Sans_Devanagari({
   display: "swap",
 });
 
-// Display font for big numerals (countdown digits, visitor counter, stats).
-// Variable opsz/wdth/wght, confident readable numbers up to 800 weight.
+// Display font for big numerals (admin counters, news page article
+// numbering). Only used on a handful of low-traffic pages, so we load
+// just the three weights actually referenced (semibold/bold/extrabold)
+// instead of the original four. Previously also pulled a 500 weight
+// that nothing on the site used — pure dead bytes on every page load.
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
+  weight: ["600", "700", "800"],
   variable: "--font-numerals",
   display: "swap",
 });
@@ -152,8 +155,26 @@ export default async function RootLayout({
     >
       <head>
         {/* next/font already preloads font files; preconnect speeds up the
-            handshake on cold loads. dns-prefetch helps the OSM tile CDN. */}
+            handshake on cold loads. dns-prefetch handles the long-tail
+            origins we don't always hit (YouTube embeds, OSM fallback). */}
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        {/* Supabase Storage is the photo CDN — every bhandara card hits it.
+            preconnect (not just dns-prefetch) opens the TLS socket eagerly
+            so the first <img> already has a warm connection. Origin is
+            read from SUPABASE_URL so it stays in sync with whichever
+            project the deploy is pointed at (no hardcoded ref). */}
+        {process.env.SUPABASE_URL ? (
+          <link
+            rel="preconnect"
+            href={new URL(process.env.SUPABASE_URL).origin}
+            crossOrigin=""
+          />
+        ) : null}
+        {/* Ola Maps tiles + sprites for the homepage map. Even though we
+            lazy-import the map, the network warm-up doesn't cost anything
+            on the critical path and saves 100-300ms once the visitor
+            scrolls down. */}
+        <link rel="preconnect" href="https://api.olamaps.io" crossOrigin="" />
         <link rel="dns-prefetch" href="https://tile.openstreetmap.org" />
         <link rel="dns-prefetch" href="https://www.youtube-nocookie.com" />
       </head>

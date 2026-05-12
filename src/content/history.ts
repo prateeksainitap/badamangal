@@ -185,7 +185,7 @@ export const HISTORY: HistoryDoc = {
     // ── BANNER A ────────────────────────────────────────────────────────
     {
       kind: "banner",
-      src: "/illustrations/aliganj-dusk.png",
+      src: "/illustrations/aliganj-dusk.webp",
       alt: {
         en: "A painterly view of the Aliganj Hanuman Mandir courtyard at dusk in summer, with devotees walking toward the arched gateway and clay diyas glowing on the temple steps.",
         hi: "गर्मियों की शाम में अलीगंज हनुमान मंदिर के प्रांगण का चित्रात्मक दृश्य, मेहराबदार द्वार की ओर जाते भक्त और सीढ़ियों पर जलते हुए मिट्टी के दीये।",
@@ -246,7 +246,7 @@ export const HISTORY: HistoryDoc = {
     // ── BANNER B ────────────────────────────────────────────────────────
     {
       kind: "banner",
-      src: "/illustrations/bhandara-line.png",
+      src: "/illustrations/bhandara-line.webp",
       alt: {
         en: "A long row of saffron and white bhandara canopies on a Lucknow street, hands of volunteers passing plates and cups of sharbat, marigold strings overhead, painterly summer light.",
         hi: "लखनऊ की एक सड़क पर भगवा और सफ़ेद भंडारा पंडालों की लंबी कतार, थाली और शरबत के प्याले बढ़ाते स्वयंसेवकों के हाथ, ऊपर गेंदे की लड़ियाँ, चित्रात्मक गर्मी की रोशनी।",
@@ -361,7 +361,7 @@ export const HISTORY: HistoryDoc = {
     // ── BANNER C ────────────────────────────────────────────────────────
     {
       kind: "banner",
-      src: "/illustrations/eight-mandala.png",
+      src: "/illustrations/eight-mandala.webp",
       alt: {
         en: "An eight-pointed mandala composition: temple bell, clay diya, kadhai, marigold, glass of sharbat, open palm with a plate, Hanuman gada, and an open Chalisa, around a central saffron sun.",
         hi: "आठ कोनों वाला मंडल: मंदिर की घंटी, मिट्टी का दीया, कढ़ाई, गेंदा, शरबत का गिलास, थाली थामे हाथ, हनुमान गदा, खुली चालीसा, बीच में एक भगवा सूर्य।",
