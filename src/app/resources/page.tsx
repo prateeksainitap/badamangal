@@ -1,8 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { LANG_COOKIE, resolveLocale } from "@/lib/i18n";
-import { strings } from "@/content/strings";
+import { strings, type Locale } from "@/content/strings";
 import {
   MarigoldDivider,
   GadaBullet,
@@ -11,7 +9,7 @@ import {
 import AnimatedHeading from "@/components/AnimatedHeading";
 import { NEWS, type NewsEntry } from "@/content/news";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
@@ -36,19 +34,11 @@ export const metadata: Metadata = {
   },
 };
 
-type SearchParams = Promise<{ lang?: string }>;
-
-export default async function ResourcesHubPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
+export default async function ResourcesHubPage({}: {
+  // no-op
 }) {
-  const sp = await searchParams;
-  const c = await cookies();
-  const locale = resolveLocale({
-    urlLang: sp.lang,
-    cookieLang: c.get(LANG_COOKIE)?.value,
-  });
+  // Server renders in English; client swaps via <LocaleProvider />.
+  const locale = "en" as Locale;
   const t = strings[locale];
   const isHi = locale === "hi";
   const langSuffix = locale === "en" ? "?lang=en" : "";

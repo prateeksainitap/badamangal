@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { cookies } from "next/headers";
 import {
   Bricolage_Grotesque,
   Cormorant_Garamond,
@@ -17,7 +16,6 @@ import SpotFloatingCta from "@/components/SpotFloatingCta";
 import FirstVisitGreeting from "@/components/FirstVisitGreeting";
 import LiveActivityTicker from "@/components/LiveActivityTicker";
 import { ToastProvider } from "@/components/Toast";
-import { LANG_COOKIE, resolveLocale } from "@/lib/i18n";
 import { LocaleProvider } from "@/lib/locale-context";
 import "./globals.css";
 
@@ -137,16 +135,27 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default async function RootLayout({
+// Render the layout as static HTML so every route below it can be
+// served from the edge cache. Previously we awaited cookies() here to
+// pick the visitor's locale and render `<html lang="hi-IN">` server-
+// side. That single line forced Next to treat the entire app as
+// per-request dynamic — every navigation cold-started a Netlify
+// Function, producing the 3-4s click-to-paint lag.
+//
+// Locale now resolves entirely client-side: `<LocaleHtmlSync />` reads
+// the bm_lang cookie on mount and flips the `lang` attribute + the
+// LocaleProvider value if the visitor has chosen Hindi. The trade-off
+// is one frame of English-default markup for Hindi-cookie visitors
+// before the swap — acceptable for the speed gain (and English is
+// already the new-visitor default).
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const gaId = process.env.NEXT_PUBLIC_GA_ID;
-  const c = await cookies();
-  const cookieLang = c.get(LANG_COOKIE)?.value;
-  const initialLocale = resolveLocale({ cookieLang });
-  const lang = initialLocale === "en" ? "en-IN" : "hi-IN";
+  const initialLocale = "en" as const;
+  const lang = "en-IN";
 
   return (
     <html

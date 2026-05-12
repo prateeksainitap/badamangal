@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BhandaraForm from "@/components/BhandaraForm";
 import { JaliCorner } from "@/components/ornaments";
@@ -21,7 +21,11 @@ type ListedBhandara = {
 
 type Props = {
   locale: Locale;
-  initialRole: Role | null;
+  /** Optional override for the initial role. When omitted (the typical
+   *  call from /list-bhandara now), the component reads `?role=` from
+   *  the URL itself after mount, so the page stays statically renderable
+   *  without losing the deep-link behaviour. */
+  initialRole?: Role | null;
   /** Reserved for future use; kept for API compatibility with the page. */
   bhandaras?: ListedBhandara[];
 };
@@ -41,12 +45,26 @@ type Props = {
  */
 export default function AddBhandaraSwitcher({
   locale,
-  initialRole,
+  initialRole = null,
 }: Props) {
   const router = useRouter();
   const isHi = locale === "hi";
   const langSuffix = locale === "en" ? "?lang=en" : "";
   const [role, setRole] = useState<Role | null>(initialRole);
+
+  // Honour the legacy ?role= deep links client-side. The page itself is
+  // statically rendered now (no searchParams read on the server), so
+  // this is where the URL-driven branch lives.
+  useEffect(() => {
+    if (initialRole !== null) return;
+    const url = new URL(window.location.href);
+    const r = url.searchParams.get("role");
+    if (r === "spotter") {
+      router.replace(`/spot${langSuffix}`);
+      return;
+    }
+    if (r === "organizer") setRole("organizer");
+  }, [initialRole, langSuffix, router]);
 
   if (role === null) {
     return (

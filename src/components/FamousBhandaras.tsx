@@ -6,6 +6,7 @@ import type { Locale } from "@/content/strings";
 import { FAMOUS_BHANDARAS, type FamousBhandara } from "@/content/famous-bhandaras";
 import { JaliCorner } from "@/components/ornaments";
 import { trackEvent } from "@/lib/ga";
+import { useLocaleFromContext } from "@/lib/locale-context";
 
 type Props = {
   locale: Locale;
@@ -19,7 +20,10 @@ const INITIAL_VISIBLE = 6;
  * render by default; the rest expand on click so the section stays
  * digestible on first paint.
  */
-export default function FamousBhandaras({ locale, isHi }: Props) {
+export default function FamousBhandaras(_props: Props) {
+  // Cookie-aware locale (prop is ignored, kept for caller compat).
+  const locale = useLocaleFromContext();
+  const isHi = locale === "hi";
   const langSuffix = locale === "en" ? "?lang=en" : "";
   const [showAll, setShowAll] = useState(false);
   const visible = showAll

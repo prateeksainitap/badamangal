@@ -27,6 +27,7 @@ import NearMeButton, { type NearMeState } from "@/components/NearMeButton";
 import { trackEvent } from "@/lib/ga";
 import type { Bhandara } from "@/types/bhandara";
 import type { Locale } from "@/content/strings";
+import { useLocaleFromContext } from "@/lib/locale-context";
 
 type LiveSpotInput = {
   id: string;
@@ -62,14 +63,19 @@ type Props = {
  * live spots so the map and the side list never disagree.
  */
 export default function MapBoard({
-  locale,
-  isHi,
   heading,
   body,
   listBhandaraLabel,
   listings,
   liveSpots,
 }: Props) {
+  // Locale comes from the client-side context so SSR can render English
+  // and we still respect the visitor's bm_lang cookie after hydration.
+  // Props `locale` / `isHi` are accepted for backwards-compat and
+  // intentionally ignored.
+  const locale = useLocaleFromContext();
+  const isHi = locale === "hi";
+  void locale; // suppress unused-warning when only isHi is consumed below
   const [filter, setFilter] = useState<Filter>("all");
   // Near-me state lives at the board level so the trigger button can sit
   // in the top toolbar (next to the filter pills) while still controlling

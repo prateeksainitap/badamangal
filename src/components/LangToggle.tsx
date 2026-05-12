@@ -39,6 +39,9 @@ export default function LangToggle() {
         const secure =
           window.location.protocol === "https:" ? "; secure" : "";
         document.cookie = `${LANG_COOKIE}=${next}; max-age=${LANG_COOKIE_MAX_AGE}; path=/; samesite=lax${secure}`;
+        // Tell <LocaleProvider /> to re-resolve immediately; otherwise
+        // the UI would only swap on the next focus / popstate event.
+        window.dispatchEvent(new Event("bm:locale-change"));
       } catch {
         /* private mode — server sync below covers it */
       }

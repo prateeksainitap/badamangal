@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import AddBhandaraSwitcher from "@/components/AddBhandaraSwitcher";
 import { prisma } from "@/lib/db";
-import { LANG_COOKIE, resolveLocale } from "@/lib/i18n";
 import { localised } from "@/lib/seo";
+import type { Locale } from "@/content/strings";
 
-export const dynamic = "force-dynamic";
+// ISR: was force-dynamic for cookie-based locale + searchParams role.
+// Locale is now resolved client-side via <LocaleProvider />, and the
+// `?role=spotter` legacy deep link is handled inside AddBhandaraSwitcher
+// (useEffect on mount). Server renders English defaults and a list of
+// approved bhandaras; cache for 60s.
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "List your Bada Mangal bhandara, free listing for Lucknow organisers",
@@ -23,26 +26,8 @@ export const metadata: Metadata = {
   },
 };
 
-type SearchParams = Promise<{ lang?: string; role?: string }>;
-
-export default async function ListBhandaraPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
-  const sp = await searchParams;
-  const c = await cookies();
-  const locale = resolveLocale({
-    urlLang: sp.lang,
-    cookieLang: c.get(LANG_COOKIE)?.value,
-  });
-
-  // Spot has its own canonical URL (/spot) with the simplified V2
-  // design. If the user lands here with ?role=spotter, hop them
-  // straight to /spot so the city only ever sees one Spot page.
-  if (sp.role === "spotter") {
-    redirect(locale === "en" ? "/spot?lang=en" : "/spot");
-  }
+export default async function ListBhandaraPage() {
+  const locale: Locale = "en";
 
   // Approved listings, surfaced as the "Pick from list" option in the
   // spotter flow so they don't have to drop a pin from scratch.
@@ -64,9 +49,6 @@ export default async function ListBhandaraPage({
   return (
     <AddBhandaraSwitcher
       locale={locale}
-      initialRole={
-        sp.role === "organizer" || sp.role === "spotter" ? sp.role : null
-      }
       bhandaras={listings.map((b) => ({
         id: b.id,
         slug: b.slug,

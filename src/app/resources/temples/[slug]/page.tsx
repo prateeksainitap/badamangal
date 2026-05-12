@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { LANG_COOKIE, resolveLocale } from "@/lib/i18n";
-import { strings } from "@/content/strings";
+import { strings, type Locale } from "@/content/strings";
 import { TEMPLES, TEMPLE_BY_SLUG, type Temple } from "@/content/temples";
 import { prisma, toBhandara } from "@/lib/db";
 import {
@@ -14,7 +12,9 @@ import {
 } from "@/components/ornaments";
 import BhandaraCard from "@/components/BhandaraCard";
 
-export const dynamic = "force-dynamic";
+// ISR — static prerender per temple (see generateStaticParams below)
+// plus an hourly revalidate for nearby-bhandara freshness.
+export const revalidate = 3600;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
@@ -50,26 +50,16 @@ export async function generateMetadata({
   };
 }
 
-type SearchParams = Promise<{ lang?: string }>;
 type Params = Promise<{ slug: string }>;
 
-export default async function TemplePage({
-  params,
-  searchParams,
-}: {
-  params: Params;
-  searchParams: SearchParams;
-}) {
+export default async function TemplePage({ params }: { params: Params }) {
   const { slug } = await params;
-  const sp = await searchParams;
-  const c = await cookies();
-  const locale = resolveLocale({
-    urlLang: sp.lang,
-    cookieLang: c.get(LANG_COOKIE)?.value,
-  });
+  // Server-side default; client components consume the real locale
+  // from <LocaleProvider />.
+  const locale = "en" as Locale;
   const t = strings[locale];
-  const isHi = locale === "hi";
-  const langSuffix = locale === "en" ? "?lang=en" : "";
+  const isHi = false;
+  const langSuffix = "";
 
   const temple = TEMPLE_BY_SLUG[slug];
   if (!temple) notFound();

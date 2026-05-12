@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import BackToHomeLink from "@/components/BackToHomeLink";
@@ -8,9 +7,8 @@ import BhandaraMap from "@/components/BhandaraMap";
 import CopyButton from "@/components/CopyButton";
 import MobileStickyActions from "@/components/MobileStickyActions";
 import { JaliCorner } from "@/components/ornaments";
-import { strings } from "@/content/strings";
+import { strings, type Locale } from "@/content/strings";
 import { prisma, toBhandara } from "@/lib/db";
-import { LANG_COOKIE, resolveLocale } from "@/lib/i18n";
 import { formatEnglishDate, formatHindiDate } from "@/lib/dates";
 import {
   bhandaraEventSchema,
@@ -21,10 +19,25 @@ import {
 } from "@/lib/seo";
 import type { Bhandara } from "@/types/bhandara";
 
-export const dynamic = "force-dynamic";
+// ISR. Was force-dynamic — every visit cold-started a Netlify Function
+// (3-4s lag when clicking a bhandara from the homepage). Now each slug
+// pre-renders to static HTML at build time via generateStaticParams,
+// and revalidates every 5 minutes so edits in /admin show up quickly.
+// New bhandaras added after the build are caught by Next's on-demand
+// generation: the first request renders + caches; everyone after gets
+// the cached HTML.
+export const revalidate = 300;
+export const dynamicParams = true;
+
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  const rows = await prisma.bhandara.findMany({
+    where: { status: "APPROVED" },
+    select: { slug: true },
+  });
+  return rows.map((r) => ({ slug: r.slug }));
+}
 
 type RouteParams = Promise<{ slug: string }>;
-type SearchParams = Promise<{ lang?: string }>;
 
 function format12h(time: string): string {
   if (!time) return "";
@@ -144,20 +157,18 @@ export async function generateMetadata({
 
 export default async function BhandaraDetailPage({
   params,
-  searchParams,
 }: {
   params: RouteParams;
-  searchParams: SearchParams;
 }) {
   const { slug } = await params;
-  const sp = await searchParams;
-  const c = await cookies();
-  const locale = resolveLocale({
-    urlLang: sp.lang,
-    cookieLang: c.get(LANG_COOKIE)?.value,
-  });
+  // Server renders in the site's default locale (English). Client-side
+  // text in interactive components reads the real locale from the
+  // LocaleProvider context, which mirrors the bm_lang cookie. Reading
+  // cookies/searchParams here would opt this page out of static
+  // generation and bring back the 3-4s navigation lag.
+  const locale: Locale = "en";
   const t = strings[locale];
-  const isHi = locale === "hi";
+  const isHi = false;
 
   const record = await prisma.bhandara.findUnique({ where: { slug } });
   if (!record || record.status !== "APPROVED") notFound();

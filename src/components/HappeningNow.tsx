@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { SunburstSpark } from "@/components/ornaments";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
+import { useLocaleFromContext } from "@/lib/locale-context";
 
 const NEAR_ME_RADIUS_KM = 3;
 
@@ -35,7 +36,10 @@ type Props = {
 
 const POLL_MS = 15_000;
 
-export default function HappeningNow({ initial, locale }: Props) {
+export default function HappeningNow({ initial }: Props) {
+  // Cookie-aware locale from context; the locale prop is ignored
+  // (kept for API back-compat with callers).
+  const locale = useLocaleFromContext();
   const t = strings[locale];
   const isHi = locale === "hi";
   const [spots, setSpots] = useState<LiveSpot[]>(initial);

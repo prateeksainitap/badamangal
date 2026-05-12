@@ -1,14 +1,11 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { LANG_COOKIE, resolveLocale } from "@/lib/i18n";
-import { strings } from "@/content/strings";
+import { strings, type Locale } from "@/content/strings";
 import { MarigoldDivider } from "@/components/ornaments";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export default async function NotFound() {
-  const c = await cookies();
-  const locale = resolveLocale({ cookieLang: c.get(LANG_COOKIE)?.value });
+  const locale = "en" as Locale;
   const t = strings[locale];
   const isHi = locale === "hi";
   const langSuffix = locale === "en" ? "?lang=en" : "";

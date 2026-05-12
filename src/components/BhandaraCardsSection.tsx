@@ -8,6 +8,7 @@ import type { Bhandara } from "@/types/bhandara";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { AREAS } from "@/lib/lucknow";
+import { useLocaleFromContext } from "@/lib/locale-context";
 
 type Props = {
   listings: Bhandara[];
@@ -20,10 +21,12 @@ type DateFilter = "all" | string;
 
 export default function BhandaraCardsSection({
   listings,
-  locale,
   heading,
-  isHi,
 }: Props) {
+  // Locale from client context (cookie-aware). Props locale/isHi are
+  // kept on Props for type-compat but intentionally not destructured.
+  const locale = useLocaleFromContext();
+  const isHi = locale === "hi";
   const t = strings[locale];
   const [area, setArea] = useState<"all" | string>("all");
   const [tuesday, setTuesday] = useState<DateFilter>("all");

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import {
   SITE_URL,
   eventSchemaBatch,
@@ -24,7 +23,7 @@ import VisitorBeacon from "@/components/VisitorBeacon";
 import { MarigoldDivider } from "@/components/ornaments";
 import { strings } from "@/content/strings";
 import { prisma, toBhandara } from "@/lib/db";
-import { LANG_COOKIE, resolveLocale } from "@/lib/i18n";
+import type { Locale } from "@/content/strings";
 import { getHomepageStats } from "@/lib/stats";
 import {
   BADA_MANGAL_DATES_2026,
@@ -34,15 +33,11 @@ import {
   nextBadaMangal,
 } from "@/lib/dates";
 
-type SearchParams = Promise<{ lang?: string }>;
-
-// ISR, not force-dynamic. Previously the page rendered through a
-// Netlify Function on every request (4-6s TTFB on cold start) because
-// `getHomepageStats()` did a DB write to bump the visitor counter.
-// We moved that write to a fire-and-forget POST /api/visit beacon
-// (<VisitorBeacon /> below) — now this page is a pure read and Next
-// can serve cached HTML at the edge in ~200ms, revalidating every
-// 60 seconds to pick up new bhandaras / spots / counter ticks.
+// True ISR — the page no longer reads cookies() or searchParams, so
+// Next can prerender it once and serve cached HTML from the edge.
+// Revalidates every 60 seconds to surface new bhandaras / spots /
+// counter ticks. Visitor-counter bump is fire-and-forget via the
+// VisitorBeacon below.
 export const revalidate = 60;
 
 // Homepage-specific metadata. Overrides the layout default with a
@@ -78,19 +73,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
-  const params = await searchParams;
-  const c = await cookies();
-  const locale = resolveLocale({
-    urlLang: params.lang,
-    cookieLang: c.get(LANG_COOKIE)?.value,
-  });
+export default async function HomePage() {
+  // Server renders in the site's default locale (English). Interactive
+  // client components reading useLocaleFromContext() will swap to Hindi
+  // after hydration if the bm_lang cookie says so. Reading cookies or
+  // searchParams here would opt the homepage out of static generation
+  // and put us right back at the 3-4s cold-Function lag.
+  const locale: Locale = "en";
   const t = strings[locale];
-  const isHi = locale === "hi";
+  const isHi = false;
 
   // Fire all three DB reads in parallel. Previously they were awaited
   // sequentially (bhandaras → stats → spots) which serialised three
