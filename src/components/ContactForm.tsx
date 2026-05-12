@@ -5,6 +5,7 @@ import type { Locale } from "@/content/strings";
 import { useToast } from "@/components/Toast";
 import { trackEvent } from "@/lib/ga";
 import { IMAGE_OR_PDF_ACCEPT, validateAttachment } from "@/lib/fileValidate";
+import { useLocaleFromContext } from "@/lib/locale-context";
 
 type Stage = "compose" | "submitting" | "done" | "error";
 
@@ -28,7 +29,10 @@ type Attachment = {
  * inline field errors. Honeypot field is rendered off-screen and any bot
  * that fills it gets a fake-success response from the API.
  */
-export default function ContactForm({ locale }: { locale: Locale }) {
+export default function ContactForm({ locale: _localeProp }: { locale?: Locale }) {
+  // Cookie-aware locale (prop kept for API back-compat but ignored —
+  // server always passes "en" now that pages are statically rendered).
+  const locale = useLocaleFromContext();
   const isHi = locale === "hi";
   const toast = useToast();
   const successRef = useRef<HTMLDivElement | null>(null);

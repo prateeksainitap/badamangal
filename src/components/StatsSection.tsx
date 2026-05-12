@@ -1,19 +1,26 @@
+"use client";
+
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import type { SiteStats } from "@/lib/stats";
 import { JaliCorner } from "@/components/ornaments";
 import ScrollNumber from "@/components/ScrollNumber";
+import { useLocaleFromContext } from "@/lib/locale-context";
 
 type Props = {
   stats: SiteStats;
-  locale: Locale;
+  /** Optional: the page passes "en" as the SSR default, but the
+   *  component reads the real locale from context so Hindi-cookie
+   *  visitors see the section in Hindi after hydration. */
+  locale?: Locale;
 };
 
 function format(n: number, locale: Locale): string {
   return n.toLocaleString(locale === "hi" ? "en-IN" : "en-IN");
 }
 
-export default function StatsSection({ stats, locale }: Props) {
+export default function StatsSection({ stats }: Props) {
+  const locale = useLocaleFromContext();
   const t = strings[locale];
   const isHi = locale === "hi";
 

@@ -10,6 +10,7 @@ import { haversineKm } from "@/lib/geo";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { olaAutocomplete, olaReverseGeocode } from "@/lib/geocode";
+import { useLocaleFromContext } from "@/lib/locale-context";
 
 // Leaflet pin-drop map is client-only; lazy-load so it never ships in
 // the SSR bundle and only loads when the user opens the Edit panel.
@@ -31,7 +32,10 @@ type ListedBhandara = {
 };
 
 type Props = {
-  locale: Locale;
+  /** Optional override; component reads the real locale from the
+   *  LocaleProvider context so it can update after the user toggles
+   *  language without a hard reload. */
+  locale?: Locale;
   bhandaras: ListedBhandara[];
 };
 
@@ -60,7 +64,11 @@ const LKO = { latMin: 26.6, latMax: 27.0, lngMin: 80.7, lngMax: 81.2 };
  * Form data is intentionally NOT persisted across visits — every load
  * of /spot starts fresh. (See cleanup effect below.)
  */
-export default function SpotQuickForm({ locale, bhandaras }: Props) {
+export default function SpotQuickForm({
+  locale: _localeProp,
+  bhandaras,
+}: Props) {
+  const locale = useLocaleFromContext();
   const router = useRouter();
   const t = strings[locale];
   const isHi = locale === "hi";

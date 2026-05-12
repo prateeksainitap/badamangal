@@ -19,6 +19,7 @@ import MaharajjiBlessing from "@/components/MaharajjiBlessing";
 import SeasonTimeline from "@/components/SeasonTimeline";
 import StatsSection from "@/components/StatsSection";
 import FamousBhandaras from "@/components/FamousBhandaras";
+import HomeResourcesTeaser from "@/components/HomeResourcesTeaser";
 import VisitorBeacon from "@/components/VisitorBeacon";
 import { MarigoldDivider } from "@/components/ornaments";
 import { strings } from "@/content/strings";
@@ -480,104 +481,11 @@ export default async function HomePage() {
           have actually submitted, then the city-wide landmark anchors. */}
       <FamousBhandaras locale={locale} isHi={isHi} />
 
-      {/* RESOURCES TEASER — moved up the page so the strongest editorial
-          surface is reachable without a marathon scroll. Now four cards
-          (Chalisa, Aarti, Ashtak, Bajrang Baan), the four texts that
-          have audio + dedicated pages today. */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-16">
-        <div className="mb-7 text-center">
-          <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
-            {t.resources.hubKicker}
-          </p>
-          <h2
-            className={`mt-3 ${
-              isHi
-                ? "font-tiro text-sindoor-700"
-                : "font-fraunces font-bold text-sindoor-700"
-            } text-3xl sm:text-4xl`}
-          >
-            {t.resources.hubHeading}
-          </h2>
-        </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <Link
-            href={`/resources/chalisa${isHi ? "" : "?lang=en"}`}
-            className="group rounded-3xl bg-white border border-saffron-500/40 hover:border-saffron-500 shadow-warm px-6 py-7 transition-colors block"
-          >
-            <p className="font-mukta uppercase tracking-[0.28em] text-saffron-600 text-[0.65rem]">
-              {isHi ? "पढ़ें · सुनें" : "Read · listen"}
-            </p>
-            <h3 className="mt-3 font-fraunces font-semibold text-xl text-sindoor-700">
-              {t.resources.cards.chalisa.title}
-            </h3>
-            <p className="mt-2 text-sm text-ink-600">
-              {t.resources.cards.chalisa.body}
-            </p>
-            <p className="mt-5 inline-flex items-center gap-1.5 text-saffron-600 font-medium text-sm">
-              {t.resources.cards.chalisa.cta} <span aria-hidden>→</span>
-            </p>
-          </Link>
-          <Link
-            href={`/resources/aarti${isHi ? "" : "?lang=en"}`}
-            className="group rounded-3xl bg-white border border-sindoor-700/30 hover:border-sindoor-700 shadow-warm px-6 py-7 transition-colors block"
-          >
-            <p className="font-mukta uppercase tracking-[0.28em] text-sindoor-700 text-[0.65rem]">
-              {isHi ? "पढ़ें · सुनें" : "Read · listen"}
-            </p>
-            <h3 className="mt-3 font-fraunces font-semibold text-xl text-sindoor-700">
-              {t.resources.cards.aarti.title}
-            </h3>
-            <p className="mt-2 text-sm text-ink-600">
-              {t.resources.cards.aarti.body}
-            </p>
-            <p className="mt-5 inline-flex items-center gap-1.5 text-sindoor-700 font-medium text-sm">
-              {t.resources.cards.aarti.cta} <span aria-hidden>→</span>
-            </p>
-          </Link>
-          <Link
-            href={`/resources/ashtak${isHi ? "" : "?lang=en"}`}
-            className="group rounded-3xl bg-white border border-saffron-500/40 hover:border-saffron-500 shadow-warm px-6 py-7 transition-colors block"
-          >
-            <p className="font-mukta uppercase tracking-[0.28em] text-saffron-600 text-[0.65rem]">
-              {isHi ? "पढ़ें · सुनें" : "Read · listen"}
-            </p>
-            <h3 className="mt-3 font-fraunces font-semibold text-xl text-sindoor-700">
-              {t.resources.cards.ashtak.title}
-            </h3>
-            <p className="mt-2 text-sm text-ink-600">
-              {t.resources.cards.ashtak.body}
-            </p>
-            <p className="mt-5 inline-flex items-center gap-1.5 text-saffron-600 font-medium text-sm">
-              {t.resources.cards.ashtak.cta} <span aria-hidden>→</span>
-            </p>
-          </Link>
-          <Link
-            href={`/resources/bajrang-baan${isHi ? "" : "?lang=en"}`}
-            className="group rounded-3xl bg-white border border-sindoor-700/30 hover:border-sindoor-700 shadow-warm px-6 py-7 transition-colors block"
-          >
-            <p className="font-mukta uppercase tracking-[0.28em] text-sindoor-700 text-[0.65rem]">
-              {isHi ? "पढ़ें · सुनें" : "Read · listen"}
-            </p>
-            <h3 className="mt-3 font-fraunces font-semibold text-xl text-sindoor-700">
-              {t.resources.cards.bajrangBaan.title}
-            </h3>
-            <p className="mt-2 text-sm text-ink-600">
-              {t.resources.cards.bajrangBaan.body}
-            </p>
-            <p className="mt-5 inline-flex items-center gap-1.5 text-sindoor-700 font-medium text-sm">
-              {t.resources.cards.bajrangBaan.cta} <span aria-hidden>→</span>
-            </p>
-          </Link>
-        </div>
-        <div className="mt-7 text-center">
-          <Link
-            href={`/resources${isHi ? "" : "?lang=en"}`}
-            className="inline-flex items-center text-sm text-ink-600 hover:text-saffron-600 transition-colors"
-          >
-            {isHi ? "सभी संसाधन देखें" : "View all resources"} →
-          </Link>
-        </div>
-      </section>
+      {/* RESOURCES TEASER — extracted into a client component so the
+          card titles + bodies localise from the LocaleProvider context
+          after the static HTML lands (otherwise Hindi-cookie visitors
+          would see this band in English). */}
+      <HomeResourcesTeaser />
 
       {/* LIVE FEED MARQUEE — moved below resources; renders an empty
           state band when there are <3 entries instead of disappearing. */}

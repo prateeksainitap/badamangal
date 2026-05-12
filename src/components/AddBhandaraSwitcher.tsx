@@ -6,6 +6,7 @@ import BhandaraForm from "@/components/BhandaraForm";
 import { JaliCorner } from "@/components/ornaments";
 import { trackEvent } from "@/lib/ga";
 import type { Locale } from "@/content/strings";
+import { useLocaleFromContext } from "@/lib/locale-context";
 
 type Role = "organizer" | "spotter";
 
@@ -44,10 +45,13 @@ type Props = {
  * page; routing them both to /spot is the single source of truth.
  */
 export default function AddBhandaraSwitcher({
-  locale,
+  locale: _localeProp,
   initialRole = null,
 }: Props) {
   const router = useRouter();
+  // Cookie-aware locale from context; the locale prop is ignored
+  // (it's "en" everywhere since pages are statically prerendered).
+  const locale = useLocaleFromContext();
   const isHi = locale === "hi";
   const langSuffix = locale === "en" ? "?lang=en" : "";
   const [role, setRole] = useState<Role | null>(initialRole);
