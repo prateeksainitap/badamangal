@@ -3,6 +3,15 @@ import { prisma } from "@/lib/db";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
+// Skip prerender at build time. The sitemap queries Prisma → Supabase's
+// transaction-mode pooler (`:6543`), which under load throws PG 42P09
+// ("prepared statement already exists") during the static page pass and
+// kills the build. Generating on-request is fine: the file is rarely
+// requested (crawlers, ~once/day) and Next caches it for `revalidate`
+// seconds anyway. Saves a build-time DB round-trip on every deploy too.
+export const dynamic = "force-dynamic";
+export const revalidate = 3600;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const records = await prisma.bhandara.findMany({
     where: { status: "APPROVED" },
