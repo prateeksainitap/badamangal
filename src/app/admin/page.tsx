@@ -6,7 +6,6 @@ import {
   approveSpotAction,
   delistSpotAction,
   extendSpotAction,
-  loginAction,
   logoutAction,
   publishVerifiedAction,
   rejectAction,
@@ -14,6 +13,7 @@ import {
   unverifyAction,
 } from "@/app/admin/actions";
 import AdminSearchBox from "@/components/admin/AdminSearchBox";
+import AdminLoginForm from "@/components/admin/AdminLoginForm";
 import BotHeartbeat from "@/components/admin/BotHeartbeat";
 // NOTE: hard-delete (deleteBhandaraAction / deleteSpotAction) and its
 // ConfirmSubmit prompt are intentionally NOT wired into the UI here —
@@ -141,20 +141,12 @@ export default async function AdminPage({
       }
     : statusWhere;
 
-  const records = await prisma.bhandara.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-  });
-  // Pair each public-shape Bhandara with the raw DB record so the
-  // admin view can still read `status` (which is intentionally
-  // stripped from the public Bhandara type — moderation state isn't
-  // part of the public contract).
-  const bhandaras = records.map((r) => ({
-    ...toBhandara(r),
-    status: r.status,
-  }));
-
+  // Fan out the list query + every tab count in ONE Promise.all so
+  // the supabase pooler does one parallel batch instead of two serial
+  // round-trips. On a cold function this is the difference between
+  // ~600ms and ~1200ms of pure DB latency before any HTML can stream.
   const [
+    records,
     pendingCount,
     unverifiedCount,
     verifiedCount,
@@ -162,6 +154,10 @@ export default async function AdminPage({
     fromBotCount,
     allCount,
   ] = await Promise.all([
+    prisma.bhandara.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+    }),
     prisma.bhandara.count({ where: { status: "PENDING" } }),
     prisma.bhandara.count({
       where: { status: "APPROVED", isVerified: false },
@@ -173,6 +169,14 @@ export default async function AdminPage({
     prisma.bhandara.count({ where: { description: { contains: "[bot:" } } }),
     prisma.bhandara.count({}),
   ]);
+  // Pair each public-shape Bhandara with the raw DB record so the
+  // admin view can still read `status` (which is intentionally
+  // stripped from the public Bhandara type — moderation state isn't
+  // part of the public contract).
+  const bhandaras = records.map((r) => ({
+    ...toBhandara(r),
+    status: r.status,
+  }));
   const countOf = (s: string) =>
     s === "PENDING"
       ? pendingCount
@@ -619,24 +623,25 @@ async function SpotsView({
       }
     : statusWhere;
 
-  const spots = await prisma.spot.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: {
-      bhandara: { select: { slug: true, name: true, nameHi: true } },
-    },
-  });
-
-  const [liveCount, expiredCount, rejectedCount, allCount] = await Promise.all([
-    prisma.spot.count({
-      where: { status: "APPROVED", expiresAt: { gt: now } },
-    }),
-    prisma.spot.count({
-      where: { status: "APPROVED", expiresAt: { lte: now } },
-    }),
-    prisma.spot.count({ where: { status: "REJECTED" } }),
-    prisma.spot.count({}),
-  ]);
+  // Single parallel batch — same speed-up as the Bhandaras view.
+  const [spots, liveCount, expiredCount, rejectedCount, allCount] =
+    await Promise.all([
+      prisma.spot.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        include: {
+          bhandara: { select: { slug: true, name: true, nameHi: true } },
+        },
+      }),
+      prisma.spot.count({
+        where: { status: "APPROVED", expiresAt: { gt: now } },
+      }),
+      prisma.spot.count({
+        where: { status: "APPROVED", expiresAt: { lte: now } },
+      }),
+      prisma.spot.count({ where: { status: "REJECTED" } }),
+      prisma.spot.count({}),
+    ]);
   const countOf = (s: string) =>
     s === "LIVE"
       ? liveCount
@@ -873,6 +878,10 @@ function Row({
 }
 
 function LoginScreen({ error }: { error: boolean }) {
+  // The form fields (with show/hide password + submission spinner)
+  // live in <AdminLoginForm /> — a client component using
+  // useFormStatus() to render a "Signing in…" state while
+  // loginAction does its server-side work.
   return (
     <div className="mx-auto max-w-md px-4 py-20">
       <div className="rounded-3xl border border-gold-500/40 bg-cream-50 p-8 text-center">
@@ -882,29 +891,7 @@ function LoginScreen({ error }: { error: boolean }) {
         <h1 className="mt-2 font-fraunces text-2xl text-sindoor-700">
           Sign in to moderate
         </h1>
-        <form action={loginAction} className="mt-6 grid gap-3 text-left">
-          <label className="grid gap-1.5">
-            <span className="text-sm text-ink-600">Password</span>
-            <input
-              required
-              type="password"
-              name="password"
-              autoFocus
-              className="w-full rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
-            />
-          </label>
-          {error ? (
-            <p className="text-xs text-alert-500">
-              Wrong password. Try again.
-            </p>
-          ) : null}
-          <button
-            type="submit"
-            className="mt-2 inline-flex justify-center items-center rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 shadow-sm"
-          >
-            Sign in
-          </button>
-        </form>
+        <AdminLoginForm error={error} />
       </div>
     </div>
   );
