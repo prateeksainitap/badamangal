@@ -85,8 +85,14 @@ export default async function AdminPage({
   //   UNVERIFIED → live on the map but no verified badge yet
   //   VERIFIED   → live + team-confirmed
   //   REJECTED   → unpublished / delisted
+  //   FROM_BOT   → rows ingested by the OpenClaw WhatsApp agent
+  //                (regardless of status). Detected by the `[bot:`
+  //                provenance prefix the ingest endpoint embeds into
+  //                the description. Stays separate so the daily
+  //                review can drain the bot queue without scrolling
+  //                past hand-entered listings.
   const filter = sp.status?.toUpperCase();
-  const allowed = ["ALL", "PENDING", "UNVERIFIED", "VERIFIED", "REJECTED"] as const;
+  const allowed = ["ALL", "PENDING", "UNVERIFIED", "VERIFIED", "REJECTED", "FROM_BOT"] as const;
   const tab = (allowed as readonly string[]).includes(filter ?? "")
     ? (filter as (typeof allowed)[number])
     : "ALL";
@@ -103,9 +109,14 @@ export default async function AdminPage({
         ? { status: "APPROVED", isVerified: false }
         : tab === "VERIFIED"
           ? { status: "APPROVED", isVerified: true }
-          : tab === "ALL"
-            ? {}
-            : { status: tab };
+          : tab === "FROM_BOT"
+            ? // Bot-ingested rows are tagged in the description column
+              // by /api/bot/ingest. Match the literal prefix so we
+              // don't catch the occasional admin-typed "[bot:" prose.
+              { description: { contains: "[bot:" } }
+            : tab === "ALL"
+              ? {}
+              : { status: tab };
 
   const where = q
     ? {
@@ -143,18 +154,25 @@ export default async function AdminPage({
     status: r.status,
   }));
 
-  const [pendingCount, unverifiedCount, verifiedCount, rejectedCount, allCount] =
-    await Promise.all([
-      prisma.bhandara.count({ where: { status: "PENDING" } }),
-      prisma.bhandara.count({
-        where: { status: "APPROVED", isVerified: false },
-      }),
-      prisma.bhandara.count({
-        where: { status: "APPROVED", isVerified: true },
-      }),
-      prisma.bhandara.count({ where: { status: "REJECTED" } }),
-      prisma.bhandara.count({}),
-    ]);
+  const [
+    pendingCount,
+    unverifiedCount,
+    verifiedCount,
+    rejectedCount,
+    fromBotCount,
+    allCount,
+  ] = await Promise.all([
+    prisma.bhandara.count({ where: { status: "PENDING" } }),
+    prisma.bhandara.count({
+      where: { status: "APPROVED", isVerified: false },
+    }),
+    prisma.bhandara.count({
+      where: { status: "APPROVED", isVerified: true },
+    }),
+    prisma.bhandara.count({ where: { status: "REJECTED" } }),
+    prisma.bhandara.count({ where: { description: { contains: "[bot:" } } }),
+    prisma.bhandara.count({}),
+  ]);
   const countOf = (s: string) =>
     s === "PENDING"
       ? pendingCount
@@ -162,7 +180,9 @@ export default async function AdminPage({
         ? unverifiedCount
         : s === "VERIFIED"
           ? verifiedCount
-          : s === "REJECTED"
+          : s === "FROM_BOT"
+            ? fromBotCount
+            : s === "REJECTED"
             ? rejectedCount
             : s === "ALL"
               ? allCount
@@ -235,7 +255,14 @@ export default async function AdminPage({
       {/* Filter tabs */}
       <nav className="mt-4 flex flex-wrap gap-2 text-sm">
         {(
-          ["ALL", "PENDING", "UNVERIFIED", "VERIFIED", "REJECTED"] as const
+          [
+            "ALL",
+            "PENDING",
+            "UNVERIFIED",
+            "VERIFIED",
+            "REJECTED",
+            "FROM_BOT",
+          ] as const
         ).map((s) => {
           const active = s === tab;
           // Preserve the active search across tab changes — admins
@@ -243,14 +270,23 @@ export default async function AdminPage({
           const href = q
             ? `/admin?status=${s}&q=${encodeURIComponent(q)}`
             : `/admin?status=${s}`;
+          // The FROM_BOT tab is the WhatsApp-agent inbox. Style it
+          // distinctly (sindoor border instead of saffron) so it
+          // reads as a different kind of queue — not a status, a
+          // source.
+          const variant = s === "FROM_BOT";
           return (
             <a
               key={s}
               href={href}
               className={`inline-flex items-center gap-2 rounded-full px-3 py-1 border transition-colors ${
                 active
-                  ? "bg-saffron-600 border-saffron-600 text-cream-50"
-                  : "bg-cream-50 border-gold-500/40 text-ink-600 hover:border-saffron-500"
+                  ? variant
+                    ? "bg-sindoor-700 border-sindoor-700 text-cream-50"
+                    : "bg-saffron-600 border-saffron-600 text-cream-50"
+                  : variant
+                    ? "bg-cream-50 border-sindoor-700/45 text-sindoor-700 hover:border-sindoor-700"
+                    : "bg-cream-50 border-gold-500/40 text-ink-600 hover:border-saffron-500"
               }`}
             >
               {s === "PENDING"
@@ -261,7 +297,9 @@ export default async function AdminPage({
                     ? "Verified"
                     : s === "REJECTED"
                       ? "Rejected"
-                      : "All"}
+                      : s === "FROM_BOT"
+                        ? "📱 From WhatsApp bot"
+                        : "All"}
               <span
                 className={`text-xs rounded-full px-1.5 py-0.5 ${
                   active ? "bg-cream-50/20" : "bg-gold-100"
@@ -298,43 +336,84 @@ export default async function AdminPage({
                   : b.isVerified
                     ? "VERIFIED"
                     : "UNVERIFIED";
+            // Detect bot-ingested rows by the `[bot:` prefix /api/bot/ingest
+            // embeds into the description column. Shows a "📱 From bot"
+            // pill on the card so the admin can spot the queue at a glance.
+            const isFromBot =
+              typeof b.description === "string" &&
+              b.description.includes("[bot:");
             return (
             <li
               key={b.id}
-              className="rounded-2xl border border-gold-500/40 bg-cream-50 p-5 sm:p-6"
+              id={b.id}
+              className={`rounded-2xl border bg-cream-50 p-5 sm:p-6 ${
+                isFromBot
+                  ? "border-sindoor-700/35 bg-saffron-50/30"
+                  : "border-gold-500/40"
+              }`}
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="font-tiro text-2xl text-sindoor-700">
-                    {b.nameHi}
-                  </h2>
-                  <p className="font-fraunces text-lg text-ink-900">{b.name}</p>
-                  <p className="mt-1 text-sm text-ink-600">
-                    {b.area}
-                    {b.landmark ? ` · ${b.landmark}` : ""} ·{" "}
-                    {format12h(b.timeStart)}
-                    {b.timeEnd ? `–${format12h(b.timeEnd)}` : ""}
-                  </p>
+                {/* Photo thumbnail + name block.
+                    The bhandara list previously rendered photoUrl only as
+                    a text Row inside the dl below — admins had to click
+                    the URL to see what they were reviewing. Now the
+                    photo sits left of the name, same pattern the Spots
+                    view already uses. Falls back to a 🕉️ glyph for the
+                    rare row without an attached image. */}
+                <div className="flex items-start gap-4 min-w-0">
+                  {b.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={b.photoUrl}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl object-cover border border-gold-500/40 shrink-0 bg-cream-50"
+                    />
+                  ) : (
+                    <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl border border-dashed border-gold-500/40 bg-saffron-50 grid place-items-center text-2xl text-saffron-600 shrink-0">
+                      🕉️
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <h2 className="font-tiro text-2xl text-sindoor-700">
+                      {b.nameHi}
+                    </h2>
+                    <p className="font-fraunces text-lg text-ink-900">{b.name}</p>
+                    <p className="mt-1 text-sm text-ink-600">
+                      {b.area}
+                      {b.landmark ? ` · ${b.landmark}` : ""} ·{" "}
+                      {format12h(b.timeStart)}
+                      {b.timeEnd ? `–${format12h(b.timeEnd)}` : ""}
+                    </p>
+                  </div>
                 </div>
-                <span
-                  className={`text-[11px] uppercase tracking-wider rounded-full px-2.5 py-1 border ${
-                    rowState === "VERIFIED"
-                      ? "bg-leaf-600/12 border-leaf-600/55 text-leaf-600"
+                <div className="flex items-center gap-2 flex-wrap shrink-0">
+                  {isFromBot ? (
+                    <span className="text-[11px] uppercase tracking-wider rounded-full px-2.5 py-1 border bg-sindoor-700/8 border-sindoor-700/40 text-sindoor-700">
+                      📱 From bot
+                    </span>
+                  ) : null}
+                  <span
+                    className={`text-[11px] uppercase tracking-wider rounded-full px-2.5 py-1 border ${
+                      rowState === "VERIFIED"
+                        ? "bg-leaf-600/12 border-leaf-600/55 text-leaf-600"
+                        : rowState === "PENDING"
+                          ? "bg-saffron-50 border-saffron-500/55 text-saffron-600"
+                          : rowState === "REJECTED"
+                            ? "bg-alert-500/10 border-alert-500/55 text-alert-500"
+                            : "bg-cream-50 border-gold-500/40 text-ink-600"
+                    }`}
+                  >
+                    {rowState === "VERIFIED"
+                      ? "✓ Verified"
                       : rowState === "PENDING"
-                        ? "bg-saffron-50 border-saffron-500/55 text-saffron-600"
+                        ? "Needs call"
                         : rowState === "REJECTED"
-                          ? "bg-alert-500/10 border-alert-500/55 text-alert-500"
-                          : "bg-cream-50 border-gold-500/40 text-ink-600"
-                  }`}
-                >
-                  {rowState === "VERIFIED"
-                    ? "✓ Verified"
-                    : rowState === "PENDING"
-                      ? "Needs call"
-                      : rowState === "REJECTED"
-                        ? "Unpublished"
-                        : "Live · unverified"}
-                </span>
+                          ? "Unpublished"
+                          : "Live · unverified"}
+                  </span>
+                </div>
               </div>
 
               <dl className="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
@@ -355,8 +434,11 @@ export default async function AdminPage({
                   }`}
                 />
                 {b.upiId ? <Row label="UPI" value={b.upiId} /> : null}
+                {/* Photo is now rendered as a thumbnail in the card
+                    header above; the URL itself stays accessible as
+                    a link for admins who need to copy or open it. */}
                 {b.photoUrl ? (
-                  <Row label="Photo" value={b.photoUrl} />
+                  <Row label="Photo URL" value={b.photoUrl} />
                 ) : null}
                 {b.description ? (
                   <Row label="Description" value={b.description} wide />
