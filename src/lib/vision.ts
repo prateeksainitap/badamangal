@@ -137,7 +137,16 @@ async function callGeminiVision(
       ],
       generationConfig: {
         temperature: 0.1,
-        maxOutputTokens: 1200,
+        // 4096 not 1200: Gemini in JSON mode writes a touch more
+        // whitespace than Claude did, plus Devanagari description
+        // strings run ~2x the token count of their English glosses.
+        // The previous 1200 cap (carried over from the Claude config)
+        // truncated mid-string on banner-heavy invites — the parser
+        // then threw "Model returned non-JSON". 4096 covers every
+        // real-world invite we've tested. Cost diff is negligible
+        // (output tokens are paid only at $0.0003/1k anyway, and we
+        // rarely exceed ~800 even with the cap raised).
+        maxOutputTokens: 4096,
         // Native JSON mode — Gemini will (almost always) return a clean
         // JSON document without code fences or commentary. Still
         // defensive-parsed below.
@@ -167,11 +176,21 @@ async function callGeminiVision(
     );
   }
 
+  const candidate = data.candidates?.[0];
+  const finishReason = candidate?.finishReason;
   const text =
-    data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ??
-    "";
+    candidate?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
   if (!text) {
     throw new Error("Gemini returned an empty response");
+  }
+
+  // `finishReason: "MAX_TOKENS"` means the model was cut off mid-output.
+  // Bubble that up clearly so future "Model returned non-JSON" failures
+  // tell us exactly what to fix (bump maxOutputTokens above).
+  if (finishReason === "MAX_TOKENS") {
+    throw new Error(
+      "Gemini hit the maxOutputTokens cap before finishing — increase the cap in src/lib/vision.ts (callGeminiVision generationConfig).",
+    );
   }
 
   // Belt-and-suspenders: the model occasionally wraps in ```json…``` even

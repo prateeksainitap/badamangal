@@ -4,7 +4,7 @@
  * Admin "scan & review" widget. Three states:
  *
  *   1. idle      — user picks a kind (bhandara / spot) and a file
- *   2. scanning  — POST /api/admin/scan, await Claude + Ola response
+ *   2. scanning  — POST /api/admin/scan, await Gemini + Ola response
  *   3. review    — render an editable form pre-filled with what we got
  *                  back; Publish hits /api/admin/publish?kind=…
  *
@@ -214,7 +214,7 @@ export default function ScanReview({
         // 502 path keeps the saved photoUrl so we don't waste the upload.
         setError(
           data?.error ??
-            "Scan failed. Check the server logs for the Claude error.",
+            "Scan failed. Check the server logs for the Gemini error.",
         );
         if (typeof data?.detail === "string" && data.detail.length > 0) {
           setErrorDetail(data.detail);
@@ -355,7 +355,7 @@ export default function ScanReview({
                       Reading the invite…
                     </>
                   ) : (
-                    <>✨ Scan with Claude</>
+                    <>✨ Scan with Gemini</>
                   )}
                 </button>
               </div>
@@ -608,7 +608,7 @@ function BhandaraReviewForm({
       <div className="rounded-2xl border border-gold-500/40 bg-cream-50 p-5 sm:p-6">
         <h2 className="font-fraunces text-xl text-sindoor-700">Review &amp; publish</h2>
         <p className="text-xs text-ink-600 mt-1">
-          Edit anything Claude misread — especially organizer phone, exact
+          Edit anything Gemini misread — especially organizer phone, exact
           venue, and the area pin.
         </p>
 
