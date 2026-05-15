@@ -197,6 +197,63 @@ export async function editAndPublishAction(
 }
 
 /**
+ * Edit a Spot's editable fields and approve it in a single submit.
+ * Mirrors editAndPublishAction for bhandaras: lets the admin fix what
+ * the model got wrong (caption text, area, address, coords) before
+ * the photo goes live on the city map. Optionally extends or sets
+ * `expiresAt` so the admin can give a freshly-reviewed spot the full
+ * 8-hour TTL instead of inheriting whatever was left from upload time.
+ *
+ * Status flips to APPROVED on save — even from REJECTED — so the
+ * "Edit" CTA on a previously-rejected spot doubles as a re-approve.
+ */
+export async function editAndApproveSpotAction(
+  id: string,
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+
+  const str = (k: string, fallback = ""): string =>
+    String(formData.get(k) ?? fallback).trim();
+  const num = (k: string, fallback = 0): number => {
+    const v = Number(formData.get(k));
+    return Number.isFinite(v) ? v : fallback;
+  };
+
+  // Language is a 3-way enum; default to "mixed" so we never write an
+  // invalid value if the form gets tampered with client-side.
+  const rawLang = str("language").toLowerCase();
+  const language: "hi" | "en" | "mixed" =
+    rawLang === "hi" || rawLang === "en" ? rawLang : "mixed";
+
+  // Optional TTL extension: "reset" rebases expiresAt to now + 8h so a
+  // spot that's been sitting in PENDING for hours still gets its full
+  // 8-hour window on the public map. "keep" preserves the existing
+  // expiresAt — useful when you only edited a typo and want the
+  // original TTL countdown intact.
+  const ttlChoice = str("ttl");
+  const data: Record<string, unknown> = {
+    caption: str("caption") || null,
+    area: str("area") || null,
+    address: str("address") || null,
+    language,
+    lat: num("lat"),
+    lng: num("lng"),
+    reporterName: str("reporterName") || null,
+    status: "APPROVED",
+  };
+  if (ttlChoice === "reset") {
+    data.expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  }
+
+  await prisma.spot.update({ where: { id }, data });
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+  redirect("/admin?type=whatsapp&status=spot");
+}
+
+/**
  * One-shot maintenance action: hard-delete every bot-ingested row
  * (bhandara + spot) so the admin can start the WhatsApp ingest queue
  * from a clean slate. Used initially to flush testing data, but kept

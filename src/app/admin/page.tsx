@@ -865,24 +865,44 @@ async function SpotsView({
                 </dl>
 
                 <div className="mt-5 flex flex-wrap gap-2">
+                  {/* Edit & approve is available on every spot — caption
+                      typos, area mis-tags, and coord fixes are common
+                      after the initial APPROVED-by-default flow. Loops
+                      back to /admin?type=spot on save. */}
+                  <Link
+                    href={`/admin/edit-spot/${s.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink-600/45 text-ink-900 hover:bg-cream-50 font-medium px-4 py-2 text-sm"
+                  >
+                    ✎ Edit
+                  </Link>
                   {!isRejected ? (
                     <form action={delistSpotAction.bind(null, s.id)}>
-                      <button className="inline-flex items-center rounded-full border-2 border-alert-500 text-alert-500 hover:bg-alert-500 hover:text-cream-50 font-medium px-4 py-2 text-sm">
+                      <SubmitButton
+                        variant="outline-alert"
+                        pendingLabel="Delisting…"
+                        confirm="Delist this spot from the map?"
+                      >
                         Delist
-                      </button>
+                      </SubmitButton>
                     </form>
                   ) : (
                     <form action={approveSpotAction.bind(null, s.id)}>
-                      <button className="inline-flex items-center rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm">
+                      <SubmitButton
+                        variant="primary-green"
+                        pendingLabel="Re-approving…"
+                      >
                         Re-approve
-                      </button>
+                      </SubmitButton>
                     </form>
                   )}
                   {(isExpired || isRejected) ? (
                     <form action={extendSpotAction.bind(null, s.id)}>
-                      <button className="inline-flex items-center rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 font-medium px-4 py-2 text-sm">
+                      <SubmitButton
+                        variant="outline-saffron"
+                        pendingLabel="Extending…"
+                      >
                         + 8 h &amp; approve
-                      </button>
+                      </SubmitButton>
                     </form>
                   ) : null}
                   {s.bhandara?.slug ? (
@@ -1471,12 +1491,33 @@ function BotSpotCard({ s }: { s: BotSpot }) {
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
+        {/* Edit & approve is always available — bot-ingested spots
+            often have a wrong caption / 0,0 coords / blank area that
+            the admin needs to fix before going live. We surface it
+            first for non-rejected rows so the muscle memory matches
+            the bhandara queue. */}
+        {s.status !== "REJECTED" ? (
+          <Link
+            href={`/admin/edit-spot/${s.id}`}
+            className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm"
+          >
+            ✎ Edit &amp; approve
+          </Link>
+        ) : null}
         {s.status === "REJECTED" ? (
-          <form action={approveSpotAction.bind(null, s.id)}>
-            <SubmitButton variant="primary-green" pendingLabel="Approving…">
-              Approve
-            </SubmitButton>
-          </form>
+          <>
+            <Link
+              href={`/admin/edit-spot/${s.id}`}
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-leaf-600 text-leaf-600 hover:bg-leaf-600 hover:text-cream-50 font-medium px-4 py-2 text-sm"
+            >
+              ✎ Edit &amp; re-approve
+            </Link>
+            <form action={approveSpotAction.bind(null, s.id)}>
+              <SubmitButton variant="primary-green" pendingLabel="Approving…">
+                Approve as-is
+              </SubmitButton>
+            </form>
+          </>
         ) : isLive ? (
           <>
             <form action={extendSpotAction.bind(null, s.id)}>
@@ -1497,8 +1538,8 @@ function BotSpotCard({ s }: { s: BotSpot }) {
         ) : (
           <>
             <form action={approveSpotAction.bind(null, s.id)}>
-              <SubmitButton variant="primary-green" pendingLabel="Approving…">
-                ✓ Approve
+              <SubmitButton variant="outline-leaf" pendingLabel="Approving…">
+                ✓ Approve as-is
               </SubmitButton>
             </form>
             <form action={delistSpotAction.bind(null, s.id)}>
