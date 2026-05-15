@@ -114,6 +114,88 @@ export async function unverifyAction(id: string, _formData?: FormData): Promise<
   revalidatePath(`/bhandara/[slug]`, "page");
 }
 
+/**
+ * Edit a PENDING bhandara (typically a bot-ingested row from the
+ * WhatsApp pipeline) and publish it in a single submit. All fields the
+ * admin can fix in the edit form are written through to the database,
+ * then status flips to APPROVED. If the "Verify" checkbox is on, the
+ * verified badge stamps in the same write — matches the "called &
+ * confirmed, publish" muscle memory from the row-level action cluster.
+ *
+ * Field-level validation is intentionally lenient: the bot row may have
+ * lat/lng=0 and an empty area because Gemini couldn't read them off
+ * the banner; we trust the admin to fill those in correctly. Numeric
+ * parses default to 0 so a stray empty input doesn't crash the action.
+ */
+export async function editAndPublishAction(
+  id: string,
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+
+  const str = (k: string, fallback = ""): string =>
+    String(formData.get(k) ?? fallback).trim();
+  const num = (k: string, fallback = 0): number => {
+    const v = Number(formData.get(k));
+    return Number.isFinite(v) ? v : fallback;
+  };
+
+  // Tuesdays come in as one date per line — empty lines stripped.
+  // Menu comes in comma-separated; we keep entries as-typed (the
+  // public schema allows free-form strings here now).
+  const tuesdayDates = str("tuesdayDates")
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const menuArr = str("menu")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // Build the menuHi by mirroring the English entries — without re-
+  // running Gemini we don't have Devanagari translations for the
+  // admin-edited values. The public detail page renders nameHi where
+  // available; menu strings tend to be short Latin transliterations
+  // ("puri, sabzi, prasad") in practice. Future work: optionally
+  // re-translate menu items via Gemini on save.
+  const verify = formData.get("isVerified") === "on";
+
+  await prisma.bhandara.update({
+    where: { id },
+    data: {
+      name: str("name"),
+      nameHi: str("nameHi") || null,
+      description: str("description") || null,
+      descriptionHi: str("descriptionHi") || null,
+      area: str("area"),
+      address: str("address"),
+      addressHi: str("addressHi") || null,
+      landmark: str("landmark") || null,
+      lat: num("lat"),
+      lng: num("lng"),
+      tuesdayDates: JSON.stringify(tuesdayDates),
+      timeStart: str("timeStart"),
+      timeEnd: str("timeEnd"),
+      menu: JSON.stringify(menuArr),
+      menuHi: JSON.stringify(menuArr),
+      organizerName: str("organizerName"),
+      organizerPhone: str("organizerPhone"),
+      organizerWhatsapp: str("organizerWhatsapp") || null,
+      upiId: str("upiId") || null,
+      photoUrl: str("photoUrl"),
+      googleMapsUrl: `https://www.google.com/maps?q=${num("lat")},${num("lng")}&z=18`,
+      status: "APPROVED",
+      approvedAt: new Date(),
+      isVerified: verify,
+    },
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath(`/bhandara/[slug]`, "page");
+  redirect("/admin");
+}
+
 // ────────────────────────────────────────────────────────────────────
 // Spot (live "spotted bhandara") moderation actions
 // ────────────────────────────────────────────────────────────────────

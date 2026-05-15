@@ -171,6 +171,19 @@ Fields (all optional — emit "" or omit if unsure, never invent):
 
 Be conservative: when in doubt, leave the field empty. Do not paste the model's reasoning into "notes" — only invite-relevant info that the admin should see.`;
 
+// Tiny prompt for the auto-classification pre-pass. The WhatsApp bot
+// pipeline sends every group photo here first so we know whether to run
+// the bhandara extractor (designed for text-heavy invite posters) or
+// the spot extractor (designed for live photos of pandals/food/crowds).
+//
+// We ask for a one-word answer so the call is small and fast — most
+// images classify in well under a second of Gemini wall time.
+const CLASSIFY_PROMPT = `You are looking at a photo from a Bada Mangal bhandara group in Lucknow.
+Classify it as exactly ONE of these two categories — output a single lowercase word, nothing else, no punctuation:
+- "bhandara": a designed invite/poster with significant Hindi or English text announcing a bhandara event (date, address, organiser, menu, etc). Mostly graphic + text, often a decorated banner.
+- "spot": a live photograph of people, food, a serving pandal, a crowd, a sign at the venue, or any in-person scene that is NOT a designed invite poster.
+If unsure, pick the one with more weight: heavy text/graphics → bhandara, real-world photo → spot.`;
+
 const SPOT_PROMPT = `You are reading a photo someone snapped of a live Bada Mangal bhandara in Lucknow. The photo may show a banner, a serving counter, a crowd, or just food. Extract a brief caption and any visible location hints.
 
 Output ONE JSON object — no markdown, no prose. Fields:
@@ -298,6 +311,34 @@ function parseOrThrow<S extends z.ZodTypeAny>(
     );
   }
   return result.data;
+}
+
+/**
+ * Auto-classify a WhatsApp-forwarded photo as either an invite poster
+ * ("bhandara") or a live in-person photo ("spot"). Used by /api/bot/ingest
+ * so the user can forward anything into the group and we route to the
+ * right extractor + the right row type (Bhandara vs Spot).
+ *
+ * Falls back to "bhandara" on any parse ambiguity — that path leaves
+ * lat/lng=0 and status=PENDING, so the worst case is an admin reclassifies
+ * during review. Never throws to the caller; we'd rather ingest the row
+ * with one mis-classification than 502 the whole pipeline.
+ */
+export async function classifyImage(
+  imageBase64: string,
+  mediaType: "image/jpeg" | "image/png" | "image/webp",
+): Promise<"bhandara" | "spot"> {
+  try {
+    const raw = await callGeminiVision(imageBase64, mediaType, CLASSIFY_PROMPT);
+    const cleaned = raw.toLowerCase().replace(/[^a-z]/g, "");
+    if (cleaned.includes("spot")) return "spot";
+    return "bhandara";
+  } catch (err) {
+    // Don't fail ingest on a classification hiccup — default to
+    // bhandara, which is what 90% of group forwards turn out to be.
+    console.error("[vision.classifyImage] failed, defaulting to bhandara:", err);
+    return "bhandara";
+  }
 }
 
 export async function extractBhandaraFromImage(

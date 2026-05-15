@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { prisma, toBhandara } from "@/lib/db";
 import {
@@ -366,14 +367,29 @@ export default async function AdminPage({
                     rare row without an attached image. */}
                 <div className="flex items-start gap-4 min-w-0">
                   {b.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={b.photoUrl}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl object-cover border border-gold-500/40 shrink-0 bg-cream-50"
-                    />
+                    // Wrap the thumbnail in a new-tab link so the admin can
+                    // see the *full-resolution* invite poster — text on the
+                    // 80px thumb is unreadable for any banner with more than
+                    // a sentence or two of Hindi. `noopener` keeps the
+                    // launched tab from being able to script back into the
+                    // admin window.
+                    <a
+                      href={b.photoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 group block focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600 rounded-xl"
+                      aria-label="Open full image in a new tab"
+                      title="Open full image"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={b.photoUrl}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl object-cover border border-gold-500/40 bg-cream-50 group-hover:border-saffron-500 transition-colors"
+                      />
+                    </a>
                   ) : (
                     <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl border border-dashed border-gold-500/40 bg-saffron-50 grid place-items-center text-2xl text-saffron-600 shrink-0">
                       🕉️
@@ -452,11 +468,40 @@ export default async function AdminPage({
               <div className="mt-5 flex flex-wrap gap-2">
                 {rowState === "PENDING" ? (
                   <>
+                    {/* Edit-first for bot-ingested rows: Gemini typically
+                        misses lat/lng and often the organizer phone, so
+                        the admin needs the edit form before the listing
+                        goes live. We surface this button first for bot
+                        rows; non-bot PENDING rows (manual submissions
+                        that need a callback) keep the original "Called &
+                        confirmed" green as the first action. */}
+                    {isFromBot ? (
+                      <Link
+                        href={`/admin/edit/${b.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm"
+                      >
+                        ✎ Edit &amp; publish
+                      </Link>
+                    ) : null}
                     <form action={publishVerifiedAction.bind(null, b.id)}>
-                      <button className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm">
+                      <button
+                        className={`inline-flex items-center gap-1.5 rounded-full font-medium px-4 py-2 text-sm shadow-sm ${
+                          isFromBot
+                            ? "border-2 border-leaf-600 text-leaf-600 hover:bg-leaf-600 hover:text-cream-50"
+                            : "bg-leaf-600 hover:bg-leaf-600/90 text-cream-50"
+                        }`}
+                      >
                         ✓ Called &amp; confirmed, publish
                       </button>
                     </form>
+                    {!isFromBot ? (
+                      <Link
+                        href={`/admin/edit/${b.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink-600 text-ink-900 hover:bg-cream-50 font-medium px-4 py-2 text-sm"
+                      >
+                        ✎ Edit
+                      </Link>
+                    ) : null}
                     <form action={approveAction.bind(null, b.id)}>
                       <button className="inline-flex items-center rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 font-medium px-4 py-2 text-sm">
                         Publish without badge

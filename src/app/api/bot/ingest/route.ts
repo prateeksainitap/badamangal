@@ -37,6 +37,7 @@ import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { prisma } from "@/lib/db";
 import {
+  classifyImage,
   extractBhandaraFromImage,
   extractSpotFromImage,
   type ExtractedBhandara,
@@ -54,8 +55,10 @@ const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB before normalisation
 const SPOT_TTL_HOURS = 8;
 
 type IngestBody = {
-  /** "bhandara" for an invite poster, "spot" for a live photo. */
-  kind?: "bhandara" | "spot";
+  /** "bhandara" for an invite poster, "spot" for a live photo, or
+   *  "auto" to let us classify the image via Gemini and route. The bot
+   *  defaults to "auto" so users can forward anything into the group. */
+  kind?: "bhandara" | "spot" | "auto";
   /** Base64-encoded image bytes (no data: prefix). */
   photoBase64?: string;
   /** Display name of the WhatsApp sender (for the admin's eyes). */
@@ -95,7 +98,14 @@ export async function POST(req: NextRequest) {
   if (!body.photoBase64) {
     return jsonError(400, "missing_photo");
   }
-  const kind: "bhandara" | "spot" = body.kind === "spot" ? "spot" : "bhandara";
+  // Resolve `kind`. Default flow from the bot is `kind: "auto"`, which
+  // asks us to classify the image via Gemini and route. We can't run
+  // classification yet (the image bytes are still raw + un-validated
+  // here) — we resolve it further down once we have a normalised WebP
+  // in hand. Explicit "bhandara" / "spot" still works (e.g. for the
+  // smoke-test curl invocations and the legacy ingester build).
+  const requestedKind: "bhandara" | "spot" | "auto" =
+    body.kind === "bhandara" || body.kind === "spot" ? body.kind : "auto";
   const senderName = (body.senderName ?? "").slice(0, 80) || "WhatsApp sender";
   const msgId = (body.msgId ?? "").slice(0, 120);
   const declaredMime = body.mime ?? "image/jpeg";
@@ -132,7 +142,18 @@ export async function POST(req: NextRequest) {
     return jsonError(422, "image_unreadable");
   }
 
-  // ── 4. Upload to Supabase Storage ───────────────────────────────
+  // ── 4. Classify (if "auto") + Upload to Supabase Storage ───────
+  // We compute the WebP base64 once and reuse for both classification
+  // (when needed) and extraction below. Classifying after the WebP
+  // round-trip means the model is looking at the same bytes we'll
+  // later extract from — slightly more accurate than classifying the
+  // raw upload and then re-encoding.
+  const base64Webp = webp.toString("base64");
+  const kind: "bhandara" | "spot" =
+    requestedKind === "auto"
+      ? await classifyImage(base64Webp, "image/webp")
+      : requestedKind;
+
   const supabase = getSupabaseAdmin();
   if (!supabase) {
     return jsonError(500, "storage_unavailable", {
@@ -152,7 +173,6 @@ export async function POST(req: NextRequest) {
   const photoUrl = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(filename).data.publicUrl;
 
   // ── 5. Run Gemini extraction (same path as /api/admin/scan) ────
-  const base64Webp = webp.toString("base64");
   const tag = `[bot:whatsapp · from:${senderName}${msgId ? ` · msg:${msgId.slice(0, 24)}` : ""} · ${new Date().toISOString().slice(0, 19)}Z]`;
 
   if (kind === "bhandara") {
@@ -197,8 +217,14 @@ export async function POST(req: NextRequest) {
         timeEnd: extracted.timeEnd ?? "",
         menu: JSON.stringify(extracted.menu ?? []),
         menuHi: JSON.stringify(menuHiFor(extracted.menu ?? [])),
-        organizerName: extracted.organizerName || senderName,
-        organizerPhone: extracted.organizerPhone || "unknown",
+        // organizerName is taken ONLY from the banner. We deliberately
+        // do NOT fall back to the WhatsApp sender's pushName — the
+        // person forwarding the invite is rarely the organiser, and
+        // pre-filling their name made admins have to delete it before
+        // every publish. Leave blank if the model couldn't read a host
+        // name; the admin will fill it from the photo during review.
+        organizerName: extracted.organizerName || "",
+        organizerPhone: extracted.organizerPhone || "",
         photoUrl,
         status: "PENDING",
       },
