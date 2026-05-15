@@ -5,6 +5,7 @@ import { prisma, toBhandara } from "@/lib/db";
 import {
   approveAction,
   approveSpotAction,
+  clearBotQueueAction,
   delistSpotAction,
   extendSpotAction,
   logoutAction,
@@ -16,6 +17,7 @@ import {
 import AdminSearchBox from "@/components/admin/AdminSearchBox";
 import AdminLoginForm from "@/components/admin/AdminLoginForm";
 import BotHeartbeat from "@/components/admin/BotHeartbeat";
+import SubmitButton from "@/components/admin/SubmitButton";
 // NOTE: hard-delete (deleteBhandaraAction / deleteSpotAction) and its
 // ConfirmSubmit prompt are intentionally NOT wired into the UI here —
 // admin policy is delist-only so historical data is preserved across
@@ -66,10 +68,18 @@ export default async function AdminPage({
     return <LoginScreen error={Boolean(sp.error)} />;
   }
 
-  // Top-level mode toggle: bhandara (default) vs spot. Each mode has
-  // its own status tabs + counts; the search bar adapts to query
-  // fields that make sense for the active mode.
-  const mode: "bhandara" | "spot" = sp.type === "spot" ? "spot" : "bhandara";
+  // Top-level mode toggle: bhandara (default) / spot / whatsapp bot.
+  // Each mode has its own status tabs + counts; the search bar adapts
+  // to query fields that make sense for the active mode. The
+  // WhatsApp-bot mode is its own *source-of-rows* view rather than a
+  // status filter — see WhatsAppBotView for the group-by-source-group
+  // breakdown.
+  const mode: "bhandara" | "spot" | "whatsapp" =
+    sp.type === "spot"
+      ? "spot"
+      : sp.type === "whatsapp"
+        ? "whatsapp"
+        : "bhandara";
   const q = (sp.q ?? "").trim();
 
   if (mode === "spot") {
@@ -77,6 +87,9 @@ export default async function AdminPage({
     // resolved JSX, not a Promise — Next.js can handle either, but
     // awaiting keeps types straight.
     return await SpotsView({ sp, q });
+  }
+  if (mode === "whatsapp") {
+    return await WhatsAppBotView({ sp, q });
   }
 
   // Tab routing. `?status=` accepts:
@@ -86,14 +99,13 @@ export default async function AdminPage({
   //   UNVERIFIED → live on the map but no verified badge yet
   //   VERIFIED   → live + team-confirmed
   //   REJECTED   → unpublished / delisted
-  //   FROM_BOT   → rows ingested by the OpenClaw WhatsApp agent
-  //                (regardless of status). Detected by the `[bot:`
-  //                provenance prefix the ingest endpoint embeds into
-  //                the description. Stays separate so the daily
-  //                review can drain the bot queue without scrolling
-  //                past hand-entered listings.
+  //
+  // (Bot-ingested rows previously had a FROM_BOT tab here; they now
+  // live in their own top-level "📱 WhatsApp bot" mode — see
+  // WhatsAppBotView. Removing the tab keeps the moderation queue
+  // focused on canonical statuses only.)
   const filter = sp.status?.toUpperCase();
-  const allowed = ["ALL", "PENDING", "UNVERIFIED", "VERIFIED", "REJECTED", "FROM_BOT"] as const;
+  const allowed = ["ALL", "PENDING", "UNVERIFIED", "VERIFIED", "REJECTED"] as const;
   const tab = (allowed as readonly string[]).includes(filter ?? "")
     ? (filter as (typeof allowed)[number])
     : "ALL";
@@ -110,14 +122,9 @@ export default async function AdminPage({
         ? { status: "APPROVED", isVerified: false }
         : tab === "VERIFIED"
           ? { status: "APPROVED", isVerified: true }
-          : tab === "FROM_BOT"
-            ? // Bot-ingested rows are tagged in the description column
-              // by /api/bot/ingest. Match the literal prefix so we
-              // don't catch the occasional admin-typed "[bot:" prose.
-              { description: { contains: "[bot:" } }
-            : tab === "ALL"
-              ? {}
-              : { status: tab };
+          : tab === "ALL"
+            ? {}
+            : { status: tab };
 
   const where = q
     ? {
@@ -152,7 +159,6 @@ export default async function AdminPage({
     unverifiedCount,
     verifiedCount,
     rejectedCount,
-    fromBotCount,
     allCount,
   ] = await Promise.all([
     prisma.bhandara.findMany({
@@ -167,7 +173,6 @@ export default async function AdminPage({
       where: { status: "APPROVED", isVerified: true },
     }),
     prisma.bhandara.count({ where: { status: "REJECTED" } }),
-    prisma.bhandara.count({ where: { description: { contains: "[bot:" } } }),
     prisma.bhandara.count({}),
   ]);
   // Pair each public-shape Bhandara with the raw DB record so the
@@ -185,9 +190,7 @@ export default async function AdminPage({
         ? unverifiedCount
         : s === "VERIFIED"
           ? verifiedCount
-          : s === "FROM_BOT"
-            ? fromBotCount
-            : s === "REJECTED"
+          : s === "REJECTED"
             ? rejectedCount
             : s === "ALL"
               ? allCount
@@ -257,17 +260,11 @@ export default async function AdminPage({
         ) : null}
       </div>
 
-      {/* Filter tabs */}
+      {/* Filter tabs — bot-ingested rows have moved to their own
+          top-level "📱 WhatsApp bot" mode (see ModeToggle). */}
       <nav className="mt-4 flex flex-wrap gap-2 text-sm">
         {(
-          [
-            "ALL",
-            "PENDING",
-            "UNVERIFIED",
-            "VERIFIED",
-            "REJECTED",
-            "FROM_BOT",
-          ] as const
+          ["ALL", "PENDING", "UNVERIFIED", "VERIFIED", "REJECTED"] as const
         ).map((s) => {
           const active = s === tab;
           // Preserve the active search across tab changes — admins
@@ -275,23 +272,14 @@ export default async function AdminPage({
           const href = q
             ? `/admin?status=${s}&q=${encodeURIComponent(q)}`
             : `/admin?status=${s}`;
-          // The FROM_BOT tab is the WhatsApp-agent inbox. Style it
-          // distinctly (sindoor border instead of saffron) so it
-          // reads as a different kind of queue — not a status, a
-          // source.
-          const variant = s === "FROM_BOT";
           return (
             <a
               key={s}
               href={href}
               className={`inline-flex items-center gap-2 rounded-full px-3 py-1 border transition-colors ${
                 active
-                  ? variant
-                    ? "bg-sindoor-700 border-sindoor-700 text-cream-50"
-                    : "bg-saffron-600 border-saffron-600 text-cream-50"
-                  : variant
-                    ? "bg-cream-50 border-sindoor-700/45 text-sindoor-700 hover:border-sindoor-700"
-                    : "bg-cream-50 border-gold-500/40 text-ink-600 hover:border-saffron-500"
+                  ? "bg-saffron-600 border-saffron-600 text-cream-50"
+                  : "bg-cream-50 border-gold-500/40 text-ink-600 hover:border-saffron-500"
               }`}
             >
               {s === "PENDING"
@@ -302,9 +290,7 @@ export default async function AdminPage({
                     ? "Verified"
                     : s === "REJECTED"
                       ? "Rejected"
-                      : s === "FROM_BOT"
-                        ? "📱 From WhatsApp bot"
-                        : "All"}
+                      : "All"}
               <span
                 className={`text-xs rounded-full px-1.5 py-0.5 ${
                   active ? "bg-cream-50/20" : "bg-gold-100"
@@ -579,29 +565,45 @@ export default async function AdminPage({
  * The "other" mode is rendered as a link so a single click hops the
  * admin between queues without losing their place.
  */
-function ModeToggle({ current }: { current: "bhandara" | "spot" }) {
+function ModeToggle({
+  current,
+}: {
+  current: "bhandara" | "spot" | "whatsapp";
+}) {
+  // Three top-level admin queues. "WhatsApp bot" is its own slot
+  // (distinct sindoor styling) because it's a *source*, not a
+  // *status* — it holds rows from the WhatsApp ingest pipeline that
+  // are awaiting admin review, grouped by their source group.
+  const items = [
+    { id: "bhandara", label: "Bhandaras", href: "/admin" },
+    { id: "spot", label: "Spotted", href: "/admin?type=spot" },
+    {
+      id: "whatsapp",
+      label: "📱 WhatsApp bot",
+      href: "/admin?type=whatsapp",
+    },
+  ] as const;
   return (
     <div className="inline-flex rounded-full border border-gold-500/40 bg-cream-50 p-1 text-sm">
-      <a
-        href="/admin"
-        className={`px-3 py-1 rounded-full transition-colors ${
-          current === "bhandara"
-            ? "bg-saffron-600 text-cream-50 shadow-warm"
-            : "text-ink-600 hover:text-sindoor-700"
-        }`}
-      >
-        Bhandaras
-      </a>
-      <a
-        href="/admin?type=spot"
-        className={`px-3 py-1 rounded-full transition-colors ${
-          current === "spot"
-            ? "bg-saffron-600 text-cream-50 shadow-warm"
-            : "text-ink-600 hover:text-sindoor-700"
-        }`}
-      >
-        Spotted
-      </a>
+      {items.map((it) => {
+        const active = it.id === current;
+        const isWa = it.id === "whatsapp";
+        return (
+          <a
+            key={it.id}
+            href={it.href}
+            className={`px-3 py-1 rounded-full transition-colors ${
+              active
+                ? isWa
+                  ? "bg-sindoor-700 text-cream-50 shadow-warm"
+                  : "bg-saffron-600 text-cream-50 shadow-warm"
+                : "text-ink-600 hover:text-sindoor-700"
+            }`}
+          >
+            {it.label}
+          </a>
+        );
+      })}
     </div>
   );
 }
@@ -900,6 +902,618 @@ async function SpotsView({
         </ul>
       )}
     </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// WhatsApp bot moderation view
+// ────────────────────────────────────────────────────────────────────
+//
+// A *source-of-rows* queue (not a status filter). Surfaces everything
+// the WhatsApp ingest pipeline has dropped into the DB — both Bhandara
+// invite posters and Spot live-photos — grouped by the originating
+// WhatsApp group so the admin can drain one group's submissions at a
+// time.
+//
+// Row provenance comes from the ingest tag the bot endpoint embeds
+// into description (for Bhandaras) / caption (for Spots):
+//   [bot:whatsapp · from:<sender · group> · msg:<id> · <timestamp>]
+// We parse that tag once per row and surface group + sender prominently
+// at the top of each card so the admin can see who flagged what.
+
+/** Pull sender + group + msgId out of the [bot:…] tag. */
+function parseBotTag(text: string | null | undefined): {
+  sender: string;
+  group: string;
+  msgId: string;
+} {
+  if (!text) return { sender: "", group: "", msgId: "" };
+  // Liberal match — bot tag may appear at the start of description or
+  // appended after the model-extracted prose with a blank line in
+  // between. We capture the from/msg/timestamp fragment regardless of
+  // surrounding whitespace.
+  const m = text.match(
+    /\[bot:whatsapp\s*·\s*from:([^\n\]]+?)(?:\s*·\s*msg:([^·\]]+?))?\s*·\s*\d{4}-\d{2}-\d{2}[^\]]*\]/,
+  );
+  if (!m) return { sender: "", group: "", msgId: "" };
+  const fromField = (m[1] ?? "").trim();
+  // The ingester encodes from-with-group as "Sender · Group Name".
+  // Split on the first " · " to peel off the group; anything after is
+  // the group name (groups can themselves contain "·" in their subject
+  // — we re-join the trailing parts so we don't truncate).
+  const parts = fromField.split(/\s*·\s*/);
+  const sender = parts.shift() ?? "";
+  const group = parts.join(" · ").trim();
+  return { sender: sender.trim(), group, msgId: (m[2] ?? "").trim() };
+}
+
+type BotBhandara = ReturnType<typeof toBhandara> & {
+  status: string;
+  createdAt: Date;
+  _bot: ReturnType<typeof parseBotTag>;
+};
+type BotSpot = {
+  id: string;
+  caption: string | null;
+  // Spots are inserted with a non-null photoUrl by /api/bot/ingest,
+  // but the Prisma Spot.photoUrl column type is `String?` (nullable)
+  // so the type system still surfaces `string | null` here. We
+  // render an empty/placeholder photo if it ever lands null — which
+  // shouldn't happen via the bot pipeline, but we don't want a runtime
+  // crash if it does.
+  photoUrl: string | null;
+  area: string | null;
+  address: string | null;
+  status: string;
+  createdAt: Date;
+  expiresAt: Date;
+  _bot: ReturnType<typeof parseBotTag>;
+};
+
+async function WhatsAppBotView({
+  sp,
+  q,
+}: {
+  sp: { status?: string; q?: string; type?: string };
+  q: string;
+}) {
+  // The "sub-tab" inside this view picks between the two row types
+  // the bot produces. Default to invites since that's the bulk of the
+  // pipeline (live-photo forwards are rarer).
+  const sub: "bhandara" | "spot" =
+    sp.status?.toLowerCase() === "spot" ? "spot" : "bhandara";
+
+  // Free-text search inside the bot queue. Hits the same human fields
+  // the bhandara moderation list does, plus the tag fragment so admins
+  // can search "Aliganj" or "Prateek" and find the rows whose group
+  // matched.
+  const qFilter = q.trim();
+  const bhandaraWhere = qFilter
+    ? {
+        AND: [
+          { description: { contains: "[bot:" } },
+          {
+            OR: [
+              { name: { contains: qFilter, mode: "insensitive" as const } },
+              { nameHi: { contains: qFilter, mode: "insensitive" as const } },
+              { area: { contains: qFilter, mode: "insensitive" as const } },
+              { address: { contains: qFilter, mode: "insensitive" as const } },
+              {
+                description: {
+                  contains: qFilter,
+                  mode: "insensitive" as const,
+                },
+              },
+              {
+                organizerName: {
+                  contains: qFilter,
+                  mode: "insensitive" as const,
+                },
+              },
+            ],
+          },
+        ],
+      }
+    : { description: { contains: "[bot:" } };
+  const spotWhere = qFilter
+    ? {
+        AND: [
+          { ipHash: "bot:whatsapp" },
+          {
+            OR: [
+              { caption: { contains: qFilter, mode: "insensitive" as const } },
+              { area: { contains: qFilter, mode: "insensitive" as const } },
+              { address: { contains: qFilter, mode: "insensitive" as const } },
+            ],
+          },
+        ],
+      }
+    : { ipHash: "bot:whatsapp" };
+
+  const [bhandaraRows, spotRows, bhandaraTotal, spotTotal] = await Promise.all([
+    prisma.bhandara.findMany({
+      where: bhandaraWhere,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.spot.findMany({
+      where: spotWhere,
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.bhandara.count({ where: { description: { contains: "[bot:" } } }),
+    prisma.spot.count({ where: { ipHash: "bot:whatsapp" } }),
+  ]);
+
+  // Decode the bot tag once per row so render-time stays cheap.
+  const bhandaras: BotBhandara[] = bhandaraRows.map((r) => ({
+    ...toBhandara(r),
+    status: r.status,
+    createdAt: r.createdAt,
+    _bot: parseBotTag(r.description),
+  }));
+  const spots: BotSpot[] = spotRows.map((s) => ({
+    id: s.id,
+    caption: s.caption,
+    photoUrl: s.photoUrl,
+    area: s.area,
+    address: s.address,
+    status: s.status,
+    createdAt: s.createdAt,
+    expiresAt: s.expiresAt,
+    _bot: parseBotTag(s.caption),
+  }));
+
+  // Group rows by source WhatsApp group. Unknown / empty group falls
+  // into "(no group detected)" — usually means an older row from
+  // before the ingester started forwarding group names, or a manual
+  // curl smoke test.
+  const groupBhandaras = groupBy(bhandaras, (b) => b._bot.group || "(no group detected)");
+  const groupSpots = groupBy(spots, (s) => s._bot.group || "(no group detected)");
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 sm:px-6 pb-24">
+      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-8 pb-4 bg-cream-50/92 backdrop-blur-md border-b border-gold-500/30">
+        <header className="flex flex-wrap items-end justify-between gap-4 pb-4">
+          <div>
+            <p className="text-xs uppercase tracking-wider text-ink-600">
+              Source · WhatsApp ingest
+            </p>
+            <h1 className="font-fraunces text-3xl text-sindoor-700 mt-1">
+              📱 WhatsApp bot
+            </h1>
+            <p className="mt-1 text-sm text-ink-600">
+              Auto-classified images forwarded into bhandara groups.
+              Grouped by source group below.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <ModeToggle current="whatsapp" />
+            <BotHeartbeat />
+            <form action={clearBotQueueAction}>
+              <SubmitButton
+                variant="outline-alert"
+                pendingLabel="Clearing…"
+                confirm="This permanently deletes EVERY bot-ingested row (both bhandaras and spots), no undo. Continue?"
+              >
+                🗑 Clear queue
+              </SubmitButton>
+            </form>
+            <form action={logoutAction}>
+              <SubmitButton variant="outline-ink" pendingLabel="Signing out…">
+                Sign out
+              </SubmitButton>
+            </form>
+          </div>
+        </header>
+
+        {/* Search bar — same shape as the bhandara view so muscle memory
+            translates. The status prop is ignored by AdminSearchBox in
+            this mode because the parent route forwards ?type=whatsapp. */}
+        <div className="mt-5">
+          <AdminSearchBox status={sub} type="whatsapp" />
+        </div>
+
+        {/* Sub-tabs: bhandara invites vs spot photos */}
+        <nav className="mt-4 flex flex-wrap gap-2 text-sm">
+          {(
+            [
+              { id: "bhandara", label: "Bhandara invites", count: bhandaraTotal },
+              { id: "spot", label: "Spot photos", count: spotTotal },
+            ] as const
+          ).map((it) => {
+            const active = it.id === sub;
+            const href = qFilter
+              ? `/admin?type=whatsapp&status=${it.id}&q=${encodeURIComponent(qFilter)}`
+              : `/admin?type=whatsapp&status=${it.id}`;
+            return (
+              <a
+                key={it.id}
+                href={href}
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 border transition-colors ${
+                  active
+                    ? "bg-sindoor-700 border-sindoor-700 text-cream-50"
+                    : "bg-cream-50 border-sindoor-700/40 text-sindoor-700 hover:border-sindoor-700"
+                }`}
+              >
+                {it.label}
+                <span
+                  className={`text-xs rounded-full px-1.5 py-0.5 ${
+                    active ? "bg-cream-50/20" : "bg-sindoor-700/10"
+                  }`}
+                >
+                  {it.count}
+                </span>
+              </a>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Group-by-source-group sections. Within each section, rows
+          render with a leaner card than the main bhandara queue —
+          group + sender at the top, photo prominent, then minimal
+          extracted fields. Heavy editing happens on /admin/edit/[id]
+          for bhandaras; for spots admins just publish/reject. */}
+      {sub === "bhandara" ? (
+        <BotBhandaraList groups={groupBhandaras} q={qFilter} />
+      ) : (
+        <BotSpotList groups={groupSpots} q={qFilter} />
+      )}
+    </div>
+  );
+}
+
+/** Simple groupBy that preserves first-seen ordering of keys. */
+function groupBy<T>(items: T[], keyFn: (item: T) => string): Map<string, T[]> {
+  const m = new Map<string, T[]>();
+  for (const it of items) {
+    const k = keyFn(it);
+    const bucket = m.get(k);
+    if (bucket) bucket.push(it);
+    else m.set(k, [it]);
+  }
+  return m;
+}
+
+function BotBhandaraList({
+  groups,
+  q,
+}: {
+  groups: Map<string, BotBhandara[]>;
+  q: string;
+}) {
+  if (groups.size === 0) {
+    return (
+      <p className="mt-12 text-center text-ink-600">
+        {q
+          ? `No bot-ingested invites match “${q}”.`
+          : "Bot queue is empty. Forwards into bhandara WhatsApp groups will appear here."}
+      </p>
+    );
+  }
+  return (
+    <div className="mt-6 space-y-8">
+      {[...groups.entries()].map(([groupName, rows]) => (
+        <section key={groupName}>
+          <h2 className="text-sm font-medium text-sindoor-700 mb-2 flex items-center gap-2">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-sindoor-700" />
+            {groupName}
+            <span className="text-xs text-ink-600 font-normal">
+              · {rows.length} invite{rows.length === 1 ? "" : "s"}
+            </span>
+          </h2>
+          <ul className="grid gap-4">
+            {rows.map((b) => (
+              <BotBhandaraCard key={b.id} b={b} />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function BotBhandaraCard({ b }: { b: BotBhandara }) {
+  const rowState: "PENDING" | "UNVERIFIED" | "VERIFIED" | "REJECTED" =
+    b.status === "PENDING"
+      ? "PENDING"
+      : b.status === "REJECTED"
+        ? "REJECTED"
+        : b.isVerified
+          ? "VERIFIED"
+          : "UNVERIFIED";
+  return (
+    <li
+      id={b.id}
+      className="rounded-2xl border border-sindoor-700/35 bg-saffron-50/30 p-5 sm:p-6"
+    >
+      <div className="flex items-start gap-4">
+        {b.photoUrl ? (
+          <a
+            href={b.photoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 group block focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600 rounded-xl"
+            title="Open full image"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={b.photoUrl}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl object-cover border border-gold-500/40 bg-cream-50 group-hover:border-saffron-500"
+            />
+          </a>
+        ) : null}
+        <div className="min-w-0 flex-1">
+          {/* Provenance line — sender · group · "Needs call" pill */}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-ink-600">
+            <span className="font-medium text-sindoor-700">
+              {b._bot.sender || "Unknown sender"}
+            </span>
+            {b._bot.group ? (
+              <span className="rounded-full px-2 py-0.5 bg-cream-50 border border-sindoor-700/35">
+                {b._bot.group}
+              </span>
+            ) : null}
+            <span
+              className={`rounded-full px-2 py-0.5 border ${
+                rowState === "PENDING"
+                  ? "bg-saffron-50 border-saffron-500/55 text-saffron-600"
+                  : rowState === "REJECTED"
+                    ? "bg-alert-500/10 border-alert-500/55 text-alert-500"
+                    : rowState === "VERIFIED"
+                      ? "bg-leaf-600/12 border-leaf-600/55 text-leaf-600"
+                      : "bg-cream-50 border-gold-500/40 text-ink-600"
+              }`}
+            >
+              {rowState === "PENDING"
+                ? "Needs review"
+                : rowState === "REJECTED"
+                  ? "Rejected"
+                  : rowState === "VERIFIED"
+                    ? "Verified"
+                    : "Live · unverified"}
+            </span>
+          </div>
+          <h3 className="font-tiro text-xl text-sindoor-700 mt-2">
+            {b.nameHi || "—"}
+          </h3>
+          <p className="font-fraunces text-lg text-ink-900">{b.name}</p>
+          <p className="mt-1 text-sm text-ink-600">
+            {b.area ? `${b.area} · ` : ""}
+            {format12h(b.timeStart)}
+            {b.timeEnd ? `–${format12h(b.timeEnd)}` : ""}
+          </p>
+        </div>
+      </div>
+
+      <dl className="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
+        <Row label="Address" value={b.address || "—"} />
+        <Row
+          label="Tuesdays"
+          value={b.tuesdayDates.length ? b.tuesdayDates.join(", ") : "—"}
+        />
+        <Row label="Menu" value={b.menu.length ? b.menu.join(", ") : "—"} />
+        <Row
+          label="Organizer"
+          value={
+            b.organizerName || b.organizerPhone
+              ? `${b.organizerName || "—"} · ${b.organizerPhone || "—"}`
+              : "—"
+          }
+        />
+      </dl>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {rowState === "PENDING" ? (
+          <>
+            <Link
+              href={`/admin/edit/${b.id}`}
+              className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm"
+            >
+              ✎ Edit &amp; publish
+            </Link>
+            <form action={publishVerifiedAction.bind(null, b.id)}>
+              <SubmitButton variant="outline-leaf" pendingLabel="Publishing…">
+                ✓ Publish as-is
+              </SubmitButton>
+            </form>
+            <form action={rejectAction.bind(null, b.id)}>
+              <SubmitButton
+                variant="outline-alert"
+                pendingLabel="Rejecting…"
+                confirm="Reject this bot-ingested invite?"
+              >
+                Reject
+              </SubmitButton>
+            </form>
+          </>
+        ) : rowState === "REJECTED" ? (
+          <form action={approveAction.bind(null, b.id)}>
+            <SubmitButton variant="primary-green" pendingLabel="Republishing…">
+              Re-publish
+            </SubmitButton>
+          </form>
+        ) : (
+          <>
+            <a
+              href={`/bhandara/${b.slug}`}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 font-medium px-4 py-2 text-sm"
+            >
+              View public ↗
+            </a>
+            <form action={rejectAction.bind(null, b.id)}>
+              <SubmitButton
+                variant="outline-alert"
+                pendingLabel="Delisting…"
+                confirm="Delist this listing?"
+              >
+                Delist
+              </SubmitButton>
+            </form>
+          </>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function BotSpotList({
+  groups,
+  q,
+}: {
+  groups: Map<string, BotSpot[]>;
+  q: string;
+}) {
+  if (groups.size === 0) {
+    return (
+      <p className="mt-12 text-center text-ink-600">
+        {q
+          ? `No bot-ingested spots match “${q}”.`
+          : "No live-photo forwards yet. Photos of pandals / food / crowds will appear here."}
+      </p>
+    );
+  }
+  return (
+    <div className="mt-6 space-y-8">
+      {[...groups.entries()].map(([groupName, rows]) => (
+        <section key={groupName}>
+          <h2 className="text-sm font-medium text-sindoor-700 mb-2 flex items-center gap-2">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-sindoor-700" />
+            {groupName}
+            <span className="text-xs text-ink-600 font-normal">
+              · {rows.length} photo{rows.length === 1 ? "" : "s"}
+            </span>
+          </h2>
+          <ul className="grid gap-4">
+            {rows.map((s) => (
+              <BotSpotCard key={s.id} s={s} />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function BotSpotCard({ s }: { s: BotSpot }) {
+  const isLive = s.status === "APPROVED" && s.expiresAt > new Date();
+  const isExpired = s.status === "APPROVED" && s.expiresAt <= new Date();
+  return (
+    <li
+      id={s.id}
+      className="rounded-2xl border border-sindoor-700/35 bg-saffron-50/30 p-5 sm:p-6"
+    >
+      <div className="flex items-start gap-4">
+        {s.photoUrl ? (
+          <a
+            href={s.photoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 group block focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600 rounded-xl"
+            title="Open full image"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={s.photoUrl}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl object-cover border border-gold-500/40 bg-cream-50 group-hover:border-saffron-500"
+            />
+          </a>
+        ) : (
+          <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl border border-dashed border-gold-500/40 bg-saffron-50 grid place-items-center text-2xl text-saffron-600 shrink-0">
+            📷
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-ink-600">
+            <span className="font-medium text-sindoor-700">
+              {s._bot.sender || "Unknown sender"}
+            </span>
+            {s._bot.group ? (
+              <span className="rounded-full px-2 py-0.5 bg-cream-50 border border-sindoor-700/35">
+                {s._bot.group}
+              </span>
+            ) : null}
+            <span
+              className={`rounded-full px-2 py-0.5 border ${
+                s.status === "REJECTED"
+                  ? "bg-alert-500/10 border-alert-500/55 text-alert-500"
+                  : isLive
+                    ? "bg-leaf-600/12 border-leaf-600/55 text-leaf-600"
+                    : isExpired
+                      ? "bg-cream-50 border-gold-500/40 text-ink-600"
+                      : "bg-saffron-50 border-saffron-500/55 text-saffron-600"
+              }`}
+            >
+              {s.status === "REJECTED"
+                ? "Rejected"
+                : isLive
+                  ? "Live"
+                  : isExpired
+                    ? "Expired"
+                    : "Pending"}
+            </span>
+          </div>
+          <p className="font-fraunces text-lg text-ink-900 mt-2">
+            {s.caption?.split("\n\n")[0] || "(no caption)"}
+          </p>
+          <p className="mt-1 text-sm text-ink-600">
+            {s.area ? `${s.area}` : ""}
+            {s.address ? `${s.area ? " · " : ""}${s.address}` : ""}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        {s.status === "REJECTED" ? (
+          <form action={approveSpotAction.bind(null, s.id)}>
+            <SubmitButton variant="primary-green" pendingLabel="Approving…">
+              Approve
+            </SubmitButton>
+          </form>
+        ) : isLive ? (
+          <>
+            <form action={extendSpotAction.bind(null, s.id)}>
+              <SubmitButton variant="outline-saffron" pendingLabel="Extending…">
+                +2h
+              </SubmitButton>
+            </form>
+            <form action={delistSpotAction.bind(null, s.id)}>
+              <SubmitButton
+                variant="outline-alert"
+                pendingLabel="Delisting…"
+                confirm="Delist this spot from the map?"
+              >
+                Delist
+              </SubmitButton>
+            </form>
+          </>
+        ) : (
+          <>
+            <form action={approveSpotAction.bind(null, s.id)}>
+              <SubmitButton variant="primary-green" pendingLabel="Approving…">
+                ✓ Approve
+              </SubmitButton>
+            </form>
+            <form action={delistSpotAction.bind(null, s.id)}>
+              <SubmitButton
+                variant="outline-alert"
+                pendingLabel="Rejecting…"
+                confirm="Reject this spot?"
+              >
+                Reject
+              </SubmitButton>
+            </form>
+          </>
+        )}
+      </div>
+    </li>
   );
 }
 

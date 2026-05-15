@@ -30,13 +30,13 @@ const DEBOUNCE_MS = 200;
 export default function AdminSearchBox({
   /** Active tab — passed in so we preserve `?status=` on every URL update. */
   status,
-  /** Active moderation mode ("bhandara" default, or "spot"). Preserved
-   *  on every URL update so typing in the Spots queue doesn't bounce
-   *  the admin back to the Bhandara queue. */
+  /** Active moderation mode ("bhandara" default, "spot", or "whatsapp"
+   *  for the bot-ingest queue). Preserved on every URL update so typing
+   *  in one queue doesn't bounce the admin back to a different one. */
   type = "bhandara",
 }: {
   status: string;
-  type?: "bhandara" | "spot";
+  type?: "bhandara" | "spot" | "whatsapp";
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -62,9 +62,10 @@ export default function AdminSearchBox({
 
   function buildParams(next: string): URLSearchParams {
     const params = new URLSearchParams();
-    // `type` always rides along so a search inside the Spots queue
-    // doesn't silently kick the admin back to the Bhandara queue.
+    // `type` always rides along so a search inside the Spots / bot
+    // queue doesn't silently kick the admin back to the Bhandara queue.
     if (type === "spot") params.set("type", "spot");
+    if (type === "whatsapp") params.set("type", "whatsapp");
     params.set("status", status);
     const trimmed = next.trim();
     if (trimmed) params.set("q", trimmed);

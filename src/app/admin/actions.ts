@@ -196,6 +196,34 @@ export async function editAndPublishAction(
   redirect("/admin");
 }
 
+/**
+ * One-shot maintenance action: hard-delete every bot-ingested row
+ * (bhandara + spot) so the admin can start the WhatsApp ingest queue
+ * from a clean slate. Used initially to flush testing data, but kept
+ * as a permanent feature for future "bot pumped junk during a power
+ * outage" recoveries.
+ *
+ * Bhandara provenance is detected via the `[bot:` prefix that
+ * /api/bot/ingest embeds into description. Spots are detected via
+ * `ipHash = "bot:whatsapp"` (set at insert time by the same endpoint).
+ * Hard-deleting is safe here because:
+ *   • These rows have never been on the public map (status=PENDING,
+ *     lat/lng=0). Even bot-classified spots are PENDING-by-default.
+ *   • The original image still lives in Supabase storage; the admin
+ *     can re-ingest by forwarding the WhatsApp message again.
+ * Returns nothing; the redirect refreshes the WhatsApp-bot view.
+ */
+export async function clearBotQueueAction(): Promise<void> {
+  await requireAdmin();
+  await prisma.$transaction([
+    prisma.bhandara.deleteMany({ where: { description: { contains: "[bot:" } } }),
+    prisma.spot.deleteMany({ where: { ipHash: "bot:whatsapp" } }),
+  ]);
+  revalidatePath("/admin");
+  revalidatePath("/");
+  redirect("/admin?type=whatsapp");
+}
+
 // ────────────────────────────────────────────────────────────────────
 // Spot (live "spotted bhandara") moderation actions
 // ────────────────────────────────────────────────────────────────────
