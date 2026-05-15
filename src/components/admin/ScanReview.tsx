@@ -17,6 +17,7 @@
  *     several printed numbers
  */
 import { useMemo, useRef, useState } from "react";
+import SeasonDatePicker from "@/components/SeasonDatePicker";
 
 // ── Client-side image compression ────────────────────────────────────
 //
@@ -552,11 +553,40 @@ function BhandaraReviewForm({
   const [menuOther, setMenuOther] = useState((e.menuOther ?? []).join(", "));
   const [organizerName, setOrganizerName] = useState(e.organizerName ?? "");
   const [organizerPhone, setOrganizerPhone] = useState(e.organizerPhone ?? "");
+  const [organizerWhatsapp, setOrganizerWhatsapp] = useState("");
+  const [upiId, setUpiId] = useState("");
   const [isVerified, setIsVerified] = useState(false);
+
+  // "Custom area" mode: when the extracted area isn't in the curated
+  // AREAS list (or admin wants to type something not on the list), we
+  // swap the dropdown for a free-text input. Detect on mount so an
+  // out-of-list area Gemini extracted opens in custom mode right away.
+  const initialCustomArea =
+    (e.area ?? "").length > 0 && !areas.includes(e.area ?? "");
+  const [customAreaMode, setCustomAreaMode] = useState<boolean>(initialCustomArea);
 
   function toggleDate(d: string) {
     setDates((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d]));
   }
+
+  function addCustomDate(iso: string) {
+    setDates((cur) => (cur.includes(iso) ? cur : [...cur, iso].sort()));
+  }
+  function removeDate(iso: string) {
+    setDates((cur) => cur.filter((x) => x !== iso));
+  }
+
+  // Custom dates the admin has added that aren't in the preset
+  // Tuesday/Saturday chip set — shown as removable chips above the
+  // SeasonDatePicker so the admin can see exactly what's selected.
+  const presetSet = useMemo(
+    () => new Set([...tuesdays, ...saturdays]),
+    [tuesdays, saturdays],
+  );
+  const customDates = useMemo(
+    () => dates.filter((d) => !presetSet.has(d)),
+    [dates, presetSet],
+  );
   function toggleMenu(k: string) {
     setMenu((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]));
   }
@@ -629,13 +659,58 @@ function BhandaraReviewForm({
             multiline
             wide
           />
-          <SelectField
-            label="Area"
-            value={area}
-            onChange={setArea}
-            options={areas}
-            required
-          />
+          {/* Area picker — supports curated list + free-text "Other".
+              Same pattern as the public BhandaraForm so admin and
+              organiser have one mental model. */}
+          <div>
+            <span className="text-[11px] uppercase tracking-wider text-ink-600">
+              Area *
+            </span>
+            {customAreaMode ? (
+              <div className="mt-1 space-y-1.5">
+                <input
+                  value={area}
+                  onChange={(ev) => setArea(ev.target.value)}
+                  placeholder="Type the area name"
+                  maxLength={50}
+                  className="w-full rounded-lg border border-gold-500/50 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setArea("");
+                    setCustomAreaMode(false);
+                  }}
+                  className="text-[11px] uppercase tracking-[0.18em] text-ink-600 hover:text-sindoor-700"
+                >
+                  ← Pick from the list
+                </button>
+              </div>
+            ) : (
+              <select
+                value={area}
+                onChange={(ev) => {
+                  const v = ev.target.value;
+                  if (v === "__custom__") {
+                    setArea("");
+                    setCustomAreaMode(true);
+                    return;
+                  }
+                  setArea(v);
+                }}
+                className="mt-1 w-full rounded-lg border border-gold-500/50 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+              >
+                <option value="">Select…</option>
+                {areas.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+                <option value="__custom__">Other — type your own…</option>
+              </select>
+            )}
+          </div>
           <Field label="Landmark" value={landmark} onChange={setLandmark} />
           <Field
             label="Address (English)"
@@ -692,9 +767,24 @@ function BhandaraReviewForm({
             required
             mono
           />
+          <Field
+            label="Organizer WhatsApp (optional)"
+            value={organizerWhatsapp}
+            onChange={setOrganizerWhatsapp}
+            mono
+          />
+          <Field
+            label="UPI ID for sponsorship (optional)"
+            value={upiId}
+            onChange={setUpiId}
+            mono
+          />
         </div>
 
-        {/* Dates */}
+        {/* Dates — preset Bada Mangal Tuesdays + Bada Shanivar
+            Saturdays as quick-pick chips. Below them, a custom-date
+            picker (any 2026 date) for off-season events or one-off
+            community dinners the calendar doesn't preset. */}
         <div className="mt-5">
           <p className="text-[11px] uppercase tracking-wider text-ink-600">
             Dates *
@@ -723,6 +813,42 @@ function BhandaraReviewForm({
                   </button>
                 );
               })}
+          </div>
+
+          {/* Custom-date chips (anything the admin added that isn't in
+              the preset Tuesday/Saturday set). Each gets an inline
+              × so admin can remove without re-opening the picker. */}
+          {customDates.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {customDates.map((d) => (
+                <span
+                  key={d}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 border border-leaf-600 text-cream-50 px-2.5 py-1 text-xs"
+                >
+                  {d.slice(8)}/{d.slice(5, 7)}/{d.slice(2, 4)}
+                  <button
+                    type="button"
+                    onClick={() => removeDate(d)}
+                    aria-label={`Remove ${d}`}
+                    className="text-cream-50/85 hover:text-cream-50"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="mt-2">
+            <SeasonDatePicker
+              // Allow any 2026 date for admin overrides. Public form
+              // sticks to the season window; admin gets full freedom.
+              minIso="2026-01-01"
+              maxIso="2026-12-31"
+              selectedIsos={dates}
+              onPick={addCustomDate}
+              locale="en"
+            />
           </div>
         </div>
 
@@ -797,6 +923,8 @@ function BhandaraReviewForm({
                   .filter(Boolean),
                 organizerName,
                 organizerPhone,
+                organizerWhatsapp: organizerWhatsapp || undefined,
+                upiId: upiId || undefined,
                 photoUrl: scan.photoUrl,
                 isVerified,
               })

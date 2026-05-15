@@ -19,7 +19,6 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { MENU_KEYS, menuHiFor } from "@/lib/menu";
 import { ensureUniqueSlug, slugify } from "@/lib/slugify";
-import { SEASON_START_ISO, SEASON_END_ISO } from "@/lib/dates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,12 +39,42 @@ const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
 // the short list locked out legitimate submissions).
 const areaInput = z.string().trim().min(2).max(50);
 
-const seasonDate = z
+// Admin date validator — wider than the public form's. The public
+// /list-bhandara only accepts the season window (May–June 2026); the
+// admin needs full freedom to record one-off events that fall outside
+// the canonical Tuesdays (Saturday community lunches, post-season
+// thanksgiving meals, Shani Jayanti overlaps, etc.). Constrain only
+// to "any reasonable date in 2026" so a typo doesn't accidentally
+// schedule something in 1926.
+const adminDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
-  .refine((d) => d >= SEASON_START_ISO && d <= SEASON_END_ISO, {
-    message: "Pick a date inside the 2026 Bada Mangal season",
+  .refine((d) => d >= "2026-01-01" && d <= "2026-12-31", {
+    message: "Pick a date inside 2026",
   });
+
+// Phone-shaped, intentionally loose — the form already collects in a
+// specific format and Indian mobile parsing has edge cases (+91, 0
+// prefix, missing prefix, hyphenated). Pure store-as-typed; the admin
+// reviews before publish so we don't need server-side parsing.
+const optionalPhone = z
+  .string()
+  .trim()
+  .max(20)
+  .optional()
+  .or(z.literal(""))
+  .transform((v) => (v === "" || v === undefined ? undefined : v));
+
+// UPI IDs follow the pattern `<handle>@<provider>` (e.g. badamangal@upi).
+// Keep validation light — collect anything that looks UPI-ish and let
+// the admin sanity-check.
+const optionalUpi = z
+  .string()
+  .trim()
+  .max(80)
+  .optional()
+  .or(z.literal(""))
+  .transform((v) => (v === "" || v === undefined ? undefined : v));
 
 const bhandaraInput = z.object({
   name: z.string().trim().min(2),
@@ -58,7 +87,7 @@ const bhandaraInput = z.object({
   landmark: z.string().trim().optional().default(""),
   lat: z.number().min(26.6).max(27.0),
   lng: z.number().min(80.7).max(81.2),
-  tuesdayDates: z.array(seasonDate).min(1),
+  tuesdayDates: z.array(adminDate).min(1),
   timeStart: z.string().regex(/^\d{2}:\d{2}$/),
   timeEnd: z
     .string()
@@ -70,6 +99,12 @@ const bhandaraInput = z.object({
   menuOther: z.array(z.string().trim().min(1).max(40)).max(20).optional().default([]),
   organizerName: z.string().trim().min(1),
   organizerPhone: z.string().trim().min(1),
+  // Optional sponsorship/contact extras carried through from the
+  // admin form. Public submitSchema (lib/validation.ts) handles the
+  // same fields with stricter validation for the organiser-self-
+  // submission flow; here we trust the admin to enter sane values.
+  organizerWhatsapp: optionalPhone,
+  upiId: optionalUpi,
   photoUrl: z.string().trim().url(),
   isVerified: z.boolean().optional().default(false),
 });
@@ -147,6 +182,11 @@ export async function POST(req: NextRequest) {
         menuHi: JSON.stringify(finalMenuHi),
         organizerName: d.organizerName,
         organizerPhone: d.organizerPhone,
+        // Optional WhatsApp + UPI ID for sponsorship — public listing
+        // surfaces these on the bhandara detail page; admin can leave
+        // blank if the invite didn't include them.
+        organizerWhatsapp: d.organizerWhatsapp ?? null,
+        upiId: d.upiId ?? null,
         photoUrl: d.photoUrl,
         googleMapsUrl: `https://www.google.com/maps?q=${d.lat},${d.lng}&z=18`,
         status: "APPROVED",
