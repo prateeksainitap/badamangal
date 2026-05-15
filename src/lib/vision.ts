@@ -23,7 +23,6 @@ import { z } from "zod";
 import { AREAS } from "@/lib/lucknow";
 import { MENU_KEYS } from "@/lib/menu";
 
-const AREA_VALUES = [...AREAS] as [string, ...string[]];
 const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
 
 // Coerce a model-returned time value into our strict HH:MM or undefined.
@@ -110,6 +109,15 @@ export const extractedBhandaraSchema = z.object({
   address: z.string().trim().default(""),
   addressHi: z.string().trim().default(""),
   landmark: z.string().trim().default(""),
+  // Free-form neighbourhood name. We *used* to enforce z.enum(AREA_VALUES)
+  // here, but the curated AREAS list doesn't cover every Lucknow
+  // neighbourhood organisers actually write on banners (Indira Nagar,
+  // Vrindavan Yojana, Vipul Khand, etc). When the model returned a real
+  // neighbourhood that wasn't in the dictionary, the whole extraction
+  // 502'd — losing the rest of the structured data. The admin publish
+  // endpoint already accepts free strings for area; this matches that.
+  // Admin can still re-categorise in the review UI.
+  area: z.string().trim().max(50).optional(),
   dateIso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   timeStart: z.preprocess(preprocessTime, z.string().regex(/^\d{2}:\d{2}$/).optional()),
   timeEnd: z.preprocess(preprocessTime, z.string().regex(/^\d{2}:\d{2}$/).optional()),
@@ -129,7 +137,8 @@ export type ExtractedBhandara = z.infer<typeof extractedBhandaraSchema>;
 export const extractedSpotSchema = z.object({
   caption: z.string().trim().max(200).default(""),
   captionHi: z.string().trim().max(200).default(""),
-  area: z.enum(AREA_VALUES).optional(),
+  // See note on bhandara schema above — free string, not the strict enum.
+  area: z.string().trim().max(50).optional(),
   address: z.string().trim().max(200).default(""),
   language: z.enum(["hi", "en", "mixed"]).default("en"),
   notes: z.string().trim().default(""),
@@ -147,7 +156,7 @@ Fields (all optional — emit "" or omit if unsure, never invent):
   "nameHi":       Hindi name, Devanagari. Mirror the banner style (e.g. "श्रीवास्तव परिवार भंडारा").
   "description":  ONE short English sentence summarising the event (e.g. "Sundarkand Path from 9 AM, Vishal Bhandara from 12 PM at Hanuman Mandir, Talkatora").
   "descriptionHi":ONE short Hindi sentence summarising the event.
-  "area":         Must be EXACTLY one of: ${AREA_LIST}. Pick the closest match from the banner's address/landmark. Omit if you can't infer confidently.
+  "area":         Lucknow neighbourhood name. Prefer one of these curated names when it fits: ${AREA_LIST}. If none of them match the banner's address/landmark, write the actual neighbourhood as printed (e.g. "Indira Nagar", "Vrindavan Yojana"). Keep ≤ 50 chars. Omit if you can't infer at all.
   "address":      Full English address as written, including landmark + locality + Lucknow.
   "addressHi":    Same address in Hindi (Devanagari) — translate proper nouns only when the banner shows them in Hindi.
   "landmark":     One landmark phrase if explicitly mentioned (e.g. "Near Civil Hospital"). Otherwise "".
@@ -169,7 +178,7 @@ Output ONE JSON object — no markdown, no prose. Fields:
 {
   "caption":    1 short English line describing what's happening (≤ 100 chars). e.g. "Puri-sabzi being served outside a saffron-draped pandal."
   "captionHi":  Same sentence in Hindi, ≤ 100 chars.
-  "area":       One of: ${AREA_LIST}. Only if the banner / signboard / shop in the photo names a specific Lucknow locality. Else omit.
+  "area":       Lucknow neighbourhood name. Prefer one of: ${AREA_LIST} when it fits, otherwise write the locality as it appears on a visible signboard / banner. ≤ 50 chars. Else omit.
   "address":    Any visible address text on banners or signs. ≤ 120 chars. Else "".
   "language":   "hi" if the photo's banner is primarily Hindi, "en" if primarily English, "mixed" otherwise. Default "en".
   "notes":      Anything else worth surfacing to the admin (organizer name on banner, etc). ≤ 120 chars.
