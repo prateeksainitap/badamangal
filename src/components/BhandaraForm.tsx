@@ -45,12 +45,6 @@ type FormState = {
   // Step 5
   organizerName: string;
   organizerPhone: string;
-  // Optional sponsorship surfaces that already render on the public
-  // bhandara/[slug] detail page when present — leaving them collected
-  // here so organisers can opt-in to WhatsApp share + UPI sponsor
-  // links without a second visit.
-  organizerWhatsapp: string;
-  upiId: string;
   // Step 6
   photoUrl: string;
 };
@@ -65,8 +59,6 @@ const INITIAL: FormState = {
   tuesdayDates: [],
   timeStart: "11:00",
   timeEnd: "",
-  organizerWhatsapp: "",
-  upiId: "",
   menu: ["puri", "sabzi"],
   menuOther: [],
   menuOtherDraft: "",
@@ -213,8 +205,6 @@ export default function BhandaraForm() {
     const payload = {
       organizerName: state.organizerName,
       organizerPhone: state.organizerPhone,
-      organizerWhatsapp: state.organizerWhatsapp.trim() || undefined,
-      upiId: state.upiId.trim() || undefined,
       name: nameValue,
       nameHi: nameValue,
       description: descriptionValue || undefined,
@@ -990,60 +980,6 @@ function Step5({ state, errors, setField }: StepProps) {
           </div>
         </Field>
 
-        {/* Optional WhatsApp number — surfaces a "WhatsApp the organiser"
-            button on the public bhandara page if filled. Default is to
-            assume it's the same as Mobile, but separate field for the
-            (common) case where the organiser uses a different number
-            for WhatsApp than for calls. */}
-        <Field
-          hi="वॉट्सऐप (वैकल्पिक)"
-          en="WhatsApp (optional)"
-          error={errors.organizerWhatsapp?.[0]}
-        >
-          <div className="flex flex-1 items-stretch rounded-xl border bg-white overflow-hidden focus-within:ring-2 focus-within:ring-saffron-600 focus-within:border-saffron-600 border-gold-500/50">
-            <span className="inline-flex items-center justify-center px-3 text-ink-600 text-base font-medium border-r border-gold-500/40 bg-saffron-50/40 select-none">
-              +91
-            </span>
-            <input
-              type="tel"
-              inputMode="numeric"
-              pattern="[0-9]{10}"
-              maxLength={10}
-              className="flex-1 bg-transparent px-3 py-2 text-ink-900 placeholder:text-ink-600/60 focus:outline-none font-numerals tabular-nums tracking-wide"
-              value={state.organizerWhatsapp}
-              onChange={(e) => {
-                const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
-                setField("organizerWhatsapp", digits);
-              }}
-              placeholder={
-                state.organizerPhone.length === 10
-                  ? "Same as mobile — leave blank"
-                  : "98765 43210"
-              }
-            />
-          </div>
-        </Field>
-
-        {/* Optional UPI for sponsorship — when filled, the public
-            bhandara page surfaces a "Sponsor a thali" button that
-            opens UPI app. Leave blank to skip; nothing is required. */}
-        <Field
-          hi="यूपीआई (वैकल्पिक, स्पॉन्सरशिप के लिए)"
-          en="UPI ID (optional, for sponsorship)"
-          error={errors.upiId?.[0]}
-        >
-          <input
-            type="text"
-            inputMode="email"
-            autoComplete="off"
-            spellCheck={false}
-            className={`${inputBase} font-mono`}
-            value={state.upiId}
-            onChange={(e) => setField("upiId", e.target.value)}
-            placeholder="ramesh@upi"
-            maxLength={80}
-          />
-        </Field>
       </div>
     </div>
   );
