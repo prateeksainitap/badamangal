@@ -481,21 +481,23 @@ export default async function HomePage() {
           have actually submitted, then the city-wide landmark anchors. */}
       <FamousBhandaras locale={locale} isHi={isHi} />
 
+      {/* STATS — pulled up to lead the lower half of the page. The
+          city's running tally (visitors, listings, spotted bhandaras,
+          areas, Tuesdays served) sets the tone for the editorial /
+          live content that follows. Tiles with value 0 are hidden so
+          the panel doesn't read as empty on a quiet day. */}
+      <StatsSection stats={stats} locale={locale} />
+
       {/* RESOURCES TEASER — extracted into a client component so the
           card titles + bodies localise from the LocaleProvider context
           after the static HTML lands (otherwise Hindi-cookie visitors
           would see this band in English). */}
       <HomeResourcesTeaser />
 
-      {/* LIVE FEED MARQUEE — moved below resources; renders an empty
-          state band when there are <3 entries instead of disappearing. */}
+      {/* LIVE FEED MARQUEE — sits between resources and the editorial
+          history teaser; renders an empty-state band when there are <3
+          entries instead of disappearing. */}
       <LiveFeedMarquee initial={feedInitial} />
-
-      {/* STATS — demoted to here. Vanity numbers feel right after the
-          editorial + live content rather than interrupting the discovery
-          flow. Tiles with value 0 are hidden so the panel doesn't read
-          as empty on a quiet day. */}
-      <StatsSection stats={stats} locale={locale} />
 
       {/* MARIGOLD DIVIDER */}
       <div className="flex justify-center my-4">

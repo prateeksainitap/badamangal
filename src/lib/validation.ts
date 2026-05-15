@@ -1,9 +1,7 @@
 import { z } from "zod";
-import { AREAS } from "@/lib/lucknow";
 import { SEASON_START_ISO, SEASON_END_ISO } from "@/lib/dates";
 import { MENU_KEYS } from "@/lib/menu";
 
-const AREA_VALUES = [...AREAS] as [string, ...string[]];
 const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
 
 // Bhandara service-day. Any YYYY-MM-DD inside the season window — we no
@@ -93,9 +91,18 @@ export const submitSchema = z
     nameHi: z.string().trim().min(2, "Hindi name is required"),
     description: optionalString,
     descriptionHi: optionalString,
-    area: z.enum(AREA_VALUES, {
-      errorMap: () => ({ message: "Pick an area" }),
-    }),
+    // Area is loosened from a strict enum to a free string. The form
+    // dropdown still surfaces our curated list (which feeds homepage
+    // filters + the area chip), but Lucknow has more neighbourhoods
+    // than we can reasonably curate, so an "Other — type your own"
+    // option lets organisers submit colonies / sectors that aren't on
+    // the short list. Display fallbacks already use `t.areas[a] ?? a`,
+    // so the raw string renders cleanly when it isn't in the dictionary.
+    area: z
+      .string()
+      .trim()
+      .min(2, "Area is required")
+      .max(50, "Area name is too long (max 50 characters)"),
     address: z.string().trim().min(5, "Address is required"),
     addressHi: optionalString,
     landmark: optionalString,

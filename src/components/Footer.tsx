@@ -20,8 +20,17 @@ function FooterInner() {
       links: [
         { href: "/#map", label: t.footer.discoverMap },
         { href: "/live", label: isHi ? "लाइव फ़ीड" : "Live feed" },
-        { href: "/list-bhandara", label: t.footer.getInvolvedAdd },
+        // Deep-link with ?role=organizer so AddBhandaraSwitcher
+        // skips the "are you an organizer or spotter?" chooser and
+        // drops the visitor straight on the listing form.
+        { href: "/list-bhandara?role=organizer", label: t.footer.getInvolvedAdd },
         { href: "/spot", label: isHi ? "भंडारा स्पॉट करें" : "Spot a bhandara" },
+        // Past-bhandaras archive — listed venues whose Tuesdays are
+        // over + spotted sightings whose 8-hour window expired.
+        // Sits inside Discover (next to /live + /spot) so the
+        // present/past pair reads naturally as one trip through the
+        // record.
+        { href: "/archive", label: isHi ? "बीते भंडारे" : "Past Bhandaras" },
       ],
     },
     {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import NearMeButton, { type NearMeState } from "@/components/NearMeButton";
+import { JaliCorner } from "@/components/ornaments";
 import { haversineKm } from "@/lib/geo";
 import { trackEvent } from "@/lib/ga";
 import { useToast } from "@/components/Toast";
@@ -245,17 +246,15 @@ export default function LiveFeedTimeline({
       {/* Timeline */}
       <main className="mx-auto max-w-xl px-4 sm:px-6 pb-20">
         {visiblePosts.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-gold-500/45 bg-cream-50 px-6 py-12 text-center">
-            <p className="text-ink-600">
-              {near.status === "active"
-                ? isHi
-                  ? "आपके 3 कि.मी. के दायरे में अभी कोई पोस्ट नहीं है।"
-                  : "No posts within 3 km of you yet."
-                : isHi
-                  ? emptyHi
-                  : emptyEn}
-            </p>
-          </div>
+          <LiveEmptyState
+            isHi={isHi}
+            kind={near.status === "active" ? "near-empty" : "all-empty"}
+            // emptyHi/emptyEn are kept available for callers that pass
+            // legacy fallback copy, but the redesigned card uses the
+            // brand-voiced strings below.
+            fallbackHi={emptyHi}
+            fallbackEn={emptyEn}
+          />
         ) : (
           <ol className="space-y-4">
             {visiblePosts.map((p, i) => (
@@ -293,6 +292,197 @@ export default function LiveFeedTimeline({
  *   - Escape key
  *   - The ✕ close button in the top-right
  */
+/**
+ * Empty-state card for /live. Two variants:
+ *   - "all-empty"  → no live spots in the city right now
+ *   - "near-empty" → city has spots but none within 3 km of the visitor
+ *
+ * Both lean on the empty-state-plate illustration + jali-corner ornaments
+ * to match the visual language of the homepage's "no bhandaras yet"
+ * state. Each variant gets a clear, brand-voiced headline and a primary
+ * "Spot a bhandara" CTA — turning a dead-end into the moment the
+ * visitor most plausibly converts into a contributor.
+ */
+function LiveEmptyState({
+  isHi,
+  kind,
+  fallbackHi,
+  fallbackEn,
+}: {
+  isHi: boolean;
+  kind: "all-empty" | "near-empty";
+  fallbackHi: string;
+  fallbackEn: string;
+}) {
+  const copy =
+    kind === "near-empty"
+      ? {
+          kicker: isHi ? "आपके आसपास सन्नाटा" : "Quiet around you",
+          headline: isHi
+            ? "3 कि.मी. के दायरे में अभी कोई स्पॉट नहीं।"
+            : "Nothing within 3 km of you yet.",
+          body: isHi
+            ? "थोड़ा दायरा बढ़ाकर देखिए, या अपने मोहल्ले से पहली रिपोर्ट खुद कीजिए — एक तस्वीर बस।"
+            : "Widen the radius from the All filter, or be the first to post from your own street — one photo is all it takes.",
+        }
+      : {
+          kicker: isHi ? "पहले स्पॉट का इंतज़ार" : "Waiting for the first spot",
+          headline: isHi
+            ? "अभी पंडाल शांत हैं।"
+            : "The pandals are quiet right now.",
+          body: isHi
+            ? "जैसे ही कोई पासर्बाई कोई भंडारा रिपोर्ट करेगा, उसकी तस्वीर यहाँ हर 8 सेकंड में अपने-आप आ जाएगी। चाहें तो आप पहले हो जाइए।"
+            : "The moment a passer-by reports a bhandara from anywhere in Lucknow, their photo will land here within 8 seconds. Want to be the first?",
+        };
+
+  // Fallback strings still travel in the HTML — keep them in a hidden
+  // node so a non-JS / SSR snapshot doesn't render an empty card to
+  // a crawler that can't run the dynamic copy above.
+  const fallback = isHi ? fallbackHi : fallbackEn;
+
+  return (
+    <section
+      aria-live="polite"
+      className="relative overflow-hidden rounded-3xl border border-gold-500/45 bg-gradient-to-br from-saffron-50 via-cream-50 to-cream-50 px-5 sm:px-8 py-10 sm:py-12 shadow-warm"
+    >
+      {/* Awadhi jali corners — same accent the homepage uses on the
+          "no bhandaras yet" card so the empty states feel like a set. */}
+      <JaliCorner
+        position="tl"
+        size={64}
+        className="absolute top-0 left-0 text-gold-500/55"
+      />
+      <JaliCorner
+        position="tr"
+        size={64}
+        className="absolute top-0 right-0 text-gold-500/55"
+      />
+      <JaliCorner
+        position="bl"
+        size={64}
+        className="absolute bottom-0 left-0 text-gold-500/40"
+      />
+      <JaliCorner
+        position="br"
+        size={64}
+        className="absolute bottom-0 right-0 text-gold-500/40"
+      />
+
+      <div className="relative grid gap-7 sm:grid-cols-[160px_1fr] items-center">
+        {/* Plate illustration — same asset as the homepage empty state.
+            Wrapped in a soft glow disc so it reads as a focal point. */}
+        <div className="relative mx-auto sm:mx-0 w-36 sm:w-40 aspect-square">
+          <span
+            aria-hidden
+            className="absolute inset-0 rounded-full bg-saffron-500/15 blur-2xl"
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/illustrations/empty-state-plate.webp"
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="relative w-full h-full object-contain"
+          />
+        </div>
+
+        <div className="text-center sm:text-left">
+          <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-[0.68rem] font-semibold inline-flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className="block w-1.5 h-1.5 rounded-full bg-saffron-600 motion-safe:animate-pulse"
+            />
+            {copy.kicker}
+          </p>
+          <h2
+            className={`mt-2 ${
+              isHi
+                ? "font-tiro text-sindoor-700"
+                : "font-fraunces font-semibold text-sindoor-700"
+            } text-2xl sm:text-[1.65rem] leading-snug [text-wrap:balance]`}
+          >
+            {copy.headline}
+          </h2>
+          <p className="mt-2 text-sm sm:text-[0.95rem] text-ink-600 leading-relaxed [text-wrap:pretty]">
+            {copy.body}
+          </p>
+
+          <div className="mt-5 flex flex-wrap gap-3 justify-center sm:justify-start">
+            <Link
+              href={`/spot${isHi ? "" : "?lang=en"}`}
+              data-ga="cta_live_empty_spot"
+              data-ga-source={`live_empty_${kind}`}
+              className="inline-flex items-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 px-4 py-2 text-sm font-semibold shadow-warm transition-transform hover:-translate-y-0.5"
+            >
+              <CameraGlyph />
+              {isHi ? "अभी भंडारा स्पॉट करें" : "Spot a bhandara now"}
+            </Link>
+            <Link
+              href={isHi ? "/" : "/?lang=en"}
+              data-ga="cta_live_empty_browse"
+              data-ga-source={`live_empty_${kind}`}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-sindoor-700 hover:text-saffron-600 px-2 py-2 transition-colors"
+            >
+              {isHi ? "लिस्टेड भंडारे देखें" : "Browse listed bhandaras"}
+              <span aria-hidden>→</span>
+            </Link>
+          </div>
+
+          <p className="mt-5 text-[0.7rem] uppercase tracking-[0.22em] text-ink-600 inline-flex items-center gap-1.5">
+            <RefreshGlyph />
+            {isHi ? "हर 8 सेकंड में ताज़ा" : "Refreshing every 8 seconds"}
+          </p>
+        </div>
+      </div>
+
+      {/* SR-only fallback so search engines / no-JS clients still see
+          the original empty-state copy. */}
+      <p className="sr-only">{fallback}</p>
+    </section>
+  );
+}
+
+function CameraGlyph() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3 7h3l2-2h8l2 2h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  );
+}
+
+function RefreshGlyph() {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className="motion-safe:animate-spin [animation-duration:8s]"
+    >
+      <path d="M3 12a9 9 0 0 1 15.5-6.3L21 8" />
+      <path d="M21 3v5h-5" />
+      <path d="M21 12a9 9 0 0 1-15.5 6.3L3 16" />
+      <path d="M3 21v-5h5" />
+    </svg>
+  );
+}
+
 function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

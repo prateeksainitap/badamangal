@@ -423,6 +423,11 @@ type StepProps = {
   setField: <K extends keyof FormState>(k: K, v: FormState[K]) => void;
 };
 
+// Sentinel value for the "Other — type your own" entry in the area
+// dropdown. Picking it doesn't write anything into state.area; it just
+// flips the field into custom-text mode (see useState below).
+const AREA_OTHER_SENTINEL = "__bm_area_other__";
+
 function Step2({ state, errors, setField }: StepProps) {
   const { locale } = useT();
   const t = strings[locale];
@@ -431,6 +436,18 @@ function Step2({ state, errors, setField }: StepProps) {
   const sortedAreas = [...AREAS].sort((a, b) =>
     (t.areas[a] ?? a).localeCompare(t.areas[b] ?? b),
   );
+
+  // "Custom area" mode is on when the saved area isn't one of the
+  // curated values (e.g. a previous draft typed "Khurram Nagar"), or
+  // when the user explicitly picks "Other" from the dropdown. Lucknow
+  // has more neighbourhoods than we can reasonably curate; the free
+  // text fallback ensures no organiser is locked out because their
+  // colony isn't on our short list.
+  const isCuratedArea = state.area !== "" && (AREAS as readonly string[]).includes(state.area);
+  const [customMode, setCustomMode] = useState<boolean>(
+    state.area !== "" && !isCuratedArea,
+  );
+
   return (
     <div>
       <StepHeading hi="भंडारा का परिचय" en="About the bhandara" />
@@ -450,18 +467,63 @@ function Step2({ state, errors, setField }: StepProps) {
           />
         </Field>
         <Field hi="क्षेत्र" en="Area" required error={errors.area?.[0]}>
-          <FancySelect
-            ariaLabel={locale === "hi" ? "क्षेत्र" : "Area"}
-            value={state.area}
-            onChange={(v) => setField("area", v)}
-            placeholder={locale === "hi" ? "क्षेत्र चुनें" : "Select an area"}
-            size="md"
-            variant="input"
-            options={sortedAreas.map((a) => ({
-              value: a,
-              label: t.areas[a] ?? a,
-            }))}
-          />
+          {customMode ? (
+            <div className="space-y-2">
+              <input
+                className={`${inputBase} font-mukta`}
+                value={state.area}
+                onChange={(e) => setField("area", e.target.value)}
+                placeholder={
+                  locale === "hi"
+                    ? "क्षेत्र का नाम लिखें"
+                    : "Type your area name"
+                }
+                autoFocus
+                maxLength={50}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setField("area", "");
+                  setCustomMode(false);
+                  trackEvent("bhandara_area_back_to_list");
+                }}
+                className="text-[11px] uppercase tracking-[0.18em] text-ink-600 hover:text-sindoor-700"
+              >
+                ← {locale === "hi" ? "सूची से चुनें" : "Pick from the list"}
+              </button>
+            </div>
+          ) : (
+            <FancySelect
+              ariaLabel={locale === "hi" ? "क्षेत्र" : "Area"}
+              value={state.area}
+              onChange={(v) => {
+                if (v === AREA_OTHER_SENTINEL) {
+                  setField("area", "");
+                  setCustomMode(true);
+                  trackEvent("bhandara_area_choose_other");
+                  return;
+                }
+                setField("area", v);
+              }}
+              placeholder={locale === "hi" ? "क्षेत्र चुनें" : "Select an area"}
+              size="md"
+              variant="input"
+              options={[
+                ...sortedAreas.map((a) => ({
+                  value: a,
+                  label: t.areas[a] ?? a,
+                })),
+                {
+                  value: AREA_OTHER_SENTINEL,
+                  label:
+                    locale === "hi"
+                      ? "अन्य — अपना क्षेत्र लिखें"
+                      : "Other — type your own",
+                },
+              ]}
+            />
+          )}
         </Field>
         <Field hi="स्थान चिह्न" en="Landmark (optional)" error={errors.landmark?.[0]}>
           <input

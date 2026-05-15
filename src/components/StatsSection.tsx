@@ -96,6 +96,13 @@ export default function StatsSection({ stats }: Props) {
               label={t.stats.bhandarasListed}
             />
           ) : null}
+          {stats.bhandarasSpotted > 0 ? (
+            <StatCard
+              icon={<IconCamera />}
+              value={format(stats.bhandarasSpotted, locale)}
+              label={t.stats.bhandarasSpotted}
+            />
+          ) : null}
           {stats.areasCovered > 0 ? (
             <StatCard
               icon={<IconNeighborhood />}
@@ -186,6 +193,21 @@ function IconNeighborhood() {
       <circle cx="7" cy="13" r="1.4" fill="currentColor" />
       <path d="M17 21s-3-3.5-3-6.2a3 3 0 0 1 6 0C20 17.5 17 21 17 21z" />
       <circle cx="17" cy="14.6" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Camera with a small heart-spark inside — represents a passer-by
+ *  spotting a bhandara and snapping a photo. Same stroke weight as the
+ *  other tile icons so the row reads as a set. */
+function IconCamera() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 7h3l2-2h8l2 2h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" />
+      <circle cx="12" cy="13" r="4" />
+      {/* tiny shutter glint dot */}
+      <circle cx="17.5" cy="9" r="0.6" fill="currentColor" />
     </svg>
   );
 }

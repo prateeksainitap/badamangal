@@ -36,7 +36,7 @@ export async function runModeration(input: {
     return { approved: false, reason: `s2:${s2.reason}`, signals };
   }
 
-  // Stage 3, LLM moderation (Anthropic Haiku)
+  // Stage 3, LLM moderation (Gemini 2.5 Flash)
   const s3 = await llmCheck(input.text);
   signals.llm = s3;
   if (!s3.ok) {

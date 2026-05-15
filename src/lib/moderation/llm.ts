@@ -1,17 +1,21 @@
-// Stage 3, text LLM moderation via Anthropic Haiku.
+// Stage 3, text LLM moderation via Google Gemini 2.5 Flash.
 // Per spec §3 Stage 3.
 //
 // Behaviour:
-//   - If ANTHROPIC_API_KEY is unset, we return `ok: true` with `skipped: true`
-//     (the chain still runs, the LLM stage just doesn't gatekeep). This lets
-//     us ship without an API key and turn it on later.
-//   - 7-day in-memory cache keyed by SHA-256 of the trimmed lowercased input.
+//   - If GEMINI_API_KEY is unset, we return `ok: true` with `skipped: true`
+//     (the chain still runs, the LLM stage just doesn't gatekeep). This
+//     lets us ship without an API key and turn it on later.
+//   - 7-day in-memory cache keyed by SHA-256 of the trimmed lowercased
+//     input — Gemini's free tier is generous but we don't pay for cache
+//     hits either, and the latency win on duplicates is real.
+//   - Migrated from Claude Haiku → Gemini 2.5 Flash in May 2026 alongside
+//     the vision pipeline. Same prompt, same JSON contract, same fail-
+//     open behaviour on errors.
 
 import { createHash } from "node:crypto";
 
-const MODEL = "claude-haiku-4-5-20251001";
-const ENDPOINT = "https://api.anthropic.com/v1/messages";
-const VERSION = "2023-06-01";
+const MODEL = "gemini-2.5-flash";
+const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
 const SYSTEM_PROMPT = `You are a moderator for an inclusive Hindu festival website (Bada Mangal in Lucknow). The site is multi-faith, protect that. Reject content that contains:
 - Hate, slurs, or harassment of any community (Hindu, Muslim, Sikh, Christian, caste, gender, region)
@@ -54,9 +58,11 @@ export type LlmResult =
   | { ok: true; skipped?: boolean; category?: string | null }
   | { ok: false; reason: string; category?: string | null };
 
-export async function llmCheck(text: string | null | undefined): Promise<LlmResult> {
+export async function llmCheck(
+  text: string | null | undefined,
+): Promise<LlmResult> {
   if (!text || text.trim().length === 0) return { ok: true, skipped: true };
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = process.env.GEMINI_API_KEY;
   if (!key) return { ok: true, skipped: true };
 
   const cacheKey = hashKey(text);
@@ -71,31 +77,45 @@ export async function llmCheck(text: string | null | undefined): Promise<LlmResu
 
   let decision: Decision;
   try {
-    const res = await fetch(ENDPOINT, {
+    const res = await fetch(`${ENDPOINT}?key=${encodeURIComponent(key)}`, {
       method: "POST",
-      headers: {
-        "x-api-key": key,
-        "anthropic-version": VERSION,
-        "content-type": "application/json",
-      },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 200,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: userMessage }],
+        // System prompt rides on Gemini's `systemInstruction` field —
+        // analogous to the `system:` argument we used on Claude.
+        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: [{ parts: [{ text: userMessage }] }],
+        generationConfig: {
+          temperature: 0,
+          maxOutputTokens: 200,
+          responseMimeType: "application/json",
+        },
       }),
     });
     if (!res.ok) {
-      // On API error, fail open (approve). Spec doesn't mandate fail-closed,
-      // and we still have Stage 2 catching obvious bad content.
+      // On API error, fail open (approve). Spec doesn't mandate fail-
+      // closed and we still have Stage 2 catching obvious bad content.
       return { ok: true, skipped: true };
     }
-    const data = await res.json() as {
-      content?: { type: string; text?: string }[];
+    const data = (await res.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+      promptFeedback?: { blockReason?: string };
     };
-    const block = data.content?.find((c) => c.type === "text");
-    const raw = block?.text ?? "";
-    decision = parseDecision(raw);
+    // Gemini's safety filters may block the prompt entirely. When that
+    // happens we get a `promptFeedback.blockReason` and no candidates.
+    // Treat as a "reject" — Gemini already concluded the content is
+    // unsafe, so respect that decision rather than fail-open.
+    if (data.promptFeedback?.blockReason) {
+      decision = {
+        action: "reject",
+        category: `gemini_safety:${data.promptFeedback.blockReason}`,
+      };
+    } else {
+      const raw =
+        data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ??
+        "";
+      decision = parseDecision(raw);
+    }
   } catch {
     return { ok: true, skipped: true };
   }
@@ -107,11 +127,15 @@ export async function llmCheck(text: string | null | undefined): Promise<LlmResu
 }
 
 function parseDecision(raw: string): Decision {
-  // Tolerate stray prose around the JSON.
+  // Gemini's JSON mode rarely wraps in fences, but tolerate stray prose
+  // around the JSON anyway — cheaper than a retry.
   const match = raw.match(/\{[^}]*\}/);
   if (!match) return { action: "approve", category: null };
   try {
-    const obj = JSON.parse(match[0]) as { action?: string; category?: string | null };
+    const obj = JSON.parse(match[0]) as {
+      action?: string;
+      category?: string | null;
+    };
     return {
       action: obj.action === "reject" ? "reject" : "approve",
       category: obj.category ?? null,

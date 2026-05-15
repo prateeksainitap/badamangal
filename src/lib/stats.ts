@@ -6,6 +6,10 @@ export type SiteStats = {
   visitorNumber: number;
   /** Total APPROVED listings. */
   bhandarasListed: number;
+  /** Cumulative count of all APPROVED spotted-bhandara reports submitted
+   *  to /spot. Includes both currently-live spots and ones whose 8-hour
+   *  window has expired (they still count toward "the city did this"). */
+  bhandarasSpotted: number;
   /** Distinct curated `area` values that have at least one approved listing. */
   areasCovered: number;
   /** Tuesdays in the 2026 season that are already in the past (IST). */
@@ -39,10 +43,16 @@ export async function getHomepageStats(): Promise<SiteStats> {
     .slice(0, 10);
   const pastTuesdays = ALL_TUESDAY_ISO.filter((iso) => iso < todayIso);
 
-  const records = await prisma.bhandara.findMany({
-    where: { status: "APPROVED" },
-    select: { area: true },
-  });
+  // Fan out the two reads in parallel — both go through the same
+  // Supabase pooler so serialising them would double the round-trip
+  // cost on a cold pool.
+  const [records, spottedCount] = await Promise.all([
+    prisma.bhandara.findMany({
+      where: { status: "APPROVED" },
+      select: { area: true },
+    }),
+    prisma.spot.count({ where: { status: "APPROVED" } }),
+  ]);
 
   const areas = new Set<string>();
   for (const r of records) {
@@ -52,6 +62,7 @@ export async function getHomepageStats(): Promise<SiteStats> {
   return {
     visitorNumber: counter?.count ?? 0,
     bhandarasListed: records.length,
+    bhandarasSpotted: spottedCount,
     areasCovered: areas.size,
     tuesdaysSoFar: pastTuesdays.length,
   };

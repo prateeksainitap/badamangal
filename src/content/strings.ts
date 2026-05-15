@@ -93,6 +93,7 @@ type Dict = {
     visitorSuffix: string;
     visitorAria: string;
     bhandarasListed: string;
+    bhandarasSpotted: string;
     platesPledged: string;
     platesNote: string;
     areasCovered: string;
@@ -302,6 +303,7 @@ const en: Dict = {
     visitorSuffix: "",
     visitorAria: "Total visitors till now",
     bhandarasListed: "Bhandaras listed",
+    bhandarasSpotted: "Bhandaras spotted",
     platesPledged: "Plates pledged",
     platesNote: "across the 8 Tuesdays of this season",
     areasCovered: "Areas covered",
@@ -316,10 +318,10 @@ const en: Dict = {
     getInvolvedHeading: "Get involved",
     resourcesHeading: "Resources",
     aboutHeading: "About",
-    discoverMap: "Bhandara Map",
+    discoverMap: "Bhandaras on Map",
     discoverStory: "The story",
     discoverAreas: "Areas of Lucknow",
-    getInvolvedAdd: "Add a bhandara",
+    getInvolvedAdd: "List a Bhandara (Free)",
     getInvolvedSponsor: "Sponsor a pandal",
     getInvolvedFind: "Find a bhandara",
     aboutContact: "Contact",
@@ -600,6 +602,7 @@ const hi: Dict = {
     visitorSuffix: "",
     visitorAria: "अब तक कुल आगंतुक",
     bhandarasListed: "भंडारे सूचीबद्ध",
+    bhandarasSpotted: "भंडारे स्पॉट किए",
     platesPledged: "थाली का संकल्प",
     platesNote: "इस सीज़न के 8 मंगलवारों में",
     areasCovered: "क्षेत्र शामिल",
@@ -614,10 +617,10 @@ const hi: Dict = {
     getInvolvedHeading: "जुड़ें",
     resourcesHeading: "संसाधन",
     aboutHeading: "हमारे बारे में",
-    discoverMap: "भंडारा नक़्शा",
+    discoverMap: "नक़्शे पर भंडारे",
     discoverStory: "कहानी",
     discoverAreas: "लखनऊ के क्षेत्र",
-    getInvolvedAdd: "अपना भंडारा जोड़ें",
+    getInvolvedAdd: "अपना भंडारा सूचीबद्ध करें (फ्री)",
     getInvolvedSponsor: "पंडाल को सहयोग करें",
     getInvolvedFind: "पास का भंडारा",
     aboutContact: "संपर्क",

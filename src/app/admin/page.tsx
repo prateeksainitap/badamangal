@@ -14,6 +14,7 @@ import {
   unverifyAction,
 } from "@/app/admin/actions";
 import AdminSearchBox from "@/components/admin/AdminSearchBox";
+import BotHeartbeat from "@/components/admin/BotHeartbeat";
 // NOTE: hard-delete (deleteBhandaraAction / deleteSpotAction) and its
 // ConfirmSubmit prompt are intentionally NOT wired into the UI here —
 // admin policy is delist-only so historical data is preserved across
@@ -184,7 +185,11 @@ export default async function AdminPage({
             Moderation queue
           </h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Bot ingest liveness — renders only after the MacBook has
+              pinged at least once. Green pulsing dot when fresh,
+              gold when stale, red when offline. */}
+          <BotHeartbeat />
           {/* Mode toggle: jump to the Spots moderation view. */}
           <ModeToggle current="bhandara" />
           {/* Quick path to the AI-assisted ingest flow. The orange pill
@@ -573,7 +578,8 @@ async function SpotsView({
               Live spots queue
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <BotHeartbeat />
             <ModeToggle current="spot" />
             <a
               href="/admin/scan"

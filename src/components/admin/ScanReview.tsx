@@ -144,7 +144,7 @@ export default function ScanReview({
     "idle",
   );
   const [error, setError] = useState<string | null>(null);
-  // Raw server-side detail (e.g. "ANTHROPIC_API_KEY is not set", a
+  // Raw server-side detail (e.g. "GEMINI_API_KEY is not set", a
   // model error, or a network message). Hidden behind a small "show
   // detail" toggle so the friendly message stays primary but the
   // admin can dig in when something looks weird.

@@ -17,7 +17,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { AREAS } from "@/lib/lucknow";
 import { MENU_KEYS, menuHiFor } from "@/lib/menu";
 import { ensureUniqueSlug, slugify } from "@/lib/slugify";
 import { SEASON_START_ISO, SEASON_END_ISO } from "@/lib/dates";
@@ -33,8 +32,13 @@ async function isAdmin(): Promise<boolean> {
   return c.get(COOKIE)?.value === expected;
 }
 
-const AREA_VALUES = [...AREAS] as [string, ...string[]];
 const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
+
+// Area is a free string (curated dictionary lives in @/lib/lucknow but
+// is no longer enforced at the input boundary — Lucknow has more
+// neighbourhoods than we curate, and forcing organisers / admins onto
+// the short list locked out legitimate submissions).
+const areaInput = z.string().trim().min(2).max(50);
 
 const seasonDate = z
   .string()
@@ -48,7 +52,7 @@ const bhandaraInput = z.object({
   nameHi: z.string().trim().min(1),
   description: z.string().trim().optional().default(""),
   descriptionHi: z.string().trim().optional().default(""),
-  area: z.enum(AREA_VALUES),
+  area: areaInput,
   address: z.string().trim().min(5),
   addressHi: z.string().trim().optional().default(""),
   landmark: z.string().trim().optional().default(""),
@@ -73,7 +77,7 @@ const bhandaraInput = z.object({
 const spotInput = z.object({
   lat: z.number().min(26.6).max(27.0),
   lng: z.number().min(80.7).max(81.2),
-  area: z.enum(AREA_VALUES).optional(),
+  area: areaInput.optional(),
   address: z.string().trim().max(200).optional(),
   caption: z.string().trim().max(200).optional(),
   language: z.enum(["hi", "en", "mixed"]).default("en"),

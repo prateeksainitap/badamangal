@@ -35,7 +35,7 @@ function HeaderInner() {
   // visible way back without relying on the brand mark.
   const navLinks: { href: string; label: string }[] = [
     { href: "/", label: locale === "hi" ? "होम" : "Home" },
-    { href: "/#map", label: locale === "hi" ? "भंडारा नक़्शा" : "Bhandara Map" },
+    { href: "/#map", label: locale === "hi" ? "नक़्शे पर भंडारे" : "Bhandaras on Map" },
     { href: "/live", label: locale === "hi" ? "लाइव" : "Live" },
     { href: "/history", label: locale === "hi" ? "इतिहास" : "History" },
     { href: "/resources", label: t.nav.resources },
@@ -54,7 +54,7 @@ function HeaderInner() {
   }[] = [
     {
       href: "/#map",
-      label: locale === "hi" ? "भंडारा नक़्शा" : "Bhandara Map",
+      label: locale === "hi" ? "नक़्शे पर भंडारे" : "Bhandaras on Map",
       caption: locale === "hi" ? "लखनऊ का पूरा नक़्शा" : "Every bhandara on the city map",
       icon: <NavIconMap />,
       accent: "saffron",

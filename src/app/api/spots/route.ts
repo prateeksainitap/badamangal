@@ -2,13 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { ipHash, readClientIp } from "@/lib/crypto";
 import { prisma } from "@/lib/db";
-import { AREAS } from "@/lib/lucknow";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const SPOT_TTL_HOURS = 8;
-const AREA_VALUES = [...AREAS] as [string, ...string[]];
 
 // Both `photoUrl` and `caption` are individually optional, but the
 // form (SpotQuickForm) requires AT LEAST one of them. The `.refine()`
@@ -35,7 +33,11 @@ const bodySchema = z
       .max(200)
       .optional()
       .or(z.literal("").transform(() => undefined)),
-    area: z.enum(AREA_VALUES).optional(),
+    // Free-string area — no longer enum-restricted. Spot's area is
+    // typically auto-derived from the visitor's GPS (closest curated
+    // bhandara → reverse-geocoded neighbourhood) so the value can be
+    // anything Ola Maps returns.
+    area: z.string().trim().min(2).max(50).optional(),
     address: z.string().trim().max(200).optional(),
     reporterName: z.string().trim().min(1).max(60).optional(),
     language: z.enum(["hi", "en", "mixed"]).default("en"),

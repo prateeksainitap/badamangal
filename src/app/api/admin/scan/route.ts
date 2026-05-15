@@ -8,7 +8,7 @@
  *      in dev) and remember its public URL — this is the photo that
  *      will sit on the published bhandara/spot card.
  *   3. Extract: send the SAME image bytes (still as the resized WebP)
- *      to Claude vision via `src/lib/anthropic.ts`, then geocode the
+ *      to Gemini vision via `src/lib/vision.ts`, then geocode the
  *      address it returned so the admin can review with the pin
  *      already positioned.
  *
@@ -32,7 +32,7 @@ import {
   extractSpotFromImage,
   type ExtractedBhandara,
   type ExtractedSpot,
-} from "@/lib/anthropic";
+} from "@/lib/vision";
 import { geocodeLucknow, type ServerGeocodeHit } from "@/lib/geocodeServer";
 import { getSupabaseAdmin, PHOTO_BUCKET } from "@/lib/supabase";
 
@@ -157,14 +157,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       try {
         extracted = await extractBhandaraFromImage(base64, "image/webp");
       } catch (err) {
-        console.error("Claude bhandara extract failed", err);
+        console.error("Gemini bhandara extract failed", err);
         const detail = err instanceof Error ? err.message : String(err);
         // Surface the specific config issue when the key is missing,
-        // since "Claude couldn't read it" is misleading there — the
+        // since "Gemini couldn't read it" is misleading there — the
         // API call never even left the server.
-        const friendly = /ANTHROPIC_API_KEY is not set/i.test(detail)
-          ? "Vision is disabled: ANTHROPIC_API_KEY is not configured on the server. Add it in Netlify → Site settings → Environment variables and redeploy."
-          : "Image saved, but Claude couldn't read it.";
+        const friendly = /GEMINI_API_KEY is not set/i.test(detail)
+          ? "Vision is disabled: GEMINI_API_KEY is not configured on the server. Add it in Netlify → Site settings → Environment variables and redeploy."
+          : "Image saved, but Gemini couldn't read it.";
         return NextResponse.json(
           { error: friendly, detail, photoUrl },
           { status: 502 },
@@ -198,11 +198,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     try {
       extracted = await extractSpotFromImage(base64, "image/webp");
     } catch (err) {
-      console.error("Claude spot extract failed", err);
+      console.error("Gemini spot extract failed", err);
       const detail = err instanceof Error ? err.message : String(err);
-      const friendly = /ANTHROPIC_API_KEY is not set/i.test(detail)
-        ? "Vision is disabled: ANTHROPIC_API_KEY is not configured on the server. Add it in Netlify → Site settings → Environment variables and redeploy."
-        : "Image saved, but Claude couldn't read it.";
+      const friendly = /GEMINI_API_KEY is not set/i.test(detail)
+        ? "Vision is disabled: GEMINI_API_KEY is not configured on the server. Add it in Netlify → Site settings → Environment variables and redeploy."
+        : "Image saved, but Gemini couldn't read it.";
       return NextResponse.json(
         { error: friendly, detail, photoUrl },
         { status: 502 },

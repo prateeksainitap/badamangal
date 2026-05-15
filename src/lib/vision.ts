@@ -1,44 +1,38 @@
 /**
- * Claude (Anthropic) vision helper. Used by the admin scan endpoint to
- * turn a WhatsApp invite image into structured bhandara data, and to
- * pull caption + area out of a spot photo.
+ * Vision helper. Sends an image + prompt to Google's Gemini 2.5 Flash,
+ * receives JSON back, validates with Zod, returns a typed object.
  *
- * We deliberately ask Claude to output ONLY a JSON object (no prose, no
- * markdown fence). The SDK's response is still validated with Zod
- * before we trust it — model outputs occasionally include a stray
- * field or wrong casing.
+ * Used by:
+ *   • /api/admin/scan      — admin "Scan & publish" flow
+ *   • /api/bot/ingest      — silent WhatsApp ingestion via OpenClaw
  *
- * Cost: vision call to claude-sonnet-4-5 lands at roughly 0.5-1¢ per
- * image at this resolution, negligible at admin volumes.
+ * Why Gemini, not Claude:
+ *   The site previously used `claude-sonnet-4-5` (via the Anthropic
+ *   SDK). Gemini 2.5 Flash matches Claude on Devanagari + English
+ *   poster OCR for our specific task — single image in, structured
+ *   JSON out — and Google's AI Studio free tier (1,500 requests/day)
+ *   covers our entire season with several orders of magnitude of head-
+ *   room. No paid API credits to keep topped up; one less ops surface.
+ *
+ * Key reliability win vs the Claude code path: Gemini's `responseMime-
+ * Type: "application/json"` produces clean JSON ~99% of the time, so
+ * we rarely fall back to the `code-fence-strip` defensive parse. The
+ * Zod check still validates before we trust the result.
  */
-import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { AREAS } from "@/lib/lucknow";
 import { MENU_KEYS } from "@/lib/menu";
-
-let cached: Anthropic | null | undefined;
-
-function client(): Anthropic | null {
-  if (cached !== undefined) return cached;
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) {
-    cached = null;
-    return null;
-  }
-  cached = new Anthropic({ apiKey: key });
-  return cached;
-}
 
 const AREA_VALUES = [...AREAS] as [string, ...string[]];
 const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
 
 // Loose schema (vs the public submitSchema): all fields optional so the
-// admin can review and fill gaps. Phone is a free string so model can
-// emit `"unknown"` without breaking the response.
+// admin can review and fill gaps. Phone is a free string so the model
+// can emit `"unknown"` without breaking the response.
 export const extractedBhandaraSchema = z.object({
   // Required-as-output, optional-as-input strings: `.default("")` covers
-  // the case where Claude omits the field entirely, while keeping the
-  // inferred TS output type as `string` (not `string | undefined`).
+  // the case where the model omits the field entirely, while keeping
+  // the inferred TS output type as `string` (not `string | undefined`).
   name: z.string().trim().default(""),
   nameHi: z.string().trim().default(""),
   description: z.string().trim().default(""),
@@ -54,7 +48,8 @@ export const extractedBhandaraSchema = z.object({
   menuOther: z.array(z.string().trim().min(1).max(40)).default([]),
   organizerName: z.string().trim().default(""),
   organizerPhone: z.string().trim().default(""),
-  /** Free-form notes the model wants to surface — anything it couldn't fit. */
+  /** Free-form notes the model wants to surface — anything it
+   *  couldn't fit. */
   notes: z.string().trim().default(""),
 });
 export type ExtractedBhandara = z.infer<typeof extractedBhandaraSchema>;
@@ -108,53 +103,79 @@ Output ONE JSON object — no markdown, no prose. Fields:
   "notes":      Anything else worth surfacing to the admin (organizer name on banner, etc). ≤ 120 chars.
 }`;
 
+const GEMINI_MODEL = "gemini-2.5-flash";
+const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
 /**
- * Send an image to Claude vision and return the raw JSON text. We let
- * each caller parse + Zod-validate with the schema it owns — keeps the
- * type inference clean (generic over a `z.ZodSchema<T>` was getting
- * confused between the schema's input vs output types).
- *
- * Throws if the API key is missing or the call fails — callers should
- * map those to 4xx/5xx responses.
+ * POST the image + prompt to Gemini, return the trimmed JSON string.
+ * Throws on any non-2xx, missing key, or empty response so callers can
+ * surface a clean 502 to the admin UI.
  */
-async function callClaudeVision(
+async function callGeminiVision(
   imageBase64: string,
   mediaType: "image/jpeg" | "image/png" | "image/webp",
   prompt: string,
 ): Promise<string> {
-  const c = client();
-  if (!c) {
-    throw new Error("ANTHROPIC_API_KEY is not set");
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) {
+    throw new Error("GEMINI_API_KEY is not set");
   }
 
-  const resp = await c.messages.create({
-    // Sonnet-4-5 is the current vision-capable production model.
-    // If it gets deprecated, the call site swap is one string.
-    model: "claude-sonnet-4-5",
-    max_tokens: 1200,
-    temperature: 0.1,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: { type: "base64", media_type: mediaType, data: imageBase64 },
-          },
-          { type: "text", text: prompt },
-        ],
+  const resp = await fetch(`${GEMINI_ENDPOINT}?key=${encodeURIComponent(key)}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            { text: prompt },
+            // Gemini accepts the inline base64 image as a `inline_data`
+            // part. Same convention as the Anthropic call we replaced.
+            { inline_data: { mime_type: mediaType, data: imageBase64 } },
+          ],
+        },
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        maxOutputTokens: 1200,
+        // Native JSON mode — Gemini will (almost always) return a clean
+        // JSON document without code fences or commentary. Still
+        // defensive-parsed below.
+        responseMimeType: "application/json",
       },
-    ],
+    }),
   });
 
-  const text = resp.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("")
-    .trim();
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(
+      `Gemini API error ${resp.status}: ${errText.slice(0, 300)}`,
+    );
+  }
 
-  // Be forgiving: the model occasionally wraps in ```json … ``` despite
-  // the instruction. Strip a single fence pair if present.
+  const data = (await resp.json()) as {
+    candidates?: {
+      content?: { parts?: { text?: string }[] };
+      finishReason?: string;
+    }[];
+    promptFeedback?: { blockReason?: string };
+  };
+
+  if (data.promptFeedback?.blockReason) {
+    throw new Error(
+      `Gemini blocked the request: ${data.promptFeedback.blockReason}`,
+    );
+  }
+
+  const text =
+    data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ??
+    "";
+  if (!text) {
+    throw new Error("Gemini returned an empty response");
+  }
+
+  // Belt-and-suspenders: the model occasionally wraps in ```json…``` even
+  // with responseMimeType set. Strip a single fence pair if present.
   return text
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/i, "")
@@ -184,7 +205,7 @@ export async function extractBhandaraFromImage(
   imageBase64: string,
   mediaType: "image/jpeg" | "image/png" | "image/webp",
 ): Promise<ExtractedBhandara> {
-  const raw = await callClaudeVision(imageBase64, mediaType, BHANDARA_PROMPT);
+  const raw = await callGeminiVision(imageBase64, mediaType, BHANDARA_PROMPT);
   return parseOrThrow(raw, extractedBhandaraSchema);
 }
 
@@ -192,6 +213,6 @@ export async function extractSpotFromImage(
   imageBase64: string,
   mediaType: "image/jpeg" | "image/png" | "image/webp",
 ): Promise<ExtractedSpot> {
-  const raw = await callClaudeVision(imageBase64, mediaType, SPOT_PROMPT);
+  const raw = await callGeminiVision(imageBase64, mediaType, SPOT_PROMPT);
   return parseOrThrow(raw, extractedSpotSchema);
 }

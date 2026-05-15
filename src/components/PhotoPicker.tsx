@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { trackEvent } from "@/lib/ga";
 import { IMAGE_ACCEPT, validateImage } from "@/lib/fileValidate";
+import { compressImageForUpload } from "@/lib/imageCompress";
 
 /**
  * Format a long upload URL as `host/…/last20.ext` so it fits in one line
@@ -100,10 +101,34 @@ export default function PhotoPicker({
     }
   };
 
-  // Validate before uploading. Anything the server would reject (HEIC,
-  // GIF, oversized, empty, etc.) gets surfaced inline immediately — the
-  // user sees a clear message at the picker, never at form-submit time.
-  const handlePicked = async (file: File) => {
+  // Compress before validating. iPhone cameras shoot 4-12 MB JPEGs that
+  // would trip the 5 MB upload cap (and Netlify's 6 MB platform cap)
+  // before the spotter ever sees a result. Downscaling to 1920px on
+  // the long edge + JPEG q=0.85 brings even 48 MP shots down to
+  // ~250-500 KB, so the upload almost always succeeds. Original is
+  // returned untouched on any decoder failure (HEIC outside Safari,
+  // corrupt input, etc.) and the existing server validation still
+  // catches anything we shouldn't accept.
+  const handlePicked = async (rawFile: File) => {
+    setError(null);
+    setUploading(true);
+    let file = rawFile;
+    try {
+      const before = rawFile.size;
+      file = await compressImageForUpload(rawFile);
+      const after = file.size;
+      if (after !== before) {
+        trackEvent("photo_compress", {
+          before_kb: Math.round(before / 1024),
+          after_kb: Math.round(after / 1024),
+          ratio: Math.round((after / before) * 100) / 100,
+        });
+      }
+    } catch {
+      // Compressor itself shouldn't throw (it returns the original on
+      // failure) but belt + suspenders — fall through with raw file.
+    }
+
     const check = validateImage(file, locale);
     if (!check.ok) {
       trackEvent("photo_upload_rejected_client", {
@@ -111,6 +136,7 @@ export default function PhotoPicker({
         size_kb: Math.round(file.size / 1024),
       });
       setError(check.message);
+      setUploading(false);
       return;
     }
     await upload(file);
