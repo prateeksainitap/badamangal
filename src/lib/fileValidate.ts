@@ -18,7 +18,20 @@
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_PDF_BYTES = 5 * 1024 * 1024;
 
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
+// HEIC/HEIF were rejected for a while because the server's sharp
+// pipeline couldn't decode them — we now ship a sharp build with
+// libheif bundled (sharp ≥ 0.32 prebuilt for linux-x64 includes it),
+// so iPhone "Most Efficient" defaults work without forcing visitors
+// to flip Camera → Formats → Most Compatible. Client-side compression
+// (lib/imageCompress.ts) decodes HEIC natively on Safari and falls
+// through to the server-side conversion on Chrome / Firefox.
+const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+] as const;
 const PDF_TYPE = "application/pdf";
 
 /** Comma-separated MIME list for the `accept` attribute of an image-only input. */

@@ -26,9 +26,78 @@ import { MENU_KEYS } from "@/lib/menu";
 const AREA_VALUES = [...AREAS] as [string, ...string[]];
 const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
 
+// Coerce a model-returned time value into our strict HH:MM or undefined.
+// Gemini occasionally emits "" / "प्रभु इच्छा तक" / "until evening" /
+// "evening" / null when no clean end time is on the banner. Anything we
+// can't normalize into 24h HH:MM gets dropped to undefined so the rest
+// of the row still saves.
+function preprocessTime(v: unknown): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const s = v.trim();
+  if (!s) return undefined;
+  // Already 24h HH:MM — happy path.
+  if (/^\d{2}:\d{2}$/.test(s)) return s;
+  // Handle 1-digit hours: "9:00" → "09:00".
+  const m = /^(\d{1,2}):(\d{2})$/.exec(s);
+  if (m) {
+    const h = Number(m[1]);
+    const mm = Number(m[2]);
+    if (h >= 0 && h < 24 && mm >= 0 && mm < 60) {
+      return `${String(h).padStart(2, "0")}:${m[2]}`;
+    }
+  }
+  // Anything else (prose, "evening", empty, null) → drop.
+  return undefined;
+}
+
+// Coerce menuOther into a string[]. Gemini sometimes ignores the schema
+// instruction and emits a comma-joined string ("kheer, kachori") or even
+// a single bare string ("kheer"). Split on commas / semicolons / Hindi
+// danda and trim each entry. Anything that isn't an array or a string
+// falls through to [].
+function preprocessMenuOther(v: unknown): string[] {
+  if (Array.isArray(v)) {
+    return v
+      .filter((x): x is string => typeof x === "string")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 20);
+  }
+  if (typeof v === "string") {
+    return v
+      .split(/[,;।]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 20);
+  }
+  return [];
+}
+
+// Same idea for `menu` — model might hand back a string when it should
+// be an enum array. Split, trim, drop entries that aren't in the curated
+// enum (those usually belong to menuOther anyway, but we don't want a
+// stray to fail the schema).
+function preprocessMenu(v: unknown): string[] {
+  if (Array.isArray(v)) {
+    return v.filter((x): x is string => typeof x === "string");
+  }
+  if (typeof v === "string") {
+    return v
+      .split(/[,;।]/)
+      .map((s) => s.trim())
+      .filter((s) => (MENU_VALUES as readonly string[]).includes(s));
+  }
+  return [];
+}
+
 // Loose schema (vs the public submitSchema): all fields optional so the
 // admin can review and fill gaps. Phone is a free string so the model
 // can emit `"unknown"` without breaking the response.
+//
+// We coerce a handful of "model returned the wrong shape" cases via
+// z.preprocess so a single bad field doesn't tank the entire extraction
+// — the admin sees the rest of the data and can fill the gap from the
+// photo themselves.
 export const extractedBhandaraSchema = z.object({
   // Required-as-output, optional-as-input strings: `.default("")` covers
   // the case where the model omits the field entirely, while keeping
@@ -42,10 +111,13 @@ export const extractedBhandaraSchema = z.object({
   addressHi: z.string().trim().default(""),
   landmark: z.string().trim().default(""),
   dateIso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  timeStart: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-  timeEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-  menu: z.array(z.enum(MENU_VALUES)).default([]),
-  menuOther: z.array(z.string().trim().min(1).max(40)).default([]),
+  timeStart: z.preprocess(preprocessTime, z.string().regex(/^\d{2}:\d{2}$/).optional()),
+  timeEnd: z.preprocess(preprocessTime, z.string().regex(/^\d{2}:\d{2}$/).optional()),
+  menu: z.preprocess(preprocessMenu, z.array(z.enum(MENU_VALUES)).default([])),
+  menuOther: z.preprocess(
+    preprocessMenuOther,
+    z.array(z.string().trim().min(1).max(40)).default([]),
+  ),
   organizerName: z.string().trim().default(""),
   organizerPhone: z.string().trim().default(""),
   /** Free-form notes the model wants to surface — anything it
