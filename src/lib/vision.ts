@@ -105,10 +105,6 @@ export const extractedBhandaraSchema = z.object({
   nameHi: z.string().trim().default(""),
   description: z.string().trim().default(""),
   descriptionHi: z.string().trim().default(""),
-  area: z.enum(AREA_VALUES).optional(),
-  address: z.string().trim().default(""),
-  addressHi: z.string().trim().default(""),
-  landmark: z.string().trim().default(""),
   // Free-form neighbourhood name. We *used* to enforce z.enum(AREA_VALUES)
   // here, but the curated AREAS list doesn't cover every Lucknow
   // neighbourhood organisers actually write on banners (Indira Nagar,
@@ -118,6 +114,9 @@ export const extractedBhandaraSchema = z.object({
   // endpoint already accepts free strings for area; this matches that.
   // Admin can still re-categorise in the review UI.
   area: z.string().trim().max(50).optional(),
+  address: z.string().trim().default(""),
+  addressHi: z.string().trim().default(""),
+  landmark: z.string().trim().default(""),
   dateIso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   timeStart: z.preprocess(preprocessTime, z.string().regex(/^\d{2}:\d{2}$/).optional()),
   timeEnd: z.preprocess(preprocessTime, z.string().regex(/^\d{2}:\d{2}$/).optional()),
