@@ -21,6 +21,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { editAndPublishAction } from "@/app/admin/actions";
 import { stripBotProvenance } from "@/lib/sanitize";
+import MapLocationInput from "@/components/admin/MapLocationInput";
 
 export const dynamic = "force-dynamic";
 const COOKIE = "admin";
@@ -145,26 +146,12 @@ export default async function AdminEditPage({ params }: PageProps) {
           defaultValue={b.addressHi ?? ""}
         />
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Pair
-            label="Latitude"
-            name="lat"
-            type="number"
-            step="any"
-            defaultValue={String(b.lat)}
-            required
-            hint="Lucknow ≈ 26.8 – 27.0"
-          />
-          <Pair
-            label="Longitude"
-            name="lng"
-            type="number"
-            step="any"
-            defaultValue={String(b.lng)}
-            required
-            hint="Lucknow ≈ 80.7 – 81.2"
-          />
-        </div>
+        {/* Latitude + Longitude now live inside MapLocationInput,
+            which adds a "paste anything Maps-y" helper above the
+            number inputs. The form fields are still
+            `name="lat"`/`name="lng"`, so editAndPublishAction reads
+            them unchanged. */}
+        <MapLocationInput initialLat={b.lat} initialLng={b.lng} />
 
         <label className="grid gap-1.5">
           <span className="text-sm text-ink-600">

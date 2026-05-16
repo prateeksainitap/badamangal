@@ -513,6 +513,19 @@ export default async function AdminPage({
                         ✓ Mark as Verified
                       </SubmitButton>
                     </form>
+                    {/* Edit on every live row — previously only PENDING
+                        rows had an Edit path, so the only way to fix
+                        wrong coordinates / typos on a Live row was via
+                        Delist → re-edit → re-approve, which had a
+                        public-facing downtime window. /admin/edit/[id]
+                        already works for any status; we just needed the
+                        link surfaced everywhere. */}
+                    <Link
+                      href={`/admin/edit/${b.id}`}
+                      className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink-600/45 text-ink-900 hover:bg-cream-50 font-medium px-4 py-2 text-sm"
+                    >
+                      ✎ Edit
+                    </Link>
                     <a
                       href={`/bhandara/${b.slug}`}
                       target="_blank"
@@ -533,6 +546,12 @@ export default async function AdminPage({
                   </>
                 ) : rowState === "VERIFIED" ? (
                   <>
+                    <Link
+                      href={`/admin/edit/${b.id}`}
+                      className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink-600/45 text-ink-900 hover:bg-cream-50 font-medium px-4 py-2 text-sm"
+                    >
+                      ✎ Edit
+                    </Link>
                     <a
                       href={`/bhandara/${b.slug}`}
                       target="_blank"
@@ -566,15 +585,23 @@ export default async function AdminPage({
                     </form>
                   </>
                 ) : (
-                  // REJECTED row — only re-publish makes sense.
-                  <form action={approveAction.bind(null, b.id)}>
-                    <SubmitButton
-                      variant="primary-green"
-                      pendingLabel="Republishing…"
+                  // REJECTED row — Edit + Re-publish.
+                  <>
+                    <Link
+                      href={`/admin/edit/${b.id}`}
+                      className="inline-flex items-center gap-1.5 rounded-full border-2 border-ink-600/45 text-ink-900 hover:bg-cream-50 font-medium px-4 py-2 text-sm"
                     >
-                      Re-publish
-                    </SubmitButton>
-                  </form>
+                      ✎ Edit
+                    </Link>
+                    <form action={approveAction.bind(null, b.id)}>
+                      <SubmitButton
+                        variant="primary-green"
+                        pendingLabel="Republishing…"
+                      >
+                        Re-publish
+                      </SubmitButton>
+                    </form>
+                  </>
                 )}
 
               </div>
