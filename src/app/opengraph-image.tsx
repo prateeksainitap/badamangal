@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { loadGoogleFont } from "@/lib/og-fonts";
 
 export const runtime = "nodejs";
-export const alt = "BadaMangal · Where there's faith, there's a bhandara.";
+export const alt = "BadaMangal · Jahan Bhakti, Vahan Bhandara";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -252,31 +252,36 @@ export default async function OG() {
             maxWidth: 740,
           }}
         >
+          {/* Two-line couplet, matching the rhythm of the original
+              Devanagari "जहाँ भक्ति, वहाँ भंडारा". Romanised here so
+              Satori (which can't shape the क्ति conjunct) doesn't
+              produce visibly broken text on the share card — see
+              file-header notes for the renderer-limitation context. */}
           <div
             style={{
               fontFamily: "Fraunces, serif",
               fontWeight: 700,
-              fontSize: 80,
+              fontSize: 92,
               color: SINDOOR_700,
-              lineHeight: 1.08,
+              lineHeight: 1.05,
               letterSpacing: -2,
               display: "flex",
             }}
           >
-            Where there's faith,
+            Jahan Bhakti,
           </div>
           <div
             style={{
               fontFamily: "Fraunces, serif",
               fontWeight: 700,
-              fontSize: 80,
+              fontSize: 92,
               color: SINDOOR_700,
-              lineHeight: 1.08,
+              lineHeight: 1.05,
               letterSpacing: -2,
               display: "flex",
             }}
           >
-            there's a bhandara.
+            Vahan Bhandara
           </div>
           <div
             style={{
@@ -288,7 +293,7 @@ export default async function OG() {
               display: "flex",
             }}
           >
-            Lucknow's Bada Mangal bhandaras, every Tuesday — on one map.
+            Lucknow's Bada Mangal bhandaras, every Tuesday and Saturday, on one map.
           </div>
         </div>
 

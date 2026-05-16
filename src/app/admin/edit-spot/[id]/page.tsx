@@ -20,6 +20,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { editAndApproveSpotAction } from "@/app/admin/actions";
+import { stripBotProvenance } from "@/lib/sanitize";
 
 export const dynamic = "force-dynamic";
 const COOKIE = "admin";
@@ -99,18 +100,23 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
           <span className="text-sm text-ink-600">
             Caption <span className="text-sindoor-700">*</span>
           </span>
+          {/* Strip the [bot:whatsapp …] provenance tag from the
+              textarea value so the admin doesn't have to delete it
+              by hand. The WhatsApp-bot moderation view reads the
+              raw caption from Prisma, so the queue still shows the
+              sender + group pill until the row is approved here. */}
           <textarea
             name="caption"
-            defaultValue={s.caption ?? ""}
+            defaultValue={stripBotProvenance(s.caption) ?? ""}
             rows={3}
             maxLength={200}
             placeholder="Puri-sabzi being served outside a saffron-draped pandal."
             className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
           />
           <span className="text-xs text-ink-600">
-            Max 200 chars. Bot-ingested spots may have the [bot:…] tag
-            appended on a separate line — leave that intact so the
-            provenance is preserved.
+            Max 200 chars. The [bot:…] provenance tag was auto-stripped
+            from this field; the bot moderation view keeps the
+            sender / group / hash info until the row is approved.
           </span>
         </label>
 

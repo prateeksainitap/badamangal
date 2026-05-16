@@ -33,7 +33,7 @@
  * The agent classifies via its prompt; we trust the kind it sends.
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import sharp from "sharp";
 import { prisma } from "@/lib/db";
 import {
@@ -46,6 +46,7 @@ import {
 import { getSupabaseAdmin, PHOTO_BUCKET } from "@/lib/supabase";
 import { slugify, ensureUniqueSlug } from "@/lib/slugify";
 import { menuHiFor } from "@/lib/menu";
+import { geocodeLucknow } from "@/lib/geocodeServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -142,7 +143,7 @@ export async function POST(req: NextRequest) {
     return jsonError(422, "image_unreadable");
   }
 
-  // ── 4. Classify (if "auto") + Upload to Supabase Storage ───────
+  // ── 4. Classify (if "auto") + Image-hash dedup check ──────────
   // We compute the WebP base64 once and reuse for both classification
   // (when needed) and extraction below. Classifying after the WebP
   // round-trip means the model is looking at the same bytes we'll
@@ -153,6 +154,44 @@ export async function POST(req: NextRequest) {
     requestedKind === "auto"
       ? await classifyImage(base64Webp, "image/webp")
       : requestedKind;
+
+  // SHA-256 of the normalised WebP bytes. We embed the first 12 chars
+  // into the provenance tag so a second forward of the EXACT same
+  // image (cross-posted between groups, which happens constantly with
+  // bhandara posters) can be detected via a substring search. 12 chars
+  // = 48 bits of collision space — comfortably more than the volume
+  // of unique posters we'll ever see in a single season.
+  const imageHash = createHash("sha256").update(webp).digest("hex").slice(0, 12);
+
+  // Dedup check: bail early if any existing row (bhandara OR spot)
+  // already carries this image hash in its description / caption tag.
+  // We return 200 + `kind: "duplicate"` so the ingester logs cleanly
+  // and the BM Ingest 2 notifier can show "already ingested" instead
+  // of a fresh review link — admins shouldn't have to triage the same
+  // poster N times when it cascades through 14 WhatsApp groups.
+  const hashMarker = `hash:${imageHash}`;
+  const [dupBhandara, dupSpot] = await Promise.all([
+    prisma.bhandara.findFirst({
+      where: { description: { contains: hashMarker } },
+      select: { id: true, slug: true },
+    }),
+    prisma.spot.findFirst({
+      where: { caption: { contains: hashMarker } },
+      select: { id: true },
+    }),
+  ]);
+  if (dupBhandara || dupSpot) {
+    return NextResponse.json({
+      ok: true,
+      kind: "duplicate",
+      duplicateOf: dupBhandara?.id ?? dupSpot?.id,
+      reviewUrl: dupBhandara
+        ? `${SITE_URL}/admin?type=whatsapp#${dupBhandara.id}`
+        : `${SITE_URL}/admin?type=whatsapp&status=spot#${dupSpot?.id ?? ""}`,
+      message:
+        "This exact image was already ingested. No new row created.",
+    });
+  }
 
   const supabase = getSupabaseAdmin();
   if (!supabase) {
@@ -173,7 +212,20 @@ export async function POST(req: NextRequest) {
   const photoUrl = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(filename).data.publicUrl;
 
   // ── 5. Run Gemini extraction (same path as /api/admin/scan) ────
-  const tag = `[bot:whatsapp · from:${senderName}${msgId ? ` · msg:${msgId.slice(0, 24)}` : ""} · ${new Date().toISOString().slice(0, 19)}Z]`;
+  // Provenance tag embedded into description / caption.
+  //
+  // Field order matters: the admin's parseBotTag regex
+  // (/admin?type=whatsapp) expects `· <timestamp>` directly after
+  // `msg:…`, so any new fields (hash, geocode note) MUST come AFTER
+  // the timestamp. Otherwise the regex stops matching and the bot
+  // moderation view loses its sender/group display.
+  //
+  // `hash:<12-char>` powers the cross-group dedup search above —
+  // 48 bits of collision space, more than enough for a season's
+  // worth of unique posters. The whole [bot:…] block is stripped
+  // from every public surface by stripBotProvenance (lib/sanitize).
+  const timestamp = `${new Date().toISOString().slice(0, 19)}Z`;
+  const tag = `[bot:whatsapp · from:${senderName}${msgId ? ` · msg:${msgId.slice(0, 24)}` : ""} · ${timestamp} · ${hashMarker}]`;
 
   if (kind === "bhandara") {
     let extracted: ExtractedBhandara;
@@ -186,17 +238,53 @@ export async function POST(req: NextRequest) {
     }
 
     // Build a Bhandara row. Fields we can't infer get sane defaults the
-    // admin will fix in /admin. We deliberately set status=PENDING and
-    // lat/lng=0 so the row never appears on the public map until an
-    // admin picks it up — even if the Bhandara enum-default elsewhere
-    // is APPROVED, the explicit PENDING here wins.
+    // admin will fix in /admin. status=PENDING so the row never appears
+    // on the public map until an admin picks it up — even if the
+    // Bhandara enum-default elsewhere is APPROVED, the explicit PENDING
+    // here wins.
     const baseSlug = extracted.name
       ? slugify(extracted.name)
       : `bot-${new Date().toISOString().slice(0, 10)}-${randomUUID().slice(0, 6)}`;
     const slug = await ensureUniqueSlug(baseSlug);
 
     const tuesdayDates = extracted.dateIso ? [extracted.dateIso] : [];
-    const description = [extracted.description, tag].filter(Boolean).join("\n\n");
+
+    // Forward-geocode the extracted address via Ola Maps so the row
+    // lands with real lat/lng (matched against Lucknow's bounding box)
+    // instead of 0,0. The admin can still edit, but most rows now go
+    // live without manual coord-pasting — which was the #1 reason
+    // /admin/edit/[id] existed for bot rows in the first place.
+    // Returns null on network failure, missing key, or zero results
+    // in the Lucknow bbox; in that case we keep 0,0 + the admin fills
+    // it in the edit form as before. `geocodeNote` records what
+    // happened so the admin can see at a glance whether to trust
+    // the coords or correct them.
+    let lat = 0;
+    let lng = 0;
+    let geocodeNote = "geocode:skipped";
+    if (extracted.address && extracted.address.length >= 5) {
+      try {
+        const hit = await geocodeLucknow(extracted.address);
+        if (hit) {
+          lat = hit.lat;
+          lng = hit.lng;
+          geocodeNote = `geocode:${hit.source}`;
+        } else {
+          geocodeNote = "geocode:miss";
+        }
+      } catch (err) {
+        console.error("[bot/ingest] geocode error:", err);
+        geocodeNote = "geocode:error";
+      }
+    }
+
+    // Tag carries the geocode outcome too — admin can spot whether a
+    // row was auto-located vs. left blank without opening the edit
+    // page. Stripped from public surfaces by stripBotProvenance.
+    const taggedDescription = `${tag.slice(0, -1)} · ${geocodeNote}]`;
+    const description = [extracted.description, taggedDescription]
+      .filter(Boolean)
+      .join("\n\n");
     const descriptionHi = extracted.descriptionHi || null;
 
     const row = await prisma.bhandara.create({
@@ -210,8 +298,8 @@ export async function POST(req: NextRequest) {
         address: extracted.address || "Address pending admin review",
         addressHi: extracted.addressHi || null,
         landmark: extracted.landmark || null,
-        lat: 0,
-        lng: 0,
+        lat,
+        lng,
         tuesdayDates: JSON.stringify(tuesdayDates),
         timeStart: extracted.timeStart ?? "11:00",
         timeEnd: extracted.timeEnd ?? "",

@@ -20,6 +20,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { editAndPublishAction } from "@/app/admin/actions";
+import { stripBotProvenance } from "@/lib/sanitize";
 
 export const dynamic = "force-dynamic";
 const COOKIE = "admin";
@@ -107,15 +108,25 @@ export default async function AdminEditPage({ params }: PageProps) {
         <Pair label="Name (English)" name="name" defaultValue={b.name} required />
         <Pair label="Name (हिन्दी)" name="nameHi" defaultValue={b.nameHi ?? ""} />
 
+        {/* Strip the WhatsApp-bot provenance tag from the textarea
+            value so the admin doesn't have to delete "[bot:whatsapp …]"
+            by hand before every save. The tag's diagnostic info
+            (sender, group, hash) is captured in the bot moderation
+            view above; once the admin clicks "Save & publish" the
+            row is no longer in the bot queue and the tag is no
+            longer useful, so dropping it on save is the right
+            default. The bot row's parseBotTag in /admin?type=whatsapp
+            keeps reading the RAW description from Prisma, so the
+            queue still surfaces the provenance pill until publish. */}
         <PairArea
           label="Description"
           name="description"
-          defaultValue={b.description ?? ""}
+          defaultValue={stripBotProvenance(b.description) ?? ""}
         />
         <PairArea
           label="विवरण (Hindi)"
           name="descriptionHi"
-          defaultValue={b.descriptionHi ?? ""}
+          defaultValue={stripBotProvenance(b.descriptionHi) ?? ""}
         />
 
         <div className="grid sm:grid-cols-2 gap-4">
