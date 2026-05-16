@@ -32,7 +32,21 @@ export function localised(path: string): Metadata["alternates"] {
    sitelinks search box, etc.).
    ────────────────────────────────────────────────────────────────────── */
 
-/** WebSite + sitelinks SearchAction so Google can wire its in-result search box. */
+/**
+ * WebSite + sitelinks SearchAction so Google can wire its in-result
+ * search box (the small site-scoped search input that appears below
+ * branded results — e.g. "BadaMangal" + a search field inside the
+ * Google SERP card itself).
+ *
+ * The SearchAction `urlTemplate` points at `/?q={search_term_string}`.
+ * The homepage's search input lives inside `BhandaraCardsSection` —
+ * it currently filters client-side only, but reading a `q` query
+ * param at mount and pre-filling the input is a small follow-up that
+ * lets Google's site-search box land users directly on a filtered
+ * view. Until that wire-up lands, the SearchAction is still a valid
+ * search-box hint (no penalty for landing on the unfiltered
+ * homepage).
+ */
 export function websiteSchema() {
   return {
     "@context": "https://schema.org",
@@ -45,6 +59,14 @@ export function websiteSchema() {
     description:
       "The directory of every Bada Mangal Bhandara in Lucknow during the 2026 season, find, list, sponsor, spot.",
     publisher: { "@id": `${SITE_URL}/#organization` },
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${SITE_URL}/?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
   };
 }
 
@@ -203,6 +225,112 @@ export function bhandaraEventSchema(opts: {
     url,
     image: opts.photoUrl ?? `${SITE_URL}/illustrations/hanuman-sitting.webp`,
   }));
+}
+
+/**
+ * LocalBusiness schema for an individual bhandara venue.
+ *
+ * Complements the per-Tuesday Event schemas above — Google treats
+ * `LocalBusiness` as the canonical "what is this place" entity for
+ * Knowledge Panel + Local Pack ranking, whereas `Event` is best for
+ * "what's happening here on date X". Both together is the rich-
+ * results sweet spot for a recurring free meal at a fixed venue.
+ *
+ * Notes:
+ *   • priceRange "Free" — schema.org accepts strings; "Free" reads
+ *     correctly in test tools.
+ *   • openingHoursSpecification limited to Tuesday — the venue
+ *     isn't a daily business; misrepresenting hours hurts trust.
+ *     If a bhandara also serves on Shani Jayanti Saturday, the
+ *     EventSchedule list above carries those dates explicitly.
+ *   • The `@id` is anchored to the bhandara detail URL with a
+ *     `#business` fragment so it doesn't collide with the Event
+ *     `@id`s for the same venue.
+ */
+export function bhandaraLocalBusinessSchema(opts: {
+  slug: string;
+  name: string;
+  description?: string | null;
+  address: string;
+  area: string;
+  lat: number;
+  lng: number;
+  timeStart: string;
+  timeEnd: string;
+  organizerName: string;
+  organizerPhone?: string | null;
+  photoUrl?: string | null;
+}) {
+  const url = `${SITE_URL}/bhandara/${opts.slug}`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "@id": `${url}#business`,
+    name: `${opts.name}, Bada Mangal Bhandara`,
+    description:
+      opts.description ??
+      `Free Bada Mangal community meal at ${opts.address}, Lucknow.`,
+    url,
+    image: opts.photoUrl ?? `${SITE_URL}/illustrations/hanuman-sitting.webp`,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: opts.address,
+      addressLocality: opts.area,
+      addressRegion: "Uttar Pradesh",
+      postalCode: "226001",
+      addressCountry: "IN",
+    },
+    geo: {
+      "@type": "GeoCoordinates",
+      latitude: opts.lat,
+      longitude: opts.lng,
+    },
+    openingHoursSpecification: {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: "https://schema.org/Tuesday",
+      opens: opts.timeStart,
+      closes: opts.timeEnd || "20:00",
+    },
+    priceRange: "Free",
+    isAccessibleForFree: true,
+    publicAccess: true,
+    ...(opts.organizerPhone
+      ? { telephone: opts.organizerPhone }
+      : {}),
+    founder: {
+      "@type": "Person",
+      name: opts.organizerName,
+    },
+    areaServed: {
+      "@type": "City",
+      name: "Lucknow",
+    },
+    parentOrganization: { "@id": `${SITE_URL}/#organization` },
+  };
+}
+
+/**
+ * Generic FAQPage schema. Pass a list of `{ q, a }` pairs — emits the
+ * shape Google wants for FAQ rich-result eligibility.
+ *
+ * Use sparingly: Google sometimes downgrades FAQ rich results when
+ * the same FAQ appears on multiple pages or feels promotional rather
+ * than genuinely useful. One FAQPage per page max, only when the
+ * questions actually help readers.
+ */
+export function faqPageSchema(items: ReadonlyArray<{ q: string; a: string }>) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map(({ q, a }) => ({
+      "@type": "Question",
+      name: q,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: a,
+      },
+    })),
+  };
 }
 
 /**

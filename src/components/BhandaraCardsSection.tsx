@@ -205,7 +205,12 @@ export default function BhandaraCardsSection({
               </p>
 
               <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                <a href="/list-bhandara" className="btn btn-primary btn-sm">
+                <a
+                  href={`/list-bhandara${isHi ? "" : "?lang=en"}`}
+                  data-ga="cta_empty_list_bhandara"
+                  data-ga-source="cards_empty"
+                  className="btn btn-primary btn-sm"
+                >
                   {isHi ? "अपना भंडारा जोड़ें" : "List your bhandara"}
                 </a>
                 {(area !== "all" || tuesday !== "all") && (

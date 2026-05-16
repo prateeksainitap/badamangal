@@ -212,7 +212,17 @@ export default function MapBoard({
             source="map_board"
             onChange={setNear}
           />
-          <Link href="/list-bhandara" className="btn btn-ghost btn-sm">
+          {/* Promoted to btn-primary (was btn-ghost) so "List your
+              bhandara" reads as the same primary affordance it does
+              on the homepage cards-section empty state, header CTA,
+              and bhandara detail page banner. One consistent visual
+              for one consistent action across the site. */}
+          <Link
+            href={`/list-bhandara${isHi ? "" : "?lang=en"}`}
+            data-ga="cta_map_list_bhandara"
+            data-ga-source="map_board"
+            className="btn btn-primary btn-sm"
+          >
             {listBhandaraLabel}
           </Link>
         </div>

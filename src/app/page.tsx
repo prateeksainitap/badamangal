@@ -523,7 +523,8 @@ export default async function HomePage() {
             {t.history.teaserBody}
           </p>
           <Link
-            href="/history"
+            href={`/history${isHi ? "" : "?lang=en"}`}
+            data-ga="cta_home_history_readmore"
             className="mt-6 inline-flex items-center rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 font-medium px-5 py-2 transition-colors"
           >
             {t.history.readMore} →

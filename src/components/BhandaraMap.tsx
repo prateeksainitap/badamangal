@@ -27,7 +27,12 @@ import {
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from "@/lib/lucknow";
 import type { Bhandara } from "@/types/bhandara";
 import { useLocaleFromContext } from "@/lib/locale-context";
-import { whatsappShareUrlForSpot } from "@/lib/share";
+import {
+  bhandaraShareText,
+  spotShareText,
+  whatsappShareUrlForBhandara,
+  whatsappShareUrlForSpot,
+} from "@/lib/share";
 
 // Popup offset relative to the marker anchor point (= the coord, since
 // markers are now bottom-anchored). The pin body extends ~46 px above
@@ -316,7 +321,7 @@ export default function BhandaraMap({
               btn.style.background = originalBackground;
             }, 1400);
             window.dispatchEvent(
-              new CustomEvent("bm:toast", { detail: { text: "Link copied" } }),
+              new CustomEvent("bm:toast", { detail: { text: "Message copied" } }),
             );
           } catch {
             /* ignore */
@@ -413,7 +418,7 @@ export default function BhandaraMap({
       });
       el.title = `${l.name}, ${l.area}`;
 
-      const popupHtml = buildListedBhandaraPopupHtml(l);
+      const popupHtml = buildListedBhandaraPopupHtml(l, locale);
       const popup = olaMaps
         .addPopup({
           offset: PIN_POPUP_OFFSET,
@@ -597,6 +602,21 @@ function buildSpotPopupHtml(
     },
     locale,
   );
+  // Full warm share message body (BadaMangal link first, Google Maps
+  // link second, intro / caption / closer). Same content the Share
+  // button sends to wa.me — the Copy button below pastes this same
+  // text so a paste into ANY messenger produces a complete invite.
+  // Consistent with HappeningNow / MapSideList / live feed Copies.
+  const shareText = spotShareText(
+    {
+      lat: s.lat,
+      lng: s.lng,
+      caption: s.caption,
+      area: null,
+      bhandaraSlug: s.bhandaraSlug,
+    },
+    locale,
+  );
   const headline = s.bhandaraName ?? "Spotted live";
   const photo = s.photoUrl ?? null;
 
@@ -623,7 +643,7 @@ function buildSpotPopupHtml(
              <svg width="11" height="11" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M16 3C8.82 3 3 8.82 3 16c0 2.29.6 4.43 1.65 6.3L3 29l6.86-1.62A12.95 12.95 0 0 0 16 29c7.18 0 13-5.82 13-13S23.18 3 16 3zm0 23.5c-1.93 0-3.74-.5-5.32-1.4l-.38-.22-4.07.96.97-3.96-.25-.4A10.5 10.5 0 1 1 16 26.5z"/></svg>
              Share
           </a>
-          <button type="button" data-bm-copy="${escapeHtml(mapsUrl)}" title="Copy link" aria-label="Copy link to this spot"
+          <button type="button" data-bm-copy="${escapeHtml(shareText)}" title="Copy share message" aria-label="Copy share message for this spot"
              style="flex:0 0 32px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(201,162,74,0.55);color:#9C2A2A;border-radius:9999px;width:32px;height:32px;padding:0;background:#FFFFFF;cursor:pointer;">
              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
           </button>
@@ -660,9 +680,22 @@ function buildPhotoBlock(photoUrl: string): string {
  * one is uploaded. Width 320px so the wider button labels
  * ("View details" + "Directions") fit without truncation.
  */
-function buildListedBhandaraPopupHtml(b: Bhandara): string {
+function buildListedBhandaraPopupHtml(
+  b: Bhandara,
+  locale: "hi" | "en",
+): string {
   const dirUrl = `https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}`;
   const detailUrl = `/bhandara/${b.slug}`;
+  // Full warm bhandara share message body — same content the
+  // BhandaraCard's WhatsApp button sends. Pasted by the Copy button
+  // so the receiver gets the full invite, not just a coords URL.
+  const shareText = bhandaraShareText(b, locale);
+  // wa.me URL for the Share button — added to the listed popup so it
+  // matches the spot popup's action triplet (Directions / Share /
+  // Copy). Earlier the listed popup only had View + Directions + Copy
+  // with no one-tap "share to WhatsApp" path, which was inconsistent
+  // with every other listed-bhandara surface on the site.
+  const waUrl = whatsappShareUrlForBhandara(b, locale);
   const photo = b.photoUrl ?? null;
   const timeRange = (() => {
     const start = b.timeStart ? format12hShort(b.timeStart) : "";
@@ -717,7 +750,13 @@ function buildListedBhandaraPopupHtml(b: Bhandara): string {
              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22s7-7.58 7-13a7 7 0 1 0-14 0c0 5.42 7 13 7 13zm0-10.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
              Directions
           </a>
-          <button type="button" data-bm-copy="${escapeHtml(`https://www.google.com/maps?q=${b.lat},${b.lng}&z=18`)}" title="Copy link" aria-label="Copy Google Maps link"
+          <a href="${waUrl}" target="_blank" rel="noopener noreferrer"
+             data-ga="listed_popup_whatsapp"
+             style="flex:0 0 32px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(106,141,68,0.55);color:#6A8D44;border-radius:9999px;width:32px;height:32px;padding:0;background:#FFFFFF;text-decoration:none;"
+             title="Share on WhatsApp" aria-label="Share this bhandara on WhatsApp">
+             <svg width="13" height="13" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><path d="M16 3C8.82 3 3 8.82 3 16c0 2.29.6 4.43 1.65 6.3L3 29l6.86-1.62A12.95 12.95 0 0 0 16 29c7.18 0 13-5.82 13-13S23.18 3 16 3zm0 23.5c-1.93 0-3.74-.5-5.32-1.4l-.38-.22-4.07.96.97-3.96-.25-.4A10.5 10.5 0 1 1 16 26.5z"/></svg>
+          </a>
+          <button type="button" data-bm-copy="${escapeHtml(shareText)}" title="Copy share message" aria-label="Copy share message for this bhandara"
              style="flex:0 0 32px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(201,162,74,0.55);color:#9C2A2A;border-radius:9999px;width:32px;height:32px;padding:0;background:#FFFFFF;cursor:pointer;">
              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
           </button>

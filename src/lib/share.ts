@@ -110,13 +110,15 @@ function pickServeDate(dates: string[] | undefined): string | null {
 }
 
 /**
- * Build the wa.me share URL for a bhandara, fully formatted message
- * body included. See file-header comment for the message shape.
+ * Build the formatted bhandara share-message text (the part that goes
+ * after `wa.me/?text=`). Exported separately from the wa.me wrapper so
+ * the "Copy to clipboard" buttons can paste the warm text into ANY
+ * messenger — not just WhatsApp. The wa.me URL builder
+ * `whatsappShareUrlForBhandara` below wraps + encodeURIComponents this.
+ *
+ * See file-header comment for the full message shape.
  */
-export function whatsappShareUrlForBhandara(
-  b: Bhandara,
-  locale: Locale,
-): string {
+export function bhandaraShareText(b: Bhandara, locale: Locale): string {
   const isHi = locale === "hi";
   const url = `${SITE_URL}/bhandara/${b.slug}${isHi ? "" : "?lang=en"}`;
   const name = isHi ? b.nameHi || b.name : b.name;
@@ -187,7 +189,21 @@ export function whatsappShareUrlForBhandara(
     closer,
   ].filter((l): l is string => l !== null);
 
-  return `https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
+  return lines.join("\n");
+}
+
+/**
+ * Wrap `bhandaraShareText` in a wa.me deep-link URL. Use this when the
+ * caller wants a one-click "Open WhatsApp share-target picker" link.
+ * For the "Copy to clipboard" button, use `bhandaraShareText` directly
+ * so the recipient pastes the warm text into whatever messenger they
+ * prefer (not just WhatsApp).
+ */
+export function whatsappShareUrlForBhandara(
+  b: Bhandara,
+  locale: Locale,
+): string {
+  return `https://wa.me/?text=${encodeURIComponent(bhandaraShareText(b, locale))}`;
 }
 
 /**
@@ -226,15 +242,25 @@ export type ShareableSpot = {
  * link still get the badamangal.com link as a fallback, and vice
  * versa for recipients with adblockers who block external maps.
  */
-export function whatsappShareUrlForSpot(
-  s: ShareableSpot,
-  locale: Locale,
-): string {
+/**
+ * Build the formatted spot share-message text. Exported separately so
+ * the "Copy to clipboard" buttons in the live feed / map popups can
+ * paste the warm text into any messenger. The wa.me URL builder
+ * `whatsappShareUrlForSpot` below just wraps + encodes this.
+ */
+export function spotShareText(s: ShareableSpot, locale: Locale): string {
   const isHi = locale === "hi";
   const mapsUrl = `https://www.google.com/maps?q=${s.lat},${s.lng}&z=18`;
+  // Second link in the share message — sits next to the Google Maps
+  // link as a "and here's where it lives on the BadaMangal map"
+  // counterpart. When the spot is linked to a listed bhandara, point
+  // at that bhandara's detail page (which has its own embedded map).
+  // Otherwise deep-link to the homepage's MapBoard via the #map
+  // anchor — the recipient lands directly on the city-wide live
+  // bhandara map without an extra scroll.
   const siteUrl = s.bhandaraSlug
     ? `${SITE_URL}/bhandara/${s.bhandaraSlug}${isHi ? "" : "?lang=en"}`
-    : `${SITE_URL}${isHi ? "" : "?lang=en"}`;
+    : `${SITE_URL}${isHi ? "" : "?lang=en"}#map`;
 
   const caption = (s.caption ?? "").trim();
   // WhatsApp markdown: *bold* on the label so the scannable left edge
@@ -262,22 +288,40 @@ export function whatsappShareUrlForSpot(
       ? "*विवरण:*"
       : "*Details:*"
     : isHi
-      ? "*सभी लाइव भंडारे:*"
-      : "*See live bhandaras:*";
+      ? "*भंडारा मानचित्र पर:*"
+      : "*Bhandara map:*";
 
   const closer = isHi ? "जय श्री राम। जय हनुमान।" : "Jai Shri Ram. Jai Hanuman.";
 
+  // Link order — BadaMangal link first, Google Maps second.
+  // Rationale: every paste should land on our site for the receiver
+  // first (richer context, brand impression, more bhandaras to
+  // discover), with the Google Maps link as a one-tap navigation
+  // fallback right below. Putting the BadaMangal link on top also
+  // means WhatsApp's automatic link-preview card (which previews
+  // the FIRST URL in the message) shows OUR OG card, not Google's
+  // raw maps thumbnail.
   const lines: string[] = [
     intro,
     "",
     captionLine,
     placeLine,
     "",
-    `${mapsLabel} ${mapsUrl}`,
     `${siteLabel} ${siteUrl}`,
+    `${mapsLabel} ${mapsUrl}`,
     "",
     closer,
   ].filter((l): l is string => l !== null);
 
-  return `https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
+  return lines.join("\n");
+}
+
+/**
+ * Wrap `spotShareText` in a wa.me deep-link URL.
+ */
+export function whatsappShareUrlForSpot(
+  s: ShareableSpot,
+  locale: Locale,
+): string {
+  return `https://wa.me/?text=${encodeURIComponent(spotShareText(s, locale))}`;
 }

@@ -10,6 +10,8 @@ import { strings } from "@/content/strings";
 import { trackEvent } from "@/lib/ga";
 import { useToast } from "@/components/Toast";
 import {
+  bhandaraShareText,
+  spotShareText,
   whatsappShareUrlForBhandara,
   whatsappShareUrlForSpot,
 } from "@/lib/share";
@@ -109,10 +111,13 @@ type Entry = {
   lat: number;
   lng: number;
   km?: number;
-  // Sharing — pre-built full wa.me URL. We construct it during the
-  // entries map below using the shared lib/share helpers so the
-  // message body matches the bhandara card / detail page exactly.
+  // Sharing — pre-built full wa.me URL + raw text body. Both come
+  // from the shared lib/share helpers so the message matches every
+  // other card / detail page exactly. The Copy button pastes
+  // `shareText` (full warm message — see lib/share file header for
+  // the shape), the WhatsApp button uses `shareUrl` (wa.me wrapper).
   shareUrl: string;
+  shareText: string;
   mapsUrl: string;
 };
 
@@ -150,6 +155,7 @@ export default function MapSideList({
         lat: b.lat,
         lng: b.lng,
         shareUrl: whatsappShareUrlForBhandara(b, locale),
+        shareText: bhandaraShareText(b, locale),
         mapsUrl,
       };
     });
@@ -177,6 +183,16 @@ export default function MapSideList({
         lat: s.lat,
         lng: s.lng,
         shareUrl: whatsappShareUrlForSpot(
+          {
+            lat: s.lat,
+            lng: s.lng,
+            caption: s.caption,
+            area: s.area,
+            bhandaraSlug: s.bhandaraSlug,
+          },
+          locale,
+        ),
+        shareText: spotShareText(
           {
             lat: s.lat,
             lng: s.lng,
@@ -532,13 +548,18 @@ function SideRow({ entry: e, isHi }: { entry: Entry; isHi: boolean }) {
           onClick={async (ev) => {
             const btn = ev.currentTarget;
             try {
-              await navigator.clipboard.writeText(e.mapsUrl);
+              // Copy the full warm share message (BadaMangal link
+              // first, Google Maps link second, + caption + place +
+              // closer). Same content the WhatsApp button sends,
+              // consistent with every other Copy on the site. See
+              // lib/share.ts for the message shape.
+              await navigator.clipboard.writeText(e.shareText);
               trackEvent("map_list_copy", { type: e.type });
               btn.dataset.copied = "1";
               window.setTimeout(() => {
                 delete btn.dataset.copied;
               }, 1200);
-              toast.show(isHi ? "लिंक कॉपी हो गया" : "Link copied");
+              toast.show(isHi ? "संदेश कॉपी हो गया" : "Message copied");
             } catch {
               toast.show(
                 isHi ? "कॉपी नहीं हुआ" : "Couldn't copy",
@@ -546,8 +567,8 @@ function SideRow({ entry: e, isHi }: { entry: Entry; isHi: boolean }) {
               );
             }
           }}
-          aria-label={isHi ? "लिंक कॉपी करें" : "Copy link"}
-          title={isHi ? "लिंक कॉपी करें" : "Copy link"}
+          aria-label={isHi ? "संदेश कॉपी करें" : "Copy share message"}
+          title={isHi ? "संदेश कॉपी करें" : "Copy share message"}
           className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-saffron-500/45 bg-cream-50 hover:bg-saffron-50 text-saffron-600 transition-colors data-[copied]:bg-leaf-600 data-[copied]:border-leaf-600 data-[copied]:text-cream-50"
         >
           <IconCopy />

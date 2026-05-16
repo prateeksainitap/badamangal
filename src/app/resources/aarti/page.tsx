@@ -4,6 +4,7 @@ import { strings, type Locale } from "@/content/strings";
 import { AARTI } from "@/content/devotional";
 import DevotionalReader from "@/components/DevotionalReader";
 import { MarigoldDivider } from "@/components/ornaments";
+import { faqPageSchema } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -56,11 +57,34 @@ export default async function AartiPage({}: {
     isAccessibleForFree: true,
   };
 
+  // FAQ schema — Google sometimes surfaces these as expandable Q&A
+  // blocks in the SERP. See chalisa/page.tsx for the rationale on
+  // why we keep three Qs (anchors multiple search intents, stays
+  // genuinely useful).
+  const faqSchema = faqPageSchema([
+    {
+      q: "When is the Hanuman Aarti sung at a Bada Mangal bhandara?",
+      a: "Most Lucknow bhandaras sing the Aarti at the start of the seva — usually around 11 AM or 12 noon — and again before the evening close. The Aarti is short (about three minutes) and the whole gathering joins in.",
+    },
+    {
+      q: "What does 'Aarti Kije Hanuman Lala Ki' mean?",
+      a: "The opening line means 'Let us perform the aarti of Hanuman Lala (beloved Hanuman)'. The verses praise his bravery, his strength as Anjani's son, his service to Lord Ram, and the protection he offers his devotees. Composed traditionally for evening worship at Hanuman temples.",
+    },
+    {
+      q: "Can I sing the Hanuman Aarti at home?",
+      a: "Yes — devotees commonly sing it at home on Tuesdays and Saturdays after lighting a diya and offering boondi or laddoo. Many start with the Hanuman Chalisa and end with the Aarti. The audio on this page can guide the tune if you're learning it for the first time.",
+    },
+  ]);
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
 
       <article className="pb-24">

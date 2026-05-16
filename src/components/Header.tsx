@@ -137,7 +137,7 @@ function HeaderInner() {
             We render the SVG at a tall fixed height with `w-auto`
             so it scales proportionally without distortion. */}
         <Link
-          href="/"
+          href={`/${locale === "hi" ? "" : "?lang=en"}`}
           aria-label="BadaMangal home"
           data-ga="nav_brand"
           data-ga-source="header"
@@ -239,7 +239,10 @@ function HeaderInner() {
 
             <div className="relative px-5 pt-5 pb-4 flex items-start justify-between gap-3">
               <Link
-                href="/"
+                href={`/${locale === "hi" ? "" : "?lang=en"}`}
+                aria-label="BadaMangal home"
+                data-ga="nav_brand"
+                data-ga-source="drawer"
                 onClick={() => setMenuOpen(false)}
                 className="inline-flex items-center group"
               >

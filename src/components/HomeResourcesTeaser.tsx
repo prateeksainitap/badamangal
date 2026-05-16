@@ -20,8 +20,12 @@ export default function HomeResourcesTeaser() {
   const t = strings[locale];
   const langSuffix = isHi ? "" : "?lang=en";
 
+  // `gaSlug` is a stable short identifier used by GA — keep it
+  // detached from `href` so changing the URL (e.g. adding a locale
+  // suffix) doesn't fork the GA event ID.
   const cards = [
     {
+      gaSlug: "chalisa",
       href: `/resources/chalisa${langSuffix}`,
       title: t.resources.cards.chalisa.title,
       body: t.resources.cards.chalisa.body,
@@ -29,6 +33,7 @@ export default function HomeResourcesTeaser() {
       accent: "saffron" as const,
     },
     {
+      gaSlug: "aarti",
       href: `/resources/aarti${langSuffix}`,
       title: t.resources.cards.aarti.title,
       body: t.resources.cards.aarti.body,
@@ -36,6 +41,7 @@ export default function HomeResourcesTeaser() {
       accent: "sindoor" as const,
     },
     {
+      gaSlug: "ashtak",
       href: `/resources/ashtak${langSuffix}`,
       title: t.resources.cards.ashtak.title,
       body: t.resources.cards.ashtak.body,
@@ -43,6 +49,7 @@ export default function HomeResourcesTeaser() {
       accent: "saffron" as const,
     },
     {
+      gaSlug: "bajrang-baan",
       href: `/resources/bajrang-baan${langSuffix}`,
       title: t.resources.cards.bajrangBaan.title,
       body: t.resources.cards.bajrangBaan.body,
@@ -72,6 +79,8 @@ export default function HomeResourcesTeaser() {
           <Link
             key={card.href}
             href={card.href}
+            data-ga="card_resource"
+            data-ga-slug={card.gaSlug}
             className={`group rounded-3xl bg-white shadow-warm px-6 py-7 transition-colors block ${
               card.accent === "saffron"
                 ? "border border-saffron-500/40 hover:border-saffron-500"
@@ -102,6 +111,7 @@ export default function HomeResourcesTeaser() {
       <div className="mt-7 text-center">
         <Link
           href={`/resources${langSuffix}`}
+          data-ga="cta_home_resources_viewall"
           className="inline-flex items-center text-sm text-ink-600 hover:text-saffron-600 transition-colors"
         >
           {isHi ? "सभी संसाधन देखें" : "View all resources"} →

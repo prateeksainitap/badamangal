@@ -12,6 +12,7 @@ import { prisma, toBhandara } from "@/lib/db";
 import { formatEnglishDate, formatHindiDate } from "@/lib/dates";
 import {
   bhandaraEventSchema,
+  bhandaraLocalBusinessSchema,
   breadcrumbSchema,
   localised,
   organizationSchema,
@@ -56,16 +57,19 @@ function googleDirectionsUrl(b: Bhandara): string {
   return b.googlePlaceId ? `${base}&destination_place_id=${b.googlePlaceId}` : base;
 }
 
-function googleShareUrl(b: Bhandara): string {
-  return b.googleMapsUrl ?? `https://www.google.com/maps?q=${b.lat},${b.lng}&z=18`;
-}
+// (googleShareUrl removed — the Copy button now pastes the warm
+// `bhandaraShareText`, which already contains the Google Maps URL as
+// one of its two links. See lib/share.ts.)
 
 // Share-message builder moved to @/lib/share so the detail page and
 // the card use the same warm "🪔 Bada Mangal Bhandara — <name>" layout
 // with date, menu, and the canonical detail URL. The previous local
 // builder produced a CSV-feel single-line string that read like a
 // database dump — see lib/share.ts for the rationale.
-import { whatsappShareUrlForBhandara as whatsappShareUrl } from "@/lib/share";
+import {
+  bhandaraShareText,
+  whatsappShareUrlForBhandara as whatsappShareUrl,
+} from "@/lib/share";
 
 function upiUrl(b: Bhandara): string | null {
   if (!b.upiId) return null;
@@ -110,28 +114,42 @@ export async function generateMetadata({
   if (!record) return { title: "Bhandara not found" };
 
   const time = `${format12h(record.timeStart)}${record.timeEnd ? `–${format12h(record.timeEnd)}` : ""}`;
+  // SEO-tuned title: name · area · "Bada Mangal Lucknow 2026"
+  //   • Area moved to position 2 (was position 4) so a search for
+  //     "bada mangal aliganj" matches earlier in the title — Google
+  //     weights position heavily.
+  //   • Year ("2026") added — query volume on "bada mangal 2026"
+  //     spikes during season; presence in title boosts CTR.
+  //   • " · " separator scans well in SERP truncation; commas were
+  //     getting trailed off mid-phrase.
+  const title = `${record.name} · ${record.area} · Bada Mangal Lucknow 2026`;
+  // SEO-tuned description: lead with "Free" (high-intent qualifier),
+  // area early, full address + organiser for long-tail uniqueness.
+  // Keeping under 160 chars where possible — Google truncates at
+  // ~155-160 in SERP previews.
   const description =
     record.description ??
-    `Free Bada Mangal community meal at ${record.address}, ${record.area}, Lucknow. Serving ${time} on every Bada Mangal Tuesday of the 2026 Jyeshtha season. Hosted by ${record.organizerName}.`;
+    `Free Bada Mangal bhandara in ${record.area}, Lucknow. ${record.organizerName}'s seva at ${record.address}. Serving ${time} on every Tuesday of Jyeshtha 2026.`;
   const ogImage = record.photoUrl ?? `${SITE_URL}/illustrations/hanuman-sitting.webp`;
+  const ogAlt = `${record.name} bhandara in ${record.area}, Lucknow`;
 
   return {
-    title: `${record.name}, Bada Mangal Bhandara, ${record.area}, Lucknow`,
+    title,
     description,
     alternates: localised(`/bhandara/${slug}`),
     openGraph: {
-      title: `${record.name} · ${record.area} · Bada Mangal 2026`,
+      title,
       description,
       url: `${SITE_URL}/bhandara/${slug}`,
       siteName: "BadaMangal",
       type: "article",
       locale: "hi_IN",
       alternateLocale: "en_IN",
-      images: [{ url: ogImage, width: 1200, height: 630, alt: record.name }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: ogAlt }],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${record.name} · ${record.area}`,
+      title,
       description,
       images: [ogImage],
     },
@@ -210,6 +228,24 @@ export default async function BhandaraDetailPage({
       timeStart: b.timeStart,
       timeEnd: b.timeEnd,
       organizerName: b.organizerName,
+      photoUrl: b.photoUrl ?? null,
+    }),
+    // LocalBusiness — anchors the bhandara as a "place" entity for
+    // Google's Knowledge Panel + Local Pack rankings. Complements
+    // the per-Tuesday Event schemas above (Event = "what's happening
+    // here on date X"; LocalBusiness = "what is this place").
+    bhandaraLocalBusinessSchema({
+      slug: b.slug,
+      name: b.name,
+      description: b.description ?? null,
+      address: b.address,
+      area: areaLabel,
+      lat: b.lat,
+      lng: b.lng,
+      timeStart: b.timeStart,
+      timeEnd: b.timeEnd,
+      organizerName: b.organizerName,
+      organizerPhone: b.organizerPhone ?? null,
       photoUrl: b.photoUrl ?? null,
     }),
   ];
@@ -357,9 +393,14 @@ export default async function BhandaraDetailPage({
                   <IconWhatsapp />
                   {t.cta.shareWhatsapp}
                 </a>
+                {/* Copy now copies the full warm bhandara share
+                    message (intro + name + date + place + menu +
+                    BadaMangal link + Google Maps link + closer), not
+                    just the maps URL — consistent with every other
+                    Copy button on the site. See lib/share.ts. */}
                 <CopyButton
-                  value={googleShareUrl(b)}
-                  label={isHi ? "लिंक कॉपी करें" : "Copy link"}
+                  value={bhandaraShareText(b, locale)}
+                  label={isHi ? "संदेश कॉपी करें" : "Copy message"}
                   copiedLabel={isHi ? "कॉपी हो गया" : "Copied!"}
                   className="inline-flex items-center gap-2 rounded-full border-2 border-saffron-500/55 bg-cream-50 hover:bg-saffron-50 hover:border-saffron-500 text-saffron-600 hover:text-sindoor-700 text-base font-semibold px-5 py-3 transition-colors"
                 />
@@ -376,7 +417,7 @@ export default async function BhandaraDetailPage({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={b.photoUrl}
-                    alt={b.name}
+                    alt={`${b.name} bhandara in ${areaLabel}, Lucknow`}
                     /* `object-contain` + flexible height + max cap = the
                        container adapts to the image's natural aspect ratio,
                        so a vertical pamphlet shows uncropped and a square
@@ -537,6 +578,48 @@ export default async function BhandaraDetailPage({
           </div>
         </section>
       ) : null}
+
+      {/* Host-pitch CTA — earlier the detail page had no "List your
+          own bhandara" call-out. Visitors who arrived from a friend's
+          WhatsApp share might themselves be organising a bhandara
+          this season; catching them here (right where they're seeing
+          what a polished listing looks like) is the most natural
+          place to ask. Warm copy, low pressure, full-width banner so
+          it's hard to miss without screaming. */}
+      <section className="mx-auto max-w-5xl px-4 sm:px-6 mt-12 sm:mt-16">
+        <div className="rounded-3xl border border-saffron-500/45 bg-gradient-to-br from-saffron-50 to-cream-50 px-6 py-7 sm:px-10 sm:py-10 flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-8 shadow-warm">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs uppercase tracking-[0.18em] text-saffron-600 font-semibold">
+              {isHi ? "खुद आयोजन कर रहे हैं?" : "Hosting your own?"}
+            </p>
+            <h2
+              className={`mt-2 ${
+                isHi
+                  ? "font-deva text-sindoor-700"
+                  : "font-fraunces text-sindoor-700"
+              } text-2xl sm:text-3xl leading-snug [text-wrap:balance]`}
+            >
+              {isHi
+                ? "अपना बड़ा मंगल भंडारा भी सूचीबद्ध करें।"
+                : "List your Bada Mangal bhandara on BadaMangal.com."}
+            </h2>
+            <p className="mt-2 text-sm sm:text-base text-ink-600 leading-relaxed">
+              {isHi
+                ? "पूरी तरह मुफ़्त। लखनऊ के भक्तगण आपके भंडारे तक नक़्शे पर पहुँच सकेंगे।"
+                : "Free to list. Devotees across Lucknow can find your bhandara on the city map."}
+            </p>
+          </div>
+          <Link
+            href={`/list-bhandara${isHi ? "" : "?lang=en"}`}
+            data-ga="detail_cta_list_bhandara"
+            data-ga-slug={b.slug}
+            className="shrink-0 inline-flex items-center justify-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-semibold px-6 py-3 text-base shadow-warm transition-transform hover:-translate-y-0.5"
+          >
+            {isHi ? "अपना भंडारा लिस्ट करें" : "List your bhandara"}
+            <span aria-hidden>→</span>
+          </Link>
+        </div>
+      </section>
     </article>
   );
 }

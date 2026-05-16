@@ -120,7 +120,7 @@ export default function BhandaraCard({ bhandara, locale }: Props) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={bhandara.photoUrl}
-              alt={displayName}
+              alt={`${displayName} bhandara in ${areaLabel}, Lucknow`}
               loading="lazy"
               decoding="async"
               referrerPolicy="no-referrer"

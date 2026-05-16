@@ -10,7 +10,7 @@ import { SunburstSpark } from "@/components/ornaments";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { useLocaleFromContext } from "@/lib/locale-context";
-import { whatsappShareUrlForSpot } from "@/lib/share";
+import { spotShareText, whatsappShareUrlForSpot } from "@/lib/share";
 
 const NEAR_ME_RADIUS_KM = 3;
 
@@ -451,13 +451,32 @@ function SpotCard({
               e.stopPropagation();
               const btn = e.currentTarget;
               try {
-                await navigator.clipboard.writeText(mapsUrl);
+                // Copy the FULL warm share text (intro + caption +
+                // place + BadaMangal link + Google Maps link + closer)
+                // instead of the bare maps URL. Matches what the
+                // WhatsApp share button sends, so a paste into any
+                // messenger produces a complete invite. Consistent
+                // with the /live feed and every other Copy on the
+                // site — see lib/share.ts for the message shape.
+                await navigator.clipboard.writeText(
+                  spotShareText(
+                    {
+                      lat: spot.lat,
+                      lng: spot.lng,
+                      caption: spot.caption,
+                      area: spot.area,
+                      address: spot.address,
+                      bhandaraSlug: spot.bhandaraSlug,
+                    },
+                    locale,
+                  ),
+                );
                 trackEvent("happening_copy_link", { spot_id: spot.id });
                 btn.dataset.copied = "1";
                 window.setTimeout(() => {
                   delete btn.dataset.copied;
                 }, 1200);
-                toast.show(isHi ? "लिंक कॉपी हो गया" : "Link copied");
+                toast.show(isHi ? "संदेश कॉपी हो गया" : "Message copied");
               } catch {
                 toast.show(
                   isHi ? "कॉपी नहीं हुआ" : "Couldn't copy",
@@ -465,28 +484,38 @@ function SpotCard({
                 );
               }
             }}
-            aria-label={isHi ? "लिंक कॉपी करें" : "Copy link"}
-            title={isHi ? "लिंक कॉपी करें" : "Copy link"}
+            aria-label={isHi ? "संदेश कॉपी करें" : "Copy share message"}
+            title={isHi ? "संदेश कॉपी करें" : "Copy share message"}
             className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full border border-saffron-500/45 bg-cream-50 hover:bg-saffron-50 text-saffron-600 transition-colors data-[copied]:bg-leaf-600 data-[copied]:border-leaf-600 data-[copied]:text-cream-50"
           >
             <IconCopy />
           </button>
         </div>
       </div>
-      {/* Stretched-link overlay — only when the spot maps to a real
-          bhandara page. Sits above the photo/info but below the action
-          bar (z-10 vs z-20) so the inner Directions/Share/Copy anchors
+      {/* Stretched-link overlay — every spot card is now clickable
+          (previously only when bhandaraSlug existed). Tapping
+          anywhere outside the action-bar lands the user on the
+          /live timeline, scrolled to and focused on the exact post
+          they just clicked. The /live PostCard renders `id={post.id}`
+          so the URL fragment `#spot:<id>` resolves natively without
+          any JS. Lang query first, then fragment, per URL grammar.
+          Sits above the photo/info but BELOW the action bar
+          (z-10 vs z-20) so the inner Directions/Share/Copy anchors
           stay clickable without nesting <a> inside <a>. */}
-      {spot.bhandaraSlug ? (
-        <Link
-          href={`/bhandara/${spot.bhandaraSlug}${isHi ? "" : "?lang=en"}`}
-          onClick={() =>
-            trackEvent("happening_open_bhandara", { slug: spot.bhandaraSlug })
-          }
-          aria-label={bhandaraName ?? (isHi ? "भंडारा खोलें" : "Open bhandara")}
-          className="absolute inset-0 z-10 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600/60"
-        />
-      ) : null}
+      <Link
+        href={`/live${isHi ? "" : "?lang=en"}#spot:${spot.id}`}
+        onClick={() =>
+          trackEvent("happening_open_in_live", { spot_id: spot.id })
+        }
+        aria-label={
+          bhandaraName
+            ? `${bhandaraName} ${isHi ? "— लाइव फ़ीड में देखें" : "— view in live feed"}`
+            : isHi
+              ? "लाइव फ़ीड में देखें"
+              : "View in live feed"
+        }
+        className="absolute inset-0 z-10 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600/60"
+      />
     </article>
   );
 

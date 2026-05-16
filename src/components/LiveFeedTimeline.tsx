@@ -8,6 +8,10 @@ import { haversineKm } from "@/lib/geo";
 import { trackEvent } from "@/lib/ga";
 import { useToast } from "@/components/Toast";
 import type { Locale } from "@/content/strings";
+import {
+  spotShareText,
+  whatsappShareUrlForSpot,
+} from "@/lib/share";
 
 const NEAR_ME_RADIUS_KM = 3;
 
@@ -417,6 +421,20 @@ function LiveEmptyState({
               <CameraGlyph />
               {isHi ? "अभी भंडारा स्पॉट करें" : "Spot a bhandara now"}
             </Link>
+            {/* "List a bhandara" CTA — earlier the empty state only
+                offered Spot + Browse, which missed the organiser
+                segment (someone hosting a bhandara who lands here
+                from a friend's share). Outline-style secondary so
+                it sits next to "Spot" without competing for the
+                primary action. */}
+            <Link
+              href={`/list-bhandara${isHi ? "" : "?lang=en"}`}
+              data-ga="cta_live_empty_list"
+              data-ga-source={`live_empty_${kind}`}
+              className="inline-flex items-center gap-2 rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 px-4 py-2 text-sm font-semibold transition-colors"
+            >
+              {isHi ? "अपना भंडारा लिस्ट करें" : "List your bhandara"}
+            </Link>
             <Link
               href={isHi ? "/" : "/?lang=en"}
               data-ga="cta_live_empty_browse"
@@ -562,7 +580,19 @@ function PostCard({
   const initial = post.authorName.trim().charAt(0).toUpperCase() || "•";
   return (
     <li
-      className={`group rounded-2xl border bg-cream-50 shadow-warm overflow-hidden transition-shadow ${
+      // `id` powers deep links from the homepage HappeningNow row —
+      // tapping a card there navigates to `/live#spot:<id>` and the
+      // browser scrolls this element into view natively.
+      // `scroll-mt-24` adds enough top margin so the post isn't
+      // clipped by the sticky page header when the browser jumps to
+      // it via the hash. (24 ≈ 6rem, comfortably above the header.)
+      id={post.id}
+      // `target:` styles fire when the URL fragment matches this li's
+      // id — i.e. when the user arrived here via /live#spot:<id> from
+      // a tap on a HappeningNow card. We brighten the border + drop a
+      // soft saffron ring so the eye lands on the correct card after
+      // the browser's hash-scroll completes. CSS-only, no JS.
+      className={`group scroll-mt-24 rounded-2xl border bg-cream-50 shadow-warm overflow-hidden transition-shadow target:border-saffron-500 target:ring-2 target:ring-saffron-500/40 ${
         isFirst ? "border-saffron-500/45" : "border-gold-500/30"
       }`}
     >
@@ -665,28 +695,50 @@ function PostCard({
       {/* Action row, Share / Copy on every post; Get directions when the
           linked bhandara has coords. Stops propagation so the card itself
           doesn't navigate. */}
-      <PostActions post={post} isHi={isHi} />
+      <PostActions post={post} isHi={isHi} locale={locale} />
     </li>
   );
 }
 
-function PostActions({ post, isHi }: { post: FeedPost; isHi: boolean }) {
+function PostActions({
+  post,
+  isHi,
+  locale,
+}: {
+  post: FeedPost;
+  isHi: boolean;
+  locale: Locale;
+}) {
   const toast = useToast();
   const hasCoords =
     typeof post.bhandaraLat === "number" && typeof post.bhandaraLng === "number";
   const dirUrl = hasCoords
     ? `https://www.google.com/maps/dir/?api=1&destination=${post.bhandaraLat},${post.bhandaraLng}`
     : null;
-  // Sharable URL: prefer the linked bhandara's detail page; fall back to
-  // the live feed when there's no bhandara link.
-  const detailUrl =
-    typeof window !== "undefined"
-      ? post.bhandaraSlug
-        ? `${window.location.origin}/bhandara/${post.bhandaraSlug}`
-        : `${window.location.origin}/live`
-      : "";
-  const shareText = `${post.authorName}: ${post.text ?? "Live update"}, ${detailUrl}`;
-  const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+
+  // Share message — built via the shared `spotShareText` helper so the
+  // wording on /live matches what every other spot share callsite
+  // produces (HappeningNow card, map popup, side list). Caption text
+  // becomes the "Spotted:" line; the linked-bhandara URL (or the
+  // homepage fallback) becomes the "Details:" / "See live bhandaras:"
+  // line; the maps URL is the "Open in Maps:" line. The Copy button
+  // gets the same text (NOT just the URL) so a paste into WhatsApp /
+  // Telegram / Signal / etc. lands as a complete warm message.
+  //
+  // We hand the helper post.bhandaraLat/Lng as the coords (every
+  // FeedPost in /live has them — falls back to the spot's own coords
+  // server-side in src/app/live/page.tsx). caption uses post.text
+  // which the API already strips of the [bot:...] tag via
+  // stripBotProvenance.
+  const shareInput = {
+    lat: typeof post.bhandaraLat === "number" ? post.bhandaraLat : 0,
+    lng: typeof post.bhandaraLng === "number" ? post.bhandaraLng : 0,
+    caption: post.text,
+    area: null,
+    bhandaraSlug: post.bhandaraSlug,
+  };
+  const shareText = spotShareText(shareInput, locale);
+  const waUrl = whatsappShareUrlForSpot(shareInput, locale);
 
   return (
     <div className="px-4 pt-2.5 pb-3 flex flex-wrap items-center gap-1.5">
@@ -721,9 +773,14 @@ function PostActions({ post, isHi }: { post: FeedPost; isHi: boolean }) {
         type="button"
         onClick={async () => {
           try {
-            await navigator.clipboard.writeText(detailUrl);
+            // Copy the FULL warm share message (intro + caption +
+            // place + maps url + badamangal url + closer) — not just
+            // the bare bhandara URL. Matches what the WhatsApp share
+            // button sends, so a paste anywhere (Telegram, SMS,
+            // email, notes app, etc.) produces a complete invite.
+            await navigator.clipboard.writeText(shareText);
             trackEvent("live_feed_copy_link", { post_id: post.id });
-            toast.show(isHi ? "लिंक कॉपी हो गया" : "Link copied");
+            toast.show(isHi ? "संदेश कॉपी हो गया" : "Message copied");
           } catch {
             toast.show(
               isHi ? "कॉपी नहीं हुआ" : "Couldn't copy",

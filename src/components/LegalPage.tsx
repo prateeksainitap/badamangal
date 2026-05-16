@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { Locale } from "@/content/strings";
 
 type Props = {
   kicker: string;
@@ -8,6 +9,11 @@ type Props = {
   /** ISO date string for "last updated" line. */
   lastUpdated: string;
   children: ReactNode;
+  /** Active locale — used to preserve the user's language preference
+   *  on the "Back to BadaMangal" link. Defaults to "en" if a caller
+   *  forgets to pass it, which renders the existing English label
+   *  without crashing. */
+  locale?: Locale;
 };
 
 /**
@@ -24,15 +30,19 @@ export default function LegalPage({
   intro,
   lastUpdated,
   children,
+  locale = "en",
 }: Props) {
+  const isHi = locale === "hi";
   return (
     <article className="pb-24">
       <header className="mx-auto max-w-3xl px-4 sm:px-6 pt-12 sm:pt-16 pb-8 text-center">
         <Link
-          href="/"
+          href={`/${isHi ? "" : "?lang=en"}`}
+          data-ga="cta_legal_back_home"
+          data-ga-source="legal_page"
           className="inline-block text-sm text-ink-600 hover:text-saffron-600 transition-colors"
         >
-          ← Back to BadaMangal
+          {isHi ? "← बैक टू BadaMangal" : "← Back to BadaMangal"}
         </Link>
         <p className="mt-4 font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
           {kicker}

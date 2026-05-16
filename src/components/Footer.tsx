@@ -77,7 +77,8 @@ function FooterInner() {
                 text lockup that used to live here was redundant.
                 Tall fixed height + w-auto preserves aspect ratio. */}
             <Link
-              href="/"
+              href={`/${isHi ? "" : "?lang=en"}`}
+              aria-label="BadaMangal home"
               data-ga="nav_brand"
               data-ga-source="footer"
               className="inline-flex items-center group"

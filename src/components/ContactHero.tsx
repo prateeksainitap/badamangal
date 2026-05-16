@@ -37,6 +37,8 @@ export default function ContactHero() {
         {isHi ? "या सीधे ईमेल करें: " : "Or email directly: "}
         <a
           href={`mailto:${t.footer.contactEmail}`}
+          data-ga="cta_contact_email_mailto"
+          data-ga-source="contact_hero"
           className="text-saffron-600 hover:underline"
         >
           {t.footer.contactEmail}
