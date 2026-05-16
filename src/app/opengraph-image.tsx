@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { loadGoogleFont } from "@/lib/og-fonts";
 
 export const runtime = "nodejs";
@@ -47,6 +49,25 @@ const INK_900 = "#1A1410";
 const INK_600 = "#5A4F46";
 const CREAM_50 = "#FBF7F0";
 
+/**
+ * Read a static asset from /public into a data URL Satori can render.
+ * Returns null if the file is missing or the read fails so the
+ * caller can fall back to an inline SVG fallback instead of crashing
+ * the OG endpoint. Used here for the Hanuman PNG.
+ */
+async function publicAssetDataUrl(
+  relPath: string,
+  mime: string,
+): Promise<string | null> {
+  try {
+    const abs = path.join(process.cwd(), "public", relPath);
+    const buf = await readFile(abs);
+    return `data:${mime};base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
 export default async function OG() {
   // English-only OG card. We previously rendered the Hindi headline
   // "जहाँ भक्ति, वहाँ भंडारा" using Noto Serif Devanagari, but Satori
@@ -57,9 +78,17 @@ export default async function OG() {
   // site, we render the OG card entirely in English. The rest of the
   // site stays bilingual; this is a renderer-limitation workaround,
   // not a brand-language decision.
-  const [fraunces500, fraunces700] = await Promise.all([
+  const [fraunces500, fraunces700, hanumanPng] = await Promise.all([
     loadGoogleFont("Fraunces", 500),
     loadGoogleFont("Fraunces", 700),
+    // PNG (converted from the original WebP via sharp at build time —
+    // see public/illustrations/hanuman-standing-og.png). Satori parses
+    // PNG reliably; the WebP route crashed with [TypeError: u2 is not
+    // iterable] in earlier deploys.
+    publicAssetDataUrl(
+      "illustrations/hanuman-standing-og.png",
+      "image/png",
+    ),
   ]);
 
   const fonts: {
@@ -97,10 +126,49 @@ export default async function OG() {
           position: "relative",
         }}
       >
-        {/* Decorative SVG composition on the right — a saffron sun
-            with rays + a small ॐ glyph + a faint mandala ring. Reads
-            as warm devotional iconography at thumbnail size and is
-            cheap enough for Satori to parse without trouble. */}
+        {/* Saffron halo behind the Hanuman figure — same warm radial
+            glow the homepage hero uses. Rendered before the figure
+            so the figure sits on top of the glow rather than vice
+            versa (CSS z-stacking respects source order in Satori). */}
+        <div
+          style={{
+            position: "absolute",
+            right: 36,
+            top: 60,
+            width: 420,
+            height: 540,
+            borderRadius: 999,
+            background:
+              "radial-gradient(circle, rgba(242,148,76,0.32) 0%, rgba(242,148,76,0.10) 55%, rgba(242,148,76,0) 75%)",
+            display: "flex",
+          }}
+        />
+
+        {/* Hanuman figure — converted from the original
+            /illustrations/hanuman-standing.webp to a 480×640 PNG
+            (~154 KB) via sharp at edit time; the conversion script
+            ran as a one-shot during this commit. Satori parses PNG
+            reliably; the WebP version crashed two earlier deploys
+            with [TypeError: u2 is not iterable]. When the PNG ever
+            fails to load (corrupt asset, missing from bundle), the
+            inline saffron-sun SVG fallback below renders so the
+            card still ships with weight. */}
+        {hanumanPng ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={hanumanPng}
+            alt=""
+            width={400}
+            height={533}
+            style={{
+              position: "absolute",
+              right: 48,
+              top: 70,
+              width: 400,
+              height: 533,
+            }}
+          />
+        ) : (
         <svg
           width="380"
           height="380"
@@ -169,6 +237,7 @@ export default async function OG() {
           />
           <circle cx="190" cy="135" r="8" fill={CREAM_50} />
         </svg>
+        )}
 
         {/* Top row: inline brand mark SVG + wordmark on the left,
             season badge on the right. */}
