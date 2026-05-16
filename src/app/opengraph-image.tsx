@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 import { loadGoogleFont } from "@/lib/og-fonts";
 
 export const runtime = "nodejs";
-export const alt = "BadaMangal · जहाँ भक्ति, वहाँ भंडारा";
+export const alt = "BadaMangal · Where there's faith, there's a bhandara.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -48,8 +48,16 @@ const INK_600 = "#5A4F46";
 const CREAM_50 = "#FBF7F0";
 
 export default async function OG() {
-  const [notoBold, fraunces500, fraunces700] = await Promise.all([
-    loadGoogleFont("Noto Serif Devanagari", 700),
+  // English-only OG card. We previously rendered the Hindi headline
+  // "जहाँ भक्ति, वहाँ भंडारा" using Noto Serif Devanagari, but Satori
+  // (the renderer behind next/og) doesn't fully shape the `क्ति`
+  // conjunct — the `ि` matra rendered AFTER the cluster instead of
+  // fused into it, producing visibly broken text. Rather than ship a
+  // visibly-wrong Hindi headline on the most-shared surface on the
+  // site, we render the OG card entirely in English. The rest of the
+  // site stays bilingual; this is a renderer-limitation workaround,
+  // not a brand-language decision.
+  const [fraunces500, fraunces700] = await Promise.all([
     loadGoogleFont("Fraunces", 500),
     loadGoogleFont("Fraunces", 700),
   ]);
@@ -60,8 +68,6 @@ export default async function OG() {
     weight?: 500 | 700;
     style?: "normal";
   }[] = [];
-  if (notoBold)
-    fonts.push({ name: "Noto", data: notoBold, weight: 700, style: "normal" });
   if (fraunces500)
     fonts.push({
       name: "Fraunces",
@@ -246,41 +252,39 @@ export default async function OG() {
             maxWidth: 740,
           }}
         >
-          {notoBold ? (
-            <div
-              style={{
-                fontFamily: "Noto, Fraunces, serif",
-                fontWeight: 700,
-                fontSize: 92,
-                color: SINDOOR_700,
-                lineHeight: 1.12,
-                letterSpacing: -1,
-                display: "flex",
-              }}
-            >
-              जहाँ भक्ति, वहाँ भंडारा
-            </div>
-          ) : (
-            <div
-              style={{
-                fontSize: 84,
-                fontWeight: 700,
-                color: SINDOOR_700,
-                lineHeight: 1.1,
-                letterSpacing: -2,
-                display: "flex",
-              }}
-            >
-              Bada Mangal Lucknow
-            </div>
-          )}
           <div
             style={{
-              fontSize: 32,
+              fontFamily: "Fraunces, serif",
+              fontWeight: 700,
+              fontSize: 80,
+              color: SINDOOR_700,
+              lineHeight: 1.08,
+              letterSpacing: -2,
+              display: "flex",
+            }}
+          >
+            Where there's faith,
+          </div>
+          <div
+            style={{
+              fontFamily: "Fraunces, serif",
+              fontWeight: 700,
+              fontSize: 80,
+              color: SINDOOR_700,
+              lineHeight: 1.08,
+              letterSpacing: -2,
+              display: "flex",
+            }}
+          >
+            there's a bhandara.
+          </div>
+          <div
+            style={{
+              fontSize: 28,
               fontWeight: 500,
               color: INK_900,
-              marginTop: 14,
-              letterSpacing: -0.3,
+              marginTop: 18,
+              letterSpacing: -0.2,
               display: "flex",
             }}
           >
@@ -314,19 +318,18 @@ export default async function OG() {
               Find · Host · Sponsor a Bada Mangal Bhandara
             </span>
           </div>
-          {notoBold ? (
-            <div
-              style={{
-                fontFamily: "Noto, Fraunces, serif",
-                fontWeight: 700,
-                fontSize: 22,
-                color: SINDOOR_700,
-                display: "flex",
-              }}
-            >
-              जय श्री राम · जय हनुमान
-            </div>
-          ) : null}
+          <div
+            style={{
+              fontFamily: "Fraunces, serif",
+              fontWeight: 700,
+              fontSize: 20,
+              color: SINDOOR_700,
+              letterSpacing: 0.5,
+              display: "flex",
+            }}
+          >
+            Jai Shri Ram · Jai Hanuman
+          </div>
         </div>
       </div>
     ),
