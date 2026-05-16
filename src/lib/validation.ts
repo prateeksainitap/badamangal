@@ -88,7 +88,16 @@ export const submitSchema = z
     organizerWhatsapp: optionalWhatsapp,
     upiId: optionalUpi,
     name: z.string().trim().min(2, "English name is required"),
-    nameHi: z.string().trim().min(2, "Hindi name is required"),
+    // Hindi name relaxed to optional in the schema. Originally
+    // required, but GA4 showed the form was abandoned ~88% of the
+    // time mid-flow, and English-comfortable organisers (a real
+    // chunk of the audience) were getting stuck trying to type
+    // Devanagari on a non-Hindi keyboard. The /api/bhandaras route
+    // now defaults nameHi = name when the field is blank, which is
+    // a no-op for downstream code (everywhere we read nameHi we
+    // already fall back to name via `nameHi ?? name`). Admins can
+    // still fill the proper Devanagari later from /admin/edit.
+    nameHi: z.preprocess(blankToUndefined, z.string().trim().min(2).optional()),
     description: optionalString,
     descriptionHi: optionalString,
     // Area is loosened from a strict enum to a free string. The form
@@ -106,14 +115,25 @@ export const submitSchema = z
     address: z.string().trim().min(5, "Address is required"),
     addressHi: optionalString,
     landmark: optionalString,
+    // Lat / lng are OPTIONAL at the schema layer. The /api/bhandaras
+    // route accepts a row without coordinates and runs Ola Maps
+    // forward-geocoding on the address to populate them. If geocoding
+    // fails the row still saves (lat=0/lng=0) and lands in /admin
+    // moderation for a human to set the pin. Originally hard-required
+    // a map-pin drop here, which was the single biggest GA4-tracked
+    // drop-off point in the form. Auto-geocode covers ~80% of
+    // addresses cleanly; the remaining 20% surface as PENDING rows
+    // the admin fixes via /admin/edit's MapLocationInput.
     lat: z
-      .number({ invalid_type_error: "Drop a pin on the map" })
-      .min(26.6, "Pin must be inside Lucknow")
-      .max(27.0, "Pin must be inside Lucknow"),
+      .number()
+      .min(0, "Latitude must be ≥ 0")
+      .max(90, "Latitude must be ≤ 90")
+      .optional(),
     lng: z
-      .number({ invalid_type_error: "Drop a pin on the map" })
-      .min(80.7, "Pin must be inside Lucknow")
-      .max(81.2, "Pin must be inside Lucknow"),
+      .number()
+      .min(0, "Longitude must be ≥ 0")
+      .max(180, "Longitude must be ≤ 180")
+      .optional(),
     tuesdayDates: z
       .array(seasonDate)
       .min(1, "Pick at least one date"),
@@ -146,10 +166,14 @@ export const submitSchema = z
       path: ["timeEnd"],
     },
   )
-  .refine((d) => (d.menu?.length ?? 0) + (d.menuOther?.length ?? 0) > 0, {
-    message: "Pick or type at least one item",
-    path: ["menu"],
-  });
+  // Menu is no longer hard-required. If the organiser doesn't pick or
+  // type anything, the /api/bhandaras route defaults to a single
+  // "prasad" entry. Devotees searching for a bhandara mostly want to
+  // know there IS one and where; the exact menu is nice-to-have, not
+  // make-or-break for the form to submit. Original constraint added
+  // friction to a step (40% of form abandons happened on the menu
+  // step per GA4 form_step_back events).
+  ;
 
 export type SubmitInput = z.infer<typeof submitSchema>;
 

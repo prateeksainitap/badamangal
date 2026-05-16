@@ -78,6 +78,46 @@ const inputBase =
 
 const TOTAL_STEPS = 6;
 
+// localStorage key for autosaving form progress. Bumped on schema
+// changes so a stale saved blob never re-hydrates into the wrong
+// shape and crashes the form.
+const AUTOSAVE_KEY = "bm.bhandaraForm.v1";
+// How long a saved draft is considered valid (7 days). Past this we
+// drop it on next mount — the organiser probably moved on, and we
+// don't want to silently re-populate a half-finished form from
+// weeks ago when they revisit /list-bhandara.
+const AUTOSAVE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+type AutosaveBlob = {
+  step: number;
+  state: FormState;
+  savedAt: number;
+};
+
+function readAutosave(): AutosaveBlob | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AutosaveBlob;
+    if (
+      typeof parsed?.step !== "number" ||
+      typeof parsed?.state !== "object" ||
+      typeof parsed?.savedAt !== "number"
+    ) {
+      return null;
+    }
+    if (Date.now() - parsed.savedAt > AUTOSAVE_TTL_MS) {
+      // Stale draft — clean up.
+      window.localStorage.removeItem(AUTOSAVE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export default function BhandaraForm() {
   const { locale } = useT();
   const [step, setStep] = useState<number>(1);
@@ -86,6 +126,54 @@ export default function BhandaraForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<ApiOk | null>(null);
+
+  // ── Autosave restore on mount ──────────────────────────────────────
+  // GA4 showed 88% of users who STARTED the form abandoned before
+  // submit. Some of those drop-offs are real (changed their mind);
+  // a meaningful chunk are accidental (mobile browser closed,
+  // network drop, tab swipe, "back" navigation). Without persistence
+  // they'd lose every field they typed.
+  //
+  // We persist the entire form state + current step to localStorage
+  // on every change, and on mount we check for a saved draft. If one
+  // exists, we silently restore it — the user re-opens /list-bhandara
+  // and continues where they left off, no "would you like to
+  // restore?" dialog (that itself is friction).
+  useEffect(() => {
+    const blob = readAutosave();
+    if (blob) {
+      setState(blob.state);
+      setStep(blob.step);
+    }
+  }, []);
+
+  // ── Autosave on every state / step change ──────────────────────────
+  // Debouncing isn't worth it here — the writes are tiny (~2KB JSON)
+  // and synchronous in modern browsers. Persisting every keystroke
+  // is the safer choice for a multi-step form on a flaky mobile.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (success) return; // don't save once already submitted
+    try {
+      const blob: AutosaveBlob = { step, state, savedAt: Date.now() };
+      window.localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(blob));
+    } catch {
+      // Quota exceeded / private mode / blocked storage — fail silent.
+    }
+  }, [step, state, success]);
+
+  // Clear the autosave once the submit succeeds. Otherwise re-visiting
+  // /list-bhandara after a successful submission would re-populate
+  // with the previously-submitted listing's data.
+  useEffect(() => {
+    if (success && typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem(AUTOSAVE_KEY);
+      } catch {
+        /* noop */
+      }
+    }
+  }, [success]);
 
   const setField = useCallback(<K extends keyof FormState>(k: K, v: FormState[K]) => {
     setState((s) => ({ ...s, [k]: v }));
@@ -139,10 +227,24 @@ export default function BhandaraForm() {
 
   const canAdvance = (s: number, st: FormState): boolean => {
     switch (s) {
-      case 1: return st.pin !== null;
+      // Step 1 (pin) is now SKIPPABLE — organisers can advance
+      // without dropping a pin if they've at least typed an address.
+      // /api/bhandaras runs Ola Maps forward-geocoding on submit to
+      // turn the address into lat/lng. If geocoding misses, the row
+      // saves with lat=0 and an admin sets the pin via /admin/edit.
+      // Per GA4 the pin drop was the single biggest abandonment
+      // point in the form — making it optional is the largest
+      // single conversion-rate lever available without redesigning
+      // the form entirely.
+      case 1:
+        return st.pin !== null || st.addressOverride.trim().length >= 5;
       case 2: return st.name.trim().length >= 2 && st.area !== "";
       case 3: return st.tuesdayDates.length > 0 && /^\d{2}:\d{2}$/.test(st.timeStart) && (st.timeEnd === "" || /^\d{2}:\d{2}$/.test(st.timeEnd));
-      case 4: return st.menu.length + st.menuOther.length > 0;
+      // Step 4 (menu) is also skippable now. /api/bhandaras defaults
+      // an empty menu to a single "prasad" entry server-side. Most
+      // organisers stuck on this step were over-thinking it; the
+      // default carries plenty of information for the public listing.
+      case 4: return true;
       case 5:
         return (
           st.organizerName.trim().length >= 2 &&

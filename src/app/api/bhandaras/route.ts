@@ -4,6 +4,7 @@ import { hasUpcomingDate } from "@/lib/dates";
 import { menuHiFor } from "@/lib/menu";
 import { ensureUniqueSlug, slugify } from "@/lib/slugify";
 import { submitSchema } from "@/lib/validation";
+import { geocodeLucknow } from "@/lib/geocodeServer";
 
 export const dynamic = "force-dynamic";
 
@@ -47,32 +48,71 @@ export async function POST(req: NextRequest) {
 
   const data = parsed.data;
 
+  // Smart defaults to reduce form friction (see notes in validation.ts):
+  //   • If nameHi was left blank, mirror the English name. Most
+  //     organisers submitting Hindi-mode forms will still type Hindi;
+  //     this fallback covers the case where they typed only English.
+  //     Admin can promote the proper Devanagari later from /admin/edit.
+  //   • If menu came in empty, default to a single "prasad" entry so
+  //     the row passes the downstream JSON.stringify + render assumptions
+  //     about a non-empty array. Real menu detail can be added later.
+  //   • If lat/lng aren't present, geocode the address via Ola Maps.
+  //     When geocoding hits inside the Lucknow bbox, the row goes live
+  //     with usable coords. When it misses (rural address, typo), the
+  //     row still saves with lat=0/lng=0 → admin fixes via /admin/edit's
+  //     MapLocationInput. This removes the map-pin-drop friction that
+  //     was the biggest single drop-off in the form per GA4.
+  const nameHi = data.nameHi && data.nameHi.length >= 2 ? data.nameHi : data.name;
+
+  const menuArr =
+    data.menu.length > 0 || (data.menuOther ?? []).length > 0
+      ? data.menu
+      : ["prasad"];
+
+  let lat = data.lat ?? 0;
+  let lng = data.lng ?? 0;
+  if (
+    (lat === 0 || lng === 0 || !Number.isFinite(lat) || !Number.isFinite(lng)) &&
+    data.address &&
+    data.address.length >= 5
+  ) {
+    try {
+      const hit = await geocodeLucknow(data.address);
+      if (hit) {
+        lat = hit.lat;
+        lng = hit.lng;
+      }
+    } catch (err) {
+      console.error("[POST /api/bhandaras] geocode error", err);
+    }
+  }
+
   const baseSlug = slugify(data.name);
   const slug = await ensureUniqueSlug(baseSlug);
   // Merge curated menu (English keys) with free-form items the organizer
   // typed; dedupe (case-insensitive) so a typed "puri" doesn't double up
   // with the chip "puri".
-  const lowerCurated = new Set(data.menu.map((k) => k.toLowerCase()));
+  const lowerCurated = new Set(menuArr.map((k) => k.toLowerCase()));
   const others = (data.menuOther ?? []).filter(
     (s) => s && !lowerCurated.has(s.toLowerCase()),
   );
-  const finalMenu = [...data.menu, ...others];
-  const finalMenuHi = [...menuHiFor(data.menu), ...others];
-  const googleMapsUrl = `https://www.google.com/maps?q=${data.lat},${data.lng}&z=18`;
+  const finalMenu = [...menuArr, ...others];
+  const finalMenuHi = [...menuHiFor(menuArr), ...others];
+  const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}&z=18`;
 
   const created = await prisma.bhandara.create({
     data: {
       slug,
       name: data.name,
-      nameHi: data.nameHi,
+      nameHi,
       description: data.description ?? null,
       descriptionHi: data.descriptionHi ?? null,
       address: data.address,
       addressHi: data.addressHi ?? null,
       area: data.area,
       landmark: data.landmark ?? null,
-      lat: data.lat,
-      lng: data.lng,
+      lat,
+      lng,
       tuesdayDates: JSON.stringify(data.tuesdayDates),
       timeStart: data.timeStart,
       timeEnd: data.timeEnd ?? "",
