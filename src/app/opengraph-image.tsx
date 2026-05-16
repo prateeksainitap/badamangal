@@ -1,6 +1,4 @@
 import { ImageResponse } from "next/og";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { loadGoogleFont } from "@/lib/og-fonts";
 
 export const runtime = "nodejs";
@@ -11,25 +9,32 @@ export const contentType = "image/png";
 /**
  * Site-wide Open Graph / link-preview image.
  *
- * Layout: cream background, brand lockup top-left, season badge
- * top-right, Hindi headline + English subhead in the center, with
- * an optional Hanuman illustration on the right and the Ram/Hanuman
- * closer along the footer.
+ * Why no raster Hanuman image right now:
+ *   We tried loading /illustrations/hanuman-standing.webp as a
+ *   data-URL <img>. Satori (the renderer behind next/og) crashed
+ *   during prerender with `[TypeError: u2 is not iterable]`.
+ *   Satori's WebP support is documented as unreliable, and the
+ *   smaller PNG variant we have (hanuman-standing) is missing from
+ *   the bundle (only `.webp` exists). Rather than ship a build-
+ *   breaking image, this version renders an inline SVG mandala
+ *   composition that suggests the same warm devotional energy
+ *   without depending on a raster asset Satori can't parse.
  *
- * IMPORTANT: this component is rendered by Satori (via next/og).
- * Satori has several strict rules that have bitten this file before:
- *   • Every `<div>` with multiple children needs explicit
- *     `display: "flex"` (or "none"). No `display: block`.
- *   • `<img>` tags need explicit numeric `width` AND `height` — no
- *     `width: "auto"`. The earlier crash ("u2 is not iterable")
- *     was Satori choking on the auto-width logo image.
- *   • Complex SVGs (hundreds of paths) can also fail to parse.
- *     We keep the brand glyph as a tiny inline `<svg>` and let the
- *     wordmark render as Fraunces text instead of loading the full
- *     /brand/logo-mark.svg (73 KB of paths).
- *   • Image dataURL loading via fs#readFile only works at build /
- *     server-rendering time, not edge — `runtime = "nodejs"` above
- *     keeps us on the right runtime.
+ * Satori constraints we honour:
+ *   • Every <div> with multiple children has explicit `display: "flex"`.
+ *   • All <img>/<svg> dimensions are numeric (no `width: "auto"`).
+ *   • SVGs are kept minimal — a handful of shapes, no complex paths.
+ *   • Fonts loaded as TTF via @/lib/og-fonts (Satori can't parse WOFF2).
+ *
+ * When we want to add a real Hanuman illustration:
+ *   1. Convert /illustrations/hanuman-standing.webp → PNG (sharp CLI)
+ *      and commit it to public/illustrations/ at < 500 KB.
+ *   2. readFile that PNG into a data-URL, render with explicit
+ *      numeric width AND height (Satori has no flex-based image
+ *      sizing).
+ *   3. Test locally with `npm run build` before pushing — the OG
+ *      route is pre-rendered at build time, so a Satori crash
+ *      surfaces as a hard build failure, not a runtime 500.
  */
 
 const SAFFRON_50 = "#FFF6EE";
@@ -42,33 +47,11 @@ const INK_900 = "#1A1410";
 const INK_600 = "#5A4F46";
 const CREAM_50 = "#FBF7F0";
 
-/**
- * Read a static asset from /public into a data URL Satori can render.
- * Returns null if the file is missing or can't be read so the
- * renderer can degrade gracefully rather than 500-ing the OG endpoint.
- */
-async function publicAssetDataUrl(
-  relPath: string,
-  mime: string,
-): Promise<string | null> {
-  try {
-    const abs = path.join(process.cwd(), "public", relPath);
-    const buf = await readFile(abs);
-    return `data:${mime};base64,${buf.toString("base64")}`;
-  } catch {
-    return null;
-  }
-}
-
 export default async function OG() {
-  const [notoBold, fraunces500, fraunces700, hanumanWebp] = await Promise.all([
+  const [notoBold, fraunces500, fraunces700] = await Promise.all([
     loadGoogleFont("Noto Serif Devanagari", 700),
     loadGoogleFont("Fraunces", 500),
     loadGoogleFont("Fraunces", 700),
-    publicAssetDataUrl(
-      "illustrations/hanuman-standing.webp",
-      "image/webp",
-    ),
   ]);
 
   const fonts: {
@@ -108,33 +91,81 @@ export default async function OG() {
           position: "relative",
         }}
       >
-        {/* Hanuman illustration — positioned absolutely on the right
-            so the copy column stays a clean rectangle on the left
-            and the figure reads as a halo'd presence behind/beside
-            the headline. Falls back silently when the file can't be
-            read (Satori dataURL fail-paths) — the OG still ships,
-            just without the figure. */}
-        {hanumanWebp ? (
-          <img
-            src={hanumanWebp}
-            alt=""
-            width={360}
-            height={510}
-            style={{
-              position: "absolute",
-              right: 48,
-              top: 60,
-              width: 360,
-              height: 510,
-            }}
+        {/* Decorative SVG composition on the right — a saffron sun
+            with rays + a small ॐ glyph + a faint mandala ring. Reads
+            as warm devotional iconography at thumbnail size and is
+            cheap enough for Satori to parse without trouble. */}
+        <svg
+          width="380"
+          height="380"
+          viewBox="0 0 380 380"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{
+            position: "absolute",
+            right: 40,
+            top: 80,
+          }}
+        >
+          {/* Faint outer mandala ring */}
+          <circle
+            cx="190"
+            cy="190"
+            r="170"
+            fill="none"
+            stroke={GOLD_500}
+            strokeWidth="1"
+            strokeDasharray="2 6"
+            opacity="0.45"
           />
-        ) : null}
+          <circle
+            cx="190"
+            cy="190"
+            r="150"
+            fill="none"
+            stroke={GOLD_500}
+            strokeWidth="1"
+            opacity="0.35"
+          />
+
+          {/* Sun rays */}
+          <g stroke={SAFFRON_500} strokeWidth="3" strokeLinecap="round">
+            <line x1="190" y1="30" x2="190" y2="65" />
+            <line x1="190" y1="315" x2="190" y2="350" />
+            <line x1="30" y1="190" x2="65" y2="190" />
+            <line x1="315" y1="190" x2="350" y2="190" />
+            <line x1="78" y1="78" x2="103" y2="103" />
+            <line x1="277" y1="277" x2="302" y2="302" />
+            <line x1="78" y1="302" x2="103" y2="277" />
+            <line x1="277" y1="103" x2="302" y2="78" />
+          </g>
+          <g stroke={GOLD_500} strokeWidth="2" strokeLinecap="round" opacity="0.7">
+            <line x1="135" y1="40" x2="148" y2="68" />
+            <line x1="245" y1="40" x2="232" y2="68" />
+            <line x1="135" y1="340" x2="148" y2="312" />
+            <line x1="245" y1="340" x2="232" y2="312" />
+            <line x1="40" y1="135" x2="68" y2="148" />
+            <line x1="340" y1="135" x2="312" y2="148" />
+            <line x1="40" y1="245" x2="68" y2="232" />
+            <line x1="340" y1="245" x2="312" y2="232" />
+          </g>
+
+          {/* Sun disc */}
+          <circle cx="190" cy="190" r="110" fill={SAFFRON_500} opacity="0.18" />
+          <circle cx="190" cy="190" r="95" fill={SAFFRON_500} opacity="0.28" />
+          <circle cx="190" cy="190" r="78" fill={SAFFRON_600} opacity="0.45" />
+          <circle cx="190" cy="190" r="62" fill={SAFFRON_600} />
+
+          {/* Inner ॐ-suggesting flame mark — abstract, not the literal
+              glyph (which would need a font we don't have inline). */}
+          <path
+            d="M190 145 C170 165, 165 200, 190 230 C215 200, 210 165, 190 145 Z"
+            fill={CREAM_50}
+          />
+          <circle cx="190" cy="135" r="8" fill={CREAM_50} />
+        </svg>
 
         {/* Top row: inline brand mark SVG + wordmark on the left,
-            season badge on the right. We deliberately render the
-            wordmark as text (not the full logo-mark.svg) because
-            Satori chokes on the 73 KB path-heavy SVG and this gives
-            us crisp scalable type for free. */}
+            season badge on the right. */}
         <div
           style={{
             display: "flex",
@@ -143,9 +174,7 @@ export default async function OG() {
             gap: 16,
           }}
         >
-          <div
-            style={{ display: "flex", alignItems: "center", gap: 18 }}
-          >
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
             <svg
               width="64"
               height="64"
@@ -164,9 +193,7 @@ export default async function OG() {
               />
               <ellipse cx="32" cy="50" rx="6.5" ry="2.2" fill={CREAM_50} />
             </svg>
-            <div
-              style={{ display: "flex", flexDirection: "column" }}
-            >
+            <div style={{ display: "flex", flexDirection: "column" }}>
               <div
                 style={{
                   fontSize: 28,
@@ -208,14 +235,15 @@ export default async function OG() {
           </div>
         </div>
 
-        {/* Main copy block. `maxWidth` keeps the headline from
-            overlapping the Hanuman illustration on the right. */}
+        {/* Main copy block — bottom-anchored under the decorative
+            composition. `maxWidth` keeps the headline clear of the
+            absolutely-positioned mandala on the right. */}
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             marginTop: "auto",
-            maxWidth: 760,
+            maxWidth: 740,
           }}
         >
           {notoBold ? (
@@ -273,13 +301,7 @@ export default async function OG() {
             fontSize: 20,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-            }}
-          >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <div
               style={{
                 height: 1,
