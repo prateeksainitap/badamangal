@@ -17,8 +17,18 @@ const INK_600 = "#5A4F46";
 const CREAM_50 = "#FBF7F0";
 
 export default async function OG() {
-  const [tiro, fraunces500, fraunces700] = await Promise.all([
-    loadGoogleFont("Tiro Devanagari Hindi"),
+  // Why Noto Serif Devanagari (not Tiro Devanagari Hindi as before):
+  //   Satori — the renderer next/og uses under the hood — has limited
+  //   Indic text shaping. Conjuncts like "क्ति" (in "भक्ति") were
+  //   rendering as "क्त" with the `ि` matra eaten because Tiro's
+  //   glyph substitution rules weren't fully resolved. Noto Serif
+  //   Devanagari is Google's reference font for Hindi — every
+  //   conjunct in the script is covered with explicit ligature
+  //   tables Satori can apply mechanically, no shaper required.
+  //   Weight 700 keeps the headline confidence the Tiro display
+  //   face used to provide.
+  const [noto, fraunces500, fraunces700] = await Promise.all([
+    loadGoogleFont("Noto Serif Devanagari", 700),
     loadGoogleFont("Fraunces", 500),
     loadGoogleFont("Fraunces", 700),
   ]);
@@ -29,7 +39,7 @@ export default async function OG() {
     weight?: 500 | 700;
     style?: "normal";
   }[] = [];
-  if (tiro) fonts.push({ name: "Tiro", data: tiro, weight: 500, style: "normal" });
+  if (noto) fonts.push({ name: "Noto", data: noto, weight: 700, style: "normal" });
   if (fraunces500) fonts.push({ name: "Fraunces", data: fraunces500, weight: 500, style: "normal" });
   if (fraunces700) fonts.push({ name: "Fraunces", data: fraunces700, weight: 700, style: "normal" });
 
@@ -94,13 +104,14 @@ export default async function OG() {
           >
             The map of Lucknow's biggest meal
           </div>
-          {tiro ? (
+          {noto ? (
             <div
               style={{
-                fontFamily: "Tiro, Fraunces, serif",
-                fontSize: 112,
+                fontFamily: "Noto, Fraunces, serif",
+                fontWeight: 700,
+                fontSize: 104,
                 color: SINDOOR_700,
-                lineHeight: 1.1,
+                lineHeight: 1.15,
                 letterSpacing: -1,
               }}
             >
@@ -132,9 +143,38 @@ export default async function OG() {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 36, color: INK_600, fontSize: 20 }}>
-          <div style={{ height: 1, width: 60, background: SAFFRON_500 }} />
-          <span>Find · Host · Sponsor a Bada Mangal Bhandara</span>
+        {/* Footer row: a quiet "what you can do here" line on the
+            left, balanced by the bilingual closer on the right so
+            the share preview ends on the same Ram / Hanuman note
+            every WhatsApp share now uses. */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 24,
+            marginTop: 36,
+            color: INK_600,
+            fontSize: 20,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ height: 1, width: 60, background: SAFFRON_500 }} />
+            <span>Find · Host · Sponsor a Bada Mangal Bhandara</span>
+          </div>
+          {noto ? (
+            <div
+              style={{
+                fontFamily: "Noto, Fraunces, serif",
+                fontWeight: 700,
+                fontSize: 22,
+                color: SINDOOR_700,
+                letterSpacing: 0,
+              }}
+            >
+              जय श्री राम · जय हनुमान
+            </div>
+          ) : null}
         </div>
       </div>
     ),
