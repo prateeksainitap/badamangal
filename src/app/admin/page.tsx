@@ -230,9 +230,9 @@ export default async function AdminPage({
             ✨ Scan &amp; publish
           </a>
           <form action={logoutAction}>
-            <button className="text-sm text-ink-600 hover:text-sindoor-700">
+            <SubmitButton variant="outline-ink" pendingLabel="Signing out…">
               Sign out
-            </button>
+            </SubmitButton>
           </form>
         </div>
       </header>
@@ -470,15 +470,12 @@ export default async function AdminPage({
                       </Link>
                     ) : null}
                     <form action={publishVerifiedAction.bind(null, b.id)}>
-                      <button
-                        className={`inline-flex items-center gap-1.5 rounded-full font-medium px-4 py-2 text-sm shadow-sm ${
-                          isFromBot
-                            ? "border-2 border-leaf-600 text-leaf-600 hover:bg-leaf-600 hover:text-cream-50"
-                            : "bg-leaf-600 hover:bg-leaf-600/90 text-cream-50"
-                        }`}
+                      <SubmitButton
+                        variant={isFromBot ? "outline-leaf" : "primary-green"}
+                        pendingLabel="Publishing…"
                       >
                         ✓ Called &amp; confirmed, publish
-                      </button>
+                      </SubmitButton>
                     </form>
                     {!isFromBot ? (
                       <Link
@@ -489,22 +486,32 @@ export default async function AdminPage({
                       </Link>
                     ) : null}
                     <form action={approveAction.bind(null, b.id)}>
-                      <button className="inline-flex items-center rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 font-medium px-4 py-2 text-sm">
+                      <SubmitButton
+                        variant="outline-saffron"
+                        pendingLabel="Publishing…"
+                      >
                         Publish without badge
-                      </button>
+                      </SubmitButton>
                     </form>
                     <form action={rejectAction.bind(null, b.id)}>
-                      <button className="inline-flex items-center rounded-full border-2 border-alert-500 text-alert-500 hover:bg-alert-500 hover:text-cream-50 font-medium px-4 py-2 text-sm">
+                      <SubmitButton
+                        variant="outline-alert"
+                        pendingLabel="Rejecting…"
+                        confirm="Reject this bhandara?"
+                      >
                         Reject
-                      </button>
+                      </SubmitButton>
                     </form>
                   </>
                 ) : rowState === "UNVERIFIED" ? (
                   <>
                     <form action={verifyAction.bind(null, b.id)}>
-                      <button className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm">
+                      <SubmitButton
+                        variant="primary-green"
+                        pendingLabel="Verifying…"
+                      >
                         ✓ Mark as Verified
-                      </button>
+                      </SubmitButton>
                     </form>
                     <a
                       href={`/bhandara/${b.slug}`}
@@ -515,9 +522,13 @@ export default async function AdminPage({
                       View public page ↗
                     </a>
                     <form action={rejectAction.bind(null, b.id)}>
-                      <button className="inline-flex items-center rounded-full border-2 border-alert-500 text-alert-500 hover:bg-alert-500 hover:text-cream-50 font-medium px-4 py-2 text-sm">
+                      <SubmitButton
+                        variant="outline-alert"
+                        pendingLabel="Delisting…"
+                        confirm="Delist this listing from the public site?"
+                      >
                         Delist
-                      </button>
+                      </SubmitButton>
                     </form>
                   </>
                 ) : rowState === "VERIFIED" ? (
@@ -531,22 +542,38 @@ export default async function AdminPage({
                       View public page ↗
                     </a>
                     <form action={unverifyAction.bind(null, b.id)}>
-                      <button className="inline-flex items-center rounded-full border-2 border-gold-500 text-gold-500 hover:bg-gold-500 hover:text-cream-50 font-medium px-4 py-2 text-sm">
+                      {/* Outline-gold variant isn't in SubmitButton's
+                          preset list (gold is used so rarely it didn't
+                          earn a slot); fall back to outline-saffron
+                          which reads as "secondary destructive-ish"
+                          and matches the other rollback CTAs. */}
+                      <SubmitButton
+                        variant="outline-saffron"
+                        pendingLabel="Removing…"
+                        confirm="Remove the verification badge?"
+                      >
                         Remove verification
-                      </button>
+                      </SubmitButton>
                     </form>
                     <form action={rejectAction.bind(null, b.id)}>
-                      <button className="inline-flex items-center rounded-full border-2 border-alert-500 text-alert-500 hover:bg-alert-500 hover:text-cream-50 font-medium px-4 py-2 text-sm">
+                      <SubmitButton
+                        variant="outline-alert"
+                        pendingLabel="Delisting…"
+                        confirm="Delist this listing from the public site?"
+                      >
                         Delist
-                      </button>
+                      </SubmitButton>
                     </form>
                   </>
                 ) : (
                   // REJECTED row — only re-publish makes sense.
                   <form action={approveAction.bind(null, b.id)}>
-                    <button className="inline-flex items-center rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm">
+                    <SubmitButton
+                      variant="primary-green"
+                      pendingLabel="Republishing…"
+                    >
                       Re-publish
-                    </button>
+                    </SubmitButton>
                   </form>
                 )}
 
@@ -1122,6 +1149,8 @@ async function WhatsAppBotView({
                 Sign out
               </SubmitButton>
             </form>
+            {/* The above is the Spots-view logout. WhatsApp-bot view has
+                its own copy inside WhatsAppBotView's header. */}
           </div>
         </header>
 

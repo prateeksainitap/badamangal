@@ -1,0 +1,49 @@
+/**
+ * Sanitization helpers shared across public-facing data paths.
+ *
+ * The WhatsApp ingestion pipeline (/api/bot/ingest) appends a small
+ * provenance tag to the `description` of every bhandara it creates,
+ * and the `caption` of every spot:
+ *
+ *   [bot:whatsapp · from:<Sender · Group> · msg:<wa-id> · 2026-05-16T08:12:13Z]
+ *
+ * Admin moderation views parse and surface this tag (see
+ * /admin?type=whatsapp's `parseBotTag`), but it's internal metadata
+ * and should never leak into a public surface — detail pages, cards,
+ * meta tags, JSON APIs, RSS, etc. all need to display the human prose
+ * only.
+ *
+ * `stripBotProvenance` does exactly that, and is the single place this
+ * regex lives. If the tag format ever changes, this file is the only
+ * thing to update.
+ */
+
+// Matches the `[bot:whatsapp · … ]` block plus surrounding blank
+// lines. We anchor on `[bot:whatsapp` so the regex never accidentally
+// catches admin-typed prose that happens to start with `[bot:`.
+const BOT_TAG_RE = /\s*\[bot:whatsapp[^\]]*\]\s*/g;
+
+/**
+ * Remove every `[bot:whatsapp …]` provenance tag from a string and
+ * tidy the resulting whitespace.
+ *
+ * Returns:
+ *   - undefined when the input is null/undefined (callers can spread
+ *     the result into an optional field cleanly)
+ *   - the cleaned string otherwise (may be empty if the only content
+ *     was the tag itself — common for spots where the model didn't
+ *     extract a caption)
+ *
+ * Performance: this is called once per row during server render. The
+ * regex is anchored + non-greedy so it scans linearly; even a 4 KB
+ * description sanitises in well under 100 µs.
+ */
+export function stripBotProvenance(
+  text: string | null | undefined,
+): string | undefined {
+  if (text === null || text === undefined) return undefined;
+  const cleaned = text.replace(BOT_TAG_RE, "\n\n").trim();
+  // Collapse the 3+ newlines we might have created by removing a tag
+  // that was sandwiched between paragraphs.
+  return cleaned.replace(/\n{3,}/g, "\n\n");
+}

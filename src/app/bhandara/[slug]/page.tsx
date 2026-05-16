@@ -60,29 +60,12 @@ function googleShareUrl(b: Bhandara): string {
   return b.googleMapsUrl ?? `https://www.google.com/maps?q=${b.lat},${b.lng}&z=18`;
 }
 
-function whatsappShareUrl(b: Bhandara, locale: "hi" | "en"): string {
-  const url = `${SITE_URL}/bhandara/${b.slug}${locale === "en" ? "?lang=en" : ""}`;
-  // Build the time range safely so a missing end-time doesn't produce the
-  // "NaN:00 AM" artefact that format12h would otherwise emit on "".
-  const range = b.timeEnd
-    ? `${format12h(b.timeStart)} – ${format12h(b.timeEnd)}`
-    : format12h(b.timeStart);
-  const lines =
-    locale === "hi"
-      ? [
-          `🪔 ${b.nameHi}`,
-          `${b.area} · ${range}`,
-          b.address,
-          url,
-        ]
-      : [
-          `🪔 ${b.name}`,
-          `${b.area} · ${range}`,
-          b.address,
-          url,
-        ];
-  return `https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
-}
+// Share-message builder moved to @/lib/share so the detail page and
+// the card use the same warm "🪔 Bada Mangal Bhandara — <name>" layout
+// with date, menu, and the canonical detail URL. The previous local
+// builder produced a CSV-feel single-line string that read like a
+// database dump — see lib/share.ts for the rationale.
+import { whatsappShareUrlForBhandara as whatsappShareUrl } from "@/lib/share";
 
 function upiUrl(b: Bhandara): string | null {
   if (!b.upiId) return null;

@@ -62,6 +62,40 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
     return () => window.cancelAnimationFrame(id);
   }, [stage]);
 
+  // Play a short "Jai Shree Ram" chant after a successful submit. The
+  // audio fires on the same user-gesture turn that produced the
+  // submission, so modern browser autoplay policies allow it without a
+  // separate click. We:
+  //   • respect prefers-reduced-motion as a proxy for "user wants a
+  //     quiet, distraction-free experience" — that media query is the
+  //     closest standard to "reduced sensory output" we have without
+  //     adding our own toggle
+  //   • cap volume at 0.6 so the chant doesn't startle anyone who had
+  //     headphones cranked
+  //   • silently swallow promise rejections (Safari can still reject
+  //     play() if the tab was backgrounded between submit and onSuccess)
+  //   • clean up on unmount so navigating away mid-playback doesn't
+  //     leak a still-playing Audio instance
+  useEffect(() => {
+    if (stage !== "done") return;
+    if (typeof window === "undefined") return;
+    if (
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+    const audio = new Audio("/audio/jai-shree-ram.mp3");
+    audio.volume = 0.6;
+    // play() returns a Promise; ignore rejections (autoplay-policy
+    // edge cases, tab backgrounded, etc.) — the chant is delight, not
+    // a critical UX signal.
+    audio.play().catch(() => {});
+    return () => {
+      audio.pause();
+      audio.currentTime = 0;
+    };
+  }, [stage]);
+
   const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = ""; // reset so the same file can be re-picked
@@ -243,8 +277,8 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
         </h2>
         <p className="mt-2 text-ink-600">
           {isHi
-            ? "हम जल्द ही ईमेल पर जवाब देंगे।"
-            : "We'll write back to you over email soon."}
+            ? "हम जल्द ही आपको फ़ोन पर सम्पर्क करेंगे।"
+            : "We'll call you back on your phone soon."}
         </p>
       </div>
     );
@@ -283,27 +317,17 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
         />
       </Field>
 
+      {/* Phone is now the mandatory contact channel because we call back
+          most reachouts within a day (faster, more reliable than email
+          for organisers who don't check inboxes). Email is kept as an
+          optional secondary so people can still leave a paper trail if
+          they prefer written replies. The server-side validator in
+          /api/contact mirrors this — see notes in route.ts. */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
-          id="contact-email"
-          label={isHi ? "ईमेल" : "Email"}
-          required
-          error={errors.email}
-        >
-          <input
-            id="contact-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            maxLength={120}
-            required
-            className={inputCls(!!errors.email)}
-          />
-        </Field>
-        <Field
           id="contact-phone"
-          label={isHi ? "फ़ोन (वैकल्पिक)" : "Phone (optional)"}
+          label={isHi ? "फ़ोन" : "Phone"}
+          required
           error={errors.phone}
         >
           <input
@@ -314,7 +338,23 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
             onChange={(e) => setPhone(e.target.value)}
             autoComplete="tel"
             maxLength={20}
+            required
             className={inputCls(!!errors.phone)}
+          />
+        </Field>
+        <Field
+          id="contact-email"
+          label={isHi ? "ईमेल (वैकल्पिक)" : "Email (optional)"}
+          error={errors.email}
+        >
+          <input
+            id="contact-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            maxLength={120}
+            className={inputCls(!!errors.email)}
           />
         </Field>
       </div>

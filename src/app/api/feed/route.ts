@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { stripBotProvenance } from "@/lib/sanitize";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -64,7 +65,15 @@ export async function GET(req: NextRequest) {
     bhandaraLat: s.bhandara?.lat ?? s.lat,
     bhandaraLng: s.bhandara?.lng ?? s.lng,
     authorName: s.reporterName?.trim() || "Spotter",
-    text: s.caption,
+    // Public feed — strip the [bot:whatsapp …] provenance tag so it
+    // never surfaces in the activity ticker, RSS, or third-party API
+    // consumers. See lib/sanitize.ts.
+    // `|| null` (not `??`) collapses an empty post-strip result down
+    // to null — happens when the original caption was nothing but the
+    // bot tag (e.g. an image-only forward where Gemini emitted no
+    // caption text). Empty strings would render as awkward gaps in
+    // the activity ticker.
+    text: stripBotProvenance(s.caption) || null,
     photoUrl: s.photoUrl,
     language: s.language,
     createdAt: s.createdAt.toISOString(),

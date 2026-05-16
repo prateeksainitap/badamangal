@@ -1,6 +1,7 @@
 import { PrismaClient, type Bhandara as DbBhandara } from "@prisma/client";
 import type { Area } from "@/lib/lucknow";
 import type { Bhandara } from "@/types/bhandara";
+import { stripBotProvenance } from "@/lib/sanitize";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
@@ -28,8 +29,15 @@ export function toBhandara(record: DbBhandara): Bhandara {
     slug: record.slug,
     name: record.name,
     nameHi: record.nameHi ?? record.name,
-    description: record.description ?? undefined,
-    descriptionHi: record.descriptionHi ?? undefined,
+    // Strip the WhatsApp-bot provenance tag (e.g.
+    //   "[bot:whatsapp · from:… · msg:… · 2026-…Z]")
+    // that /api/bot/ingest embeds into description for the admin
+    // moderation view. The admin view bypasses toBhandara and reads
+    // the raw Prisma record so it still sees the tag (and parses it
+    // via parseBotTag); every public surface goes through this
+    // mapper and therefore gets the cleaned prose only.
+    description: stripBotProvenance(record.description),
+    descriptionHi: stripBotProvenance(record.descriptionHi),
     area: record.area as Area,
     address: record.address,
     addressHi: record.addressHi ?? undefined,

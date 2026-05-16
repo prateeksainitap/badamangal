@@ -52,9 +52,14 @@ export async function POST(req: Request) {
   const errors: Record<string, string> = {};
   if (name.length < 2) errors.name = "Please enter your name.";
   if (name.length > 80) errors.name = "Name is too long.";
-  if (!isEmail(email)) errors.email = "Please enter a valid email.";
+  // Phone is now mandatory (callbacks are how we actually reach
+  // organisers within a day); email is optional and only validated
+  // when provided. Mirrors the client-side `required` swap in
+  // ContactForm.tsx.
+  if (phone.length < 6) errors.phone = "Please enter a phone number we can reach you on.";
+  if (phone.length > 20) errors.phone = "Phone is too long.";
+  if (email && !isEmail(email)) errors.email = "Please enter a valid email.";
   if (email.length > 120) errors.email = "Email is too long.";
-  if (phone && phone.length > 20) errors.phone = "Phone is too long.";
   if (subject.length > 120) errors.subject = "Subject is too long.";
   if (message.length < 10)
     errors.message = "Tell us a little more (10+ characters).";
@@ -115,18 +120,28 @@ export async function POST(req: Request) {
   // cancelled mid-flight. The send itself is fast (~150ms) and the
   // helper swallows its own errors, so a misconfigured / down email
   // service can never block the contact form HTTP response.
-  await sendContactEmail({
-    name,
-    email,
-    phone: phone || undefined,
-    subject: subject || undefined,
-    message,
-    attachmentUrl: attachmentUrl || undefined,
-    attachmentName: attachmentName || undefined,
-    attachmentType,
-    contactMessageId: saved.id,
-    ipHash: ip,
-  });
+  //
+  // Phone is now the mandatory channel; email is optional. When the
+  // submitter doesn't provide an email, we still persist the row (and
+  // the admin sees it in the inbox query), but we skip the email
+  // forwarding because the helper uses the sender's email as reply-to
+  // — without it there's nowhere meaningful for the team's reply to
+  // land. The team's standard path for those messages is a phone
+  // callback instead.
+  if (email) {
+    await sendContactEmail({
+      name,
+      email,
+      phone: phone || undefined,
+      subject: subject || undefined,
+      message,
+      attachmentUrl: attachmentUrl || undefined,
+      attachmentName: attachmentName || undefined,
+      attachmentType,
+      contactMessageId: saved.id,
+      ipHash: ip,
+    });
+  }
 
   return NextResponse.json({ ok: true });
 }

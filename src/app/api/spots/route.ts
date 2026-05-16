@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { ipHash, readClientIp } from "@/lib/crypto";
 import { prisma } from "@/lib/db";
+import { stripBotProvenance } from "@/lib/sanitize";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -80,7 +81,8 @@ export async function GET(req: NextRequest) {
     area: s.area,
     address: s.address,
     photoUrl: s.photoUrl,
-    caption: s.caption,
+    // Strip [bot:whatsapp …] from public JSON — see lib/sanitize.ts.
+    caption: stripBotProvenance(s.caption) || null,
     language: s.language,
     reporterName: s.reporterName,
     createdAt: s.createdAt.toISOString(),

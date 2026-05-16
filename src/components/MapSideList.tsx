@@ -9,6 +9,10 @@ import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { trackEvent } from "@/lib/ga";
 import { useToast } from "@/components/Toast";
+import {
+  whatsappShareUrlForBhandara,
+  whatsappShareUrlForSpot,
+} from "@/lib/share";
 
 export type SideListSpot = {
   id: string;
@@ -105,8 +109,10 @@ type Entry = {
   lat: number;
   lng: number;
   km?: number;
-  // Sharing
-  shareText: string;
+  // Sharing — pre-built full wa.me URL. We construct it during the
+  // entries map below using the shared lib/share helpers so the
+  // message body matches the bhandara card / detail page exactly.
+  shareUrl: string;
   mapsUrl: string;
 };
 
@@ -143,7 +149,7 @@ export default function MapSideList({
         href: `/bhandara/${b.slug}${langSuffix}`,
         lat: b.lat,
         lng: b.lng,
-        shareText: `${name} · ${b.area} · ${mapsUrl}`,
+        shareUrl: whatsappShareUrlForBhandara(b, locale),
         mapsUrl,
       };
     });
@@ -170,9 +176,16 @@ export default function MapSideList({
         href: s.bhandaraSlug ? `/bhandara/${s.bhandaraSlug}${langSuffix}` : null,
         lat: s.lat,
         lng: s.lng,
-        shareText: s.caption
-          ? `${s.caption} · live at ${mapsUrl}`
-          : `Live bhandara spotted: ${mapsUrl}`,
+        shareUrl: whatsappShareUrlForSpot(
+          {
+            lat: s.lat,
+            lng: s.lng,
+            caption: s.caption,
+            area: s.area,
+            bhandaraSlug: s.bhandaraSlug,
+          },
+          locale,
+        ),
         mapsUrl,
       };
     });
@@ -395,7 +408,9 @@ export default function MapSideList({
 function SideRow({ entry: e, isHi }: { entry: Entry; isHi: boolean }) {
   const toast = useToast();
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lng}`;
-  const waUrl = `https://wa.me/?text=${encodeURIComponent(e.shareText)}`;
+  // Pre-built by the shared share helpers — already encoded and
+  // wrapped as a full wa.me URL.
+  const waUrl = e.shareUrl;
 
   // Header row content (name + tag + distance) is wrapped in the bhandara
   // link when there's one, else falls back to a plain block.

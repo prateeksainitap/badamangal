@@ -3,6 +3,7 @@ import LiveFeedTimeline from "@/components/LiveFeedTimeline";
 import { strings, type Locale } from "@/content/strings";
 import { prisma } from "@/lib/db";
 import { localised } from "@/lib/seo";
+import { stripBotProvenance } from "@/lib/sanitize";
 
 // ISR. Previously force-dynamic because the page read `?bhandara=<slug>`
 // from searchParams on the server to pre-filter the feed — that gave
@@ -62,7 +63,9 @@ export default async function LivePage() {
     bhandaraLat: s.bhandara?.lat ?? s.lat,
     bhandaraLng: s.bhandara?.lng ?? s.lng,
     authorName: s.reporterName?.trim() || "Spotter",
-    text: s.caption,
+    // Strip [bot:whatsapp …] tag — public live feed must show prose
+    // only. See lib/sanitize.ts.
+    text: stripBotProvenance(s.caption) || null,
     photoUrl: s.photoUrl,
     language: s.language,
     createdAt: s.createdAt.toISOString(),

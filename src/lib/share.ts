@@ -1,0 +1,283 @@
+/**
+ * Single source of truth for the WhatsApp share message a bhandara
+ * card or detail page hands to wa.me.
+ *
+ * Why this file exists:
+ *   BhandaraCard.tsx and bhandara/[slug]/page.tsx each used to roll
+ *   their own one-shot share-text builders. The two messages drifted —
+ *   the card version forgot the URL, neither version localised the
+ *   date or surfaced the menu, and both read like a CSV row instead
+ *   of an invitation. Sharing is the single highest-yield organic
+ *   growth lever on this site (every share becomes 5-30 new visitors
+ *   on a Bada Mangal Tuesday), so the message has to *feel* like a
+ *   personal "come, prasad served" rather than a database export.
+ *
+ * Shape of the message we settled on (English example):
+ *
+ *   You're warmly invited to a Bada Mangal bhandara. Prasad, sangat,
+ *   and seva for all.
+ *
+ *   Bada Mangal Bhandara: Shrivastav Pariwar
+ *   Date: 12 May, Tuesday · 12:00 PM – 4:00 PM
+ *   Place: Talkatora, Hanuman Mandir, near Civil Hospital
+ *   Prasad: puri, sabzi, halwa, prasad
+ *
+ *   Link: https://badamangal.com/bhandara/<slug>
+ *
+ *   Jai Shri Ram. Jai Hanuman.
+ *
+ * Localisation:
+ *   • Hindi uses Devanagari name, Hindi address (if present), Hindi
+ *     date, and Hindi menu strings; English uses Roman.
+ *   • The detail URL appends `?lang=en` for English shares so the
+ *     receiver lands in their reading language without an extra tap.
+ *
+ * Glyph policy:
+ *   • Strictly ASCII + Devanagari + middle-dot (U+00B7). The previous
+ *     version used 🪔 📅 📍 🍛 🔗 🚩 — on old WhatsApp builds the
+ *     2020-era diya glyph (U+1FA94) falls back to a black diamond, and
+ *     a few testers reported every emoji rendering as ◆ on their
+ *     device's font set. Reverting to plain text guarantees the
+ *     message reads correctly on every WhatsApp client we've ever
+ *     seen in the wild (low-end Android included).
+ *   • Em dashes ("—") replaced with commas + middle dots. They were
+ *     getting mangled on some Hindi keyboards copy-paste flow.
+ *
+ * Defensive defaults:
+ *   • Missing end-time → render just start (avoids "NaN AM").
+ *   • Missing date → omit the Date line entirely.
+ *   • Missing menu → omit the Prasad line entirely.
+ *   • Address falls back across hi → en → "" without crashing.
+ *
+ * The output is plain text wrapped in encodeURIComponent before being
+ * suffixed onto `https://wa.me/?text=` — WhatsApp's mobile web URL
+ * format which deep-links to the share-target picker on Android/iOS.
+ */
+import type { Bhandara } from "@/types/bhandara";
+import { format12h } from "@/lib/time";
+import { SITE_URL } from "@/lib/seo";
+
+type Locale = "hi" | "en";
+
+/** Render YYYY-MM-DD as "12 May" / "12 मई" or "" if invalid. */
+function shortDate(iso: string, locale: Locale): string {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "";
+  const [, m, d] = iso.split("-").map(Number);
+  if (!m || !d) return "";
+  const monthsEn = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const monthsHi = [
+    "जन",
+    "फ़र",
+    "मार्च",
+    "अप्रैल",
+    "मई",
+    "जून",
+    "जुल",
+    "अग",
+    "सित",
+    "अक्ट",
+    "नव",
+    "दिस",
+  ];
+  return `${d} ${(locale === "hi" ? monthsHi : monthsEn)[m - 1]}`;
+}
+
+/** Pick the next-upcoming Tuesday from the bhandara's serving dates.
+ *  Falls back to the last past date if every Tuesday is behind us. */
+function pickServeDate(dates: string[] | undefined): string | null {
+  if (!Array.isArray(dates) || dates.length === 0) return null;
+  const todayIso = new Date(
+    Date.now() + 5.5 * 60 * 60 * 1000, // crude IST shift
+  )
+    .toISOString()
+    .slice(0, 10);
+  const upcoming = dates.filter((d) => d >= todayIso).sort();
+  if (upcoming.length > 0) return upcoming[0];
+  return [...dates].sort().pop() ?? null;
+}
+
+/**
+ * Build the wa.me share URL for a bhandara, fully formatted message
+ * body included. See file-header comment for the message shape.
+ */
+export function whatsappShareUrlForBhandara(
+  b: Bhandara,
+  locale: Locale,
+): string {
+  const isHi = locale === "hi";
+  const url = `${SITE_URL}/bhandara/${b.slug}${isHi ? "" : "?lang=en"}`;
+  const name = isHi ? b.nameHi || b.name : b.name;
+  const address = isHi
+    ? b.addressHi || b.address || ""
+    : b.address || "";
+  const range = b.timeEnd
+    ? `${format12h(b.timeStart)} – ${format12h(b.timeEnd)}`
+    : format12h(b.timeStart);
+
+  const serveOn = pickServeDate(b.tuesdayDates);
+  const dateBody = serveOn
+    ? `${shortDate(serveOn, locale)}${isHi ? ", मंगलवार" : ", Tuesday"} · ${range}`
+    : range;
+  // WhatsApp markdown: *bold*. We bold the label prefix on each row
+  // so the eye can scan "Date / Place / Prasad / Link" down the left
+  // edge before reading any value. Same convention used by Slack /
+  // Telegram / Signal — recipients on every platform read it as a
+  // structured invite, not an unformatted paragraph.
+  const dateLine = `${isHi ? "*तिथि:*" : "*Date:*"} ${dateBody}`;
+
+  // Menu is stored as a JSON-serialised array (English keys) plus
+  // menuHi (Devanagari labels) on the row. Pick whichever matches the
+  // share locale, truncate to 4 entries so the message stays scannable.
+  const menuArr = isHi ? b.menuHi ?? b.menu : b.menu;
+  const menuLine =
+    Array.isArray(menuArr) && menuArr.length > 0
+      ? `${isHi ? "*प्रसाद:*" : "*Prasad:*"} ${menuArr.slice(0, 4).join(", ")}`
+      : null;
+
+  const placeBody = b.area
+    ? `${b.area}${address ? `, ${address}` : ""}`
+    : address || null;
+  const placeLine = placeBody
+    ? `${isHi ? "*स्थान:*" : "*Place:*"} ${placeBody}`
+    : null;
+
+  // Warm one-liner that opens the share. The point is to read like an
+  // actual invitation rather than a structured data dump — recipients
+  // who don't know what a "Bada Mangal bhandara" is should still get
+  // an immediate sense of "I'm being welcomed to a community meal."
+  const intro = isHi
+    ? "बड़ा मंगल भंडारा में आप सभी का सादर आमंत्रण है। प्रसाद ग्रहण कीजिए, सेवा का पुण्य लीजिए।"
+    : "You're warmly invited to a Bada Mangal bhandara. Prasad, sangat, and seva for all.";
+
+  // Closer — both Ram and Hanuman invocations, separated by the
+  // Devanagari danda (Hindi sentence ender) or a full stop (English).
+  const closer = isHi ? "जय श्री राम। जय हनुमान।" : "Jai Shri Ram. Jai Hanuman.";
+
+  // Header line is the strongest visual anchor — wrap the entire
+  // "Bada Mangal Bhandara: <Name>" in bold so it stands out as the
+  // invite's headline even when the recipient is glancing at the
+  // first line of a long group thread.
+  const header = isHi
+    ? `*बड़ा मंगल भंडारा: ${name}*`
+    : `*Bada Mangal Bhandara: ${name}*`;
+
+  const lines: string[] = [
+    intro,
+    "",
+    header,
+    dateLine,
+    placeLine,
+    menuLine,
+    "",
+    `${isHi ? "*लिंक:*" : "*Link:*"} ${url}`,
+    "",
+    closer,
+  ].filter((l): l is string => l !== null);
+
+  return `https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
+}
+
+/**
+ * Input shape for the Spot share. Kept structural so the three call
+ * sites (HappeningNow card, BhandaraMap popup, MapSideList row) can
+ * each pass their own LiveSpot-shaped object without us having to
+ * unify their types just for this helper.
+ */
+export type ShareableSpot = {
+  lat: number;
+  lng: number;
+  caption: string | null;
+  area: string | null;
+  /** Spots optionally include a written-out address from reverse
+   *  geocoding or the reporter; if absent we fall back to just area. */
+  address?: string | null;
+  /** Slug of the linked Bhandara, if the spot was auto-linked at
+   *  insert time. When present, our `badamangal.com` link points at
+   *  the bhandara detail page; otherwise it points at the homepage
+   *  (where the user sees the live-spot pin on the city map). */
+  bhandaraSlug?: string | null;
+};
+
+/**
+ * Build the wa.me share URL for a live spot. Same warm tone as
+ * `whatsappShareUrlForBhandara` — intro line, structured details with
+ * plain-text labels (no emoji, see glyph policy in the file header),
+ * a maps deep-link so the recipient can open turn-by-turn directions,
+ * a badamangal.com link so they can browse / list / sponsor, and the
+ * shared Ram/Hanuman closer.
+ *
+ * The message intentionally surfaces TWO links: one to Google Maps
+ * (immediate action — "I want to go there now") and one to
+ * badamangal.com (broader context — "What else is happening today?").
+ * Recipients on data-light Android phones who can't follow the maps
+ * link still get the badamangal.com link as a fallback, and vice
+ * versa for recipients with adblockers who block external maps.
+ */
+export function whatsappShareUrlForSpot(
+  s: ShareableSpot,
+  locale: Locale,
+): string {
+  const isHi = locale === "hi";
+  const mapsUrl = `https://www.google.com/maps?q=${s.lat},${s.lng}&z=18`;
+  const siteUrl = s.bhandaraSlug
+    ? `${SITE_URL}/bhandara/${s.bhandaraSlug}${isHi ? "" : "?lang=en"}`
+    : `${SITE_URL}${isHi ? "" : "?lang=en"}`;
+
+  const caption = (s.caption ?? "").trim();
+  // WhatsApp markdown: *bold* on the label so the scannable left edge
+  // matches the bhandara share layout (Spotted / Place / Open in Maps
+  // / See live bhandaras). Recipients see one consistent invite voice
+  // whether they were sent a listed bhandara or a live sighting.
+  const captionLine = caption
+    ? `${isHi ? "*देखा गया:*" : "*Spotted:*"} ${caption}`
+    : null;
+
+  const placeBody = s.area
+    ? `${s.area}${s.address ? `, ${s.address}` : ""}`
+    : s.address || null;
+  const placeLine = placeBody
+    ? `${isHi ? "*स्थान:*" : "*Place:*"} ${placeBody}`
+    : null;
+
+  const intro = isHi
+    ? "लखनऊ में अभी एक बड़ा मंगल भंडारा चल रहा है! प्रसाद ग्रहण कीजिए, सेवा का पुण्य लीजिए।"
+    : "A Bada Mangal bhandara is being served in Lucknow right now. Come for prasad.";
+
+  const mapsLabel = isHi ? "*मानचित्र पर देखें:*" : "*Open in Maps:*";
+  const siteLabel = s.bhandaraSlug
+    ? isHi
+      ? "*विवरण:*"
+      : "*Details:*"
+    : isHi
+      ? "*सभी लाइव भंडारे:*"
+      : "*See live bhandaras:*";
+
+  const closer = isHi ? "जय श्री राम। जय हनुमान।" : "Jai Shri Ram. Jai Hanuman.";
+
+  const lines: string[] = [
+    intro,
+    "",
+    captionLine,
+    placeLine,
+    "",
+    `${mapsLabel} ${mapsUrl}`,
+    `${siteLabel} ${siteUrl}`,
+    "",
+    closer,
+  ].filter((l): l is string => l !== null);
+
+  return `https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
+}

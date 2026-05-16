@@ -3,6 +3,7 @@ import ArchiveTabs from "@/components/ArchiveTabs";
 import { prisma, toBhandara } from "@/lib/db";
 import { hasUpcomingDate } from "@/lib/dates";
 import { localised } from "@/lib/seo";
+import { stripBotProvenance } from "@/lib/sanitize";
 
 // ISR. The archive is curated history (past Tuesdays, expired spots) so
 // it doesn't need to be live — half-hour refresh is plenty. The page
@@ -73,7 +74,9 @@ export default async function ArchivePage() {
   const spottedPast = expiredSpotRecords.map((s) => ({
     id: s.id,
     photoUrl: s.photoUrl,
-    caption: s.caption,
+    // Strip the [bot:whatsapp …] provenance tag — internal metadata
+    // that should never reach a public surface. See lib/sanitize.ts.
+    caption: stripBotProvenance(s.caption) || null,
     area: s.area,
     address: s.address,
     reporterName: s.reporterName,

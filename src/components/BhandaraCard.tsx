@@ -3,6 +3,11 @@ import type { Bhandara } from "@/types/bhandara";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { JaliCorner, SunburstSpark } from "@/components/ornaments";
+// Single source-of-truth share builder. Card + detail page both call
+// this so the message a recipient sees is identical regardless of
+// where the sharer clicked from. See lib/share.ts for the rationale
+// behind the new "🪔 Bada Mangal Bhandara — <name>" layout.
+import { whatsappShareUrlForBhandara } from "@/lib/share";
 
 type Props = {
   bhandara: Bhandara;
@@ -58,18 +63,10 @@ function nextServingDate(dates: string[]): string | null {
   return past[past.length - 1] ?? null;
 }
 
-function whatsappShareUrl(b: Bhandara): string {
-  const range = b.timeEnd
-    ? `${format12h(b.timeStart)} – ${format12h(b.timeEnd)}`
-    : format12h(b.timeStart);
-  const lines = [
-    `${b.nameHi} / ${b.name}`,
-    `${b.area} · ${range}`,
-    b.address,
-    "via BadaMangal.com",
-  ];
-  return `https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
-}
+// (whatsappShareUrl removed — replaced by lib/share's locale-aware
+// `whatsappShareUrlForBhandara`. The card now passes the active
+// locale so Hindi vs English shares get appropriate Devanagari name,
+// menu, and date formatting plus a localised ?lang query on the URL.)
 
 function googleDirectionsUrl(b: Bhandara): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}`;
@@ -235,7 +232,7 @@ export default function BhandaraCard({ bhandara, locale }: Props) {
             {t.cta.getDirections}
           </a>
           <a
-            href={whatsappShareUrl(bhandara)}
+            href={whatsappShareUrlForBhandara(bhandara, locale)}
             target="_blank"
             rel="noreferrer noopener"
             data-ga="card_share_whatsapp"

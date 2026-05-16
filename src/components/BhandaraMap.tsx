@@ -26,6 +26,8 @@ import {
 } from "@/lib/olaMaps";
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from "@/lib/lucknow";
 import type { Bhandara } from "@/types/bhandara";
+import { useLocaleFromContext } from "@/lib/locale-context";
+import { whatsappShareUrlForSpot } from "@/lib/share";
 
 // Popup offset relative to the marker anchor point (= the coord, since
 // markers are now bottom-anchored). The pin body extends ~46 px above
@@ -80,6 +82,12 @@ export default function BhandaraMap({
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  // Read the active locale from cookie context so the spot-popup share
+  // builder produces a Hindi or English wa.me message matching the
+  // visitor's reading language. The map itself doesn't render copy in
+  // either language (icon-only popup chrome), so we only need locale
+  // for the share-text builder — not for any visible labels.
+  const locale = useLocaleFromContext();
   /** Keyed marker registry, kept for future features that need to look
    *  up a marker by its side-list entry key (`org:<id>` / `spot:<id>`).
    *  Currently unused but cheap to maintain. */
@@ -444,7 +452,7 @@ export default function BhandaraMap({
     if (liveSpots && liveSpots.length > 0) {
       for (const s of liveSpots) {
         const el = createLiveSpotMarkerElement();
-        const popupHtml = buildSpotPopupHtml(s);
+        const popupHtml = buildSpotPopupHtml(s, locale);
         const popup = olaMaps
           .addPopup({
             offset: PIN_POPUP_OFFSET,
@@ -566,13 +574,29 @@ function escapeHtml(s: string): string {
  * Width set to 296px so the three CTAs fit on one line without
  * wrapping; Copy collapses to an icon-only round button on the right.
  */
-function buildSpotPopupHtml(s: LiveSpotPin): string {
+function buildSpotPopupHtml(
+  s: LiveSpotPin,
+  locale: "hi" | "en",
+): string {
   const dirUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
+  // Plain `?q=lat,lng` maps URL is used by the popup's Copy button (so
+  // the recipient gets a direct location pin, not a share message).
+  // The WhatsApp share path uses the warmer message builder below.
   const mapsUrl = `https://www.google.com/maps?q=${s.lat},${s.lng}&z=18`;
-  const shareText = s.caption
-    ? `${s.caption}, live at ${mapsUrl}`
-    : `Live bhandara spotted: ${mapsUrl}`;
-  const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+  // wa.me share text built from the shared helper so the popup, the
+  // HappeningNow card, and the side-list row all hand recipients the
+  // exact same warm message (intro + caption + maps link +
+  // badamangal.com link + Ram/Hanuman closer).
+  const waUrl = whatsappShareUrlForSpot(
+    {
+      lat: s.lat,
+      lng: s.lng,
+      caption: s.caption,
+      area: null,
+      bhandaraSlug: s.bhandaraSlug,
+    },
+    locale,
+  );
   const headline = s.bhandaraName ?? "Spotted live";
   const photo = s.photoUrl ?? null;
 

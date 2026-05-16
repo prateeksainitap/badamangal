@@ -10,6 +10,7 @@ import { SunburstSpark } from "@/components/ornaments";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { useLocaleFromContext } from "@/lib/locale-context";
+import { whatsappShareUrlForSpot } from "@/lib/share";
 
 const NEAR_ME_RADIUS_KM = 3;
 
@@ -289,10 +290,22 @@ function SpotCard({
 
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`;
   const mapsUrl = `https://www.google.com/maps?q=${spot.lat},${spot.lng}&z=18`;
-  const shareText = spot.caption
-    ? `${spot.caption}, live at ${mapsUrl}`
-    : `Live bhandara spotted: ${mapsUrl}`;
-  const waUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+  // Share message comes from the shared lib/share builder so that the
+  // wording stays in sync with the bhandara share + the popup share
+  // on the map. The intro + closer match the bhandara share's voice
+  // so recipients who get both kinds of message see one consistent
+  // brand voice ("Jai Shri Ram. Jai Hanuman.").
+  const waUrl = whatsappShareUrlForSpot(
+    {
+      lat: spot.lat,
+      lng: spot.lng,
+      caption: spot.caption,
+      area: spot.area,
+      address: spot.address,
+      bhandaraSlug: spot.bhandaraSlug,
+    },
+    locale,
+  );
 
   const inner = (
     <article className="group relative h-full rounded-2xl overflow-hidden border border-saffron-500/40 bg-cream-50 shadow-warm flex flex-col">
@@ -371,6 +384,26 @@ function SpotCard({
           {areaLabel ? <span aria-hidden>·</span> : null}
           <span>{relative(spot.createdAt, isHi)}</span>
         </p>
+        {/* Reporter attribution. Surfaces who flagged the spot so other
+            visitors can recognise neighbours / community members and
+            trust the live photo a bit more than a faceless pin. We
+            truncate to one line so it never bumps the card height —
+            spots without a reporterName (rare; mostly legacy rows
+            from before the field was required) simply drop this line. */}
+        {spot.reporterName ? (
+          <p
+            className="text-[10px] text-ink-600 flex items-center gap-1 leading-tight line-clamp-1"
+            title={`Spotted by ${spot.reporterName}`}
+          >
+            <IconPerson />
+            <span className="truncate">
+              {isHi ? "द्वारा " : "by "}
+              <span className="text-ink-900 font-medium">
+                {spot.reporterName}
+              </span>
+            </span>
+          </p>
+        ) : null}
         {/* Single-row action bar: primary Directions takes the bulk of the
             width, secondary Share + Copy collapse to icon-only chips on the
             right. Reads cleanly even on the smallest card width.
@@ -468,6 +501,30 @@ function relative(iso: string, isHi: boolean): string {
   if (m < 60) return isHi ? `${m} मिनट पहले` : `${m} min ago`;
   const h = Math.floor(m / 60);
   return isHi ? `${h} घंटे पहले` : `${h} hr ago`;
+}
+
+function IconPerson() {
+  // 10px circle-and-bust glyph used as the reporter attribution
+  // marker on each live spot card. Stroke-current keeps it inheriting
+  // the surrounding `text-ink-600` tone so it sits quiet next to the
+  // copy without screaming.
+  return (
+    <svg
+      aria-hidden
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="shrink-0"
+    >
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21a8 8 0 0 1 16 0" />
+    </svg>
+  );
 }
 
 function IconWhatsapp() {

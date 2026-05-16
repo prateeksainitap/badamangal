@@ -9,6 +9,7 @@ import {
   websiteSchema,
 } from "@/lib/seo";
 import { ALL_TUESDAY_ISO } from "@/lib/dates";
+import { stripBotProvenance } from "@/lib/sanitize";
 import AnimatedHeading from "@/components/AnimatedHeading";
 import BhandaraCardsSection from "@/components/BhandaraCardsSection";
 import HappeningNow from "@/components/HappeningNow";
@@ -153,7 +154,9 @@ export default async function HomePage() {
     area: s.area,
     address: s.address,
     photoUrl: s.photoUrl,
-    caption: s.caption,
+    // Strip the internal [bot:whatsapp …] tag so it never reaches a
+    // public surface. See lib/sanitize.ts for the regex source.
+    caption: stripBotProvenance(s.caption) || null,
     reporterName: s.reporterName,
     createdAt: s.createdAt.toISOString(),
     expiresAt: s.expiresAt.toISOString(),
