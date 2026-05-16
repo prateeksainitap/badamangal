@@ -19,6 +19,7 @@ import {
   SITE_URL,
 } from "@/lib/seo";
 import type { Bhandara } from "@/types/bhandara";
+import { areaToSlug } from "@/lib/areaSlug";
 
 // ISR. Was force-dynamic — every visit cold-started a Netlify Function
 // (3-4s lag when clicking a bhandara from the homepage). Now each slug
@@ -603,17 +604,40 @@ export default async function BhandaraDetailPage({
       {/* OTHERS IN AREA */}
       {others.length > 0 ? (
         <section className="mx-auto max-w-5xl px-4 sm:px-6 mt-12">
+          {/* Area name in the heading now LINKS to the /area/<slug>
+              landing page — supplies a strong reciprocal internal
+              link from bhandara detail back to the area hub. The
+              area hub also links here, completing the loop and
+              compounding PageRank on both surfaces. */}
           <h2
             className={`text-2xl ${
               isHi ? "font-tiro text-sindoor-700" : "font-fraunces text-sindoor-700"
             }`}
           >
-            {t.detail.nearbyHeading} {areaLabel}
+            {t.detail.nearbyHeading}{" "}
+            <Link
+              href={`/area/${areaToSlug(b.area)}`}
+              data-ga="detail_area_link"
+              data-ga-area={b.area}
+              className="underline decoration-dotted decoration-saffron-600 underline-offset-4 hover:text-saffron-600 transition-colors"
+            >
+              {areaLabel}
+            </Link>
           </h2>
           <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {others.map((o) => (
               <BhandaraCard key={o.id} bhandara={o} locale={locale} />
             ))}
+          </div>
+          <div className="mt-5">
+            <Link
+              href={`/area/${areaToSlug(b.area)}`}
+              data-ga="detail_area_view_all"
+              data-ga-area={b.area}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-saffron-600 hover:text-sindoor-700"
+            >
+              View all Bada Mangal bhandaras in {areaLabel} →
+            </Link>
           </div>
         </section>
       ) : null}

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
+import { ALL_AREA_SLUGS } from "@/lib/areaSlug";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
@@ -104,5 +105,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }),
   );
 
-  return [...staticEntries, ...bhandaraEntries];
+  // Per-area landing pages. One static entry per area (36 total).
+  // Priority 0.8 — these are the SEO long-tail surfaces targeting
+  // queries like "bada mangal aliganj" / "bhandara gomti nagar".
+  // Higher than per-bhandara (0.6) because each area page rolls up
+  // many bhandaras + cross-links to others, so it's a stronger
+  // hub from Google's POV.
+  const areaEntries: MetadataRoute.Sitemap = ALL_AREA_SLUGS.map((slug) =>
+    urlWithAlternates(`/area/${slug}`, {
+      changeFrequency: "weekly",
+      priority: 0.8,
+    }),
+  );
+
+  return [...staticEntries, ...bhandaraEntries, ...areaEntries];
 }
