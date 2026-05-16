@@ -24,6 +24,13 @@ function FooterInner() {
         // skips the "are you an organizer or spotter?" chooser and
         // drops the visitor straight on the listing form.
         { href: "/list-bhandara?role=organizer", label: t.footer.getInvolvedAdd },
+        // Pamphlet generator — surfaces the printable-invite tool
+        // for organisers who haven't yet considered listing online
+        // (the QR on the generated pamphlet pulls them in regardless).
+        {
+          href: "/pamphlet",
+          label: isHi ? "मुफ़्त पैम्फलेट बनाएँ" : "Free pamphlet maker",
+        },
         { href: "/spot", label: isHi ? "भंडारा स्पॉट करें" : "Spot a bhandara" },
         // Past-bhandaras archive — listed venues whose Tuesdays are
         // over + spotted sightings whose 8-hour window expired.

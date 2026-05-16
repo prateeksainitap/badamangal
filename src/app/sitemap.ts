@@ -75,6 +75,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     urlWithAlternates("/live", { changeFrequency: "always", priority: 0.85 }),
     urlWithAlternates("/archive", { changeFrequency: "weekly", priority: 0.7 }),
     urlWithAlternates("/list-bhandara", { changeFrequency: "weekly", priority: 0.7 }),
+    urlWithAlternates("/pamphlet", { changeFrequency: "weekly", priority: 0.75 }),
     urlWithAlternates("/spot", { changeFrequency: "weekly", priority: 0.6 }),
     urlWithAlternates("/contact", { changeFrequency: "monthly", priority: 0.5 }),
     urlWithAlternates("/resources", { changeFrequency: "weekly", priority: 0.8 }),
