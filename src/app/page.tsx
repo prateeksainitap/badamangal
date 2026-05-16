@@ -42,15 +42,40 @@ import {
 // VisitorBeacon below.
 export const revalidate = 60;
 
-// Homepage-specific metadata. Overrides the layout default with a
-// keyword-rich title + description that targets the queries we want
-// to win: "bada mangal lucknow", "bhandara lucknow", "hanuman bhandara
-// 2026", "8 tuesdays jyeshtha", and the bilingual variants.
+// Homepage metadata, tuned to the queries Search Console is ACTUALLY
+// showing us impressions for — not the queries we wish we ranked for.
+//
+// GSC data (as of mid-May 2026 season-start):
+//   • "bhandara near me today"          12 imp · position 6.1 · CTR 0%
+//   • "bhandara near me"                 9 imp · position 6.9 · CTR 0%
+//   • "bhandara near me today open now"  2 imp · position 9    · CTR 0%
+//   • "bada mangal lucknow"              1 imp · position 11
+//
+// We were ranking page-1-bottom for "near me" queries but seeing
+// zero clicks because the SERP snippet promised "2026 Jyeshtha
+// season" and "directory" — abstract / institutional. Searchers
+// typing "bhandara near me today" want a concrete here-and-now
+// answer ("open now", "live map", "free prasad").
+//
+// New title leads with "Bhandara Near Me" (matches the query
+// verbatim), then anchors with the brand. New description leads
+// with "happening today" + "free" + "every Tuesday" — every word
+// is an answer to something the searcher actually wants to know.
+//
+// Expected impact: CTR from 0% → 4-7% at position 6, which 3-5×
+// our organic traffic from the same Google impressions we're
+// already getting.
 export const metadata: Metadata = {
-  title: "Bada Mangal Lucknow 2026, every bhandara on one map",
+  title: "Bhandara Near Me · Bada Mangal Lucknow 2026 · Live Map & Today's Bhandaras",
   description:
-    "The only directory of every Bada Mangal bhandara in Lucknow. 2026's rare 8-Tuesday Jyeshtha season, find a bhandara near you, list yours, sponsor a thali. लखनऊ के बड़े मंगल भंडारों का घर।",
+    "Find every Bada Mangal bhandara in Lucknow happening today and every Tuesday of the 8-Tuesday 2026 Jyeshtha season. Live map, timings, prasad menu, directions — free. लखनऊ के सभी बड़े मंगल भंडारे एक नक़्शे पर।",
   keywords: [
+    // "near me" intent — matches the queries actually in GSC
+    "bhandara near me",
+    "bhandara near me today",
+    "bhandara lucknow near me",
+    "free bhandara lucknow",
+    // brand + season
     "bada mangal",
     "bada mangal 2026",
     "bada mangal lucknow",
@@ -58,15 +83,21 @@ export const metadata: Metadata = {
     "hanuman bhandara",
     "jyeshtha tuesdays",
     "8 bada mangal",
+    // Hindi
     "बड़ा मंगल",
     "बड़ा मंगल लखनऊ",
     "हनुमान भंडारा",
+    "भंडारा लखनऊ",
+    "लखनऊ बड़ा मंगल 2026",
   ],
   alternates: localised("/"),
   openGraph: {
-    title: "Bada Mangal Lucknow 2026, every bhandara on one map",
+    // OG title kept slightly shorter for social cards (WhatsApp /
+    // Twitter truncate aggressively at ~60-70 chars; the SERP title
+    // above can run longer because Google word-wraps).
+    title: "Bhandara Near Me · Bada Mangal Lucknow 2026",
     description:
-      "The directory of every Bada Mangal bhandara in Lucknow during the rare 8-Tuesday Jyeshtha season. Find, list, sponsor, spot.",
+      "Every Bada Mangal bhandara in Lucknow on one live map. Today's bhandaras, timings, prasad menu, free directions.",
     url: SITE_URL,
     siteName: "BadaMangal",
     locale: "en_IN",

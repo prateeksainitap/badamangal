@@ -114,22 +114,61 @@ export async function generateMetadata({
   if (!record) return { title: "Bhandara not found" };
 
   const time = `${format12h(record.timeStart)}${record.timeEnd ? `–${format12h(record.timeEnd)}` : ""}`;
-  // SEO-tuned title: name · area · "Bada Mangal Lucknow 2026"
-  //   • Area moved to position 2 (was position 4) so a search for
-  //     "bada mangal aliganj" matches earlier in the title — Google
-  //     weights position heavily.
-  //   • Year ("2026") added — query volume on "bada mangal 2026"
-  //     spikes during season; presence in title boosts CTR.
-  //   • " · " separator scans well in SERP truncation; commas were
-  //     getting trailed off mid-phrase.
-  const title = `${record.name} · ${record.area} · Bada Mangal Lucknow 2026`;
+
+  // Pick the most-imminent serving date for the title — if a future
+  // Tuesday is set, surface that ("May 19" creates urgency in the
+  // SERP snippet much better than the static season name does).
+  // Falls back to the first listed date if none are future, and
+  // to no date string at all if the list is empty.
+  let dateForTitle = "";
+  try {
+    const dates: string[] = JSON.parse(record.tuesdayDates ?? "[]");
+    if (Array.isArray(dates) && dates.length > 0) {
+      const today = new Date().toISOString().slice(0, 10);
+      const upcoming = dates.filter((d) => d >= today).sort();
+      const pick = upcoming[0] ?? dates[dates.length - 1];
+      if (pick && /^\d{4}-\d{2}-\d{2}$/.test(pick)) {
+        const [y, m, d] = pick.split("-").map(Number);
+        const months = [
+          "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+          "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        ];
+        if (m && d && y && months[m - 1]) {
+          dateForTitle = `${d} ${months[m - 1]} ${y}`;
+        }
+      }
+    }
+  } catch {
+    /* tuesdayDates is malformed JSON on a legacy row — skip the
+       date in the title, keep the rest of the metadata correct. */
+  }
+
+  // SEO-tuned title — re-tuned after GSC data showed bhandara
+  // pages were getting impressions but zero clicks. New formula:
+  //   "<Name>, <Area> · Free Prasad <Date> · Bada Mangal Lucknow"
+  //
+  // Why each piece is here:
+  //   • Name + Area at start — matches "<organiser> bhandara
+  //     <area>" + "bada mangal <area>" long-tail queries.
+  //   • "Free Prasad" — the question every searcher is implicitly
+  //     asking. High-intent, search-intent-perfect, and uncommon
+  //     in competitor titles → CTR lift.
+  //   • Date right after — answers "when?" before they click,
+  //     creates urgency for "today" / "this Tuesday" searches.
+  //   • Brand at end — softens, signals trustworthy directory.
+  const titleHead = `${record.name}, ${record.area}`;
+  const titleMid = dateForTitle
+    ? `Free Prasad ${dateForTitle}`
+    : "Free Prasad";
+  const title = `${titleHead} · ${titleMid} · Bada Mangal Lucknow`;
+
   // SEO-tuned description: lead with "Free" (high-intent qualifier),
   // area early, full address + organiser for long-tail uniqueness.
   // Keeping under 160 chars where possible — Google truncates at
   // ~155-160 in SERP previews.
   const description =
     record.description ??
-    `Free Bada Mangal bhandara in ${record.area}, Lucknow. ${record.organizerName}'s seva at ${record.address}. Serving ${time} on every Tuesday of Jyeshtha 2026.`;
+    `Free Bada Mangal bhandara in ${record.area}, Lucknow. ${record.organizerName}'s seva at ${record.address}. Serving ${time}${dateForTitle ? ` on ${dateForTitle}` : ""}.`;
   const ogImage = record.photoUrl ?? `${SITE_URL}/illustrations/hanuman-sitting.webp`;
   const ogAlt = `${record.name} bhandara in ${record.area}, Lucknow`;
 
