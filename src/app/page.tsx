@@ -12,6 +12,7 @@ import { ALL_TUESDAY_ISO } from "@/lib/dates";
 import { stripBotProvenance } from "@/lib/sanitize";
 import AnimatedHeading from "@/components/AnimatedHeading";
 import BhandaraCardsSection from "@/components/BhandaraCardsSection";
+import FeaturedBhandaras from "@/components/FeaturedBhandaras";
 import HappeningNow from "@/components/HappeningNow";
 import MapBoard from "@/components/MapBoard";
 import CountdownTimer from "@/components/CountdownTimer";
@@ -393,6 +394,16 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* FEATURED BHANDARAS — concrete answer to "where can I go to a
+          bhandara today?" up high, before the countdown/map. GA4
+          data showed 20× more hero-CTA clicks than bhandara-card
+          opens, meaning the cards were too deep in the page. This
+          section pulls 3-4 photographed, verified, today-or-soonest
+          bhandaras above the fold so visitors arriving from
+          WhatsApp shares + organic search ("bhandara near me today")
+          land on a specific answer without scrolling. */}
+      <FeaturedBhandaras listings={listings} locale={locale} />
 
       {/* COUNTDOWN + 8-MANGAL TIMELINE
           Hierarchy rebuild: the previous version had a giant
