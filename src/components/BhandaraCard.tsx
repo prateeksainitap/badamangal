@@ -12,6 +12,22 @@ import { whatsappShareUrlForBhandara } from "@/lib/share";
 type Props = {
   bhandara: Bhandara;
   locale: Locale;
+  /**
+   * Optional date override for the card's header chip. When set, the
+   * card shows THIS date instead of running `nextServingDate()` over
+   * the bhandara's full date list.
+   *
+   * Used by the per-date-expanded card grids (homepage + area page)
+   * where a single bhandara serving on 8 Tuesdays renders as 8 cards,
+   * each one pinned to its own Tuesday so the listing reads
+   * chronologically. `null` means "show no date chip" (the bhandara
+   * has no upcoming dates but we still want it in the grid).
+   *
+   * If undefined → fall back to next-upcoming autopick. That preserves
+   * the original single-card-per-bhandara behaviour for any caller
+   * that doesn't opt in to expansion.
+   */
+  pinnedDate?: string | null;
 };
 
 function format12h(time: string): string {
@@ -72,7 +88,7 @@ function googleDirectionsUrl(b: Bhandara): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}`;
 }
 
-export default function BhandaraCard({ bhandara, locale }: Props) {
+export default function BhandaraCard({ bhandara, locale, pinnedDate }: Props) {
   const t = strings[locale];
   const isHi = locale === "hi";
   const displayName = isHi ? bhandara.nameHi : bhandara.name;
@@ -82,6 +98,26 @@ export default function BhandaraCard({ bhandara, locale }: Props) {
   const areaLabel = t.areas[bhandara.area] ?? bhandara.area;
   const menuItems = isHi ? bhandara.menuHi : bhandara.menu;
   const langSuffix = locale === "en" ? "?lang=en" : "";
+
+  // Resolve the serving date once at function-body scope so it can be
+  // shared between the header chip render AND the GA click trackers
+  // on the action links below. With per-date card expansion in the
+  // listings, the same bhandara slug can produce many cards each with
+  // a different `pinnedDate`, GA needs to know WHICH date drove a
+  // directions/share click, otherwise we can't tell whether 19 May or
+  // 26 May was the bigger driver of intent.
+  //   pinnedDate undefined → caller didn't opt in; pick next-upcoming
+  //   pinnedDate null      → caller said NO date chip (no upcoming)
+  //   pinnedDate "YYYY-MM-DD" → show this specific date
+  const serveOn =
+    pinnedDate !== undefined
+      ? pinnedDate
+      : nextServingDate(bhandara.tuesdayDates ?? []);
+  // Empty-string sentinel for the data-ga attribute so undefined
+  // never reaches the DOM; the GAClickDelegate's attribute scan
+  // then sends `date: ""` for date-less cards, which is harmless
+  // and keeps the slice possible in GA reports.
+  const gaDate = serveOn ?? "";
 
   return (
     <article className="bm-card group relative h-full w-full flex flex-col">
@@ -163,7 +199,9 @@ export default function BhandaraCard({ bhandara, locale }: Props) {
       <div className="px-5 pt-4 pb-5 flex flex-col gap-3 flex-1">
         <header>
           {(() => {
-            const serveOn = nextServingDate(bhandara.tuesdayDates ?? []);
+            // serveOn is now resolved at function-body scope above so
+            // both this header chip and the action-link GA trackers
+            // below share the same date value.
             const dateLabel = serveOn ? shortDate(serveOn, isHi) : "";
             const isToday = dateLabel === "Today" || dateLabel === "आज";
             return (
@@ -200,6 +238,7 @@ export default function BhandaraCard({ bhandara, locale }: Props) {
               href={`/bhandara/${bhandara.slug}${langSuffix}`}
               data-ga="card_open_bhandara"
               data-ga-slug={bhandara.slug}
+              data-ga-date={gaDate}
               className="inline-flex items-center gap-1.5 flex-wrap hover:underline decoration-saffron-500/70 underline-offset-4 before:content-[''] before:absolute before:inset-0 before:rounded-2xl before:cursor-pointer focus-visible:outline-none focus-visible:before:ring-2 focus-visible:before:ring-saffron-600"
             >
               <span>{displayName}</span>
@@ -241,6 +280,7 @@ export default function BhandaraCard({ bhandara, locale }: Props) {
             data-ga="card_get_directions"
             data-ga-slug={bhandara.slug}
             data-ga-area={bhandara.area}
+            data-ga-date={gaDate}
             className="btn btn-primary btn-sm"
           >
             <IconPin />
@@ -253,6 +293,7 @@ export default function BhandaraCard({ bhandara, locale }: Props) {
             data-ga="card_share_whatsapp"
             data-ga-slug={bhandara.slug}
             data-ga-area={bhandara.area}
+            data-ga-date={gaDate}
             className="btn btn-leaf btn-sm"
             aria-label={t.cta.shareWhatsapp}
           >

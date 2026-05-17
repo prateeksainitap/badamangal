@@ -3,12 +3,18 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BhandaraForm from "@/components/BhandaraForm";
+import BhandaraScanner from "@/components/BhandaraScanner";
 import { JaliCorner } from "@/components/ornaments";
 import { trackEvent } from "@/lib/ga";
 import type { Locale } from "@/content/strings";
 import { useLocaleFromContext } from "@/lib/locale-context";
 
-type Role = "organizer" | "spotter";
+// "scanner" is the AI-pamphlet path: user uploads a poster, Gemini
+// extracts the fields, and BhandaraForm appears pre-filled. Same
+// publish pipeline as the "organizer" path on the back end (status
+// PENDING → admin reviews → APPROVED), the difference is the entry
+// experience: type vs upload.
+type Role = "organizer" | "spotter" | "scanner";
 
 type ListedBhandara = {
   id: string;
@@ -60,9 +66,19 @@ export default function AddBhandaraSwitcher({
   const langSuffix = locale === "en" ? "?lang=en" : "";
   const [role, setRole] = useState<Role | null>(initialRole);
 
-  // Honour the legacy ?role= deep links client-side. The page itself is
+  // Honour `?role=` deep links client-side. The page itself is
   // statically rendered now (no searchParams read on the server), so
   // this is where the URL-driven branch lives.
+  //
+  // Three roles understood here:
+  //   • spotter  → bounce to /spot (canonical home for that flow)
+  //   • organizer → drop straight on the typed listing form
+  //   • scanner  → drop straight on the AI-pamphlet uploader
+  //
+  // The footer links use these deep links to skip the 3-card chooser
+  // (which is the right experience for the homepage entry, but
+  // unnecessary friction for visitors who already know they want a
+  // specific path).
   useEffect(() => {
     if (initialRole !== null) return;
     const url = new URL(window.location.href);
@@ -71,7 +87,7 @@ export default function AddBhandaraSwitcher({
       router.replace(`/spot${langSuffix}`);
       return;
     }
-    if (r === "organizer") setRole("organizer");
+    if (r === "organizer" || r === "scanner") setRole(r);
   }, [initialRole, langSuffix, router]);
 
   if (role === null) {
@@ -90,9 +106,34 @@ export default function AddBhandaraSwitcher({
     );
   }
 
-  // Only the organizer branch remains here, spotter routes out to /spot
-  // (see RoleChooser onPick above). The role pill + Back button mirror
-  // the chooser pattern so users always have an exit.
+  // Organizer + scanner branches both land here; spotter routes out to
+  // /spot (see RoleChooser onPick). Header copy + role pill swap on
+  // which branch we're in so the user always knows which path they
+  // picked. The Back button is shared (clears role and returns to the
+  // 3-card chooser).
+  const isScanner = role === "scanner";
+  const pillText = isScanner
+    ? isHi
+      ? "पैम्फलेट स्कैन"
+      : "Pamphlet scan"
+    : isHi
+      ? "व्यवस्थापक"
+      : "Organizer";
+  const titleText = isScanner
+    ? isHi
+      ? "पैम्फलेट अपलोड करें"
+      : "Upload your pamphlet"
+    : isHi
+      ? "अपना भंडारा जोड़ें"
+      : "List your bhandara";
+  const subtitleText = isScanner
+    ? isHi
+      ? "अपना भंडारा पोस्टर अपलोड करें, AI ज़रूरी जानकारी पढ़कर फ़ॉर्म स्वयं भर देगा।"
+      : "Upload a photo of your bhandara poster, our AI reads it and pre-fills the form for you."
+    : isHi
+      ? "कब, कहाँ और क्या परोस रहे हैं, बताएँ, और हम इसे शहर के नक़्शे पर जोड़ देंगे।"
+      : "Tell us when, where, and what you're serving, we'll put it on the city map.";
+
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-8 sm:py-12">
       <div className="mb-6 flex items-center justify-between gap-3 flex-wrap">
@@ -108,7 +149,7 @@ export default function AddBhandaraSwitcher({
           {isHi ? "वापस" : "Back"}
         </button>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-saffron-50 border border-saffron-500/40 px-3 py-1.5 leading-none text-[0.65rem] font-mukta uppercase tracking-[0.28em] text-saffron-600 font-semibold">
-          {isHi ? "व्यवस्थापक" : "Organizer"}
+          {pillText}
         </span>
       </div>
 
@@ -118,15 +159,13 @@ export default function AddBhandaraSwitcher({
             isHi ? "font-tiro" : "font-fraunces font-semibold"
           }`}
         >
-          {isHi ? "अपना भंडारा जोड़ें" : "List your bhandara"}
+          {titleText}
         </h1>
         <p className="mt-2 text-ink-600 max-w-2xl leading-relaxed">
-          {isHi
-            ? "कब, कहाँ और क्या परोस रहे हैं, बताएँ, और हम इसे शहर के नक़्शे पर जोड़ देंगे।"
-            : "Tell us when, where, and what you're serving, we'll put it on the city map."}
+          {subtitleText}
         </p>
       </header>
-      <BhandaraForm />
+      {isScanner ? <BhandaraScanner /> : <BhandaraForm />}
     </div>
   );
 }
@@ -162,19 +201,25 @@ function RoleChooser({
           <span className="block w-1.5 h-1.5 rounded-full bg-saffron-600 motion-safe:animate-pulse" />
           {isHi ? "बड़ा मंगल · 2026" : "Bada Mangal · 2026"}
         </p>
+        {/* Headline + subtitle were originally a binary "organizing
+            vs spotter" question. Adding the AI-pamphlet card made it
+            three paths, so the question reframes as "how do you want
+            to add a bhandara?" and the subtitle counts the paths
+            explicitly. Keeps the Devanagari/Fraunces editorial tone
+            of the page while honestly describing what's below. */}
         <h1
           className={`mt-4 text-3xl sm:text-5xl leading-tight text-sindoor-700 [text-wrap:balance] ${
             isHi ? "font-tiro" : "font-fraunces font-semibold"
           }`}
         >
           {isHi
-            ? "क्या आप व्यवस्थापक हैं या आपने भंडारा देखा है?"
-            : "Are you organizing, or did you just spot one?"}
+            ? "अपना भंडारा कैसे जोड़ेंगे?"
+            : "How would you like to add a bhandara?"}
         </h1>
         <p className="mt-4 mx-auto max-w-2xl text-ink-600 leading-relaxed text-sm sm:text-base">
           {isHi
-            ? "दोनों रास्ते लखनऊ के नक़्शे पर सीधे जुड़ते हैं। अपना रास्ता चुनें, आगे का सब कुछ हम सरल रखते हैं।"
-            : "Both paths feed the city map. Pick the one that fits, we'll keep the rest simple."}
+            ? "तीनों रास्ते लखनऊ के नक़्शे पर सीधे जुड़ते हैं, टाइप करें, AI से पैम्फलेट पढ़वाएँ, या रास्ते में देखा हुआ भंडारा स्पॉट करें। अपना चुनें, बाक़ी हम सरल रखते हैं।"
+            : "Three paths to the city map, type it in, scan a pamphlet with AI, or spot one you walked past. Pick what fits, we keep the rest simple."}
         </p>
 
         {/* Marigold rule */}
@@ -186,13 +231,19 @@ function RoleChooser({
           <span className="h-px flex-1 bg-gold-500/45" />
         </div>
 
-        {/* Two big choice cards */}
-        <div className="mt-8 grid gap-4 sm:gap-5 sm:grid-cols-2 text-left">
+        {/* Three big choice cards. Was 2 cards on `sm:grid-cols-2`;
+            adding the AI-pamphlet path made 3 the natural number, so
+            the grid is now sm:grid-cols-2 + lg:grid-cols-3. On a
+            phone all three stack; on tablet the AI-pamphlet card
+            wraps below the first two so the highest-intent action
+            ("scan a pamphlet you already have") is the freshest one
+            the eye lands on after the page-fold. */}
+        <div className="mt-8 grid gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3 text-left">
           <ChoiceCard
             isHi={isHi}
             onClick={() => onPick("organizer")}
             tone="saffron"
-            kicker={isHi ? "व्यवस्थापक / सेवादार" : "Organizer / Sevadar"}
+            kicker={isHi ? "व्यवस्थापक" : "Organizer"}
             title={
               isHi ? "मैं भंडारा आयोजित कर रहा हूँ" : "I'm organizing a bhandara"
             }
@@ -206,9 +257,27 @@ function RoleChooser({
           />
           <ChoiceCard
             isHi={isHi}
+            onClick={() => onPick("scanner")}
+            tone="gold"
+            kicker={isHi ? "AI से" : "AI scan"}
+            title={
+              isHi
+                ? "मेरे पास भंडारा का पैम्फलेट है"
+                : "I have a bhandara pamphlet"
+            }
+            body={
+              isHi
+                ? "पोस्टर अपलोड करें, AI नाम, तारीख़, समय, पता पढ़कर फ़ॉर्म स्वयं भर देगा। आप बस देख कर सबमिट करें।"
+                : "Upload the poster, AI reads the name, dates, time, and address and fills the form. You just verify and submit."
+            }
+            cta={isHi ? "पैम्फलेट अपलोड करें" : "Upload pamphlet"}
+            icon={<IconScanSparkle />}
+          />
+          <ChoiceCard
+            isHi={isHi}
             onClick={() => onPick("spotter")}
             tone="sindoor"
-            kicker={isHi ? "स्पॉटर / राहगीर" : "Passer-by / Spotter"}
+            kicker={isHi ? "स्पॉटर" : "Spotter"}
             title={
               isHi ? "मैंने अभी एक भंडारा देखा है" : "I just spotted a bhandara"
             }
@@ -239,13 +308,19 @@ function ChoiceCard({
 }: {
   isHi: boolean;
   onClick: () => void;
-  tone: "saffron" | "sindoor";
+  tone: "saffron" | "sindoor" | "gold";
   kicker: string;
   title: string;
   body: string;
   cta: string;
   icon: React.ReactNode;
 }) {
+  // Palette per tone. The new "gold" variant for the AI-scan card uses
+  // the same gold accents already in the design system (jali corners,
+  // dividers, sponsor rail), so it reads as "another official option"
+  // alongside saffron (organizer) and sindoor (spotter) without
+  // introducing a fourth brand colour. `btn btn-gold` doesn't exist
+  // yet so we hand-roll an equivalent class string here.
   const palette =
     tone === "saffron"
       ? {
@@ -259,17 +334,33 @@ function ChoiceCard({
           iconRing: "ring-saffron-500/30",
           ctaClass: "btn btn-primary",
         }
-      : {
-          ring: "border-sindoor-700/35",
-          glow:
-            "radial-gradient(360px 260px at 80% 0%, rgba(156,42,42,0.18), transparent 65%), #FFF7EB",
-          pillBg: "bg-sindoor-700/8",
-          pillBorder: "border-sindoor-700/30",
-          pillText: "text-sindoor-700",
-          iconBg: "bg-sindoor-700",
-          iconRing: "ring-sindoor-700/30",
-          ctaClass: "btn btn-sindoor",
-        };
+      : tone === "gold"
+        ? {
+            ring: "border-gold-500/50",
+            glow:
+              "radial-gradient(360px 260px at 50% 0%, rgba(201,162,74,0.22), transparent 65%), #FFF7EB",
+            pillBg: "bg-gold-500/10",
+            pillBorder: "border-gold-500/55",
+            pillText: "text-gold-700",
+            iconBg: "bg-gold-500",
+            iconRing: "ring-gold-500/30",
+            // btn-gold matches btn-primary's gradient+shadow recipe so
+            // the three CTAs (List my, Upload pamphlet, Spot it now)
+            // share size, padding, and elevation, only the colour
+            // distinguishes them.
+            ctaClass: "btn btn-gold",
+          }
+        : {
+            ring: "border-sindoor-700/35",
+            glow:
+              "radial-gradient(360px 260px at 80% 0%, rgba(156,42,42,0.18), transparent 65%), #FFF7EB",
+            pillBg: "bg-sindoor-700/8",
+            pillBorder: "border-sindoor-700/30",
+            pillText: "text-sindoor-700",
+            iconBg: "bg-sindoor-700",
+            iconRing: "ring-sindoor-700/30",
+            ctaClass: "btn btn-sindoor",
+          };
 
   return (
     <button
@@ -299,8 +390,15 @@ function ChoiceCard({
         >
           {icon}
         </span>
+        {/* `whitespace-nowrap` + slightly tighter tracking-[0.2em]
+            keeps the kicker on ONE line at every breakpoint, even
+            on the tighter 3-column grid. Was tracking-[0.22em],
+            which pushed the original two-word labels ("ORGANIZER /
+            SEVADAR", "PASSER-BY / SPOTTER") onto a second line. Now
+            paired with the single-word kicker text the cards use,
+            the pill always sits as a clean one-line chip. */}
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full ${palette.pillBg} ${palette.pillBorder} border px-3.5 py-1.5 text-[0.75rem] sm:text-[0.8rem] font-mukta uppercase tracking-[0.22em] ${palette.pillText} font-semibold leading-snug`}
+          className={`inline-flex items-center gap-1.5 rounded-full ${palette.pillBg} ${palette.pillBorder} border px-3.5 py-1.5 text-[0.7rem] sm:text-[0.75rem] font-mukta uppercase tracking-[0.2em] ${palette.pillText} font-semibold leading-snug whitespace-nowrap`}
         >
           {kicker}
         </span>
@@ -354,6 +452,38 @@ function IconHands() {
       <path d="M9 6c0 1 1 1 1 2s-1 1-1 2" />
       <path d="M12 5c0 1 1 1 1 2s-1 1-1 2" />
       <path d="M15 6c0 1 1 1 1 2s-1 1-1 2" />
+    </svg>
+  );
+}
+
+/** Scanner: a small document with a sparkle, reads as "we'll read
+ *  this for you". Same 24×24 viewbox and 1.7 stroke as the other two
+ *  card icons so the row reads as a coordinated set. */
+function IconScanSparkle() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      {/* Page outline */}
+      <path d="M6 3h8l4 4v14H6z" />
+      <path d="M14 3v4h4" />
+      {/* Text lines */}
+      <path d="M9 12h6" />
+      <path d="M9 16h4" />
+      {/* AI sparkle */}
+      <path
+        d="M17 14l.6 1.4L19 16l-1.4.6L17 18l-.6-1.4L15 16l1.4-.6z"
+        fill="currentColor"
+        stroke="none"
+      />
     </svg>
   );
 }

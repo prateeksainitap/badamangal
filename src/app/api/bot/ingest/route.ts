@@ -247,7 +247,13 @@ export async function POST(req: NextRequest) {
       : `bot-${new Date().toISOString().slice(0, 10)}-${randomUUID().slice(0, 6)}`;
     const slug = await ensureUniqueSlug(baseSlug);
 
-    const tuesdayDates = extracted.dateIso ? [extracted.dateIso] : [];
+    // Vision schema now returns ALL Tuesdays the banner lists (real
+    // posters print every date of the 8-Tuesday Jyeshtha season,
+    // and the prior schema's single `dateIso` field tanked
+    // extraction whenever Gemini surfaced more than one). Empty
+    // array is fine, the admin fills in dates manually in the
+    // edit form if Gemini couldn't read them off the banner.
+    const tuesdayDates = extracted.dateIsoList;
 
     // Forward-geocode the extracted address via Ola Maps so the row
     // lands with real lat/lng (matched against Lucknow's bounding box)

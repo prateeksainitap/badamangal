@@ -107,6 +107,11 @@ export default function StatsSection({ stats }: Props) {
             <StatCard
               icon={<IconNeighborhood />}
               value={format(stats.areasCovered, locale)}
+              // Mirrors the Tuesdays-served tile's "X of 8" denominator
+              // so the panel reads consistently. Total comes from
+              // AREAS.length on the server, so adding a neighbourhood
+              // to lib/lucknow.ts automatically bumps the "of N" here.
+              suffix={isHi ? `/ ${stats.areasTotal}` : `of ${stats.areasTotal}`}
               label={t.stats.areasCovered}
             />
           ) : null}

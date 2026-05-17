@@ -95,6 +95,95 @@ export function hasUpcomingDate(
 }
 
 /**
+ * Card-instance returned by expandByDate: a single bhandara may
+ * generate multiple instances (one per upcoming service date) so the
+ * homepage + area grids can show "Tuesday X bhandara" and "Tuesday Y
+ * bhandara" as separate cards even when X and Y are the same physical
+ * row in the DB. `pinnedDate` overrides the card's default
+ * "next-upcoming Tuesday" autopick, so each rendered card shows its
+ * own date label.
+ *
+ * A `pinnedDate` of `null` means "no specific date" (the bhandara has
+ * no upcoming service days, kept in the list so the row stays
+ * discoverable, but with no date chip in the header).
+ */
+export type BhandaraCardInstance<B extends { tuesdayDates: string[] }> = {
+  bhandara: B;
+  pinnedDate: string | null;
+};
+
+/**
+ * Expand a list of bhandaras into one card-instance per upcoming
+ * service date. The Lucknow norm is that a single banner lists every
+ * Tuesday + Bade Shanivar of the Jyeshtha season (8 + 1-3 Saturdays),
+ * so a faithful "what's on" listing wants one card per occurrence,
+ * not one card per organiser.
+ *
+ * Behaviour:
+ *   • Bhandara with N upcoming dates → N instances, each with its own
+ *     `pinnedDate`. Past dates (< today IST) drop on the floor; same
+ *     dates are deduped via the underlying Set, but a single row
+ *     can't have duplicate dates in its tuesdayDates JSON anyway.
+ *   • Bhandara with zero upcoming dates → one instance with
+ *     `pinnedDate: null`, keeps the row visible but without a date
+ *     chip. Useful while the season hasn't started, or after the last
+ *     Tuesday but before admin cleanup.
+ *
+ * Sort: date ascending (next Tuesday first), then sponsored desc,
+ * then verified desc within the same date. Date-less rows sink to
+ * the bottom of the grid. Matches the user expectation "what's on
+ * this Tuesday, then next Tuesday, then the one after".
+ */
+export function expandBhandarasByDate<
+  B extends {
+    tuesdayDates: string[];
+    // Both flags are optional on Bhandara (the wire type). Treating
+    // them as required in the constraint would force callers to
+    // narrow the type and break inference of `B = Bhandara`, so
+    // we keep them optional here and `?? false` them in the sort.
+    isSponsored?: boolean;
+    isVerified?: boolean;
+  },
+>(bhandaras: readonly B[], now: Date = new Date()): BhandaraCardInstance<B>[] {
+  const today = istTodayIso(now);
+  const instances: BhandaraCardInstance<B>[] = [];
+  for (const b of bhandaras) {
+    const upcoming = b.tuesdayDates
+      .filter((d) => d >= today)
+      .slice()
+      .sort();
+    if (upcoming.length === 0) {
+      instances.push({ bhandara: b, pinnedDate: null });
+    } else {
+      for (const d of upcoming) {
+        instances.push({ bhandara: b, pinnedDate: d });
+      }
+    }
+  }
+  instances.sort((a, z) => {
+    // No-date instances sink to the end so the date-pinned cards
+    // dominate the top of the grid.
+    if (a.pinnedDate === null && z.pinnedDate === null) return 0;
+    if (a.pinnedDate === null) return 1;
+    if (z.pinnedDate === null) return -1;
+    if (a.pinnedDate !== z.pinnedDate) {
+      return a.pinnedDate.localeCompare(z.pinnedDate);
+    }
+    // Same date, fall back to the existing sponsored → verified
+    // ordering so paid placements still rise to the top of their
+    // date's slice without dragging across other Tuesdays.
+    const aSp = a.bhandara.isSponsored ?? false;
+    const zSp = z.bhandara.isSponsored ?? false;
+    if (aSp !== zSp) return aSp ? -1 : 1;
+    const aVe = a.bhandara.isVerified ?? false;
+    const zVe = z.bhandara.isVerified ?? false;
+    if (aVe !== zVe) return aVe ? -1 : 1;
+    return 0;
+  });
+  return instances;
+}
+
+/**
  * If today's IST calendar date matches one of the 8 Bada Mangals,
  * returns its 1-based ordinal (1 → 1st Bada Mangal, 2 → 2nd, …, 8 → 8th).
  * Returns `null` on every other day.

@@ -21,9 +21,21 @@ function FooterInner() {
         { href: "/#map", label: t.footer.discoverMap },
         { href: "/live", label: isHi ? "लाइव फ़ीड" : "Live feed" },
         // Deep-link with ?role=organizer so AddBhandaraSwitcher
-        // skips the "are you an organizer or spotter?" chooser and
-        // drops the visitor straight on the listing form.
+        // skips the "how would you like to add a bhandara?" chooser
+        // and drops the visitor straight on the listing form.
         { href: "/list-bhandara?role=organizer", label: t.footer.getInvolvedAdd },
+        // AI-pamphlet path, mirrors the third chooser card on
+        // /list-bhandara. Deep-link with ?role=scanner so visitors
+        // who want this flow specifically (e.g. clicked from a
+        // shared link in a WhatsApp group) skip the chooser and
+        // see the upload UI immediately. AddBhandaraSwitcher honours
+        // this role in its mount-time URL handler.
+        {
+          href: "/list-bhandara?role=scanner",
+          label: isHi
+            ? "AI से पैम्फलेट स्कैन करें"
+            : "Scan a pamphlet (AI)",
+        },
         // Pamphlet generator link intentionally hidden during the
         // soft-launch phase. The /pamphlet route still works for
         // direct URL access; we just don't promote it from the

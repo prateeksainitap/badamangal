@@ -11,6 +11,7 @@ import { strings } from "@/content/strings";
 import { AREAS } from "@/lib/lucknow";
 import { areaToSlug } from "@/lib/areaSlug";
 import { useLocaleFromContext } from "@/lib/locale-context";
+import { expandBhandarasByDate } from "@/lib/dates";
 
 /**
  * Locale-derived heading/locale/isHi were once props (server-rendered
@@ -24,12 +25,24 @@ type Props = {
   locale?: Locale;
   heading?: string;
   isHi?: boolean;
+  /**
+   * Total approved bhandaras across the city (not filtered by
+   * `hasUpcomingDate`). Drives the headline "X Bhandaras listed
+   * across the city" so the saffron prefix matches the stats panel
+   * (35) instead of just the upcoming-dates subset (8). Caller is
+   * page.tsx, which has both `records` (raw) and `listings`
+   * (filtered) in scope. Falls back to `listings.length` when not
+   * passed so any legacy caller keeps compiling and renders the
+   * older number rather than 0.
+   */
+  totalListed?: number;
 };
 
 type DateFilter = "all" | string;
 
 export default function BhandaraCardsSection({
   listings,
+  totalListed,
 }: Props) {
   // Locale + heading derive from the LocaleProvider so the Hindi
   // toggle flips the section title and every label below it
@@ -156,7 +169,7 @@ export default function BhandaraCardsSection({
               the moment the user picks an area); the row below shows
               the filtered count separately. */}
           <span className="text-saffron-600 tabular-nums mr-1">
-            {listings.length}
+            {totalListed ?? listings.length}
           </span>
           {heading}
         </h2>
@@ -261,10 +274,32 @@ export default function BhandaraCardsSection({
       ) : null}
 
       {filtered.length > 0 ? (
+        // Per-occurrence expansion: a bhandara serving on all 8
+        // Tuesdays + Bade Shanivars renders as ~10 distinct cards in
+        // the grid, one per upcoming service date. Sorted chronologically
+        // by `expandBhandarasByDate` so the grid reads as "what's on
+        // this Tuesday, then next Tuesday, then…". The React key
+        // includes the date so cards for the same slug don't collide,
+        // and the BhandaraCard's own `pinnedDate` prop forces the
+        // header chip to show that specific date instead of the
+        // auto-picked next-upcoming Tuesday.
+        //
+        // When the date filter above is active (tuesday !== "all"),
+        // each bhandara still expands but only its matching date
+        // makes it through the filter, so each row gets one card,
+        // not the full ~10. So the same code path serves both
+        // "browse the season" and "browse one Tuesday" UX.
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
-          {filtered.map((b) => (
-            <div key={b.id} className="flex">
-              <BhandaraCard bhandara={b} locale={locale} />
+          {expandBhandarasByDate(filtered).map(({ bhandara, pinnedDate }) => (
+            <div
+              key={`${bhandara.id}-${pinnedDate ?? "none"}`}
+              className="flex"
+            >
+              <BhandaraCard
+                bhandara={bhandara}
+                locale={locale}
+                pinnedDate={pinnedDate}
+              />
             </div>
           ))}
         </div>

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { ALL_TUESDAY_ISO } from "@/lib/dates";
+import { AREAS } from "@/lib/lucknow";
 
 export type SiteStats = {
   /** Total visits to the homepage so far (across all visitors). */
@@ -12,6 +13,13 @@ export type SiteStats = {
   bhandarasSpotted: number;
   /** Distinct curated `area` values that have at least one approved listing. */
   areasCovered: number;
+  /** Total curated areas in the Lucknow neighbourhood list (lib/lucknow.ts).
+   *  Used as the denominator for the "areas covered" stat tile so it
+   *  reads as "22 of 36" instead of a bare "22", matching the
+   *  "Tuesdays served · 2 of 8" pattern. Driven off AREAS.length so
+   *  adding a neighbourhood to the curated list automatically updates
+   *  every visible counter, no manual sync needed. */
+  areasTotal: number;
   /** Tuesdays in the 2026 season that are already in the past (IST). */
   tuesdaysSoFar: number;
 };
@@ -64,6 +72,7 @@ export async function getHomepageStats(): Promise<SiteStats> {
     bhandarasListed: records.length,
     bhandarasSpotted: spottedCount,
     areasCovered: areas.size,
+    areasTotal: AREAS.length,
     tuesdaysSoFar: pastTuesdays.length,
   };
 }

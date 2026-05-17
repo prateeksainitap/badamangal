@@ -7,6 +7,7 @@ import { AREAS } from "@/lib/lucknow";
 import { strings } from "@/content/strings";
 import type { Bhandara } from "@/types/bhandara";
 import { useLocaleFromContext } from "@/lib/locale-context";
+import { expandBhandarasByDate } from "@/lib/dates";
 
 /**
  * /area/[slug] body, extracted out of the server-rendered page so the
@@ -139,10 +140,26 @@ export default function AreaPageView({
           <h2 className="sr-only">
             {isHi ? `${areaLabel} के भंडारे` : `${areaLabel} bhandaras`}
           </h2>
+          {/* Per-occurrence expansion (same pattern as the homepage
+              BhandaraCardsSection): a bhandara serving on every
+              Tuesday + Bade Shanivar of the season becomes ~10
+              chronologically-sorted cards. Single-date bhandaras
+              still render as one card. React key includes the date
+              so the same slug across multiple Tuesdays doesn't
+              collide; the BhandaraCard's `pinnedDate` prop forces
+              each card to display its own date in the header chip
+              instead of the auto-picked next-upcoming Tuesday. */}
           <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {bhandaras.map((b) => (
-              <BhandaraCard key={b.id} bhandara={b} locale={locale} />
-            ))}
+            {expandBhandarasByDate(bhandaras).map(
+              ({ bhandara, pinnedDate }) => (
+                <BhandaraCard
+                  key={`${bhandara.id}-${pinnedDate ?? "none"}`}
+                  bhandara={bhandara}
+                  locale={locale}
+                  pinnedDate={pinnedDate}
+                />
+              ),
+            )}
           </ul>
         </section>
       ) : (

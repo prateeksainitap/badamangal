@@ -18,6 +18,8 @@
  */
 import { useMemo, useRef, useState } from "react";
 import SeasonDatePicker from "@/components/SeasonDatePicker";
+import MapPasteResolver from "@/components/admin/MapPasteResolver";
+import { trackEvent } from "@/lib/ga";
 
 // ── Client-side image compression ────────────────────────────────────
 //
@@ -103,7 +105,7 @@ type ScanResponse =
         address?: string;
         addressHi?: string;
         landmark?: string;
-        dateIso?: string;
+        dateIsoList?: string[];
         timeStart?: string;
         timeEnd?: string;
         menu?: string[];
@@ -546,7 +548,11 @@ function BhandaraReviewForm({
   const [landmark, setLandmark] = useState(e.landmark ?? "");
   const [lat, setLat] = useState(scan.geocode?.lat?.toFixed(6) ?? "");
   const [lng, setLng] = useState(scan.geocode?.lng?.toFixed(6) ?? "");
-  const [dates, setDates] = useState<string[]>(e.dateIso ? [e.dateIso] : []);
+  // Vision schema now extracts all serving Tuesdays the banner lists
+  // (was single `dateIso`, which failed validation on the common
+  // multi-Tuesday Lucknow posters). Empty array → admin types dates
+  // in below.
+  const [dates, setDates] = useState<string[]>(e.dateIsoList ?? []);
   const [timeStart, setTimeStart] = useState(e.timeStart ?? "");
   const [timeEnd, setTimeEnd] = useState(e.timeEnd ?? "");
   const [menu, setMenu] = useState<string[]>(e.menu ?? []);
@@ -555,7 +561,11 @@ function BhandaraReviewForm({
   const [organizerPhone, setOrganizerPhone] = useState(e.organizerPhone ?? "");
   const [organizerWhatsapp, setOrganizerWhatsapp] = useState("");
   const [upiId, setUpiId] = useState("");
-  const [isVerified, setIsVerified] = useState(false);
+  // The "verified" decision is now driven by which Publish button the
+  // admin clicks (Publish vs. Called & confirmed, publish), mirroring
+  // the row-level button cluster on /admin. We no longer carry an
+  // isVerified state since it'd be redundant: the click site already
+  // knows which intent it represents and passes that to onPublish.
 
   // "Custom area" mode: when the extracted area isn't in the curated
   // AREAS list (or admin wants to type something not on the list), we
@@ -727,6 +737,19 @@ function BhandaraReviewForm({
             multiline
             wide
           />
+          {/* Paste-anything Maps URL → coords helper, mirrors the
+              same affordance on /admin/edit/[id] (where it lives
+              inside MapLocationInput). Resolving fills both lat
+              and lng below in one click, so the admin doesn't
+              have to fish them out of a Maps share-link manually. */}
+          <div className="sm:col-span-2">
+            <MapPasteResolver
+              onResolved={(la, ln) => {
+                setLat(la);
+                setLng(ln);
+              }}
+            />
+          </div>
           <Field
             label="Latitude"
             value={lat}
@@ -884,62 +907,96 @@ function BhandaraReviewForm({
           />
         </div>
 
-        <label className="mt-5 inline-flex items-center gap-2 text-sm text-ink-900">
-          <input
-            type="checkbox"
-            checked={isVerified}
-            onChange={(ev) => setIsVerified(ev.target.checked)}
-          />
-          Publish with ✓ Verified badge (organiser already confirmed)
-        </label>
-
         {publishError ? (
           <p className="mt-3 text-sm text-alert-500">{publishError}</p>
         ) : null}
 
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button
-            type="button"
-            disabled={!canPublish || publishing}
-            onClick={() =>
-              onPublish({
-                name,
-                nameHi,
-                description,
-                descriptionHi,
-                area,
-                address,
-                addressHi,
-                landmark,
-                lat: parseFloat(lat),
-                lng: parseFloat(lng),
-                tuesdayDates: dates,
-                timeStart,
-                timeEnd: timeEnd || undefined,
-                menu,
-                menuOther: menuOther
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-                organizerName,
-                organizerPhone,
-                organizerWhatsapp: organizerWhatsapp || undefined,
-                upiId: upiId || undefined,
-                photoUrl: scan.photoUrl,
-                isVerified,
-              })
-            }
-            className="inline-flex items-center gap-2 rounded-full bg-leaf-600 hover:bg-leaf-600/90 disabled:opacity-60 text-cream-50 font-medium px-5 py-2 text-sm shadow-warm"
-          >
-            {publishing ? (
+        {/* Two publish CTAs mirror the row-level cluster on /admin:
+              • "Publish bhandara" — ship what we have, no badge claim.
+                The right default for scans where the admin hasn't
+                actually spoken to the organiser yet, the listing
+                still goes live, just without the green check.
+              • "Called & confirmed, publish" — same publish action +
+                the ✓ Verified badge stamps in the same write. Mirrors
+                publishVerifiedAction's role in the row-level pattern.
+            Both buttons share the same big payload, built once via
+            buildPayload(verified) so the only thing that changes
+            between the two click handlers is the isVerified flag. */}
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          {(() => {
+            const buildPayload = (verified: boolean) => ({
+              name,
+              nameHi,
+              description,
+              descriptionHi,
+              area,
+              address,
+              addressHi,
+              landmark,
+              lat: parseFloat(lat),
+              lng: parseFloat(lng),
+              tuesdayDates: dates,
+              timeStart,
+              timeEnd: timeEnd || undefined,
+              menu,
+              menuOther: menuOther
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean),
+              organizerName,
+              organizerPhone,
+              organizerWhatsapp: organizerWhatsapp || undefined,
+              upiId: upiId || undefined,
+              photoUrl: scan.photoUrl,
+              isVerified: verified,
+            });
+            // Imperative trackEvent (vs data-ga) because we need the
+            // `verified` boolean as a param keyed off WHICH button
+            // was clicked, and GAClickDelegate's attribute scan
+            // can't differentiate between two buttons that share the
+            // same event name from a class attribute. Same `bm_`
+            // prefix gets applied by ga.ts's normaliseEventName.
+            const fire = (verified: boolean): void => {
+              trackEvent("admin_scan_publish", {
+                verified,
+                area: area || "(blank)",
+              });
+            };
+            return (
               <>
-                <Spinner />
-                Publishing…
+                <button
+                  type="button"
+                  disabled={!canPublish || publishing}
+                  onClick={() => {
+                    fire(false);
+                    onPublish(buildPayload(false));
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full bg-leaf-600 hover:bg-leaf-600/90 disabled:opacity-60 text-cream-50 font-medium px-5 py-2 text-sm shadow-warm"
+                >
+                  {publishing ? (
+                    <>
+                      <Spinner />
+                      Publishing…
+                    </>
+                  ) : (
+                    <>✓ Publish bhandara</>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  disabled={!canPublish || publishing}
+                  onClick={() => {
+                    fire(true);
+                    onPublish(buildPayload(true));
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-leaf-600 text-leaf-600 hover:bg-leaf-600 hover:text-cream-50 disabled:opacity-60 font-medium px-5 py-2 text-sm transition-colors"
+                  title="Stamps the green Verified badge on the listing in the same write."
+                >
+                  ✓ Called &amp; confirmed, publish
+                </button>
               </>
-            ) : (
-              <>✓ Publish bhandara</>
-            )}
-          </button>
+            );
+          })()}
           <button
             type="button"
             onClick={onCancel}

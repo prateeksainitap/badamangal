@@ -154,10 +154,42 @@ function readAutosave(): AutosaveBlob | null {
   }
 }
 
-export default function BhandaraForm() {
+/**
+ * Optional pre-fill seed for the form. Passed in by the pamphlet-scan
+ * entry point (BhandaraScanner): after Gemini extracts what it can
+ * read off the uploaded banner, those values come in here so the user
+ * lands on a form that's already filled out and only needs to verify
+ * + fix gaps, instead of typing every field from scratch.
+ *
+ * Partial because Gemini's extraction is best-effort, every field
+ * defaults back to INITIAL when not provided.
+ *
+ * `entryMethod` flows into GA so we can compare conversion rates
+ * between the two paths (typed vs scan-pre-filled). Default "type"
+ * covers the existing /list-bhandara?role=organizer entry; the
+ * scanner sets "scan" explicitly. Future variants ("deeplink",
+ * "campaign") slot in here without touching the event schema.
+ */
+type EntryMethod = "type" | "scan";
+type BhandaraFormProps = {
+  initialValues?: Partial<FormState>;
+  entryMethod?: EntryMethod;
+};
+
+export default function BhandaraForm({
+  initialValues,
+  entryMethod = "type",
+}: BhandaraFormProps = {}) {
   const { locale } = useT();
   const [step, setStep] = useState<number>(1);
-  const [state, setState] = useState<FormState>(INITIAL);
+  // Seed the form state with INITIAL + any caller-provided overrides
+  // (typically from a pamphlet scan). useState's initializer runs once
+  // per mount, so the merge happens exactly when the form first
+  // renders, never on re-renders.
+  const [state, setState] = useState<FormState>(() => ({
+    ...INITIAL,
+    ...(initialValues ?? {}),
+  }));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -175,13 +207,20 @@ export default function BhandaraForm() {
   // exists, we silently restore it, the user re-opens /list-bhandara
   // and continues where they left off, no "would you like to
   // restore?" dialog (that itself is friction).
+  //
+  // EXCEPTION: when the caller passed initialValues (the scan-pamphlet
+  // flow), skip the autosave restore. The fresh scan is more
+  // current + intentional than whatever might have been left behind
+  // from a previous abandoned session, restoring would silently
+  // overwrite the freshly-extracted Gemini values with stale text.
   useEffect(() => {
+    if (initialValues) return;
     const blob = readAutosave();
     if (blob) {
       setState(blob.state);
       setStep(blob.step);
     }
-  }, []);
+  }, [initialValues]);
 
   // ── Autosave on every state / step change ──────────────────────────
   // Debouncing isn't worth it here, the writes are tiny (~2KB JSON)
@@ -307,10 +346,17 @@ export default function BhandaraForm() {
   };
 
   const handleSubmit = async () => {
+    // entry_method tags every submit event with which entry path the
+    // user came in through ("type" or "scan"), so GA reports can
+    // split conversion: how many of each path get to the submit
+    // attempt, how many succeed. Tuesday-count + has-photo were
+    // already tracked here; entry_method joins them on the same
+    // event so we don't need a side-channel.
     trackEvent("form_submit_attempt", {
       area: state.area,
       tuesday_count: state.tuesdayDates.length,
       has_photo: state.photoUrl ? 1 : 0,
+      entry_method: entryMethod,
     });
     setSubmitting(true);
     setErrors({});
@@ -376,11 +422,17 @@ export default function BhandaraForm() {
       });
       if (res.ok) {
         const ok = (await res.json()) as ApiOk;
-        trackEvent("form_submit_success", { slug: ok.slug });
+        trackEvent("form_submit_success", {
+          slug: ok.slug,
+          entry_method: entryMethod,
+        });
         setSuccess(ok);
         return;
       }
-      trackEvent("form_submit_error", { status: res.status });
+      trackEvent("form_submit_error", {
+        status: res.status,
+        entry_method: entryMethod,
+      });
       const err = (await res.json()) as ApiErr;
       if (err.issues?.fieldErrors) {
         setErrors(err.issues.fieldErrors);

@@ -31,6 +31,7 @@ import HomeResourcesTeaser from "@/components/HomeResourcesTeaser";
 import VisitorBeacon from "@/components/VisitorBeacon";
 import { MarigoldDivider } from "@/components/ornaments";
 import { prisma, toBhandara } from "@/lib/db";
+import { areaToSlug } from "@/lib/areaSlug";
 import { getHomepageStats } from "@/lib/stats";
 import { hasUpcomingDate } from "@/lib/dates";
 
@@ -339,9 +340,15 @@ export default async function HomePage() {
       <HappeningNow initial={liveSpots} />
 
       {/* CARDS, equal-height grid with filters. Locale reads from
-          context inside the component. */}
+          context inside the component. `totalListed` is the full
+          APPROVED count (35), not the upcoming-only count (8) that
+          `listings.length` would give, so the saffron headline
+          number matches the stats panel. */}
       {listings.length > 0 ? (
-        <BhandaraCardsSection listings={listings} />
+        <BhandaraCardsSection
+          listings={listings}
+          totalListed={records.length}
+        />
       ) : (
         <HomeCardsEmpty />
       )}
@@ -353,10 +360,15 @@ export default async function HomePage() {
              audit), accelerates ranking on "bada mangal <area>"
              queries.
           2. UX: visitors who know their area jump in one tap
-             instead of scrolling through the cards. */}
+             instead of scrolling through the cards.
+          Both the count and the highlighted-chip set use the full
+          APPROVED `records` (not the upcoming-only `listings`), so
+          "areas covered" stays consistent with the stats panel even
+          when most listings have no upcoming dates left. */}
       <AreaIndexGrid
-        activeAreaCount={
-          new Set(listings.map((l) => l.area)).size
+        activeAreaCount={new Set(records.map((r) => r.area)).size}
+        activeAreaSlugs={
+          new Set(records.map((r) => areaToSlug(r.area)))
         }
       />
 

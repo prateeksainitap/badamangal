@@ -89,6 +89,33 @@ function preprocessMenu(v: unknown): string[] {
   return [];
 }
 
+// Coerce whatever Gemini puts in the date slot into a clean string[]
+// of YYYY-MM-DD entries. Real Bada Mangal posters list ALL 8 Tuesdays
+// of the Jyeshtha season on one banner (this is the norm, not the
+// exception), so the field has to be an array. But we've seen Gemini
+// shape it variously across runs:
+//   • the requested array  →  ["2026-05-05", "2026-05-12", …]
+//   • a comma-joined string →  "2026-05-05, 2026-05-12, 2026-05-19"
+//   • a single string       →  "2026-05-05"   (single-Tuesday poster)
+//   • a labelled string     →  "Dates: 2026-05-05 and 2026-05-12"
+//   • undefined / null      →  the date wasn't on the banner
+// Extract every YYYY-MM-DD substring anywhere in the input, dedupe, and
+// return chronologically sorted. Anything that doesn't match the regex
+// silently drops, so a stray "TBD" or a malformed "2026/5/5" can't
+// poison the array (and the admin can fill the gap in the review UI).
+function preprocessDateList(v: unknown): string[] {
+  const matches = new Set<string>();
+  const harvest = (s: string): void => {
+    const found = s.match(/\d{4}-\d{2}-\d{2}/g);
+    if (found) for (const d of found) matches.add(d);
+  };
+  if (typeof v === "string") harvest(v);
+  else if (Array.isArray(v)) {
+    for (const entry of v) if (typeof entry === "string") harvest(entry);
+  }
+  return Array.from(matches).sort();
+}
+
 // Loose schema (vs the public submitSchema): all fields optional so the
 // admin can review and fill gaps. Phone is a free string so the model
 // can emit `"unknown"` without breaking the response.
@@ -117,7 +144,13 @@ export const extractedBhandaraSchema = z.object({
   address: z.string().trim().default(""),
   addressHi: z.string().trim().default(""),
   landmark: z.string().trim().default(""),
-  dateIso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  // Array of YYYY-MM-DD strings. Real posters list every Tuesday of
+  // the 8-Tuesday Jyeshtha season; preprocessDateList tolerates
+  // single-string + comma-string + array shapes from the model.
+  dateIsoList: z.preprocess(
+    preprocessDateList,
+    z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).default([]),
+  ),
   timeStart: z.preprocess(preprocessTime, z.string().regex(/^\d{2}:\d{2}$/).optional()),
   timeEnd: z.preprocess(preprocessTime, z.string().regex(/^\d{2}:\d{2}$/).optional()),
   menu: z.preprocess(preprocessMenu, z.array(z.enum(MENU_VALUES)).default([])),
@@ -159,7 +192,7 @@ Fields (all optional, emit "" or omit if unsure, never invent):
   "address":      Full English address as written, including landmark + locality + Lucknow.
   "addressHi":    Same address in Hindi (Devanagari), translate proper nouns only when the banner shows them in Hindi.
   "landmark":     One landmark phrase if explicitly mentioned (e.g. "Near Civil Hospital"). Otherwise "".
-  "dateIso":      YYYY-MM-DD. Resolve Hindi/English dates to ISO. The 2026 Bada Mangal Tuesdays are 2026-05-05, 2026-05-12, 2026-05-19, 2026-05-26, 2026-06-02, 2026-06-09, 2026-06-16, 2026-06-23. Shani Jayanti is 2026-05-16 (Saturday). If only "मंगलवार" / "Tuesday" is given without a date, leave this empty.
+  "dateIsoList":  Array of YYYY-MM-DD strings, one entry per serving date the banner shows. MOST Lucknow Bada Mangal posters list ALL 8 Tuesdays of the Jyeshtha season on a single banner, list every date you see, do not just pick the first. The 2026 Bada Mangal Tuesdays are 2026-05-05, 2026-05-12, 2026-05-19, 2026-05-26, 2026-06-02, 2026-06-09, 2026-06-16, 2026-06-23. Shani Jayanti is 2026-05-16 (Saturday) and is occasionally added too. Resolve Hindi/English date numerals to ISO. If only "मंगलवार" / "Tuesday" appears with no date numbers, return [].
   "timeStart":    24h HH:MM (e.g. "09:00", "12:00", "18:30"). Convert "11 बजे से" → "11:00", "दोपहर 2 बजे" → "14:00".
   "timeEnd":      24h HH:MM if a clear end time is given. "प्रभु इच्छा तक" / "until Prabhu Iccha" → leave empty.
   "menu":         An array picked from EXACTLY these keys: ${MENU_LIST}. Use "prasad" as a generic catch-all if the banner only says "भंडारा" without specifying items. Keep array length ≤ 6.
@@ -616,7 +649,7 @@ Fields (all optional, emit "" or omit if unsure, never invent):
   "address":      Full English address as the user wrote, including landmark + locality + Lucknow.
   "addressHi":    Same address in Hindi (Devanagari).
   "landmark":     One landmark phrase if explicitly mentioned (e.g. "Near Civil Hospital"). Otherwise "".
-  "dateIso":      YYYY-MM-DD. Resolve relative phrases like "this Tuesday" / "अगले मंगल" against today (${new Date().toISOString().slice(0, 10)} IST). The 2026 Bada Mangal Tuesdays are 2026-05-05, 2026-05-12, 2026-05-19, 2026-05-26, 2026-06-02, 2026-06-09, 2026-06-16, 2026-06-23. Shani Jayanti is 2026-05-16 (Saturday). If only a weekday name is given with no date hint, leave empty.
+  "dateIsoList":  Array of YYYY-MM-DD strings, one entry per serving date the user mentions. If they say "all 8 Tuesdays" / "हर मंगलवार" / "every Tuesday this Bada Mangal", expand to the full list. Resolve relative phrases like "this Tuesday" / "अगले मंगल" against today (${new Date().toISOString().slice(0, 10)} IST). The 2026 Bada Mangal Tuesdays are 2026-05-05, 2026-05-12, 2026-05-19, 2026-05-26, 2026-06-02, 2026-06-09, 2026-06-16, 2026-06-23. Shani Jayanti is 2026-05-16 (Saturday). If only a weekday name is given with no date hint, return [].
   "timeStart":    24h HH:MM. Convert "11 बजे से" / "11 AM" → "11:00", "दोपहर 2 बजे" / "2 PM" → "14:00".
   "timeEnd":      24h HH:MM if a clear end time is given. Phrases like "प्रभु इच्छा तक" leave empty.
   "menu":         An array picked from EXACTLY these keys: ${MENU_LIST}. Use "prasad" as a catch-all if user just says "भंडारा". ≤ 6 items.
