@@ -22,6 +22,7 @@ import { prisma } from "@/lib/db";
 import { editAndPublishAction } from "@/app/admin/actions";
 import { stripBotProvenance } from "@/lib/sanitize";
 import MapLocationInput from "@/components/admin/MapLocationInput";
+import SubmitButton from "@/components/admin/SubmitButton";
 
 export const dynamic = "force-dynamic";
 const COOKIE = "admin";
@@ -155,14 +156,22 @@ export default async function AdminEditPage({ params }: PageProps) {
 
         <label className="grid gap-1.5">
           <span className="text-sm text-ink-600">
-            Tuesday dates (one per line, YYYY-MM-DD)
+            Tuesday dates (one per line, DD-MM-YYYY)
           </span>
+          {/* Display in DD-MM-YYYY (the format the admin reads / writes),
+              but the DB row stays in YYYY-MM-DD ISO so the upcoming-date
+              picker in /bhandara/[slug] (which sorts strings lexically
+              and compares with today.toISOString().slice(0,10)) keeps
+              working without a per-row format check. The conversion
+              loop is intentionally tolerant of legacy rows that are
+              already in DD-MM-YYYY or any other shape, formatDateForDisplay
+              passes them through unchanged. */}
           <textarea
             name="tuesdayDates"
-            defaultValue={tuesdayDates.join("\n")}
+            defaultValue={tuesdayDates.map(formatDateForDisplay).join("\n")}
             rows={Math.max(2, tuesdayDates.length)}
             className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
-            placeholder="2026-05-12"
+            placeholder="12-05-2026"
           />
         </label>
 
@@ -199,11 +208,24 @@ export default async function AdminEditPage({ params }: PageProps) {
             defaultValue={b.organizerName}
             required
           />
+          {/* Phone is intentionally optional on the admin edit form,
+              bot-ingested rows often have a blank or junk phone field
+              because Gemini couldn't parse a number off the poster, and
+              forcing the admin to invent one just to publish blocks
+              the queue. The 10-digit cap matches the Indian mobile
+              format; pattern + inputMode give us numeric-keyboard UX
+              and a soft validation prompt without the friction of
+              required. Server-side, actions.ts trusts whatever lands
+              here; admin is the only writer of this form. */}
           <Pair
             label="Organizer phone"
             name="organizerPhone"
+            type="tel"
             defaultValue={b.organizerPhone}
-            required
+            maxLength={10}
+            pattern="\d{10}"
+            inputMode="numeric"
+            hint="10-digit mobile number. Optional."
           />
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
@@ -235,13 +257,23 @@ export default async function AdminEditPage({ params }: PageProps) {
           Mark as <strong>Verified</strong> (called &amp; confirmed by phone)
         </label>
 
+        {/* SubmitButton (shared across /admin) wraps the same saffron
+            primary styling as the inline button it replaced, plus a
+            useFormStatus()-driven pending state: button disables and
+            swaps "Save & publish" → spinner + "Saving…" while the
+            server action is in flight. Stops the admin from double-
+            clicking on slow round-trips (Netlify cold start) and
+            writing the same APPROVED row twice. Cancel stays a plain
+            <Link> deliberately, the admin should always be able to
+            bail to /admin even mid-submit. */}
         <div className="flex items-center gap-3 mt-4">
-          <button
-            type="submit"
-            className="inline-flex justify-center items-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-5 py-2.5 shadow-sm transition-colors"
+          <SubmitButton
+            variant="primary-saffron"
+            size="md"
+            pendingLabel="Saving…"
           >
             Save &amp; publish
-          </button>
+          </SubmitButton>
           <Link
             href="/admin"
             className="text-sm rounded-full px-3 py-2 border border-gold-500/50 text-ink-900 hover:bg-cream-50"
@@ -258,6 +290,10 @@ export default async function AdminEditPage({ params }: PageProps) {
  * Single-line input wrapper. Kept inline (not extracted) so the file
  * is self-contained, this page is one of one in the admin flow and
  * we don't need a shared form-kit yet.
+ *
+ * Supports the usual HTML constraint attributes (maxLength, pattern,
+ * inputMode) so callers like the organizer-phone field can enforce
+ * "10 digits or nothing" without forking the component.
  */
 function Pair({
   label,
@@ -267,6 +303,9 @@ function Pair({
   type = "text",
   step,
   hint,
+  maxLength,
+  pattern,
+  inputMode,
 }: {
   label: string;
   name: string;
@@ -275,6 +314,17 @@ function Pair({
   type?: string;
   step?: string;
   hint?: string;
+  maxLength?: number;
+  pattern?: string;
+  inputMode?:
+    | "text"
+    | "search"
+    | "email"
+    | "tel"
+    | "url"
+    | "none"
+    | "numeric"
+    | "decimal";
 }) {
   return (
     <label className="grid gap-1.5">
@@ -288,11 +338,28 @@ function Pair({
         step={step}
         required={required}
         defaultValue={defaultValue}
+        maxLength={maxLength}
+        pattern={pattern}
+        inputMode={inputMode}
         className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
       />
       {hint ? <span className="text-xs text-ink-600">{hint}</span> : null}
     </label>
   );
+}
+
+/**
+ * Convert a YYYY-MM-DD ISO date (the DB storage format) to DD-MM-YYYY
+ * for display in the admin textarea. The DB has to stay ISO so the
+ * sort + future-Tuesday picker in /bhandara/[slug] (which does
+ * `d >= today.toISOString().slice(0,10)` lexically) keeps working.
+ * Legacy rows in any other shape pass through unchanged so the admin
+ * can read and re-save them without an explicit migration step.
+ */
+function formatDateForDisplay(s: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return s;
+  return `${m[3]}-${m[2]}-${m[1]}`;
 }
 
 /** Multi-line textarea variant for descriptions and the like. */

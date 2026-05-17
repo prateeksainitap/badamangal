@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Bhandara } from "@/types/bhandara";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
-import { JaliCorner, SunburstSpark } from "@/components/ornaments";
+import { JaliCorner } from "@/components/ornaments";
 // Single source-of-truth share builder. Card + detail page both call
 // this so the message a recipient sees is identical regardless of
 // where the sharer clicked from. See lib/share.ts for the rationale
@@ -128,13 +128,28 @@ export default function BhandaraCard({ bhandara, locale }: Props) {
             />
           </>
         ) : (
-          /* No-photo fallback: a centred sunburst on the warm gradient */
-          <div className="absolute inset-0 flex items-center justify-center">
-            <SunburstSpark
-              size={92}
-              className="text-saffron-600 opacity-60 transition-transform duration-500 group-hover:scale-105 group-hover:rotate-[8deg]"
-            />
-          </div>
+          // No-photo fallback: branded 4:3 share graphic served from
+          // /public/illustrations/card-fallback.webp
+          // (Share-Graphics/Final-4_3-Default-2.png, resized to
+          // 1136×852 and re-encoded — ~215 KB on the wire instead
+          // of the source 8.9 MB). Aspect matches .bm-card-photo's
+          // own 4/3 ratio, so `object-cover` fills the well edge-to-
+          // edge with no letterbox, no blurred backdrop scaffolding
+          // needed. The browser fetches the asset once per page and
+          // reuses the cached bitmap on every no-photo card, so a
+          // page with 20 fallback cards costs the same as a page
+          // with one. `loading="lazy"` keeps it out of the initial
+          // critical request set; the JaliCorner ornaments + area
+          // pill overlay above this <img> still stack correctly via
+          // their `absolute` positioning.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src="/illustrations/card-fallback.webp"
+            alt={`${displayName} bhandara in ${areaLabel}, Lucknow`}
+            loading="lazy"
+            decoding="async"
+            className="relative w-full h-full object-cover"
+          />
         )}
 
         {/* Area label as a foot-banner overlay */}

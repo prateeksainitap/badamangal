@@ -115,6 +115,26 @@ export async function unverifyAction(id: string, _formData?: FormData): Promise<
 }
 
 /**
+ * Coerce a date string from the admin edit form into the canonical
+ * YYYY-MM-DD ISO format the DB row stores.
+ *
+ * Accepts:
+ *   • DD-MM-YYYY → flipped to YYYY-MM-DD  (the admin form's display format)
+ *   • YYYY-MM-DD → returned unchanged     (legacy rows + already-ISO pastes)
+ * Anything else (typos, partial dates, day-month names) returns "" so
+ * the caller can `.filter(Boolean)` it out. Dropping a malformed line
+ * is safer than persisting garbage that would break the upcoming-date
+ * filter in /bhandara/[slug] and emit invalid JSON-LD Event entries.
+ */
+function normalizeTuesdayDate(s: string): string {
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (iso) return s;
+  const dmy = /^(\d{2})-(\d{2})-(\d{4})$/.exec(s);
+  if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+  return "";
+}
+
+/**
  * Edit a PENDING bhandara (typically a bot-ingested row from the
  * WhatsApp pipeline) and publish it in a single submit. All fields the
  * admin can fix in the edit form are written through to the database,
@@ -141,11 +161,20 @@ export async function editAndPublishAction(
   };
 
   // Tuesdays come in as one date per line, empty lines stripped.
+  // The admin edit form now displays + accepts DD-MM-YYYY, but the
+  // DB has to keep YYYY-MM-DD ISO because /bhandara/[slug]'s
+  // upcoming-Tuesday picker compares lexically (d >= todayIso).
+  // normalizeTuesdayDate converts admin-friendly DD-MM-YYYY → ISO,
+  // passes through ISO unchanged (legacy rows + admin pastes that
+  // happen to already be ISO), and drops anything else so a malformed
+  // line can't poison the JSON-LD Event schema downstream.
   // Menu comes in comma-separated; we keep entries as-typed (the
   // public schema allows free-form strings here now).
   const tuesdayDates = str("tuesdayDates")
     .split(/\r?\n/)
     .map((s) => s.trim())
+    .filter(Boolean)
+    .map(normalizeTuesdayDate)
     .filter(Boolean);
   const menuArr = str("menu")
     .split(",")

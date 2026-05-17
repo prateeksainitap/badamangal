@@ -21,6 +21,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { editAndApproveSpotAction } from "@/app/admin/actions";
 import { stripBotProvenance } from "@/lib/sanitize";
+import SubmitButton from "@/components/admin/SubmitButton";
 
 export const dynamic = "force-dynamic";
 const COOKIE = "admin";
@@ -204,13 +205,19 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
           </label>
         </fieldset>
 
+        {/* Shared SubmitButton gives us a pending spinner + disable
+            during the editAndApproveSpotAction round-trip. Mirrors
+            the bhandara edit page so both edit forms behave the
+            same on slow Netlify cold starts. Cancel stays a Link
+            (always allow escape). */}
         <div className="flex items-center gap-3 mt-2">
-          <button
-            type="submit"
-            className="inline-flex justify-center items-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-5 py-2.5 shadow-sm transition-colors"
+          <SubmitButton
+            variant="primary-saffron"
+            size="md"
+            pendingLabel="Saving…"
           >
             Save &amp; approve
-          </button>
+          </SubmitButton>
           <Link
             href="/admin?type=whatsapp&status=spot"
             className="text-sm rounded-full px-3 py-2 border border-gold-500/50 text-ink-900 hover:bg-cream-50"
