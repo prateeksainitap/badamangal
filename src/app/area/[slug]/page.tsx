@@ -25,7 +25,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import AreaPageView from "@/components/AreaPageView";
 import { ALL_AREA_SLUGS, slugToArea } from "@/lib/areaSlug";
-import { prisma, toBhandara } from "@/lib/db";
+import { getAllApprovedBhandaras, toBhandara } from "@/lib/db";
 import { hasUpcomingDate } from "@/lib/dates";
 import {
   breadcrumbSchema,
@@ -57,9 +57,14 @@ export async function generateMetadata({
   // Count bhandaras up front so the title + description can include
   // "5 bhandaras" etc., concrete numbers in SERP snippets always
   // beat abstract ones for CTR.
-  const count = await prisma.bhandara.count({
-    where: { status: "APPROVED", area },
-  });
+  //
+  // Build-time note: every area page hits this function during
+  // `next build`. We MUST use the deduped getAllApprovedBhandaras()
+  // (one query shared across all 36 pages) instead of per-page
+  // prisma.count() calls — otherwise we exhaust Supabase's
+  // connection_limit=1 pooler and the build crashes with P2024.
+  const all = await getAllApprovedBhandaras();
+  const count = all.filter((b) => b.area === area).length;
 
   // SEO-tuned title: "Bada Mangal in <Area>, Lucknow 2026, N bhandaras".
   // Area is position 3, "Bada Mangal" position 1 (the brand + intent
@@ -107,10 +112,13 @@ export default async function AreaPage({ params }: { params: RouteParams }) {
   const area = slugToArea(slug);
   if (!area) notFound();
 
-  const records = await prisma.bhandara.findMany({
-    where: { status: "APPROVED", area },
-    orderBy: [{ isSponsored: "desc" }, { isVerified: "desc" }, { createdAt: "asc" }],
-  });
+  // Same dedup story as generateMetadata above, share ONE findMany
+  // across all 36 area pages during build via the module-level
+  // cache, then filter in memory for this area's slice. The upstream
+  // query already orders by isSponsored / isVerified / createdAt so
+  // the filtered slice keeps that ordering for free.
+  const all = await getAllApprovedBhandaras();
+  const records = all.filter((b) => b.area === area);
   const bhandaras = records.map(toBhandara).filter((b) => hasUpcomingDate(b));
 
   // Pick 2-3 adjacent areas for cross-linking. Trivial heuristic:

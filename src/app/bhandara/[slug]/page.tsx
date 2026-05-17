@@ -2,7 +2,11 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import BhandaraDetailView from "@/components/BhandaraDetailView";
 import { strings } from "@/content/strings";
-import { prisma, toBhandara } from "@/lib/db";
+import {
+  getAllApprovedBhandaras,
+  prisma,
+  toBhandara,
+} from "@/lib/db";
 import {
   bhandaraEventSchema,
   bhandaraLocalBusinessSchema,
@@ -23,10 +27,11 @@ export const revalidate = 300;
 export const dynamicParams = true;
 
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
-  const rows = await prisma.bhandara.findMany({
-    where: { status: "APPROVED" },
-    select: { slug: true },
-  });
+  // Reuse the build-time-deduped query so this call shares a single
+  // findMany with the 36 area pages instead of opening yet another
+  // connection. See lib/db.ts → getAllApprovedBhandaras for the
+  // motivation (the P2024 connection-pool failure on Wave 5).
+  const rows = await getAllApprovedBhandaras();
   return rows.map((r) => ({ slug: r.slug }));
 }
 
@@ -50,7 +55,14 @@ export async function generateMetadata({
   params: RouteParams;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const record = await prisma.bhandara.findUnique({ where: { slug } });
+  // Pull from the build-time cache instead of a fresh findUnique so
+  // 30+ parallel page-metadata generations share ONE query. Falls
+  // back to a direct findUnique only if the slug isn't in the cache
+  // (newly published bhandara hitting on-demand generation).
+  const all = await getAllApprovedBhandaras();
+  const record =
+    all.find((r) => r.slug === slug) ??
+    (await prisma.bhandara.findUnique({ where: { slug } }));
   if (!record) return { title: "Bhandara not found" };
 
   const time = `${format12h(record.timeStart)}${record.timeEnd ? `–${format12h(record.timeEnd)}` : ""}`;
@@ -142,15 +154,21 @@ export default async function BhandaraDetailPage({
 }) {
   const { slug } = await params;
 
-  const record = await prisma.bhandara.findUnique({ where: { slug } });
+  // Single shared findMany serves: this page's own record + the
+  // "others in area" list + the 36 area pages' lists + the
+  // generateStaticParams slug list. One query per build instead of
+  // 70+. Direct findUnique only when an on-demand-generated page
+  // serves a slug that wasn't in the build-time snapshot.
+  const all = await getAllApprovedBhandaras();
+  const record =
+    all.find((r) => r.slug === slug && r.status === "APPROVED") ??
+    (await prisma.bhandara.findUnique({ where: { slug } }));
   if (!record || record.status !== "APPROVED") notFound();
 
   const b = toBhandara(record);
-  const otherRecords = await prisma.bhandara.findMany({
-    where: { status: "APPROVED", area: b.area, NOT: { id: b.id } },
-    take: 3,
-    orderBy: [{ isSponsored: "desc" }, { createdAt: "asc" }],
-  });
+  const otherRecords = all
+    .filter((r) => r.area === b.area && r.id !== b.id)
+    .slice(0, 3);
   const others = otherRecords.map(toBhandara);
 
   // Locale-agnostic strings used in the JSON-LD breadcrumb. We never
