@@ -127,6 +127,33 @@ function FooterInner() {
                 ? "लखनऊ की 400 साल पुरानी बड़ा मंगल परंपरा को जीवित रखते हुए, हर भंडारा, कथा, और आरती, एक ही जगह।"
                 : "Keeping Lucknow's 400-year-old Bada Mangal tradition alive, every bhandara, story, and prayer in one place."}
             </p>
+
+            {/* Social links. Single Instagram tile for now; the row is
+                a `flex gap-2` so adding YouTube / FB / X tomorrow is
+                just another <a> with the same shape. URL is the bare
+                handle, the QR tracking params (`igsh`, `utm_source`)
+                from the original share link are intentionally stripped
+                so a footer click doesn't masquerade as a QR scan in
+                Instagram's analytics. */}
+            <div className="pt-1">
+              <p className="font-mukta uppercase tracking-[0.22em] text-[0.65rem] text-gold-500 font-semibold mb-2">
+                {isHi ? "जुड़ें" : "Follow"}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href="https://www.instagram.com/bada.mangal"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="BadaMangal on Instagram"
+                  data-ga="footer_social"
+                  data-ga-network="instagram"
+                  className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gold-500/45 bg-cream-50 text-sindoor-700 hover:bg-saffron-50 hover:border-saffron-500 hover:text-saffron-600 transition-colors"
+                  title="@bada.mangal on Instagram"
+                >
+                  <IconInstagram />
+                </a>
+              </div>
+            </div>
           </div>
 
           {/* Link columns. Resources gets a 2-cell allocation (because
@@ -223,6 +250,30 @@ function FooterInner() {
         </div>
       </div>
     </footer>
+  );
+}
+
+/** Instagram glyph (square + circular lens + corner dot). 1.7 stroke
+ *  weight matches the rest of the site's outlined-icon language so it
+ *  reads as part of the family when YouTube / FB / X tiles join the
+ *  row later. */
+function IconInstagram() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
   );
 }
 
