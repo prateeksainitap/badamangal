@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { cache } from "react";
 import { prisma, toBhandara } from "@/lib/db";
 import {
   approveAction,
@@ -230,16 +231,10 @@ export default async function AdminPage({
             ✨ Scan &amp; publish
           </a>
           {/* Lead-capture queue for /organise-bhandara submissions.
-              Gold-outline pill keeps it visually distinct from the
-              filled saffron "Scan & publish" primary CTA on its left,
-              and matches the gold tone the AI-pamphlet card uses on
-              the chooser. Same visual family, lower-emphasis surface. */}
-          <a
-            href="/admin/organise"
-            className="inline-flex items-center gap-1.5 rounded-full border border-gold-500/55 text-sindoor-700 hover:bg-gold-500/10 font-medium px-4 py-2 text-sm"
-          >
-            📋 Organise requests
-          </a>
+              Renders its own NEW-count badge so the admin sees fresh
+              leads without clicking through. Shares getAdminTabCounts
+              with ModeToggle so both render off one DB roundtrip. */}
+          <OrganiseRequestsLink />
           <form action={logoutAction}>
             <SubmitButton variant="outline-ink" pendingLabel="Signing out…">
               Sign out
@@ -630,7 +625,74 @@ export default async function AdminPage({
  * The "other" mode is rendered as a link so a single click hops the
  * admin between queues without losing their place.
  */
-function ModeToggle({
+/**
+ * Top-of-queue counts for the three Mode tabs + the Organise link.
+ * React.cache dedupes within a single request, so ModeToggle and
+ * OrganiseRequestsLink can both call this without firing the
+ * underlying COUNT queries twice. 4 quick parallel reads.
+ *
+ *   bhandaraPending — rows awaiting admin moderation (status=PENDING)
+ *   spotLive        — APPROVED spots currently visible (not yet
+ *                     past expiresAt); the actionable Spotted view
+ *   whatsappBot     — bot-ingested PENDING bhandaras specifically
+ *                     (`[bot:` prefix in description). Doesn't
+ *                     include spotted-via-bot rows since those auto-
+ *                     approve on ingest; admin only revisits if a
+ *                     spot needs delisting.
+ *   organiseNew     — fresh leads in /admin/organise (status=NEW)
+ */
+const getAdminTabCounts = cache(async () => {
+  const now = new Date();
+  const [bhandaraPending, spotLive, whatsappBot, organiseNew] =
+    await Promise.all([
+      prisma.bhandara.count({ where: { status: "PENDING" } }),
+      prisma.spot.count({
+        where: { status: "APPROVED", expiresAt: { gt: now } },
+      }),
+      prisma.bhandara.count({
+        where: {
+          status: "PENDING",
+          description: { contains: "[bot:" },
+        },
+      }),
+      prisma.organiseRequest.count({ where: { status: "NEW" } }),
+    ]);
+  return { bhandaraPending, spotLive, whatsappBot, organiseNew };
+});
+
+/**
+ * Small count chip rendered next to a button label. Auto-hides when
+ * the count is 0 so the nav doesn't read as a wall of zeros, and
+ * shows "99+" when crossing three digits to keep the chip width
+ * stable across breakpoints. Variants tint the chip to match its
+ * parent button's tone (saffron/sindoor/gold).
+ */
+function CountBadge({
+  n,
+  tone,
+}: {
+  n: number;
+  tone: "saffron" | "sindoor" | "gold" | "ink";
+}) {
+  if (n <= 0) return null;
+  const display = n > 99 ? "99+" : String(n);
+  const cls = {
+    saffron: "bg-saffron-600 text-cream-50",
+    sindoor: "bg-sindoor-700 text-cream-50",
+    gold: "bg-gold-500 text-cream-50",
+    ink: "bg-ink-900 text-cream-50",
+  }[tone];
+  return (
+    <span
+      className={`ml-1.5 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-[0.65rem] font-numerals font-semibold tabular-nums leading-none ${cls}`}
+      title={`${n} item${n === 1 ? "" : "s"}`}
+    >
+      {display}
+    </span>
+  );
+}
+
+async function ModeToggle({
   current,
 }: {
   current: "bhandara" | "spot" | "whatsapp";
@@ -639,13 +701,20 @@ function ModeToggle({
   // (distinct sindoor styling) because it's a *source*, not a
   // *status*, it holds rows from the WhatsApp ingest pipeline that
   // are awaiting admin review, grouped by their source group.
+  //
+  // Each item now shows a count badge of its actionable items
+  // (PENDING bhandaras, LIVE spots, PENDING bot rows) so the team
+  // sees backlog without having to click each tab. Counts source
+  // from the shared cached getAdminTabCounts() call above.
+  const counts = await getAdminTabCounts();
   const items = [
-    { id: "bhandara", label: "Bhandaras", href: "/admin" },
-    { id: "spot", label: "Spotted", href: "/admin?type=spot" },
+    { id: "bhandara", label: "Bhandaras", href: "/admin", count: counts.bhandaraPending },
+    { id: "spot", label: "Spotted", href: "/admin?type=spot", count: counts.spotLive },
     {
       id: "whatsapp",
       label: "📱 WhatsApp bot",
       href: "/admin?type=whatsapp",
+      count: counts.whatsappBot,
     },
   ] as const;
   return (
@@ -657,7 +726,7 @@ function ModeToggle({
           <a
             key={it.id}
             href={it.href}
-            className={`px-3 py-1 rounded-full transition-colors ${
+            className={`inline-flex items-center px-3 py-1 rounded-full transition-colors ${
               active
                 ? isWa
                   ? "bg-sindoor-700 text-cream-50 shadow-warm"
@@ -666,10 +735,44 @@ function ModeToggle({
             }`}
           >
             {it.label}
+            {/* Badge tone: when the tab is active, use a quiet "ink"
+                chip so it doesn't fight with the filled tab background.
+                When inactive, use the tab's brand tone (saffron for
+                Bhandaras/Spotted, sindoor for WhatsApp). */}
+            <CountBadge
+              n={it.count}
+              tone={
+                active
+                  ? "ink"
+                  : isWa
+                    ? "sindoor"
+                    : "saffron"
+              }
+            />
           </a>
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Header link to /admin/organise with a NEW-count badge. Async so it
+ * can pull the count itself (same cached getAdminTabCounts call as
+ * ModeToggle, so they share one DB roundtrip per request). Renders
+ * the gold-outline pill that visually pairs with the saffron-filled
+ * "Scan & publish" CTA next to it.
+ */
+async function OrganiseRequestsLink() {
+  const counts = await getAdminTabCounts();
+  return (
+    <a
+      href="/admin/organise"
+      className="inline-flex items-center gap-1.5 rounded-full border border-gold-500/55 text-sindoor-700 hover:bg-gold-500/10 font-medium px-4 py-2 text-sm"
+    >
+      📋 Organise requests
+      <CountBadge n={counts.organiseNew} tone="gold" />
+    </a>
   );
 }
 
@@ -786,6 +889,9 @@ async function SpotsView({
             >
               ✨ Scan &amp; publish
             </a>
+            {/* Mirror the BhandarasView header — keep nav consistent
+                across the three top-level admin queues. */}
+            <OrganiseRequestsLink />
             <form action={logoutAction}>
               <button className="text-sm text-ink-600 hover:text-sindoor-700">
                 Sign out
@@ -1173,6 +1279,10 @@ async function WhatsAppBotView({
           <div className="flex items-center gap-3 flex-wrap">
             <ModeToggle current="whatsapp" />
             <BotHeartbeat />
+            {/* Keep Organise queue link in this header too — admin
+                shouldn't lose access to the lead queue when bouncing
+                between mode tabs. Same component everywhere. */}
+            <OrganiseRequestsLink />
             <form action={clearBotQueueAction}>
               <SubmitButton
                 variant="outline-alert"
@@ -1187,8 +1297,6 @@ async function WhatsAppBotView({
                 Sign out
               </SubmitButton>
             </form>
-            {/* The above is the Spots-view logout. WhatsApp-bot view has
-                its own copy inside WhatsAppBotView's header. */}
           </div>
         </header>
 
