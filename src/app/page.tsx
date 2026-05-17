@@ -33,8 +33,8 @@ import VisitorBeacon from "@/components/VisitorBeacon";
 import { MarigoldDivider } from "@/components/ornaments";
 import { prisma, toBhandara } from "@/lib/db";
 import { areaToSlug } from "@/lib/areaSlug";
-import { getHomepageStats } from "@/lib/stats";
 import { hasUpcomingDate } from "@/lib/dates";
+import { getHomepageStats } from "@/lib/stats";
 
 // True ISR, the page no longer reads cookies() or searchParams, so
 // Next can prerender it once and serve cached HTML from the edge.
@@ -143,12 +143,17 @@ export default async function HomePage() {
     }),
   ]);
 
-  // Auto-delist bhandaras whose every service date has passed (IST
-  // calendar boundary). The DB row stays APPROVED so admins still
-  // see it in /admin and historical /bhandara/[slug] links keep
-  // working; only the public map + counters trim to what's still
-  // upcoming. As the calendar advances, rows drop off this list
-  // organically, no cron, no manual flips, no data loss.
+  // Auto-delist bhandaras whose every service date has already passed
+  // (IST calendar). The DB row stays APPROVED so admins still see it
+  // in /admin and historical /bhandara/[slug] permalinks keep
+  // working; only the public main list trims to what's still
+  // upcoming. Past-only rows surface on /archive instead, which is
+  // the explicit "season history" view that filters with the
+  // inverse predicate.
+  //
+  // This is the contract every public surface (map, card grid, area
+  // chips, /api/bhandaras GET, stats panel) MUST share, otherwise
+  // headline counts diverge from the cards / pins below them.
   const listings = records.map(toBhandara).filter((b) => hasUpcomingDate(b));
   const stats = statsRaw;
 
@@ -341,15 +346,12 @@ export default async function HomePage() {
       <HappeningNow initial={liveSpots} />
 
       {/* CARDS, equal-height grid with filters. Locale reads from
-          context inside the component. `totalListed` is the full
-          APPROVED count (35), not the upcoming-only count (8) that
-          `listings.length` would give, so the saffron headline
-          number matches the stats panel. */}
+          context inside the component. The saffron headline number
+          is `listings.length`, ie. the upcoming-only filtered total
+          (matches everything else on the page + the stats panel,
+          past-only bhandaras live exclusively on /archive). */}
       {listings.length > 0 ? (
-        <BhandaraCardsSection
-          listings={listings}
-          totalListed={records.length}
-        />
+        <BhandaraCardsSection listings={listings} />
       ) : (
         <HomeCardsEmpty />
       )}
@@ -362,14 +364,20 @@ export default async function HomePage() {
              queries.
           2. UX: visitors who know their area jump in one tap
              instead of scrolling through the cards.
-          Both the count and the highlighted-chip set use the full
-          APPROVED `records` (not the upcoming-only `listings`), so
-          "areas covered" stays consistent with the stats panel even
-          when most listings have no upcoming dates left. */}
+
+          Both the count and the highlighted-chip set source from
+          `listings` (upcoming-dates-only) rather than `records`
+          (all APPROVED). A highlighted chip is a contract with the
+          visitor: "yes, you can visit a bhandara in this area right
+          now". A past-only bhandara doesn't honour that contract,
+          its area is invisible in the listings below, so the chip
+          must not highlight either. The stats panel keeps the
+          cumulative "Areas covered" view because its frame is
+          "what has the city ever done", a different lens. */}
       <AreaIndexGrid
-        activeAreaCount={new Set(records.map((r) => r.area)).size}
+        activeAreaCount={new Set(listings.map((l) => l.area)).size}
         activeAreaSlugs={
-          new Set(records.map((r) => areaToSlug(r.area)))
+          new Set(listings.map((l) => areaToSlug(l.area)))
         }
       />
 
