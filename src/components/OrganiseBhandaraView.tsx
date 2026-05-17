@@ -14,6 +14,7 @@ import { useLocaleFromContext } from "@/lib/locale-context";
 import FancySelect, { type FancySelectOption } from "@/components/FancySelect";
 import TimeField from "@/components/TimeField";
 import SeasonDatePicker from "@/components/SeasonDatePicker";
+import PhoneInput from "@/components/PhoneInput";
 
 /**
  * /organise-bhandara page body.
@@ -599,16 +600,22 @@ export default function OrganiseBhandaraView() {
               required
               error={fieldErrors.name}
             />
-            <FieldText
-              label={t("Phone (we call back)", "फ़ोन (कॉलबैक)")}
-              value={phone}
-              onChange={setPhone}
-              type="tel"
-              required
-              maxLength={20}
-              error={fieldErrors.phone}
-              hint={t("Indian mobile, 10 digits", "भारतीय मोबाइल, 10 अंक")}
-            />
+            <label className="grid gap-1.5 self-start">
+              <span className="text-sm text-ink-900 font-medium">
+                {t("Phone (we call back)", "फ़ोन (कॉलबैक)")}
+                <span className="text-sindoor-700"> *</span>
+              </span>
+              {/* Shared PhoneInput: +91 prefix locked in visually, 10-digit
+                  cap, numeric keyboard on mobile. Same control everywhere
+                  on the site. */}
+              <PhoneInput
+                value={phone}
+                onChange={setPhone}
+                required
+                error={fieldErrors.phone}
+                hint={t("10-digit Indian mobile", "10-अंकीय भारतीय मोबाइल")}
+              />
+            </label>
             <FieldText
               label={t("Email (optional)", "ईमेल (वैकल्पिक)")}
               value={email}

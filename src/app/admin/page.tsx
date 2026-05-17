@@ -229,6 +229,17 @@ export default async function AdminPage({
           >
             ✨ Scan &amp; publish
           </a>
+          {/* Lead-capture queue for /organise-bhandara submissions.
+              Gold-outline pill keeps it visually distinct from the
+              filled saffron "Scan & publish" primary CTA on its left,
+              and matches the gold tone the AI-pamphlet card uses on
+              the chooser. Same visual family, lower-emphasis surface. */}
+          <a
+            href="/admin/organise"
+            className="inline-flex items-center gap-1.5 rounded-full border border-gold-500/55 text-sindoor-700 hover:bg-gold-500/10 font-medium px-4 py-2 text-sm"
+          >
+            📋 Organise requests
+          </a>
           <form action={logoutAction}>
             <SubmitButton variant="outline-ink" pendingLabel="Signing out…">
               Sign out

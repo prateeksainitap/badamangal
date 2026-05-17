@@ -419,3 +419,91 @@ export async function deleteBhandaraAction(
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
 }
+
+// ────────────────────────────────────────────────────────────────────
+// Organise-Bhandara request moderation actions
+// ────────────────────────────────────────────────────────────────────
+//
+// Lifecycle: NEW → CONTACTED (admin called the lead) →
+// CONFIRMED (lead agreed to a quote/package) →
+// COMPLETED (event happened, services delivered) → end.
+// REJECTED at any point if the lead is junk / not a real request.
+//
+// Same shape as the bhandara row actions (id-bound, formData-second,
+// requireAdmin, revalidate), so the admin queue can use the shared
+// SubmitButton + form-action pattern for all moderation buttons.
+
+const ORG_STATUSES = [
+  "NEW",
+  "CONTACTED",
+  "CONFIRMED",
+  "COMPLETED",
+  "REJECTED",
+] as const;
+type OrganiseStatus = (typeof ORG_STATUSES)[number];
+
+/** Generic status setter. Public-facing actions below bind specific
+ *  statuses so the buttons in /admin/organise stay copy-pastable. */
+async function setOrganiseRequestStatus(
+  id: string,
+  status: OrganiseStatus,
+): Promise<void> {
+  await requireAdmin();
+  await prisma.organiseRequest.update({
+    where: { id },
+    data: { status },
+  });
+  revalidatePath("/admin/organise");
+  revalidatePath("/admin");
+}
+
+export async function markOrganiseRequestContactedAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await setOrganiseRequestStatus(id, "CONTACTED");
+}
+
+export async function markOrganiseRequestConfirmedAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await setOrganiseRequestStatus(id, "CONFIRMED");
+}
+
+export async function markOrganiseRequestCompletedAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await setOrganiseRequestStatus(id, "COMPLETED");
+}
+
+export async function markOrganiseRequestRejectedAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await setOrganiseRequestStatus(id, "REJECTED");
+}
+
+export async function markOrganiseRequestNewAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  // Reopen a previously-closed request (e.g. lead called back after a
+  // rejection). Useful when the team accidentally rejects the wrong row.
+  await setOrganiseRequestStatus(id, "NEW");
+}
+
+/**
+ * Hard-delete an OrganiseRequest. Use only for spam / duplicates;
+ * for legitimate "lead didn't pan out" use markOrganiseRequestRejected
+ * which keeps the audit trail.
+ */
+export async function deleteOrganiseRequestAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await requireAdmin();
+  await prisma.organiseRequest.delete({ where: { id } });
+  revalidatePath("/admin/organise");
+}

@@ -23,6 +23,7 @@ import { editAndPublishAction } from "@/app/admin/actions";
 import { stripBotProvenance } from "@/lib/sanitize";
 import MapLocationInput from "@/components/admin/MapLocationInput";
 import SubmitButton from "@/components/admin/SubmitButton";
+import PhoneInput from "@/components/PhoneInput";
 
 export const dynamic = "force-dynamic";
 const COOKIE = "admin";
@@ -212,21 +213,21 @@ export default async function AdminEditPage({ params }: PageProps) {
               bot-ingested rows often have a blank or junk phone field
               because Gemini couldn't parse a number off the poster, and
               forcing the admin to invent one just to publish blocks
-              the queue. The 10-digit cap matches the Indian mobile
-              format; pattern + inputMode give us numeric-keyboard UX
-              and a soft validation prompt without the friction of
-              required. Server-side, actions.ts trusts whatever lands
-              here; admin is the only writer of this form. */}
-          <Pair
-            label="Organizer phone"
-            name="organizerPhone"
-            type="tel"
-            defaultValue={b.organizerPhone}
-            maxLength={10}
-            pattern="\d{10}"
-            inputMode="numeric"
-            hint="10-digit mobile number. Optional."
-          />
+              the queue. Shared PhoneInput component renders the +91
+              chip + caps at 10 digits, identical to public forms. The
+              component runs in uncontrolled mode here (defaultValue
+              only, no value/onChange) because the parent <form
+              action={...}> reads via FormData on the server action;
+              the inner <input name="organizerPhone"> wires straight
+              into editAndPublishAction. */}
+          <label className="grid gap-1.5">
+            <span className="text-sm text-ink-600">Organizer phone</span>
+            <PhoneInput
+              name="organizerPhone"
+              defaultValue={b.organizerPhone}
+              hint="10-digit mobile number. Optional."
+            />
+          </label>
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <Pair

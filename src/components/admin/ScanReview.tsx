@@ -19,6 +19,7 @@
 import { useMemo, useRef, useState } from "react";
 import SeasonDatePicker from "@/components/SeasonDatePicker";
 import MapPasteResolver from "@/components/admin/MapPasteResolver";
+import PhoneInput from "@/components/PhoneInput";
 import { trackEvent } from "@/lib/ga";
 
 // ── Client-side image compression ────────────────────────────────────
@@ -783,19 +784,32 @@ function BhandaraReviewForm({
             onChange={setOrganizerName}
             required
           />
-          <Field
-            label="Organizer phone"
-            value={organizerPhone}
-            onChange={setOrganizerPhone}
-            required
-            mono
-          />
-          <Field
-            label="Organizer WhatsApp (optional)"
-            value={organizerWhatsapp}
-            onChange={setOrganizerWhatsapp}
-            mono
-          />
+          {/* Shared PhoneInput — locked +91 prefix + 10-digit cap.
+              Same control used on public + admin/edit forms so admins
+              and organisers share one mental model. */}
+          <label className="block">
+            <span className="text-[11px] uppercase tracking-wider text-ink-600">
+              Organizer phone *
+            </span>
+            <div className="mt-1">
+              <PhoneInput
+                value={organizerPhone}
+                onChange={setOrganizerPhone}
+                required
+              />
+            </div>
+          </label>
+          <label className="block">
+            <span className="text-[11px] uppercase tracking-wider text-ink-600">
+              Organizer WhatsApp (optional)
+            </span>
+            <div className="mt-1">
+              <PhoneInput
+                value={organizerWhatsapp}
+                onChange={setOrganizerWhatsapp}
+              />
+            </div>
+          </label>
           <Field
             label="UPI ID for sponsorship (optional)"
             value={upiId}

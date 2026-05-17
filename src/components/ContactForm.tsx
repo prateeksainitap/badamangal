@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { trackEvent } from "@/lib/ga";
 import { IMAGE_OR_PDF_ACCEPT, validateAttachment } from "@/lib/fileValidate";
 import { useLocaleFromContext } from "@/lib/locale-context";
+import PhoneInput from "@/components/PhoneInput";
 
 type Stage = "compose" | "submitting" | "done" | "error";
 
@@ -330,16 +331,15 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
           required
           error={errors.phone}
         >
-          <input
+          {/* Shared PhoneInput — locks +91 prefix, caps at 10 digits.
+              Same control admin + organise + bhandara forms use. */}
+          <PhoneInput
             id="contact-phone"
-            type="tel"
-            inputMode="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            autoComplete="tel"
-            maxLength={20}
+            onChange={setPhone}
             required
-            className={inputCls(!!errors.phone)}
+            error={errors.phone}
+            autoComplete="tel"
           />
         </Field>
         <Field

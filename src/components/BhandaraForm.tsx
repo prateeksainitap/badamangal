@@ -12,6 +12,7 @@ import type { PinValue } from "@/components/PinDropStep";
 import { useT } from "@/lib/useT";
 import FancySelect from "@/components/FancySelect";
 import TimeField from "@/components/TimeField";
+import PhoneInput from "@/components/PhoneInput";
 
 // Dynamic-import the heavy sub-components so the form's first paint
 // doesn't have to wait for them.
@@ -1146,28 +1147,15 @@ function Step5({ state, errors, setField }: StepProps) {
               : undefined)
           }
         >
-          <div className="flex flex-1 items-stretch rounded-xl border bg-white overflow-hidden focus-within:ring-2 focus-within:ring-saffron-600 focus-within:border-saffron-600 border-gold-500/50">
-            <span className="inline-flex items-center justify-center px-3 text-ink-600 text-base font-medium border-r border-gold-500/40 bg-saffron-50/40 select-none">
-              +91
-            </span>
-            <input
-              required
-              type="tel"
-              inputMode="numeric"
-              autoComplete="tel-national"
-              pattern="[0-9]{10}"
-              maxLength={10}
-              className="flex-1 bg-transparent px-3 py-2 text-ink-900 placeholder:text-ink-600/60 focus:outline-none font-numerals tabular-nums tracking-wide"
-              // State stores only the raw 10 digits, `+91` is a visual
-              // prefix in the chip on the left, never baked into state.
-              value={state.organizerPhone}
-              onChange={(e) => {
-                const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
-                setField("organizerPhone", digits);
-              }}
-              placeholder="98765 43210"
-            />
-          </div>
+          {/* Shared PhoneInput — same +91 chip + 10-digit cap that the
+              admin / contact / organise forms now use. State still
+              stores the canonical 10-digit form, downstream
+              isValidIndianMobile() check is unchanged. */}
+          <PhoneInput
+            value={state.organizerPhone}
+            onChange={(digits) => setField("organizerPhone", digits)}
+            required
+          />
         </Field>
 
       </div>
