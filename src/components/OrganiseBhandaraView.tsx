@@ -175,6 +175,14 @@ export default function OrganiseBhandaraView() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [area, setArea] = useState("");
+  // "Custom area" mode: organisers in neighbourhoods we haven't curated
+  // (smaller localities, new colonies, areas outside the curated 36)
+  // can type their own name. Picking the "Other (type your own)"
+  // sentinel option flips this on; a small "← Pick from list" link
+  // flips it back. Same pattern admin /scan + BhandaraForm use, so
+  // the area picker behaves identically across every submission
+  // surface on the site.
+  const [customAreaMode, setCustomAreaMode] = useState(false);
   const [addressNotes, setAddressNotes] = useState("");
   // Multi-date: the preset chips toggle in/out of this array, and the
   // shared SeasonDatePicker appends any custom date the organiser
@@ -208,13 +216,18 @@ export default function OrganiseBhandaraView() {
   const formRef = useRef<HTMLFormElement | null>(null);
 
   // Area dropdown options for the shared FancySelect. Memoised so the
-  // 36-item array isn't rebuilt on every keystroke; recomputes only
-  // when locale flips (Hindi labels not used here today, kept on the
-  // dep list so a future bilingual override is one prop away).
+  // 38-item array isn't rebuilt on every keystroke; recomputes only
+  // when locale flips. Last entry is the "Other (type your own)"
+  // sentinel — picking it flips customAreaMode on and the dropdown
+  // swaps to a free-text input.
   const areaOptions: FancySelectOption[] = useMemo(
     () => [
       { value: "", label: t("Select an area", "क्षेत्र चुनें") },
       ...AREAS.map((a) => ({ value: a, label: a })),
+      {
+        value: "__custom__",
+        label: t("Other (type your own)…", "अन्य (अपना लिखें)…"),
+      },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isHi],
@@ -624,16 +637,57 @@ export default function OrganiseBhandaraView() {
               <span className="text-sm text-ink-900 font-medium">
                 {t("Area in Lucknow", "लखनऊ में क्षेत्र")}
               </span>
-              <FancySelect
-                ariaLabel={t("Area in Lucknow", "लखनऊ में क्षेत्र")}
-                value={area}
-                onChange={setArea}
-                options={areaOptions}
-                variant="input"
-                size="md"
-                searchable
-                searchPlaceholder={t("Search areas…", "क्षेत्र खोजें…")}
-              />
+              {customAreaMode ? (
+                // Free-text mode: typed by organisers in areas not in
+                // the curated 36-list (smaller localities, new
+                // colonies). The "← Pick from list" link below flips
+                // back to the dropdown without losing form state.
+                <div className="grid gap-1.5">
+                  <input
+                    type="text"
+                    value={area}
+                    onChange={(e) => setArea(e.target.value)}
+                    placeholder={t(
+                      "Type your area name",
+                      "अपना क्षेत्र लिखें",
+                    )}
+                    maxLength={50}
+                    autoFocus
+                    className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setArea("");
+                      setCustomAreaMode(false);
+                    }}
+                    className="self-start text-xs underline decoration-dotted underline-offset-4 text-ink-600 hover:text-sindoor-700"
+                  >
+                    {t("← Pick from list", "← सूची से चुनें")}
+                  </button>
+                </div>
+              ) : (
+                <FancySelect
+                  ariaLabel={t("Area in Lucknow", "लखनऊ में क्षेत्र")}
+                  value={area}
+                  onChange={(v) => {
+                    // Sentinel handoff to free-text mode. Clear the
+                    // value first so the input renders empty + focused
+                    // rather than carrying "__custom__" as text.
+                    if (v === "__custom__") {
+                      setArea("");
+                      setCustomAreaMode(true);
+                      return;
+                    }
+                    setArea(v);
+                  }}
+                  options={areaOptions}
+                  variant="input"
+                  size="md"
+                  searchable
+                  searchPlaceholder={t("Search areas…", "क्षेत्र खोजें…")}
+                />
+              )}
             </label>
             <FieldText
               label={t("Venue / landmark", "स्थान / लैंडमार्क")}
