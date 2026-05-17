@@ -2,12 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AREAS } from "@/lib/lucknow";
-import { ALL_SEASON_ISO } from "@/lib/dates";
+import {
+  ALL_TUESDAY_ISO,
+  ALL_SATURDAY_ISO,
+  SEASON_END_ISO,
+  SEASON_START_ISO,
+} from "@/lib/dates";
 import { JaliCorner, MarigoldDivider } from "@/components/ornaments";
 import { trackEvent } from "@/lib/ga";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import FancySelect, { type FancySelectOption } from "@/components/FancySelect";
 import TimeField from "@/components/TimeField";
+import SeasonDatePicker from "@/components/SeasonDatePicker";
 
 /**
  * /organise-bhandara page body.
@@ -170,7 +176,10 @@ export default function OrganiseBhandaraView() {
   const [email, setEmail] = useState("");
   const [area, setArea] = useState("");
   const [addressNotes, setAddressNotes] = useState("");
-  const [eventDate, setEventDate] = useState("");
+  // Multi-date: the preset chips toggle in/out of this array, and the
+  // shared SeasonDatePicker appends any custom date the organiser
+  // picks. Sorted on save so the email body reads chronologically.
+  const [eventDates, setEventDates] = useState<string[]>([]);
   const [eventTime, setEventTime] = useState("11:00");
   const [quantityType, setQuantityType] = useState<QuantityType>("PLATES");
   const [quantityValue, setQuantityValue] = useState<string>("500");
@@ -198,12 +207,10 @@ export default function OrganiseBhandaraView() {
 
   const formRef = useRef<HTMLFormElement | null>(null);
 
-  // Build the area + date dropdown option arrays in one memo per list.
-  // Recomputed only when locale flips (the Hindi labels for the
-  // weekday prefix change), not on every keystroke in the rest of
-  // the form. Both feed the shared <FancySelect variant="input" />
-  // so the dropdowns match the rest of the site's selects (homepage
-  // filters, BhandaraForm) instead of the native OS dropdown.
+  // Area dropdown options for the shared FancySelect. Memoised so the
+  // 36-item array isn't rebuilt on every keystroke; recomputes only
+  // when locale flips (Hindi labels not used here today, kept on the
+  // dep list so a future bilingual override is one prop away).
   const areaOptions: FancySelectOption[] = useMemo(
     () => [
       { value: "", label: t("Select an area", "क्षेत्र चुनें") },
@@ -212,17 +219,41 @@ export default function OrganiseBhandaraView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isHi],
   );
-  const dateOptions: FancySelectOption[] = useMemo(
-    () => [
-      { value: "", label: t("Pick a Tuesday / Saturday", "मंगल / शनि चुनें") },
-      ...ALL_SEASON_ISO.map((iso) => ({
-        value: iso,
-        label: formatIsoForOption(iso, isHi),
-      })),
-    ],
+
+  // Date preset chips — Bada Mangal Tuesdays + Bade Shanivars from
+  // the season list. We slice off dates already past (IST) so the
+  // organiser never picks a chip that's invalid, plus the custom
+  // picker below is bounded to today→season-end.
+  const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  const todayIso = ist.toISOString().slice(0, 10);
+  const minIso = todayIso > SEASON_START_ISO ? todayIso : SEASON_START_ISO;
+  const presetTuesdays = ALL_TUESDAY_ISO.filter((d) => d >= todayIso);
+  const presetSaturdays = ALL_SATURDAY_ISO.filter((d) => d >= todayIso);
+  const presetSet = useMemo(
+    () => new Set<string>([...presetTuesdays, ...presetSaturdays]),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isHi],
+    [todayIso],
   );
+  const customDates = useMemo(
+    () => eventDates.filter((d) => !presetSet.has(d)).sort(),
+    [eventDates, presetSet],
+  );
+
+  const toggleDate = (iso: string): void => {
+    setEventDates((prev) =>
+      prev.includes(iso) ? prev.filter((d) => d !== iso) : [...prev, iso].sort(),
+    );
+  };
+  const addCustomDate = (iso: string): void => {
+    if (!iso) return;
+    if (iso < SEASON_START_ISO || iso > SEASON_END_ISO) return;
+    setEventDates((prev) =>
+      prev.includes(iso) ? prev : [...prev, iso].sort(),
+    );
+  };
+  const removeDate = (iso: string): void => {
+    setEventDates((prev) => prev.filter((d) => d !== iso));
+  };
 
   function pickPackage(p: PackageDef) {
     setTier(p.id);
@@ -246,7 +277,7 @@ export default function OrganiseBhandaraView() {
     trackEvent("organise_submit_attempt", {
       tier,
       quantity_type: quantityType,
-      has_date: eventDate ? 1 : 0,
+      date_count: eventDates.length,
       source,
     });
 
@@ -260,7 +291,7 @@ export default function OrganiseBhandaraView() {
           email,
           area,
           addressNotes,
-          eventDate,
+          eventDates,
           eventTime,
           quantityType,
           quantityValue: Number(quantityValue),
@@ -476,11 +507,26 @@ export default function OrganiseBhandaraView() {
           </p>
         </header>
 
+        {/* The whole form sits inside a card now (was bare on the
+            page background, which made it read as a "loose collection
+            of inputs" instead of a single submittable thing). Warm
+            gradient + saffron border + jali corners mirror the
+            chooser cards' visual language, so the form feels like
+            the destination card of the same family. */}
         <form
           ref={formRef}
           onSubmit={onSubmit}
-          className="mt-8 grid gap-4 sm:gap-5"
+          className="relative mt-8 overflow-hidden rounded-3xl border border-saffron-500/45 p-6 sm:p-9 shadow-warm"
+          style={{
+            background:
+              "radial-gradient(700px 360px at 18% 0%, rgba(242,148,76,0.13), transparent 65%), radial-gradient(700px 360px at 82% 100%, rgba(201,162,74,0.14), transparent 65%), linear-gradient(180deg, #FFF7EB 0%, #FBF7F0 100%)",
+          }}
         >
+          <JaliCorner position="tl" className="absolute top-3 left-3 w-8 h-8 text-gold-500/55" />
+          <JaliCorner position="tr" className="absolute top-3 right-3 w-8 h-8 text-gold-500/55" />
+          <JaliCorner position="bl" className="absolute bottom-3 left-3 w-8 h-8 text-gold-500/55" />
+          <JaliCorner position="br" className="absolute bottom-3 right-3 w-8 h-8 text-gold-500/55" />
+
           {/* Honeypot. Real users leave it blank; bots fill every input. */}
           <label
             aria-hidden
@@ -496,12 +542,15 @@ export default function OrganiseBhandaraView() {
             />
           </label>
 
-          {/* Package tier as a quick chip row inside the form — lets the
-              user switch tier without scrolling back up to the cards. */}
+          {/* ── Package tier chip row ─────────────────────────────── */}
           <fieldset className="grid gap-2">
-            <legend className="text-xs uppercase tracking-wider text-ink-600 mb-1">
-              {t("Package", "पैकेज")}
-            </legend>
+            <SectionLabel
+              title={t("Package", "पैकेज")}
+              hint={t(
+                "Switch tier anytime, the request body adjusts.",
+                "अभी भी बदल सकते हैं, अनुरोध उसी के अनुसार बनेगा।",
+              )}
+            />
             <div className="flex flex-wrap gap-2">
               {PACKAGES.map((p) => (
                 <TierChip
@@ -519,7 +568,17 @@ export default function OrganiseBhandaraView() {
             </div>
           </fieldset>
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <SectionDivider />
+
+          {/* ── Your contact ─────────────────────────────────────── */}
+          <SectionHeading
+            kicker={t("Your contact", "आपका संपर्क")}
+            body={t(
+              "We call back on this number within a working day.",
+              "हम इसी नंबर पर एक कामकाजी दिन में कॉल करते हैं।",
+            )}
+          />
+          <div className="mt-4 grid sm:grid-cols-2 gap-4 sm:gap-5">
             <FieldText
               label={t("Your name", "आपका नाम")}
               value={name}
@@ -537,31 +596,34 @@ export default function OrganiseBhandaraView() {
               error={fieldErrors.phone}
               hint={t("Indian mobile, 10 digits", "भारतीय मोबाइल, 10 अंक")}
             />
+            <FieldText
+              label={t("Email (optional)", "ईमेल (वैकल्पिक)")}
+              value={email}
+              onChange={setEmail}
+              type="email"
+              error={fieldErrors.email}
+              hint={t(
+                "Used only to email you the quote",
+                "केवल क़ीमत ईमेल करने के लिए",
+              )}
+            />
           </div>
 
-          <FieldText
-            label={t("Email (optional)", "ईमेल (वैकल्पिक)")}
-            value={email}
-            onChange={setEmail}
-            type="email"
-            error={fieldErrors.email}
-            hint={t(
-              "Used only to email you the quote",
-              "केवल क़ीमत ईमेल करने के लिए",
+          <SectionDivider />
+
+          {/* ── Where + when ────────────────────────────────────── */}
+          <SectionHeading
+            kicker={t("Where + when", "कहाँ और कब")}
+            body={t(
+              "Pick one or many dates. Skip the date if you haven't fixed it yet.",
+              "एक या कई तारीख़ें चुनें। अगर अभी तय नहीं की तो छोड़ दें।",
             )}
           />
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            <label className="grid gap-1.5">
+          <div className="mt-4 grid sm:grid-cols-2 gap-4 sm:gap-5">
+            <label className="grid gap-1.5 self-start">
               <span className="text-sm text-ink-900 font-medium">
                 {t("Area in Lucknow", "लखनऊ में क्षेत्र")}
               </span>
-              {/* FancySelect (input variant) so this dropdown matches
-                  every other select on the site, BhandaraForm's
-                  area picker, homepage filters, etc. The shared
-                  component handles the search field automatically
-                  once there are 8+ options (36 areas here, so it
-                  always shows the search). */}
               <FancySelect
                 ariaLabel={t("Area in Lucknow", "लखनऊ में क्षेत्र")}
                 value={area}
@@ -585,35 +647,119 @@ export default function OrganiseBhandaraView() {
             />
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <label className="grid gap-1.5">
-              <span className="text-sm text-ink-900 font-medium">
-                {t("Date", "तारीख़")}
+          {/* Multi-date chips (Bada Mangal Tuesdays + Bade Shanivars
+              from ALL_TUESDAY_ISO / ALL_SATURDAY_ISO, past dates
+              dropped). Same chip pattern BhandaraForm uses on its
+              dates step, kept here so organisers used to the listing
+              flow recognise it immediately. Below the presets, a
+              shared SeasonDatePicker lets them add any other date
+              inside the season window. */}
+          <div className="mt-5 grid gap-3">
+            <span className="text-sm text-ink-900 font-medium">
+              {t("Pick service dates", "तारीख़ें चुनें")}
+              <span className="ml-1.5 text-xs font-normal text-ink-600">
+                {t("(multi-select)", "(कई चुन सकते हैं)")}
               </span>
-              {/* Season dates dropdown (Tuesdays + Bade Shanivars from
-                  ALL_SEASON_ISO). Shared FancySelect so the panel + chips
-                  look identical to the homepage's date filter. */}
-              <FancySelect
-                ariaLabel={t("Pick a date", "तारीख़ चुनें")}
-                value={eventDate}
-                onChange={setEventDate}
-                options={dateOptions}
-                variant="input"
-                size="md"
-              />
-              {fieldErrors.eventDate ? (
-                <span className="text-xs text-alert-500">
-                  {fieldErrors.eventDate}
+            </span>
+
+            {presetTuesdays.length > 0 ? (
+              <div>
+                <p className="font-mukta uppercase tracking-[0.22em] text-[0.65rem] text-gold-500 font-semibold mb-2">
+                  {t("Bada Mangal Tuesdays", "बड़े मंगल")}
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {presetTuesdays.map((iso) => (
+                    <DateChip
+                      key={iso}
+                      iso={iso}
+                      weekday="Tue"
+                      weekdayHi="मंगल"
+                      checked={eventDates.includes(iso)}
+                      onToggle={() => toggleDate(iso)}
+                      isHi={isHi}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {presetSaturdays.length > 0 ? (
+              <div>
+                <p className="font-mukta uppercase tracking-[0.22em] text-[0.65rem] text-gold-500 font-semibold mb-2">
+                  {t("Bade Shanivar Saturdays", "बड़े शनिवार")}
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {presetSaturdays.map((iso) => (
+                    <DateChip
+                      key={iso}
+                      iso={iso}
+                      weekday="Sat"
+                      weekdayHi="शनि"
+                      checked={eventDates.includes(iso)}
+                      onToggle={() => toggleDate(iso)}
+                      isHi={isHi}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Custom date — any day in the season window. */}
+            <div className="rounded-2xl border border-gold-500/40 bg-cream-50 px-4 py-3">
+              <p className="font-mukta uppercase tracking-[0.22em] text-[0.65rem] text-gold-500 font-semibold">
+                {t("Custom date", "कोई और दिन")}
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <SeasonDatePicker
+                  minIso={minIso}
+                  maxIso={SEASON_END_ISO}
+                  selectedIsos={eventDates}
+                  onPick={addCustomDate}
+                  locale={isHi ? "hi" : "en"}
+                />
+                <span className="text-xs text-ink-600 font-numerals tabular-nums">
+                  {SEASON_START_ISO} – {SEASON_END_ISO}
                 </span>
+              </div>
+              {customDates.length > 0 ? (
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {customDates.map((iso) => (
+                    <li key={iso}>
+                      <button
+                        type="button"
+                        onClick={() => removeDate(iso)}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-saffron-50 border border-saffron-500/60 text-sindoor-700 px-2.5 py-1 text-xs font-semibold hover:bg-saffron-100"
+                        title={t("Remove", "हटाएँ")}
+                      >
+                        {formatIsoShort(iso, isHi)}
+                        <span aria-hidden>×</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               ) : null}
-            </label>
-            <label className="grid gap-1.5">
+            </div>
+
+            {eventDates.length > 0 ? (
+              <p className="text-xs text-ink-600">
+                {isHi
+                  ? `${eventDates.length} तारीख़${eventDates.length === 1 ? "" : "ें"} चुनी गईं।`
+                  : `${eventDates.length} date${eventDates.length === 1 ? "" : "s"} selected.`}
+              </p>
+            ) : null}
+            {fieldErrors.eventDates ? (
+              <span className="text-xs text-alert-500">
+                {fieldErrors.eventDates}
+              </span>
+            ) : null}
+          </div>
+
+          {/* Time on its own row so the picker popover has room. */}
+          <div className="mt-4 grid sm:grid-cols-2 gap-4 sm:gap-5">
+            <label className="grid gap-1.5 self-start">
               <span className="text-sm text-ink-900 font-medium">
                 {t("Time", "समय")}
               </span>
-              {/* Shared TimeField: 12-hour popover with hour / minute /
-                  AM-PM columns. Same picker BhandaraForm uses for
-                  Start / End time, no native OS time wheel here. */}
               <TimeField
                 ariaLabel={t("Pick a time", "समय चुनें")}
                 value={eventTime}
@@ -627,12 +773,17 @@ export default function OrganiseBhandaraView() {
             </label>
           </div>
 
-          {/* Size: plates OR kg of wheat. Two-button toggle so the
-              unit is obvious, then a single numeric input. */}
-          <fieldset className="grid gap-2">
-            <legend className="text-sm text-ink-900 font-medium mb-1">
-              {t("How big?", "कितना बड़ा?")}
-            </legend>
+          <SectionDivider />
+
+          {/* ── Size + notes ─────────────────────────────────────── */}
+          <SectionHeading
+            kicker={t("How big?", "कितना बड़ा?")}
+            body={t(
+              "Rough estimate is fine, we'll refine on the call.",
+              "अंदाज़ा भी चलेगा, कॉल पर पक्का कर लेंगे।",
+            )}
+          />
+          <fieldset className="mt-4 grid gap-3">
             <div className="flex gap-2">
               <TierChip
                 label={t("Plates", "थाली")}
@@ -666,38 +817,34 @@ export default function OrganiseBhandaraView() {
                 {fieldErrors.quantityValue}
               </span>
             ) : null}
-            <p className="text-xs text-ink-600">
-              {t(
-                "Rough estimate is fine, we'll refine it on the call.",
-                "अंदाज़ा भी चलेगा, कॉल पर बात करके पक्का करेंगे।",
-              )}
-            </p>
           </fieldset>
 
-          <label className="grid gap-1.5">
-            <span className="text-sm text-ink-900 font-medium">
-              {t("Anything else?", "और कुछ बताना है?")}
-            </span>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={4}
-              maxLength={2000}
-              placeholder={t(
-                "e.g. sound system for kirtan, separate veg / non-prasad section, parking constraints…",
-                "जैसे, कीर्तन के लिए साउंड, अलग प्रसाद-शाकाहारी कक्ष, पार्किंग…",
-              )}
-              className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
-            />
-          </label>
+          <div className="mt-5">
+            <label className="grid gap-1.5">
+              <span className="text-sm text-ink-900 font-medium">
+                {t("Anything else?", "और कुछ बताना है?")}
+              </span>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={4}
+                maxLength={2000}
+                placeholder={t(
+                  "e.g. sound system for kirtan, separate veg / non-prasad section, parking constraints…",
+                  "जैसे, कीर्तन के लिए साउंड, अलग प्रसाद-शाकाहारी कक्ष, पार्किंग…",
+                )}
+                className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+              />
+            </label>
+          </div>
 
           {formError ? (
-            <div className="rounded-xl border border-alert-500/45 bg-cream-50 p-3 text-sm text-alert-500">
+            <div className="mt-5 rounded-xl border border-alert-500/45 bg-cream-50 p-3 text-sm text-alert-500">
               {formError}
             </div>
           ) : null}
 
-          <div className="flex flex-wrap items-center gap-3 mt-2">
+          <div className="mt-7 flex flex-wrap items-center gap-3">
             <button
               type="submit"
               disabled={submitting}
@@ -745,7 +892,125 @@ function formatIsoForOption(iso: string, isHi: boolean): string {
   return `${dowLabel} · ${d} ${months[m - 1]} ${y}`;
 }
 
+/** Short ISO → "19 May" (or Hindi equivalent) for custom-date pill chips. */
+function formatIsoShort(iso: string, isHi: boolean): string {
+  const [, m, d] = iso.split("-").map(Number);
+  if (!m || !d) return iso;
+  const months = isHi
+    ? ["जन", "फ़र", "मार्च", "अप्रैल", "मई", "जून", "जुल", "अग", "सित", "अक्ट", "नव", "दिस"]
+    : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${d} ${months[m - 1]}`;
+}
+
 /* ────────── Sub-components ────────── */
+
+/** Section heading inside the form card. Saffron uppercase kicker
+ *  + serif heading + optional body line. Used to break the form into
+ *  scannable groups (Contact, Where + when, How big, etc.). */
+function SectionHeading({
+  kicker,
+  body,
+}: {
+  kicker: string;
+  body?: string;
+}) {
+  return (
+    <header>
+      <p className="font-mukta uppercase tracking-[0.24em] text-[0.65rem] text-saffron-600 font-semibold">
+        {kicker}
+      </p>
+      {body ? (
+        <p className="mt-1 text-xs text-ink-600">{body}</p>
+      ) : null}
+    </header>
+  );
+}
+
+/** Compact section label for tighter rows like the package chip
+ *  selector. Kicker + inline hint, no body line break. */
+function SectionLabel({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <span className="flex flex-wrap items-baseline gap-x-2 mb-1">
+      <span className="font-mukta uppercase tracking-[0.24em] text-[0.65rem] text-saffron-600 font-semibold">
+        {title}
+      </span>
+      {hint ? (
+        <span className="text-xs text-ink-600 normal-case tracking-normal">
+          {hint}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** Faint gold rule between form sections so the card reads as
+ *  grouped blocks instead of one long stack. */
+function SectionDivider() {
+  return (
+    <div
+      aria-hidden
+      className="my-6 sm:my-7 h-px bg-gradient-to-r from-transparent via-gold-500/45 to-transparent"
+    />
+  );
+}
+
+/** Single tappable date chip for the multi-select preset grid. Mirrors
+ *  BhandaraForm's DateChip but flatter (no Devanagari label stack)
+ *  because the Organise form is single-line per chip. */
+function DateChip({
+  iso,
+  weekday,
+  weekdayHi,
+  checked,
+  onToggle,
+  isHi,
+}: {
+  iso: string;
+  weekday: "Tue" | "Sat";
+  weekdayHi: string;
+  checked: boolean;
+  onToggle: () => void;
+  isHi: boolean;
+}) {
+  const [y, m, d] = iso.split("-").map(Number);
+  const monthsEn = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const monthsHi = ["जन","फ़र","मार्च","अप्रैल","मई","जून","जुल","अग","सित","अक्ट","नव","दिस"];
+  const label =
+    y && m && d
+      ? `${isHi ? weekdayHi : weekday} · ${d} ${(isHi ? monthsHi : monthsEn)[m - 1]}`
+      : iso;
+  return (
+    <label
+      className={`relative flex items-center justify-between gap-2 rounded-xl border px-3 py-2 cursor-pointer select-none transition-colors text-sm ${
+        checked
+          ? "bg-saffron-50 border-saffron-600 text-sindoor-700"
+          : "bg-white border-gold-500/40 text-ink-900 hover:border-saffron-500"
+      }`}
+      title={iso}
+    >
+      <input
+        type="checkbox"
+        className="sr-only"
+        checked={checked}
+        onChange={onToggle}
+      />
+      <span className="font-medium tabular-nums">{label}</span>
+      <span
+        aria-hidden
+        className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full border transition-colors ${
+          checked
+            ? "bg-saffron-600 border-saffron-600 text-cream-50"
+            : "bg-cream-50 border-gold-500/55 text-transparent"
+        }`}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M5 13l4 4L19 7" />
+        </svg>
+      </span>
+    </label>
+  );
+}
 
 function Step({ n, title, body }: { n: number; title: string; body: string }) {
   return (
@@ -866,7 +1131,13 @@ function FieldText({
   hint?: string;
 }) {
   return (
-    <label className="grid gap-1.5">
+    // `self-start` keeps each field anchored to the TOP of its grid
+    // row, so a field WITH a hint doesn't push its sibling WITHOUT
+    // one down by half a line. This is the alignment bug visible in
+    // the earlier screenshot, "Phone" had a hint below it, "Your
+    // name" didn't, and the row's natural stretch pulled the inputs
+    // to different vertical positions.
+    <label className="grid gap-1.5 self-start">
       <span className="text-sm text-ink-900 font-medium">
         {label}
         {required ? <span className="text-sindoor-700"> *</span> : null}

@@ -179,8 +179,14 @@ model OrganiseRequest {
   // event
   area           String? // Lucknow neighbourhood (free-form)
   addressNotes   String? // landmark / venue / extra location detail
-  eventDate      String? // YYYY-MM-DD; nullable because organisers
-  //                       sometimes ask before they've fixed a date
+  // JSON-encoded array of ISO YYYY-MM-DD strings. Nullable because
+  // organisers sometimes ask before they've fixed any dates; the
+  // form supports both the preset season chips (Bada Mangal Tuesdays
+  // + Bade Shanivars) and any custom date inside the season window
+  // via the shared SeasonDatePicker. Stored as JSON-in-string for
+  // parity with Bhandara.tuesdayDates so the same safeJsonArray
+  // reader can decode it.
+  eventDates     String? // JSON string[] of ISO dates, e.g. ["2026-05-19","2026-05-26"]
   eventTime      String? // HH:MM
   // size
   quantityType   String // "PLATES" | "WHEAT_KG"

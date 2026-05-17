@@ -187,7 +187,10 @@ export type OrganiseRequestEmailInput = {
   email?: string;
   area?: string;
   addressNotes?: string;
-  eventDate?: string;
+  /** Array of YYYY-MM-DD ISO dates. Empty array → "Date TBD" in the
+   *  body. Multi-date because organisers commonly want to run the
+   *  same bhandara on every Tuesday of the season. */
+  eventDates: string[];
   eventTime?: string;
   /** "PLATES" | "WHEAT_KG" */
   quantityType: string;
@@ -229,10 +232,23 @@ export async function sendOrganiseRequestEmail(
     input.packageTier === "CUSTOM"
       ? "Custom request"
       : `${input.packageTier.charAt(0)}${input.packageTier.slice(1).toLowerCase()} package`;
-  const eventWhen =
-    input.eventDate && input.eventTime
-      ? `${input.eventDate} · ${input.eventTime}`
-      : input.eventDate || input.eventTime || "Date TBD";
+  // Pretty-print the dates. Single date renders inline ("19 May 2026
+  // · 11:00"); 2-3 dates list inline ("19 May, 26 May, 02 Jun ·
+  // 11:00"); 4+ dates collapse to "N dates · …" with the full list
+  // surfaced in the body via the "Dates:" row below. Time appends
+  // only when given; "Date TBD" when nothing's picked yet.
+  const formatDmy = (iso: string): string => {
+    const [y, m, d] = iso.split("-").map(Number);
+    if (!y || !m || !d) return iso;
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return `${String(d).padStart(2, "0")} ${months[m - 1]} ${y}`;
+  };
+  const dateList = input.eventDates.map(formatDmy);
+  let dateLabel: string;
+  if (input.eventDates.length === 0) dateLabel = "Date TBD";
+  else if (input.eventDates.length <= 3) dateLabel = dateList.join(", ");
+  else dateLabel = `${input.eventDates.length} dates`;
+  const eventWhen = input.eventTime ? `${dateLabel} · ${input.eventTime}` : dateLabel;
 
   const subject = `Organise-bhandara request: ${input.name}, ${qtyLabel} (${tierLabel})`;
 
@@ -244,6 +260,11 @@ export async function sendOrganiseRequestEmail(
     input.email ? `Email: ${input.email}` : null,
     "",
     `When: ${eventWhen}`,
+    // Surface the full date list when there are 4+ dates (the header
+    // collapsed to "N dates"); for 1-3 they're already inline above.
+    input.eventDates.length >= 4
+      ? `Dates: ${dateList.join(", ")}`
+      : null,
     input.area ? `Area: ${input.area}` : null,
     input.addressNotes ? `Address / venue: ${input.addressNotes}` : null,
     `Size: ${qtyLabel}`,
@@ -264,6 +285,7 @@ export async function sendOrganiseRequestEmail(
   <h2 style="margin:0 0 16px;font-size:20px">${escapeHtml(input.name)} · ${escapeHtml(input.phone)}</h2>
   ${input.email ? row("Email", input.email) : ""}
   ${row("When", eventWhen)}
+  ${input.eventDates.length >= 4 ? row("Dates", dateList.join(", ")) : ""}
   ${input.area ? row("Area", input.area) : ""}
   ${input.addressNotes ? row("Address / venue", input.addressNotes) : ""}
   ${row("Size", qtyLabel)}

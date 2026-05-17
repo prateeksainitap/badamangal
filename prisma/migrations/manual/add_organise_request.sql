@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS "OrganiseRequest" (
   -- event
   "area"           TEXT,
   "addressNotes"   TEXT,
-  "eventDate"      TEXT, -- YYYY-MM-DD, kept as string for parity with Bhandara.tuesdayDates
+  "eventDates"     TEXT, -- JSON string[] of ISO YYYY-MM-DD dates, e.g. '["2026-05-19","2026-05-26"]'
   "eventTime"      TEXT, -- HH:MM
   -- size
   "quantityType"   TEXT NOT NULL, -- "PLATES" | "WHEAT_KG"

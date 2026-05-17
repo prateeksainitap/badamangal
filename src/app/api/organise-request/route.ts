@@ -13,8 +13,11 @@
  *   email          string? optional
  *   area           string? Lucknow neighbourhood, free-form
  *   addressNotes   string? landmark / venue text
- *   eventDate      string? YYYY-MM-DD (organisers sometimes ask
- *                          before they've fixed a date)
+ *   eventDates     string[]? array of YYYY-MM-DD ISO dates inside the
+ *                            2026 season window. Empty array is OK
+ *                            (organisers sometimes ask before fixing
+ *                            any date). Stored as JSON-encoded string
+ *                            in DB for parity with Bhandara.tuesdayDates.
  *   eventTime      string? HH:MM 24h
  *   quantityType   "PLATES" | "WHEAT_KG"   (required)
  *   quantityValue  number  (required, 1..10000)
@@ -59,7 +62,23 @@ export async function POST(req: Request): Promise<NextResponse> {
   const email = String(body.email ?? "").trim();
   const area = String(body.area ?? "").trim();
   const addressNotes = String(body.addressNotes ?? "").trim();
-  const eventDate = String(body.eventDate ?? "").trim();
+  // eventDates is an array on the wire (multi-pick form), filtered to
+  // valid ISO YYYY-MM-DD strings, deduped, sorted. Empty array → null
+  // column (organiser hasn't fixed dates yet). 12 chosen as a sane
+  // upper bound, the full 2026 season is ~17 service days, an
+  // organiser running more than that is almost certainly a typo /
+  // abuse and the bot-friendly cap keeps payloads small.
+  const eventDatesRaw = Array.isArray(body.eventDates) ? body.eventDates : [];
+  const eventDates = Array.from(
+    new Set(
+      eventDatesRaw
+        .filter((v): v is string => typeof v === "string")
+        .map((s) => s.trim())
+        .filter((s) => /^\d{4}-\d{2}-\d{2}$/.test(s)),
+    ),
+  )
+    .sort()
+    .slice(0, 12);
   const eventTime = String(body.eventTime ?? "").trim();
   const quantityType = String(body.quantityType ?? "").trim().toUpperCase();
   const quantityValueRaw = Number(body.quantityValue);
@@ -83,7 +102,13 @@ export async function POST(req: Request): Promise<NextResponse> {
   if (email.length > 120) errors.email = "Email is too long.";
   if (area.length > 80) errors.area = "Area is too long.";
   if (addressNotes.length > 400) errors.addressNotes = "Venue / address note is too long.";
-  if (eventDate && !isIsoDate(eventDate)) errors.eventDate = "Use YYYY-MM-DD.";
+  // eventDates is already filter-validated above (only valid ISO
+  // strings make it through), so no per-element error here. We just
+  // ensure the array length is reasonable; the actual values are
+  // trusted to be in season because the client picker is bounded.
+  if (eventDatesRaw.length > 50) {
+    errors.eventDates = "Too many dates. Pick fewer.";
+  }
   if (eventTime && !isHHMM(eventTime)) errors.eventTime = "Use HH:MM.";
   if (!ALLOWED_QTY_TYPES.has(quantityType))
     errors.quantityType = "Pick either plates or wheat (kg).";
@@ -138,7 +163,10 @@ export async function POST(req: Request): Promise<NextResponse> {
       email: email || null,
       area: area || null,
       addressNotes: addressNotes || null,
-      eventDate: eventDate || null,
+      // Store as JSON-encoded string for parity with Bhandara.
+      // tuesdayDates, the same safeJsonArray helper reads both. null
+      // when the organiser hasn't picked any dates yet.
+      eventDates: eventDates.length > 0 ? JSON.stringify(eventDates) : null,
       eventTime: eventTime || null,
       quantityType,
       quantityValue,
@@ -159,7 +187,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     email: email || undefined,
     area: area || undefined,
     addressNotes: addressNotes || undefined,
-    eventDate: eventDate || undefined,
+    eventDates,
     eventTime: eventTime || undefined,
     quantityType,
     quantityValue,
