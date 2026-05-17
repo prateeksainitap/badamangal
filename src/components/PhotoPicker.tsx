@@ -126,7 +126,7 @@ export default function PhotoPicker({
       }
     } catch {
       // Compressor itself shouldn't throw (it returns the original on
-      // failure) but belt + suspenders — fall through with raw file.
+      // failure) but belt + suspenders, fall through with raw file.
     }
 
     const check = validateImage(file, locale);

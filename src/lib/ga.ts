@@ -33,7 +33,7 @@ declare global {
 
 const EVENT_PREFIX = "bm_";
 
-// GA4 built-in event names — never re-prefixed since GA tracks these
+// GA4 built-in event names, never re-prefixed since GA tracks these
 // natively and double-naming them would split reports.
 // https://support.google.com/analytics/answer/9234069 lists the full set;
 // the ones we actually fire from this codebase are listed here.
@@ -64,7 +64,7 @@ export function normaliseEventName(name: string): string {
 /**
  * Fire a custom GA4 event. Silently no-ops if gtag is not loaded (e.g. dev
  * or when the user has DNT / an ad-blocker active). Always pass a stable
- * snake_case event name and a flat params bag — the `bm_` prefix is
+ * snake_case event name and a flat params bag, the `bm_` prefix is
  * applied automatically.
  */
 export function trackEvent(name: string, params?: GAParams): void {

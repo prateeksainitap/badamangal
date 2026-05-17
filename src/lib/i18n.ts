@@ -3,7 +3,7 @@ import { strings, type Locale } from "@/content/strings";
 // Cookie name bumped (was `bm_lang`) to invalidate the pool of dev /
 // preview-era cookies that defaulted everyone to Hindi. With the new
 // name, every existing visitor falls through to the new default ("en")
-// the next time they land — and re-sets the cookie via the toggle if
+// the next time they land, and re-sets the cookie via the toggle if
 // they pick Hindi.
 export const LANG_COOKIE = "bm_lang_v2";
 export const LANG_COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year

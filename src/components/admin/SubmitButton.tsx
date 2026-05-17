@@ -9,7 +9,7 @@ import { useFormStatus } from "react-dom";
  *   Every action button on /admin posts a server action that touches
  *   Prisma (and sometimes revalidates several paths). On a cold Netlify
  *   Function the round-trip is 1-2s, during which the row looks frozen
- *   and the admin tends to double-click — which fires the action twice
+ *   and the admin tends to double-click, which fires the action twice
  *   and occasionally races (e.g. publish + reject in quick succession).
  *
  *   `useFormStatus()` reads the same pending flag Next is already
@@ -19,7 +19,7 @@ import { useFormStatus } from "react-dom";
  *
  * It MUST be a child of an actual <form> (the react-dom hook is form-
  * scoped). Otherwise `pending` is always false. The same pattern is
- * used by AdminLoginForm — see the long comment block there for the
+ * used by AdminLoginForm, see the long comment block there for the
  * "why useFormStatus and not local state" reasoning.
  *
  * The visual variants mirror the existing button styles in /admin
@@ -64,7 +64,7 @@ export default function SubmitButton({
   size?: "sm" | "md";
   className?: string;
   /**
-   * Optional confirmation prompt — when set, clicking the button first
+   * Optional confirmation prompt, when set, clicking the button first
    * shows a native confirm() dialog. If the admin cancels, the submit
    * is prevented and no pending state appears. Used for destructive
    * actions like "Clear queue" / "Reject".

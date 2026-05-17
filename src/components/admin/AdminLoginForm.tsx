@@ -10,16 +10,16 @@ import { loginAction } from "@/app/admin/actions";
  *
  *   1. Add a show/hide-password toggle (eye icon). Plain `type="password"`
  *      meant the admin couldn't sanity-check typos on a long random
- *      ADMIN_PASSWORD value — common UX gap on every paste-style login.
+ *      ADMIN_PASSWORD value, common UX gap on every paste-style login.
  *
  *   2. Surface a loading spinner during form submission. The previous
- *      version submitted via a server action with no visible feedback —
+ *      version submitted via a server action with no visible feedback,
  *      on a cold Netlify Function the click felt frozen for 1-2 seconds.
  *      `useFormStatus()` gives us the canonical `pending` flag from the
  *      same submission Next is already running, so no extra state.
  *
  * The form action is still the server-side `loginAction` from
- * /app/admin/actions.ts. Logic on the server didn't change at all —
+ * /app/admin/actions.ts. Logic on the server didn't change at all,
  * cookie write, redirect, the works.
  */
 export default function AdminLoginForm({ error }: { error: boolean }) {

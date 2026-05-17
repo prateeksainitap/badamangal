@@ -18,12 +18,12 @@ function CountdownInner() {
   const [now, setNow] = useState<Date | null>(null);
   /** 1-8 if today (IST) is a Bada Mangal Tuesday; else null. Lifted
    *  into state so it's stable across renders without re-computing
-   *  every tick — IST day boundary rolls over once per day so we only
+   *  every tick, IST day boundary rolls over once per day so we only
    *  need to refresh this on mount + at midnight. */
   const [liveOrdinal, setLiveOrdinal] = useState<number | null>(null);
 
   useEffect(() => {
-    // Always count down to the NEXT future Bada Mangal — never today's,
+    // Always count down to the NEXT future Bada Mangal, never today's,
     // even when today IS a Bada Mangal (the banner above handles that
     // case visually so the timer doesn't shrink to zero mid-day).
     const next = nextBadaMangalAfterToday();
@@ -76,7 +76,7 @@ function CountdownInner() {
           drop to the timer-to-next-one below. Hidden on non-live days. */}
       {liveHeadline ? (
         // Sized up to `text-3xl sm:text-4xl` to match the page's
-        // standardised section-heading scale — on a Bada Mangal day
+        // standardised section-heading scale, on a Bada Mangal day
         // this should be the loudest element in the band, not equal
         // to the date pill or the trivia kicker above it.
         <div className="flex items-center gap-3 max-w-full px-2">
@@ -99,7 +99,7 @@ function CountdownInner() {
         </div>
       ) : null}
 
-      {/* Date pill — saffron-bordered editorial chip so the "next
+      {/* Date pill, saffron-bordered editorial chip so the "next
           Tuesday" date reads as a proper headline, not a tiny caption.
           Two-line layout: a small uppercase kicker on top, the date
           itself below in sindoor at a larger size with Tiro for the

@@ -6,7 +6,7 @@ import { localised } from "@/lib/seo";
 import { stripBotProvenance } from "@/lib/sanitize";
 
 // ISR. The archive is curated history (past Tuesdays, expired spots) so
-// it doesn't need to be live — half-hour refresh is plenty. The page
+// it doesn't need to be live, half-hour refresh is plenty. The page
 // itself is cookie-free / searchParam-free so it caches on the edge.
 export const revalidate = 1800;
 
@@ -15,12 +15,12 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 export const metadata: Metadata = {
   title: "Past Bhandaras of Lucknow · BadaMangal",
   description:
-    "Search every Bada Mangal bhandara that has already served this season — both organiser-listed venues and crowd-sourced spotted sightings. The full record of Lucknow's seva, kept publicly so the city's memory doesn't fade after Tuesday.",
+    "Search every Bada Mangal bhandara that has already served this season, both organiser-listed venues and crowd-sourced spotted sightings. The full record of Lucknow's seva, kept publicly so the city's memory doesn't fade after Tuesday.",
   alternates: localised("/archive"),
   openGraph: {
     title: "Past Bhandaras · BadaMangal Lucknow",
     description:
-      "Listed and spotted bhandaras from earlier in the season — searchable, all in one place.",
+      "Listed and spotted bhandaras from earlier in the season, searchable, all in one place.",
     url: `${SITE_URL}/archive`,
     type: "website",
     siteName: "BadaMangal",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ArchivePage() {
-  // Fetch in parallel — both queries are pure reads with small result sets.
+  // Fetch in parallel, both queries are pure reads with small result sets.
   const [allListedRecords, expiredSpotRecords] = await Promise.all([
     prisma.bhandara.findMany({
       where: { status: "APPROVED" },
@@ -51,7 +51,7 @@ export default async function ArchivePage() {
   ]);
 
   // Past listed = approved bhandaras whose every Tuesday date has passed.
-  // We compute this in JS because tuesdayDates is a string[] column —
+  // We compute this in JS because tuesdayDates is a string[] column,
   // SQL filtering would be awkward for that shape.
   const listedPast = allListedRecords
     .map(toBhandara)
@@ -74,7 +74,7 @@ export default async function ArchivePage() {
   const spottedPast = expiredSpotRecords.map((s) => ({
     id: s.id,
     photoUrl: s.photoUrl,
-    // Strip the [bot:whatsapp …] provenance tag — internal metadata
+    // Strip the [bot:whatsapp …] provenance tag, internal metadata
     // that should never reach a public surface. See lib/sanitize.ts.
     caption: stripBotProvenance(s.caption) || null,
     area: s.area,

@@ -1,6 +1,6 @@
 /**
  * Server-side Ola Maps geocoder. Same pattern as the one-off scripts in
- * /prisma/geocode-*.ts — geocode endpoint first, autocomplete fallback,
+ * /prisma/geocode-*.ts, geocode endpoint first, autocomplete fallback,
  * Lucknow bounding-box filter so we never return wrong-city hits.
  *
  * Why it can't reuse the browser helper:

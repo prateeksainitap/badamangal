@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { trackEvent } from "@/lib/ga";
+import { useLocaleFromContext } from "@/lib/locale-context";
 
 /**
  * Closing-benediction portrait of Neem Karoli Baba (Maharajji), framed by
@@ -15,13 +16,26 @@ import { trackEvent } from "@/lib/ga";
  * rather than chopping mid-syllable.
  */
 export default function MaharajjiBlessing({
-  alt = "Neem Karoli Baba, illustrated for BadaMangal",
+  alt,
 }: {
   alt?: string;
 }) {
+  // Reads locale from context so the "Hover for blessing" caption +
+  // accessible label swap to Hindi the moment the toggle fires.
+  const locale = useLocaleFromContext();
+  const isHi = locale === "hi";
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fadeTimerRef = useRef<number | null>(null);
   const [active, setActive] = useState(false);
+  const resolvedAlt =
+    alt ??
+    (isHi
+      ? "नीम करोली बाबा, बड़ामंगल के लिए चित्रित"
+      : "Neem Karoli Baba, illustrated for BadaMangal");
+  const ariaLabel = isHi
+    ? "नीम करोली बाबा। आरती सुनने के लिए माउस लाएँ"
+    : "Neem Karoli Baba. Hover to hear the aarti chant";
+  const hintLabel = isHi ? "आशीर्वाद के लिए माउस लाएँ" : "Hover for blessing";
 
   // Build the Audio element once, on the client only.
   useEffect(() => {
@@ -51,10 +65,10 @@ export default function MaharajjiBlessing({
       try {
         a.currentTime = 0;
       } catch {
-        /* ignore — some browsers gate currentTime on unloaded media */
+        /* ignore, some browsers gate currentTime on unloaded media */
       }
       void a.play().catch(() => {
-        /* autoplay blocked — silent fail */
+        /* autoplay blocked, silent fail */
       });
       trackEvent("maharajji_blessing_play");
     }
@@ -99,7 +113,7 @@ export default function MaharajjiBlessing({
         onMouseLeave={stop}
         onFocus={start}
         onBlur={stop}
-        aria-label="Neem Karoli Baba. Hover to hear the aarti chant"
+        aria-label={ariaLabel}
         className="group relative inline-flex items-center justify-center w-32 h-32 sm:w-40 sm:h-40 rounded-full bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-saffron-600/60 focus-visible:ring-offset-2 focus-visible:ring-offset-cream-50"
       >
         {/* Soft saffron halo behind everything */}
@@ -115,7 +129,7 @@ export default function MaharajjiBlessing({
           }}
         />
 
-        {/* Outer spiral ring — clockwise. Speeds up on hover. */}
+        {/* Outer spiral ring, clockwise. Speeds up on hover. */}
         <span
           aria-hidden
           className="absolute inset-[-9%] rounded-full"
@@ -127,7 +141,7 @@ export default function MaharajjiBlessing({
           <SpiralRing variant="outer" />
         </span>
 
-        {/* Inner spiral ring — counter-clockwise, tighter. */}
+        {/* Inner spiral ring, counter-clockwise, tighter. */}
         <span
           aria-hidden
           className="absolute inset-[-3%] rounded-full"
@@ -153,7 +167,7 @@ export default function MaharajjiBlessing({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/illustrations/nim-karoli-baba.webp"
-            alt={alt}
+            alt={resolvedAlt}
             width={320}
             height={320}
             className="w-[86%] h-[86%] object-contain object-center"
@@ -187,7 +201,7 @@ export default function MaharajjiBlessing({
             active ? "opacity-0" : "opacity-80",
           ].join(" ")}
         >
-          Hover for blessing
+          {hintLabel}
         </span>
       </button>
     </div>
@@ -198,7 +212,7 @@ export default function MaharajjiBlessing({
  * Decorative ring of gold spirals laid out around a circle. Rendered as a
  * single SVG with `currentColor` so the parent can theme it. Eight spirals
  * for the outer ring (matching the eight Bada Mangals) and twelve for the
- * inner one — a calmer, denser whorl when the rings are stacked.
+ * inner one, a calmer, denser whorl when the rings are stacked.
  */
 function SpiralRing({ variant }: { variant: "outer" | "inner" }) {
   const count = variant === "outer" ? 8 : 12;

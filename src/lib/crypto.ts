@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 // Single shared secret used to salt the IP / phone hashes we store for
-// moderation + abuse-detection. Never used for cryptographic privacy —
+// moderation + abuse-detection. Never used for cryptographic privacy,
 // these are pseudonymisation hashes, not encryption keys.
 const SECRET = process.env.MOD_SECRET ?? "bm-dev-secret-change-me-in-prod";
 

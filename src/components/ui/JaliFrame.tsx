@@ -4,7 +4,7 @@ import { JaliCorner } from "@/components/ornaments";
 /**
  * Wrap any positioned child (a card, an empty state, a hero panel)
  * with the four Awadhi-jali corner ornaments. Saves the four explicit
- * `<JaliCorner position="…" />` calls — and more importantly, keeps the
+ * `<JaliCorner position="…" />` calls, and more importantly, keeps the
  * sizing + opacity in lock-step. Every page that uses jali corners is
  * doing the exact same dance with the exact same numbers; this hides
  * them.
@@ -16,13 +16,13 @@ import { JaliCorner } from "@/components/ornaments";
  * The wrapper is `relative` so the corners can position themselves;
  * the parent should already provide the rounded outer card surface.
  * If you need different sizes per corner (e.g. larger top, lighter
- * bottom — the empty-state pattern), pass `size` / `subtle` props.
+ * bottom, the empty-state pattern), pass `size` / `subtle` props.
  */
 type Props = {
   children: ReactNode;
   /** Px width/height of each corner. Default 56. */
   size?: number;
-  /** When true, bottom corners render at half opacity — matches the
+  /** When true, bottom corners render at half opacity, matches the
    *  hero / empty-state pattern where weight should sit at the top. */
   subtle?: boolean;
   className?: string;

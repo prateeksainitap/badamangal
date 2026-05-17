@@ -10,7 +10,7 @@ import { useLocaleFromContext } from "@/lib/locale-context";
  *
  * Previously this hook called `useSearchParams()` directly so callers
  * didn't need a provider, but that broke the build once the public
- * pages went static — `useSearchParams()` requires a Suspense boundary
+ * pages went static, `useSearchParams()` requires a Suspense boundary
  * during prerender, and Footer/LiveActivityTicker mount in the layout
  * tree without one. Reading from context avoids the issue entirely
  * and keeps the same observable behaviour (LocaleProvider mirrors the

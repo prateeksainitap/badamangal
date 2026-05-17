@@ -5,7 +5,7 @@ import { strings } from "@/content/strings";
 
 /**
  * Top-of-page hero for /contact. Pulled out of the server-rendered page
- * so it can localize via LocaleProvider — page is now statically
+ * so it can localize via LocaleProvider, page is now statically
  * prerendered (always English server-side) and this client component
  * swaps to Hindi on hydration when the visitor's bm_lang cookie says so.
  */

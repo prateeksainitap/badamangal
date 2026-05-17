@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* No maplibre-gl CSS import needed — the Ola Maps Web SDK bundles its
+/* No maplibre-gl CSS import needed, the Ola Maps Web SDK bundles its
    own copy and self-injects a `<style>` tag at SDK load time. */
 
 @layer base {
@@ -93,11 +93,11 @@
     transform: translateY(1px);
   }
 
-  /* Sizes — keep the same optical-center asymmetry as the base .btn. */
+  /* Sizes, keep the same optical-center asymmetry as the base .btn. */
   .btn-sm { padding: 0.58rem 1rem 0.42rem; min-height: 36px; font-size: 0.8rem; }
   .btn-lg { padding: 0.98rem 1.7rem 0.82rem; min-height: 52px; font-size: 1rem; }
 
-  /* Primary — textured saffron with warm shadow + 1px gold inset highlight
+  /* Primary, textured saffron with warm shadow + 1px gold inset highlight
      so it reads like a hand-pressed button, not a flat SaaS pill. */
   .btn-primary {
     background-color: #E07A1F;
@@ -123,7 +123,7 @@
     filter: brightness(1.04);
   }
 
-  /* Sindoor — used for high-emphasis devotional CTAs (Sponsor, Submit) */
+  /* Sindoor, used for high-emphasis devotional CTAs (Sponsor, Submit) */
   .btn-sindoor {
     background-image: linear-gradient(180deg, #B23332 0%, #9C2A2A 100%);
     color: #FBF7F0;
@@ -143,7 +143,7 @@
       0 22px 36px -16px rgba(26, 20, 16, 0.26);
   }
 
-  /* Ghost / outline — gold-bordered cream button. Use on dark backgrounds
+  /* Ghost / outline, gold-bordered cream button. Use on dark backgrounds
      and as the secondary CTA next to a primary. */
   .btn-ghost {
     background: #FBF7F0;
@@ -164,7 +164,7 @@
       0 8px 18px -6px rgba(156, 42, 42, 0.18);
   }
 
-  /* Soft — barely-there button for tertiary actions (Back, link-style). */
+  /* Soft, barely-there button for tertiary actions (Back, link-style). */
   .btn-soft {
     background: transparent;
     color: #5A4F46;
@@ -177,7 +177,7 @@
     background: rgba(245, 234, 201, 0.5);
   }
 
-  /* Leaf — used for WhatsApp / share actions */
+  /* Leaf, used for WhatsApp / share actions */
   .btn-leaf {
     background: #FBF7F0;
     color: #3F7A3F;
@@ -234,12 +234,12 @@
     background: linear-gradient(180deg, #C9A24A 0%, #9C2A2A 100%);
   }
 
-  /* Warm Lucknow map tiles — softer saturation + sepia warmth + slight lift. */
+  /* Warm Lucknow map tiles, softer saturation + sepia warmth + slight lift. */
   .leaflet-tile {
     filter: saturate(0.85) sepia(0.15) brightness(1.02);
   }
   /* Leaflet's default `.leaflet-top` / `.leaflet-bottom` containers sit at
-     z-index: 1000 — same as our sticky header, so the attribution rail
+     z-index: 1000, same as our sticky header, so the attribution rail
      ("Leaflet | © OpenStreetMap") would float over the cream nav bar
      while scrolling. Drop them well below the chrome. */
   .leaflet-top,
@@ -250,7 +250,7 @@
     z-index: 600 !important;
   }
 
-  /* Hand-textured saffron — replaces flat saffron-600 anywhere we want
+  /* Hand-textured saffron, replaces flat saffron-600 anywhere we want
      depth. The bright cream wash at the top-left was previously washing
      out cream-50 text in the player band on /resources/* pages; both
      corners now use a sindoor shadow tint so cream text stays readable
@@ -294,7 +294,7 @@
     background-blend-mode: multiply;
   }
 
-  /* Drop cap (96px Cormorant Garamond) — apply to opening <p> in long-form. */
+  /* Drop cap (96px Cormorant Garamond), apply to opening <p> in long-form. */
   .drop-cap::first-letter {
     font-family: var(--font-cormorant), serif;
     font-weight: 600;
@@ -392,7 +392,7 @@
     animation: marigold-rise 1200ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
   }
 
-  /* Diya morph on form submit success — used by the submit button. */
+  /* Diya morph on form submit success, used by the submit button. */
   .diya-morph {
     position: relative;
     overflow: hidden;
@@ -438,7 +438,7 @@
    NOTE: deliberately NOT setting `will-change: transform` here. On
    our map (19 markers at once), promoting every marker to its own
    compositor layer breaks MapLibre's positioning at extreme zoom-out
-   where many markers project to near-identical sub-pixel positions —
+   where many markers project to near-identical sub-pixel positions,
    the GPU layers lose precision and the pins drift apart along the
    DOM-flow axis (vertical with `display: block`, horizontal with
    `display: inline-block`). Without the hint, the compositor stays
@@ -481,7 +481,7 @@
 }
 .bm-spot-popup-wrap .maplibregl-popup-content {
   padding: 0;
-  /* White body — the surrounding map tiles already carry the warm cream
+  /* White body, the surrounding map tiles already carry the warm cream
      tone, so a cream-50 popup body amplified the yellowness. Keeping the
      border gold-tinted preserves brand identity without flooding the
      content area with warmth. */
@@ -518,7 +518,7 @@
 
 /* Same chrome treatment for the listed-bhandara popup so both popup
    variants feel like one card family with different content. The outer
-   `.maplibregl-popup` max-width is overridden too — same reason as the
+   `.maplibregl-popup` max-width is overridden too, same reason as the
    spot variant above. */
 .bm-listed-popup-wrap {
   max-width: 340px !important;
@@ -554,11 +554,11 @@
   border-radius: 9999px;
 }
 
-/* Success-tick stroke draw — runs once on the thank-you screen. */
+/* Success-tick stroke draw, runs once on the thank-you screen. */
 @keyframes bm-tick {
   to { stroke-dashoffset: 0; }
 }
-/* Toast pill — small slide-up + fade-in when shown. */
+/* Toast pill, small slide-up + fade-in when shown. */
 @keyframes bm-toast-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -632,13 +632,13 @@
  * etc.) were designed for uppercase Latin micro-labels and add
  * positive letter-spacing. Devanagari is a complex script with
  * conjuncts (क्ष, त्र, ज्ञ) and matras (ी, ू, ं) that visually
- * shatter when letter-spaced — rendering "लालबाग" as "ला ल बा ग".
+ * shatter when letter-spaced, rendering "लालबाग" as "ला ल बा ग".
  *
  * When the page locale is Hindi (html[lang^="hi"]), suppress the
  * positive tracking values across the site so any element styled
  * for English uppercase (area chips, kickers, button labels) still
  * renders Devanagari correctly. Negative tracking utilities
- * (`tracking-tight`, `tracking-tighter`) are left alone — they
+ * (`tracking-tight`, `tracking-tighter`) are left alone, they
  * compress without breaking conjuncts.
  *
  * Also suppress `text-transform: uppercase` on Hindi locale: it's a

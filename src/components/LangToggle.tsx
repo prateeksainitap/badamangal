@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import { trackEvent } from "@/lib/ga";
 import { LANG_COOKIE, LANG_COOKIE_MAX_AGE } from "@/lib/i18n";
@@ -12,6 +12,11 @@ export default function LangToggle() {
   const router = useRouter();
   const pathname = usePathname();
   const [pending, setPending] = useState(false);
+  // React 18 startTransition lets router.refresh() run in the
+  // background without blocking the click handler's other work.
+  // The UI stays interactive even when the server route is doing
+  // a cold-start Prisma fetch.
+  const [, startTransition] = useTransition();
 
   // Cookie-derived locale comes from server context (no document.cookie read
   // on the client → no hydration mismatch). URL still overrides.
@@ -28,7 +33,7 @@ export default function LangToggle() {
 
       // ── Optimistic, client-first cookie write ────────────────────
       // Previously we `await`-ed a server round-trip to `/api/lang`
-      // before updating the URL — that added ~200-500ms of latency
+      // before updating the URL, that added ~200-500ms of latency
       // (Netlify Function cold start) on every toggle, making the
       // language switch feel laggy. Modern browsers commit
       // `document.cookie` synchronously, so we can write client-side
@@ -43,7 +48,7 @@ export default function LangToggle() {
         // the UI would only swap on the next focus / popstate event.
         window.dispatchEvent(new Event("bm:locale-change"));
       } catch {
-        /* private mode — server sync below covers it */
+        /* private mode, server sync below covers it */
       }
       // Background sync; we don't wait for it.
       void fetch(`/api/lang?to=${next}`, {
@@ -51,46 +56,45 @@ export default function LangToggle() {
         credentials: "same-origin",
         cache: "no-store",
       }).catch(() => {
-        /* network blip — client-side cookie above is enough */
+        /* network blip, client-side cookie above is enough */
       });
 
-      // Update the URL (soft — no scroll, no full reload). We
-      // DELIBERATELY DO NOT call router.refresh() here.
+      // Update the URL (soft, no scroll, no full reload). Then
+      // refresh the server tree via startTransition so server-
+      // rendered text (page-level headings, FeaturedBhandaras
+      // section, etc.) eventually swaps to the new locale.
       //
-      // Why: router.refresh() in the App Router triggers a full
-      // server re-render of the current route tree. On Netlify
-      // Functions with a Prisma cold start (the homepage runs three
-      // parallel Prisma queries on cold-boot), that costs the user
-      // 10-15 SECONDS of visible "page is frozen in the old
-      // language" wait before any visible swap — even though the
-      // cookie was written + URL was updated instantly. Measured
-      // consistently at ~15s in production.
+      // Why startTransition: router.refresh() in App Router waits
+      // on the new server tree before committing the React update.
+      // On a Netlify Function cold start with Prisma queries the
+      // refresh can take 10-15s. Wrapping in startTransition tells
+      // React this is a non-urgent update, the UI stays
+      // interactive, the cookie + URL + LocaleProvider swap
+      // happens IMMEDIATELY, and the server-tree swap commits
+      // when it lands. User sees instant text swap for the 99% of
+      // text routed through useLocaleFromContext(), and the few
+      // server-prop'd headings catch up when the refresh
+      // completes.
       //
-      // The client-side swap is already covered by the
-      // `bm:locale-change` event dispatched above — LocaleProvider
-      // (lib/locale-context.tsx) listens for it and re-emits the
-      // active locale through React context, so every client
-      // component reading useLocaleFromContext() re-renders into
-      // the new language synchronously (a few ms).
-      //
-      // Trade-off: any text that was server-rendered in the old
-      // locale (a small subset — most prose flows through context)
-      // stays stale until the next navigation. Acceptable until
-      // proper Hindi SSR ships (would render the cookie-selected
-      // locale server-side on first paint and eliminate this
-      // entirely). Today: 99% of UI swaps instantly via context.
+      // Without router.refresh() at all (the previous version),
+      // server-rendered text NEVER swapped until the next manual
+      // navigation. That was the "Hindi toggle isn't working on
+      // headings" bug.
       const updated = new URLSearchParams(params.toString());
       if (next === "hi") updated.delete("lang");
       else updated.set("lang", "en");
       const qs = updated.toString();
       const url = qs ? `${pathname}?${qs}` : pathname;
       router.replace(url, { scroll: false });
+      startTransition(() => {
+        router.refresh();
+      });
 
-      // Clear the pending flag on the next tick — the visual pill
+      // Clear the pending flag on the next tick, the visual pill
       // animation finishes around the same time the refresh paints.
       window.setTimeout(() => setPending(false), 350);
     },
-    [lang, pending, params, pathname, router],
+    [lang, pending, params, pathname, router, startTransition],
   );
 
   const base =

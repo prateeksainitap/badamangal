@@ -4,7 +4,7 @@
  *
  * Why this file exists:
  *   BhandaraCard.tsx and bhandara/[slug]/page.tsx each used to roll
- *   their own one-shot share-text builders. The two messages drifted —
+ *   their own one-shot share-text builders. The two messages drifted,
  *   the card version forgot the URL, neither version localised the
  *   date or surfaced the menu, and both read like a CSV row instead
  *   of an invitation. Sharing is the single highest-yield organic
@@ -34,13 +34,13 @@
  *
  * Glyph policy:
  *   • Strictly ASCII + Devanagari + middle-dot (U+00B7). The previous
- *     version used 🪔 📅 📍 🍛 🔗 🚩 — on old WhatsApp builds the
+ *     version used 🪔 📅 📍 🍛 🔗 🚩, on old WhatsApp builds the
  *     2020-era diya glyph (U+1FA94) falls back to a black diamond, and
  *     a few testers reported every emoji rendering as ◆ on their
  *     device's font set. Reverting to plain text guarantees the
  *     message reads correctly on every WhatsApp client we've ever
  *     seen in the wild (low-end Android included).
- *   • Em dashes ("—") replaced with commas + middle dots. They were
+ *   • Em dashes ("-") replaced with commas + middle dots. They were
  *     getting mangled on some Hindi keyboards copy-paste flow.
  *
  * Defensive defaults:
@@ -50,7 +50,7 @@
  *   • Address falls back across hi → en → "" without crashing.
  *
  * The output is plain text wrapped in encodeURIComponent before being
- * suffixed onto `https://wa.me/?text=` — WhatsApp's mobile web URL
+ * suffixed onto `https://wa.me/?text=`, WhatsApp's mobile web URL
  * format which deep-links to the share-target picker on Android/iOS.
  */
 import type { Bhandara } from "@/types/bhandara";
@@ -113,7 +113,7 @@ function pickServeDate(dates: string[] | undefined): string | null {
  * Build the formatted bhandara share-message text (the part that goes
  * after `wa.me/?text=`). Exported separately from the wa.me wrapper so
  * the "Copy to clipboard" buttons can paste the warm text into ANY
- * messenger — not just WhatsApp. The wa.me URL builder
+ * messenger, not just WhatsApp. The wa.me URL builder
  * `whatsappShareUrlForBhandara` below wraps + encodeURIComponents this.
  *
  * See file-header comment for the full message shape.
@@ -136,7 +136,7 @@ export function bhandaraShareText(b: Bhandara, locale: Locale): string {
   // WhatsApp markdown: *bold*. We bold the label prefix on each row
   // so the eye can scan "Date / Place / Prasad / Link" down the left
   // edge before reading any value. Same convention used by Slack /
-  // Telegram / Signal — recipients on every platform read it as a
+  // Telegram / Signal, recipients on every platform read it as a
   // structured invite, not an unformatted paragraph.
   const dateLine = `${isHi ? "*तिथि:*" : "*Date:*"} ${dateBody}`;
 
@@ -157,18 +157,18 @@ export function bhandaraShareText(b: Bhandara, locale: Locale): string {
     : null;
 
   // Warm one-liner that opens the share. The point is to read like an
-  // actual invitation rather than a structured data dump — recipients
+  // actual invitation rather than a structured data dump, recipients
   // who don't know what a "Bada Mangal bhandara" is should still get
   // an immediate sense of "I'm being welcomed to a community meal."
   const intro = isHi
     ? "बड़ा मंगल भंडारा में आप सभी का सादर आमंत्रण है। प्रसाद ग्रहण कीजिए, सेवा का पुण्य लीजिए।"
     : "You're warmly invited to a Bada Mangal bhandara. Prasad, sangat, and seva for all.";
 
-  // Closer — both Ram and Hanuman invocations, separated by the
+  // Closer, both Ram and Hanuman invocations, separated by the
   // Devanagari danda (Hindi sentence ender) or a full stop (English).
   const closer = isHi ? "जय श्री राम। जय हनुमान।" : "Jai Shri Ram. Jai Hanuman.";
 
-  // Header line is the strongest visual anchor — wrap the entire
+  // Header line is the strongest visual anchor, wrap the entire
   // "Bada Mangal Bhandara: <Name>" in bold so it stands out as the
   // invite's headline even when the recipient is glancing at the
   // first line of a long group thread.
@@ -229,15 +229,15 @@ export type ShareableSpot = {
 
 /**
  * Build the wa.me share URL for a live spot. Same warm tone as
- * `whatsappShareUrlForBhandara` — intro line, structured details with
+ * `whatsappShareUrlForBhandara`, intro line, structured details with
  * plain-text labels (no emoji, see glyph policy in the file header),
  * a maps deep-link so the recipient can open turn-by-turn directions,
  * a badamangal.com link so they can browse / list / sponsor, and the
  * shared Ram/Hanuman closer.
  *
  * The message intentionally surfaces TWO links: one to Google Maps
- * (immediate action — "I want to go there now") and one to
- * badamangal.com (broader context — "What else is happening today?").
+ * (immediate action, "I want to go there now") and one to
+ * badamangal.com (broader context, "What else is happening today?").
  * Recipients on data-light Android phones who can't follow the maps
  * link still get the badamangal.com link as a fallback, and vice
  * versa for recipients with adblockers who block external maps.
@@ -251,12 +251,12 @@ export type ShareableSpot = {
 export function spotShareText(s: ShareableSpot, locale: Locale): string {
   const isHi = locale === "hi";
   const mapsUrl = `https://www.google.com/maps?q=${s.lat},${s.lng}&z=18`;
-  // Second link in the share message — sits next to the Google Maps
+  // Second link in the share message, sits next to the Google Maps
   // link as a "and here's where it lives on the BadaMangal map"
   // counterpart. When the spot is linked to a listed bhandara, point
   // at that bhandara's detail page (which has its own embedded map).
   // Otherwise deep-link to the homepage's MapBoard via the #map
-  // anchor — the recipient lands directly on the city-wide live
+  // anchor, the recipient lands directly on the city-wide live
   // bhandara map without an extra scroll.
   const siteUrl = s.bhandaraSlug
     ? `${SITE_URL}/bhandara/${s.bhandaraSlug}${isHi ? "" : "?lang=en"}`
@@ -293,7 +293,7 @@ export function spotShareText(s: ShareableSpot, locale: Locale): string {
 
   const closer = isHi ? "जय श्री राम। जय हनुमान।" : "Jai Shri Ram. Jai Hanuman.";
 
-  // Link order — BadaMangal link first, Google Maps second.
+  // Link order, BadaMangal link first, Google Maps second.
   // Rationale: every paste should land on our site for the receiver
   // first (richer context, brand impression, more bhandaras to
   // discover), with the Google Maps link as a one-tap navigation

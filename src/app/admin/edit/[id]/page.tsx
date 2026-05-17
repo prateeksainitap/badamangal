@@ -4,7 +4,7 @@
  * Reached from the "Edit & publish" button on bot-ingested rows in the
  * moderation queue. The bot pipeline writes lat/lng=0 and often leaves
  * organizer/area/etc. blank because Gemini couldn't read them off the
- * invite poster — this page is where the admin fills those gaps before
+ * invite poster, this page is where the admin fills those gaps before
  * the listing goes live.
  *
  * The form is intentionally a plain server-rendered <form> with no
@@ -85,7 +85,7 @@ export default async function AdminEditPage({ params }: PageProps) {
         </Link>
       </header>
 
-      {/* Photo preview band — the most important context for the admin
+      {/* Photo preview band, the most important context for the admin
           while filling fields. The thumbnail in /admin is 80px; here we
           render up to ~360px and link the open-full-tab fallback. */}
       {b.photoUrl ? (
@@ -256,7 +256,7 @@ export default async function AdminEditPage({ params }: PageProps) {
 
 /**
  * Single-line input wrapper. Kept inline (not extracted) so the file
- * is self-contained — this page is one of one in the admin flow and
+ * is self-contained, this page is one of one in the admin flow and
  * we don't need a shared form-kit yet.
  */
 function Pair({

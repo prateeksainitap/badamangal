@@ -8,6 +8,7 @@ import { haversineKm } from "@/lib/geo";
 import { trackEvent } from "@/lib/ga";
 import { useToast } from "@/components/Toast";
 import type { Locale } from "@/content/strings";
+import { useLocaleFromContext } from "@/lib/locale-context";
 import {
   spotShareText,
   whatsappShareUrlForSpot,
@@ -33,15 +34,18 @@ type Bhandara = { slug: string; name: string };
 type Props = {
   initial: FeedPost[];
   bhandaras: Bhandara[];
-  /** Optional override — when present, takes priority over the URL.
+  /** Optional override, when present, takes priority over the URL.
    *  Kept for tests / non-routed callers. The /live page no longer
    *  passes this so the page can stay statically cached; the value
    *  is read from `window.location.search` on mount instead. */
   activeBhandara?: string | null;
-  locale: Locale;
-  kicker: string;
-  emptyHi: string;
-  emptyEn: string;
+  /** Optional, ignored at runtime, locale resolves from the
+   *  LocaleProvider context so the Hindi toggle flips every label
+   *  here without a server-tree refresh. Kept for back-compat. */
+  locale?: Locale;
+  kicker?: string;
+  emptyHi?: string;
+  emptyEn?: string;
 };
 
 const POLL_MS = 8000;
@@ -51,10 +55,14 @@ export default function LiveFeedTimeline({
   initial,
   bhandaras,
   activeBhandara: activeBhandaraProp,
-  locale,
   emptyHi,
   emptyEn,
 }: Props) {
+  // Locale + isHi come from the LocaleProvider context, the legacy
+  // `locale` prop is accepted on the type for back-compat but no
+  // longer wired in. emptyHi / emptyEn fall back to the built-in
+  // Hindi/English empty-state copy when callers don't pass them.
+  const locale = useLocaleFromContext();
   const isHi = locale === "hi";
   const [posts, setPosts] = useState<FeedPost[]>(initial);
   // Filter slug now lives in client state, sourced from the URL. The
@@ -137,7 +145,7 @@ export default function LiveFeedTimeline({
       trackEvent("live_feed_new_posts", { count: fresh.length });
     };
 
-    // Poll-only. SSE was removed when we migrated to Netlify Functions —
+    // Poll-only. SSE was removed when we migrated to Netlify Functions,
     // their 26-second hard timeout makes long-lived EventSource streams
     // disconnect every ~25 s, which produced more reconnect chatter than
     // it saved. Polling every 8s with visibility-pause is more than
@@ -201,7 +209,7 @@ export default function LiveFeedTimeline({
         </button>
       ) : null}
 
-      {/* Filters + status — single row: bhandara filter pills on the left,
+      {/* Filters + status, single row: bhandara filter pills on the left,
           Near-me CTA + Real-time tag on the right. All three controls
           share the same `min-h-[36px]` so they sit on one optical baseline. */}
       <div className="mx-auto max-w-xl px-4 sm:px-6 mb-6">
@@ -277,7 +285,7 @@ export default function LiveFeedTimeline({
         )}
       </main>
 
-      {/* Lightbox modal — mounted once at the parent. Closes on
+      {/* Lightbox modal, mounted once at the parent. Closes on
           Escape, click outside the image, or the explicit ✕ button. */}
       {lightboxUrl ? (
         <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
@@ -304,19 +312,19 @@ export default function LiveFeedTimeline({
  * Both lean on the empty-state-plate illustration + jali-corner ornaments
  * to match the visual language of the homepage's "no bhandaras yet"
  * state. Each variant gets a clear, brand-voiced headline and a primary
- * "Spot a bhandara" CTA — turning a dead-end into the moment the
+ * "Spot a bhandara" CTA, turning a dead-end into the moment the
  * visitor most plausibly converts into a contributor.
  */
 function LiveEmptyState({
   isHi,
   kind,
-  fallbackHi,
-  fallbackEn,
+  fallbackHi = "अभी कोई पोस्ट नहीं।",
+  fallbackEn = "No posts yet.",
 }: {
   isHi: boolean;
   kind: "all-empty" | "near-empty";
-  fallbackHi: string;
-  fallbackEn: string;
+  fallbackHi?: string;
+  fallbackEn?: string;
 }) {
   const copy =
     kind === "near-empty"
@@ -326,8 +334,8 @@ function LiveEmptyState({
             ? "3 कि.मी. के दायरे में अभी कोई स्पॉट नहीं।"
             : "Nothing within 3 km of you yet.",
           body: isHi
-            ? "थोड़ा दायरा बढ़ाकर देखिए, या अपने मोहल्ले से पहली रिपोर्ट खुद कीजिए — एक तस्वीर बस।"
-            : "Widen the radius from the All filter, or be the first to post from your own street — one photo is all it takes.",
+            ? "थोड़ा दायरा बढ़ाकर देखिए, या अपने मोहल्ले से पहली रिपोर्ट खुद कीजिए, एक तस्वीर बस।"
+            : "Widen the radius from the All filter, or be the first to post from your own street, one photo is all it takes.",
         }
       : {
           kicker: isHi ? "पहले स्पॉट का इंतज़ार" : "Waiting for the first spot",
@@ -339,7 +347,7 @@ function LiveEmptyState({
             : "The moment a passer-by reports a bhandara from anywhere in Lucknow, their photo will land here within 8 seconds. Want to be the first?",
         };
 
-  // Fallback strings still travel in the HTML — keep them in a hidden
+  // Fallback strings still travel in the HTML, keep them in a hidden
   // node so a non-JS / SSR snapshot doesn't render an empty card to
   // a crawler that can't run the dynamic copy above.
   const fallback = isHi ? fallbackHi : fallbackEn;
@@ -347,38 +355,61 @@ function LiveEmptyState({
   return (
     <section
       aria-live="polite"
-      className="relative overflow-hidden rounded-3xl border border-gold-500/45 bg-gradient-to-br from-saffron-50 via-cream-50 to-cream-50 px-5 sm:px-8 py-10 sm:py-12 shadow-warm"
+      className="relative overflow-hidden rounded-3xl border border-gold-500/45 bg-gradient-to-br from-saffron-50 via-cream-50 to-cream-50 px-5 sm:px-8 py-8 sm:py-10 shadow-warm"
     >
-      {/* Awadhi jali corners — same accent the homepage uses on the
-          "no bhandaras yet" card so the empty states feel like a set. */}
+      {/* Awadhi jali corners, same accent the homepage uses on the
+          "no bhandaras yet" card so the empty states feel like a set.
+          Toned a notch quieter so they don't fight the refresh-status
+          pill that now sits in the top-right corner. */}
       <JaliCorner
         position="tl"
-        size={64}
-        className="absolute top-0 left-0 text-gold-500/55"
+        size={56}
+        className="absolute top-0 left-0 text-gold-500/50"
       />
       <JaliCorner
         position="tr"
-        size={64}
-        className="absolute top-0 right-0 text-gold-500/55"
+        size={56}
+        className="absolute top-0 right-0 text-gold-500/50"
       />
       <JaliCorner
         position="bl"
-        size={64}
-        className="absolute bottom-0 left-0 text-gold-500/40"
+        size={56}
+        className="absolute bottom-0 left-0 text-gold-500/35"
       />
       <JaliCorner
         position="br"
-        size={64}
-        className="absolute bottom-0 right-0 text-gold-500/40"
+        size={56}
+        className="absolute bottom-0 right-0 text-gold-500/35"
       />
 
-      <div className="relative grid gap-7 sm:grid-cols-[160px_1fr] items-center">
-        {/* Plate illustration — same asset as the homepage empty state.
-            Wrapped in a soft glow disc so it reads as a focal point. */}
-        <div className="relative mx-auto sm:mx-0 w-36 sm:w-40 aspect-square">
+      {/* Status row, kicker pill on the left, "refreshing every 8s"
+          chip on the right. Promoting the refresh indicator out of
+          the bottom-of-CTAs spot and into the header reads as
+          ambient status ("this thing is live, just quiet right now")
+          instead of competing with action affordances below. */}
+      <div className="relative flex items-center justify-between gap-3 flex-wrap mb-6">
+        <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-[0.68rem] font-semibold inline-flex items-center gap-1.5">
           <span
             aria-hidden
-            className="absolute inset-0 rounded-full bg-saffron-500/15 blur-2xl"
+            className="block w-1.5 h-1.5 rounded-full bg-saffron-600 motion-safe:animate-pulse"
+          />
+          {copy.kicker}
+        </p>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-cream-50/70 border border-gold-500/40 text-ink-600 text-[0.62rem] uppercase tracking-[0.22em] font-medium px-2.5 py-1">
+          <RefreshGlyph />
+          {isHi ? "हर 8 सेकंड में ताज़ा" : "Refreshing every 8s"}
+        </span>
+      </div>
+
+      <div className="relative grid gap-6 sm:gap-8 sm:grid-cols-[180px_1fr] items-center">
+        {/* Plate illustration, same asset as the homepage empty state.
+            Wrapped in a soft glow disc so it reads as a focal point.
+            Sized up slightly so it carries its own weight against the
+            longer text column on desktop. */}
+        <div className="relative mx-auto sm:mx-0 w-40 sm:w-44 aspect-square shrink-0">
+          <span
+            aria-hidden
+            className="absolute inset-0 rounded-full bg-saffron-500/20 blur-2xl"
           />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -386,70 +417,68 @@ function LiveEmptyState({
             alt=""
             loading="lazy"
             decoding="async"
-            className="relative w-full h-full object-contain"
+            className="relative w-full h-full object-contain drop-shadow-[0_8px_20px_rgba(242,148,76,0.18)]"
           />
         </div>
 
-        <div className="text-center sm:text-left">
-          <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-[0.68rem] font-semibold inline-flex items-center gap-1.5">
-            <span
-              aria-hidden
-              className="block w-1.5 h-1.5 rounded-full bg-saffron-600 motion-safe:animate-pulse"
-            />
-            {copy.kicker}
-          </p>
+        <div className="text-center sm:text-left min-w-0">
           <h2
-            className={`mt-2 ${
+            className={`${
               isHi
                 ? "font-tiro text-sindoor-700"
                 : "font-fraunces font-semibold text-sindoor-700"
-            } text-2xl sm:text-[1.65rem] leading-snug [text-wrap:balance]`}
+            } text-2xl sm:text-[1.7rem] leading-snug [text-wrap:balance]`}
           >
             {copy.headline}
           </h2>
-          <p className="mt-2 text-sm sm:text-[0.95rem] text-ink-600 leading-relaxed [text-wrap:pretty]">
+          <p className="mt-3 text-sm sm:text-[0.95rem] text-ink-600 leading-relaxed [text-wrap:pretty]">
             {copy.body}
           </p>
 
-          <div className="mt-5 flex flex-wrap gap-3 justify-center sm:justify-start">
+          {/* ONE primary action, "Spot a bhandara now" is the natural
+              ask on an empty live feed (visitor → reporter). The
+              other two paths (browse listed / list your own) are
+              demoted to a single secondary text-link row below so
+              the eye lands on the primary first instead of choosing
+              between three competing pills. */}
+          <div className="mt-5 flex justify-center sm:justify-start">
             <Link
               href={`/spot${isHi ? "" : "?lang=en"}`}
               data-ga="cta_live_empty_spot"
               data-ga-source={`live_empty_${kind}`}
-              className="inline-flex items-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 px-4 py-2 text-sm font-semibold shadow-warm transition-transform hover:-translate-y-0.5"
+              className="inline-flex items-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 px-5 py-2.5 text-sm font-semibold shadow-warm transition-transform hover:-translate-y-0.5"
             >
               <CameraGlyph />
               {isHi ? "अभी भंडारा स्पॉट करें" : "Spot a bhandara now"}
             </Link>
-            {/* "List a bhandara" CTA — earlier the empty state only
-                offered Spot + Browse, which missed the organiser
-                segment (someone hosting a bhandara who lands here
-                from a friend's share). Outline-style secondary so
-                it sits next to "Spot" without competing for the
-                primary action. */}
-            <Link
-              href={`/list-bhandara${isHi ? "" : "?lang=en"}`}
-              data-ga="cta_live_empty_list"
-              data-ga-source={`live_empty_${kind}`}
-              className="inline-flex items-center gap-2 rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 px-4 py-2 text-sm font-semibold transition-colors"
-            >
-              {isHi ? "अपना भंडारा लिस्ट करें" : "List your bhandara"}
-            </Link>
+          </div>
+
+          {/* Secondary text links, the two ancillary paths share a
+              single row, separated by a quiet gold dot. Compact,
+              scannable, and clearly demoted from the primary CTA
+              without losing access for the organiser / browser
+              segments. */}
+          <div className="mt-4 flex items-center justify-center sm:justify-start flex-wrap gap-x-3 gap-y-1 text-sm">
             <Link
               href={isHi ? "/" : "/?lang=en"}
               data-ga="cta_live_empty_browse"
               data-ga-source={`live_empty_${kind}`}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-sindoor-700 hover:text-saffron-600 px-2 py-2 transition-colors"
+              className="inline-flex items-center gap-1 font-medium text-sindoor-700 hover:text-saffron-600 transition-colors"
             >
               {isHi ? "लिस्टेड भंडारे देखें" : "Browse listed bhandaras"}
               <span aria-hidden>→</span>
             </Link>
+            <span aria-hidden className="text-gold-500/55">·</span>
+            <Link
+              href={`/list-bhandara${isHi ? "" : "?lang=en"}`}
+              data-ga="cta_live_empty_list"
+              data-ga-source={`live_empty_${kind}`}
+              className="inline-flex items-center gap-1 font-medium text-sindoor-700 hover:text-saffron-600 transition-colors"
+            >
+              {isHi ? "खुद आयोजन कर रहे हैं? लिस्ट करें" : "Hosting one? List it"}
+              <span aria-hidden>→</span>
+            </Link>
           </div>
-
-          <p className="mt-5 text-[0.7rem] uppercase tracking-[0.22em] text-ink-600 inline-flex items-center gap-1.5">
-            <RefreshGlyph />
-            {isHi ? "हर 8 सेकंड में ताज़ा" : "Refreshing every 8 seconds"}
-          </p>
         </div>
       </div>
 
@@ -525,7 +554,7 @@ function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
       onClick={onClose}
       className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 motion-safe:animate-[bm-toast-in_140ms_ease-out]"
     >
-      {/* Close button — top right of viewport */}
+      {/* Close button, top right of viewport */}
       <button
         type="button"
         onClick={(e) => {
@@ -552,7 +581,7 @@ function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
 
       {/* The image. `object-contain` + max-h capped to viewport ensures
           the whole image is always visible. Click on the image itself
-          should NOT close — only clicks on the backdrop do. */}
+          should NOT close, only clicks on the backdrop do. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={url}
@@ -580,7 +609,7 @@ function PostCard({
   const initial = post.authorName.trim().charAt(0).toUpperCase() || "•";
   return (
     <li
-      // `id` powers deep links from the homepage HappeningNow row —
+      // `id` powers deep links from the homepage HappeningNow row,
       // tapping a card there navigates to `/live#spot:<id>` and the
       // browser scrolls this element into view natively.
       // `scroll-mt-24` adds enough top margin so the post isn't
@@ -588,7 +617,7 @@ function PostCard({
       // it via the hash. (24 ≈ 6rem, comfortably above the header.)
       id={post.id}
       // `target:` styles fire when the URL fragment matches this li's
-      // id — i.e. when the user arrived here via /live#spot:<id> from
+      // id, i.e. when the user arrived here via /live#spot:<id> from
       // a tap on a HappeningNow card. We brighten the border + drop a
       // soft saffron ring so the eye lands on the correct card after
       // the browser's hash-scroll completes. CSS-only, no JS.
@@ -625,7 +654,7 @@ function PostCard({
           className="group/img relative block w-full overflow-hidden cursor-zoom-in"
           style={{ aspectRatio: "auto" }}
         >
-          {/* Blurred backdrop — same image, scaled up, blurred, dimmed
+          {/* Blurred backdrop, same image, scaled up, blurred, dimmed
               so it acts as a colour-aware fill behind the contained
               foreground image. Inline style avoids needing to add a
               Tailwind arbitrary-property class for every URL. */}
@@ -644,7 +673,7 @@ function PostCard({
             aria-hidden
             className="absolute inset-0 bg-cream-50/35"
           />
-          {/* The actual image — `object-contain` keeps the whole image
+          {/* The actual image, `object-contain` keeps the whole image
               visible regardless of aspect ratio. Min-height keeps very
               wide landscape photos from collapsing to a sliver. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -716,7 +745,7 @@ function PostActions({
     ? `https://www.google.com/maps/dir/?api=1&destination=${post.bhandaraLat},${post.bhandaraLng}`
     : null;
 
-  // Share message — built via the shared `spotShareText` helper so the
+  // Share message, built via the shared `spotShareText` helper so the
   // wording on /live matches what every other spot share callsite
   // produces (HappeningNow card, map popup, side list). Caption text
   // becomes the "Spotted:" line; the linked-bhandara URL (or the
@@ -726,7 +755,7 @@ function PostActions({
   // Telegram / Signal / etc. lands as a complete warm message.
   //
   // We hand the helper post.bhandaraLat/Lng as the coords (every
-  // FeedPost in /live has them — falls back to the spot's own coords
+  // FeedPost in /live has them, falls back to the spot's own coords
   // server-side in src/app/live/page.tsx). caption uses post.text
   // which the API already strips of the [bot:...] tag via
   // stripBotProvenance.
@@ -774,7 +803,7 @@ function PostActions({
         onClick={async () => {
           try {
             // Copy the FULL warm share message (intro + caption +
-            // place + maps url + badamangal url + closer) — not just
+            // place + maps url + badamangal url + closer), not just
             // the bare bhandara URL. Matches what the WhatsApp share
             // button sends, so a paste anywhere (Telegram, SMS,
             // email, notes app, etc.) produces a complete invite.

@@ -34,7 +34,7 @@ export default async function AdminScanPage() {
             Upload an invite, publish in seconds
           </h1>
           <p className="mt-1 text-sm text-ink-600 max-w-xl">
-            Drop a WhatsApp invite image (or a spot photo) — Gemini reads
+            Drop a WhatsApp invite image (or a spot photo), Gemini reads
             the details, Ola Maps drops the pin, you review &amp; publish.
             Goes live on the homepage instantly.
           </p>

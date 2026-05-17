@@ -3,13 +3,13 @@
 /**
  * Admin "scan & review" widget. Three states:
  *
- *   1. idle      — user picks a kind (bhandara / spot) and a file
- *   2. scanning  — POST /api/admin/scan, await Gemini + Ola response
- *   3. review    — render an editable form pre-filled with what we got
+ *   1. idle     , user picks a kind (bhandara / spot) and a file
+ *   2. scanning , POST /api/admin/scan, await Gemini + Ola response
+ *   3. review   , render an editable form pre-filled with what we got
  *                  back; Publish hits /api/admin/publish?kind=…
  *
  * The form intentionally trusts the admin to fix anything the model
- * got wrong — phone, time, area, coords. That review-and-edit gate is
+ * got wrong, phone, time, area, coords. That review-and-edit gate is
  * the safety net for the two failure modes we've already seen:
  *   - geocoder picking a different venue with the same name
  *     (e.g. LU New Campus vs Main Campus)
@@ -23,17 +23,17 @@ import SeasonDatePicker from "@/components/SeasonDatePicker";
 //
 // Why pre-compress on the client?
 //   1. Phone photos straight out of the camera are 4-12 MB. Sending all
-//      that over a flaky 4G uplink at a bhandara is painful — even with
+//      that over a flaky 4G uplink at a bhandara is painful, even with
 //      Netlify's 6 MB body cap we'd reject the upload mid-flight.
 //   2. The server already re-encodes via sharp, but doing it twice
 //      doesn't hurt and saves an upload round-trip. The server pass
 //      stays as the trust boundary (EXIF strip, magic-byte check).
 //
-// 1600 px / JPEG q=0.85 is the sweet spot — Claude can still read
+// 1600 px / JPEG q=0.85 is the sweet spot, Claude can still read
 // Devanagari banner text crisply, and the file lands ~150-400 KB.
 const MAX_LONG_EDGE = 1600;
 const JPEG_QUALITY = 0.85;
-// Below this, skip the canvas round-trip — the file is already small.
+// Below this, skip the canvas round-trip, the file is already small.
 const SKIP_COMPRESSION_BELOW = 600 * 1024;
 
 async function compressToJpeg(file: File): Promise<File> {
@@ -56,7 +56,7 @@ async function compressToJpeg(file: File): Promise<File> {
   const ctx = canvas.getContext("2d");
   if (!ctx) {
     bitmap.close?.();
-    return file; // graceful fallback — server-side sharp pass still runs
+    return file; // graceful fallback, server-side sharp pass still runs
   }
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close?.();
@@ -263,7 +263,7 @@ export default function ScanReview({
               : "Snap a photo of the live bhandara, or upload one from the gallery."}
           </p>
 
-          {/* Hidden inputs — the visible buttons trigger them. We keep
+          {/* Hidden inputs, the visible buttons trigger them. We keep
               them separate so the camera one carries the `capture` hint,
               which on mobile pops the rear camera straight away instead
               of the gallery. Desktop browsers ignore `capture` and fall
@@ -389,7 +389,7 @@ export default function ScanReview({
 
       {/* ── Review form ───────────────────────────────────────── */}
       {/* Keep the form mounted during "publishing" too so the in-flight
-          spinner has somewhere to render — narrowing the guard to
+          spinner has somewhere to render, narrowing the guard to
           "review" only would unmount before the response lands. */}
       {(phase === "review" || phase === "publishing") && scan ? (
         scan.kind === "bhandara" ? (
@@ -577,7 +577,7 @@ function BhandaraReviewForm({
   }
 
   // Custom dates the admin has added that aren't in the preset
-  // Tuesday/Saturday chip set — shown as removable chips above the
+  // Tuesday/Saturday chip set, shown as removable chips above the
   // SeasonDatePicker so the admin can see exactly what's selected.
   const presetSet = useMemo(
     () => new Set([...tuesdays, ...saturdays]),
@@ -638,7 +638,7 @@ function BhandaraReviewForm({
       <div className="rounded-2xl border border-gold-500/40 bg-cream-50 p-5 sm:p-6">
         <h2 className="font-fraunces text-xl text-sindoor-700">Review &amp; publish</h2>
         <p className="text-xs text-ink-600 mt-1">
-          Edit anything Gemini misread — especially organizer phone, exact
+          Edit anything Gemini misread, especially organizer phone, exact
           venue, and the area pin.
         </p>
 
@@ -659,7 +659,7 @@ function BhandaraReviewForm({
             multiline
             wide
           />
-          {/* Area picker — supports curated list + free-text "Other".
+          {/* Area picker, supports curated list + free-text "Other".
               Same pattern as the public BhandaraForm so admin and
               organiser have one mental model. */}
           <div>
@@ -707,7 +707,7 @@ function BhandaraReviewForm({
                     {o}
                   </option>
                 ))}
-                <option value="__custom__">Other — type your own…</option>
+                <option value="__custom__">Other, type your own…</option>
               </select>
             )}
           </div>
@@ -781,7 +781,7 @@ function BhandaraReviewForm({
           />
         </div>
 
-        {/* Dates — preset Bada Mangal Tuesdays + Bada Shanivar
+        {/* Dates, preset Bada Mangal Tuesdays + Bada Shanivar
             Saturdays as quick-pick chips. Below them, a custom-date
             picker (any 2026 date) for off-season events or one-off
             community dinners the calendar doesn't preset. */}
@@ -1007,7 +1007,7 @@ function SpotReviewForm({
           <div className="mt-3 rounded-xl border border-alert-500/40 bg-alert-500/8 p-3 text-xs">
             <p className="font-semibold text-alert-500">No geocode hit</p>
             <p className="mt-1 text-ink-600">
-              Drop a pin manually — type lat/lng below.
+              Drop a pin manually, type lat/lng below.
             </p>
           </div>
         )}

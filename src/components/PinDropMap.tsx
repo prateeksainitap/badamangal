@@ -7,7 +7,7 @@
  * (PinDropStep, SpotQuickForm) don't have to change:
  *   { lat, lng, onChange({lat, lng}), className? }
  *
- * Internally the map uses MapLibre's `[lng, lat]` order — we handle the
+ * Internally the map uses MapLibre's `[lng, lat]` order, we handle the
  * swap at the API boundary so nothing else in the codebase has to know.
  */
 
@@ -48,7 +48,7 @@ export default function PinDropMap({ lat, lng, onChange, className }: Props) {
 
     let cancelled = false;
 
-    // Microtask-deferred init — same Strict-Mode race fix as
+    // Microtask-deferred init, same Strict-Mode race fix as
     // BhandaraMap.tsx. See the long comment there for the full
     // explanation. Short version: deferring past React's strict-mode
     // mount/cleanup/remount cycle means the first (throw-away) mount
@@ -75,7 +75,7 @@ export default function PinDropMap({ lat, lng, onChange, className }: Props) {
           container: containerRef.current,
           center: [startLng, startLat], // MapLibre order: [lng, lat]
           zoom: 13,
-          // Don't hijack page scrolling — same UX as the Leaflet version.
+          // Don't hijack page scrolling, same UX as the Leaflet version.
           scrollZoom: false,
         });
 
@@ -85,7 +85,7 @@ export default function PinDropMap({ lat, lng, onChange, className }: Props) {
         }
         mapRef.current = map;
 
-        // Zoom + "find my location" controls — sit in the top-right
+        // Zoom + "find my location" controls, sit in the top-right
         // corner so they don't fight the form fields below the map.
         attachMapControls(map, { showGeolocate: true, position: "top-right" });
 
@@ -106,7 +106,7 @@ export default function PinDropMap({ lat, lng, onChange, className }: Props) {
           }
         });
 
-        // Same sprite-image fallback as the city map — drop a 1×1
+        // Same sprite-image fallback as the city map, drop a 1×1
         // transparent placeholder for any icon Ola's style requests
         // that isn't in the actual sprite atlas.
         map.on("styleimagemissing", (e: { id: string }) => {
@@ -118,7 +118,7 @@ export default function PinDropMap({ lat, lng, onChange, className }: Props) {
                 data: new Uint8Array(4),
               });
             } catch {
-              /* concurrent add — ignore */
+              /* concurrent add, ignore */
             }
           }
         });
@@ -135,7 +135,7 @@ export default function PinDropMap({ lat, lng, onChange, className }: Props) {
           placeMarkerAt(lat, lng);
         }
       } catch (err) {
-        // Map init failed — log so devs see why; UI stays in the
+        // Map init failed, log so devs see why; UI stays in the
         // empty-map placeholder state.
         console.error("[PinDropMap] Ola Maps init failed:", err);
       }
@@ -220,7 +220,7 @@ export default function PinDropMap({ lat, lng, onChange, className }: Props) {
   return (
     <div
       ref={containerRef}
-      // `position: relative` is critical — MapLibre injects its canvas
+      // `position: relative` is critical, MapLibre injects its canvas
       // as `position: absolute; top: 0; left: 0; width:100%; height:100%`
       // and pins to the nearest positioned ancestor. Without this style
       // the canvas escapes the container and renders at the page body's

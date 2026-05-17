@@ -5,14 +5,14 @@
  *      a larger long-edge than the public uploads route (1600) because
  *      Claude needs to read fine Devanagari address text on a banner.
  *   2. Persist: drop the WebP into Supabase Storage (or /public/uploads
- *      in dev) and remember its public URL — this is the photo that
+ *      in dev) and remember its public URL, this is the photo that
  *      will sit on the published bhandara/spot card.
  *   3. Extract: send the SAME image bytes (still as the resized WebP)
  *      to Gemini vision via `src/lib/vision.ts`, then geocode the
  *      address it returned so the admin can review with the pin
  *      already positioned.
  *
- * The endpoint never writes to the DB — that's the publish step. It
+ * The endpoint never writes to the DB, that's the publish step. It
  * just hands the admin a payload to review and edit in the form.
  *
  * Two kinds:
@@ -160,7 +160,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         console.error("Gemini bhandara extract failed", err);
         const detail = err instanceof Error ? err.message : String(err);
         // Surface the specific config issue when the key is missing,
-        // since "Gemini couldn't read it" is misleading there — the
+        // since "Gemini couldn't read it" is misleading there, the
         // API call never even left the server.
         const friendly = /GEMINI_API_KEY is not set/i.test(detail)
           ? "Vision is disabled: GEMINI_API_KEY is not configured on the server. Add it in Netlify → Site settings → Environment variables and redeploy."
@@ -189,7 +189,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         kind: "bhandara",
         photoUrl,
         extracted,
-        geocode, // may be null — admin can drop a pin manually
+        geocode, // may be null, admin can drop a pin manually
       });
     }
 

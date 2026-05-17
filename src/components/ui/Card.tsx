@@ -13,7 +13,7 @@ import Link from "next/link";
  *   <Card padding="hero">…</Card>                 // px-6 py-7
  *
  * For cards with photo banners on top, drop the photo block as the
- * first child — it'll inherit the rounded clip from `overflow-hidden`.
+ * first child, it'll inherit the rounded clip from `overflow-hidden`.
  *
  * For cards that need jali-corner ornaments, wrap with `<JaliFrame>`.
  */

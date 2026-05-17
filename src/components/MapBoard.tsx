@@ -4,7 +4,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 
-// BhandaraMap wraps Ola Maps / MapLibre GL — ~200 KB of compressed JS
+// BhandaraMap wraps Ola Maps / MapLibre GL, ~200 KB of compressed JS
 // that's only needed once the visitor scrolls to the map. Lazy-import
 // it so the homepage's initial JS bundle stays light, and show a paper
 // placeholder while the chunk downloads on demand. The map render is
@@ -27,6 +27,7 @@ import NearMeButton, { type NearMeState } from "@/components/NearMeButton";
 import { trackEvent } from "@/lib/ga";
 import type { Bhandara } from "@/types/bhandara";
 import type { Locale } from "@/content/strings";
+import { strings } from "@/content/strings";
 import { useLocaleFromContext } from "@/lib/locale-context";
 
 type LiveSpotInput = {
@@ -44,12 +45,21 @@ type LiveSpotInput = {
 
 type Filter = "all" | "listed" | "spotted";
 
+/**
+ * Locale-derived strings (heading, body, "List your bhandara" CTA) are
+ * intentionally NOT passed as props anymore, they used to be computed
+ * server-side from a hard-coded "en" locale and never re-rendered when
+ * the Hindi toggle fired. Now everything text-bearing reads from the
+ * client-side LocaleProvider so the toggle is instant on every label.
+ * The optional props are kept on the type purely for back-compat with
+ * any caller that still passes them; they're ignored at runtime.
+ */
 type Props = {
-  locale: Locale;
-  isHi: boolean;
-  heading: string;
-  body: string;
-  listBhandaraLabel: string;
+  locale?: Locale;
+  isHi?: boolean;
+  heading?: string;
+  body?: string;
+  listBhandaraLabel?: string;
   listings: Bhandara[];
   liveSpots: LiveSpotInput[];
 };
@@ -59,23 +69,25 @@ type Props = {
  *
  * Renders the section heading row (with the filter chip strip and the
  * "Add a bhandara" CTA), the map, the map's two-marker legend, and the
- * side list — all derived from the same filtered slice of listings +
+ * side list, all derived from the same filtered slice of listings +
  * live spots so the map and the side list never disagree.
  */
 export default function MapBoard({
-  heading,
-  body,
-  listBhandaraLabel,
   listings,
   liveSpots,
 }: Props) {
-  // Locale comes from the client-side context so SSR can render English
-  // and we still respect the visitor's bm_lang cookie after hydration.
-  // Props `locale` / `isHi` are accepted for backwards-compat and
-  // intentionally ignored.
+  // Locale + every locale-derived string comes from the client-side
+  // context so SSR can render English and we still respect the
+  // visitor's bm_lang cookie after hydration. Heading / body /
+  // listBhandaraLabel props are accepted on the Props type for
+  // backwards-compat and intentionally ignored, see the type
+  // comment above for the why.
   const locale = useLocaleFromContext();
   const isHi = locale === "hi";
-  void locale; // suppress unused-warning when only isHi is consumed below
+  const t = strings[locale];
+  const heading = t.map.sectionHeading;
+  const body = t.map.sectionBody;
+  const listBhandaraLabel = t.cta.listBhandara;
   const [filter, setFilter] = useState<Filter>("all");
   // Near-me state lives at the board level so the trigger button can sit
   // in the top toolbar (next to the filter pills) while still controlling
@@ -98,7 +110,7 @@ export default function MapBoard({
    * Reshape spots into the prop-shape BhandaraMap expects, memoised
    * so the reference is stable across unrelated re-renders. Without
    * this memo, an inline `.map()` literal produced a fresh array on
-   * every parent render — Effect B in BhandaraMap then saw "new
+   * every parent render, Effect B in BhandaraMap then saw "new
    * reference" → tore down every marker → fitBounds → any open
    * popup closed and the camera snapped back to its default zoom.
    * Now the array only changes when `filteredSpots` or `isHi` does.
@@ -229,9 +241,9 @@ export default function MapBoard({
       </div>
 
       {/* Legend, two marker types on the map. The miniature glyphs
-          here mirror the real markers exactly — cream-disc backdrop
+          here mirror the real markers exactly, cream-disc backdrop
           + gada SVG for listed, the same plus a saffron pulsing ring
-          for spotted — so the visitor can map "legend dot ↔ map pin"
+          for spotted, so the visitor can map "legend dot ↔ map pin"
           at a glance. The pulse uses the same `bm-pin-ring` keyframe
           the actual spot markers use, so the timing + circular
           geometry stay in sync between legend and map. */}
@@ -253,7 +265,7 @@ export default function MapBoard({
         </span>
         <span className="inline-flex items-center gap-2">
           <span className="relative inline-flex h-5 w-5 items-center justify-center shrink-0">
-            {/* Pulse ring — sized larger than the disc and anchored
+            {/* Pulse ring, sized larger than the disc and anchored
                 concentrically. Inline-styles the keyframe so the
                 legend pulse and the marker pulse share one source
                 of truth (bm-pin-ring lives in globals.css). */}

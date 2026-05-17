@@ -21,7 +21,11 @@ type ListedBhandara = {
 };
 
 type Props = {
-  locale: Locale;
+  /** Optional, ignored at runtime, locale resolves from the
+   *  LocaleProvider context so the Hindi toggle flips every label
+   *  without a server-tree refresh. Kept on the type for back-compat
+   *  with any caller still passing it. */
+  locale?: Locale;
   /** Optional override for the initial role. When omitted (the typical
    *  call from /list-bhandara now), the component reads `?role=` from
    *  the URL itself after mount, so the page stays statically renderable
@@ -38,8 +42,8 @@ type Props = {
  * 2) Picking "Organizer" swaps the chooser for the multi-step listing
  *    form, with a "← Back" pill to return to the chooser.
  *
- * Picking "Spotter" routes the user to /spot — the canonical spot page
- * — so the same V2 flow runs regardless of which entry point the user
+ * Picking "Spotter" routes the user to /spot, the canonical spot page
+ *, so the same V2 flow runs regardless of which entry point the user
  * came in from. Previously this component rendered SpotQuickForm
  * inline, which created two slightly-different versions of the same
  * page; routing them both to /spot is the single source of truth.
@@ -86,7 +90,7 @@ export default function AddBhandaraSwitcher({
     );
   }
 
-  // Only the organizer branch remains here — spotter routes out to /spot
+  // Only the organizer branch remains here, spotter routes out to /spot
   // (see RoleChooser onPick above). The role pill + Back button mirror
   // the chooser pattern so users always have an exit.
   return (

@@ -19,7 +19,7 @@ import AdminLoginForm from "@/components/admin/AdminLoginForm";
 import BotHeartbeat from "@/components/admin/BotHeartbeat";
 import SubmitButton from "@/components/admin/SubmitButton";
 // NOTE: hard-delete (deleteBhandaraAction / deleteSpotAction) and its
-// ConfirmSubmit prompt are intentionally NOT wired into the UI here —
+// ConfirmSubmit prompt are intentionally NOT wired into the UI here,
 // admin policy is delist-only so historical data is preserved across
 // seasons. The server actions remain in `actions.ts` as a defensive
 // hatch, but there is no path to trigger them from the dashboard.
@@ -37,8 +37,8 @@ type SearchParams = Promise<{
   error?: string;
   status?: string;
   q?: string;
-  /** "bhandara" (default) — moderate listed bhandaras.
-   *  "spot"  — moderate spotted-live pins (the saffron pulse markers). */
+  /** "bhandara" (default), moderate listed bhandaras.
+   *  "spot" , moderate spotted-live pins (the saffron pulse markers). */
   type?: string;
 }>;
 
@@ -72,7 +72,7 @@ export default async function AdminPage({
   // Each mode has its own status tabs + counts; the search bar adapts
   // to query fields that make sense for the active mode. The
   // WhatsApp-bot mode is its own *source-of-rows* view rather than a
-  // status filter — see WhatsAppBotView for the group-by-source-group
+  // status filter, see WhatsAppBotView for the group-by-source-group
   // breakdown.
   const mode: "bhandara" | "spot" | "whatsapp" =
     sp.type === "spot"
@@ -84,7 +84,7 @@ export default async function AdminPage({
 
   if (mode === "spot") {
     // Await the spot view's async body so the page returns its
-    // resolved JSX, not a Promise — Next.js can handle either, but
+    // resolved JSX, not a Promise, Next.js can handle either, but
     // awaiting keeps types straight.
     return await SpotsView({ sp, q });
   }
@@ -94,14 +94,14 @@ export default async function AdminPage({
 
   // Tab routing. `?status=` accepts:
   //   ALL        → every row in the DB regardless of status (default
-  //                landing tab — the source-of-truth view).
+  //                landing tab, the source-of-truth view).
   //   PENDING    → new submissions awaiting the team's confirmation call
   //   UNVERIFIED → live on the map but no verified badge yet
   //   VERIFIED   → live + team-confirmed
   //   REJECTED   → unpublished / delisted
   //
   // (Bot-ingested rows previously had a FROM_BOT tab here; they now
-  // live in their own top-level "📱 WhatsApp bot" mode — see
+  // live in their own top-level "📱 WhatsApp bot" mode, see
   // WhatsAppBotView. Removing the tab keeps the moderation queue
   // focused on canonical statuses only.)
   const filter = sp.status?.toUpperCase();
@@ -177,7 +177,7 @@ export default async function AdminPage({
   ]);
   // Pair each public-shape Bhandara with the raw DB record so the
   // admin view can still read `status` (which is intentionally
-  // stripped from the public Bhandara type — moderation state isn't
+  // stripped from the public Bhandara type, moderation state isn't
   // part of the public contract).
   const bhandaras = records.map((r) => ({
     ...toBhandara(r),
@@ -198,7 +198,7 @@ export default async function AdminPage({
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 pb-10">
-      {/* Sticky header strip — title row + search bar + tab pills all
+      {/* Sticky header strip, title row + search bar + tab pills all
           travel together. `position: sticky` pins it to the top of the
           viewport as the bhandara list scrolls under it. The slight
           translucent background + backdrop blur (cream tinted so it
@@ -214,7 +214,7 @@ export default async function AdminPage({
           </h1>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Bot ingest liveness — renders only after the MacBook has
+          {/* Bot ingest liveness, renders only after the MacBook has
               pinged at least once. Green pulsing dot when fresh,
               gold when stale, red when offline. */}
           <BotHeartbeat />
@@ -240,7 +240,7 @@ export default async function AdminPage({
       {/* Instant search: AdminSearchBox is a tiny client component
           that debounces keystrokes and `router.replace`s the URL with
           a fresh `?q=…`. The page itself stays a server component, so
-          Prisma still runs the filter — the only thing that changed
+          Prisma still runs the filter, the only thing that changed
           is *when* the navigation fires (every keystroke instead of
           on submit). URL stays bookmarkable, tab-preservation still
           works via the `status` prop. */}
@@ -260,14 +260,14 @@ export default async function AdminPage({
         ) : null}
       </div>
 
-      {/* Filter tabs — bot-ingested rows have moved to their own
+      {/* Filter tabs, bot-ingested rows have moved to their own
           top-level "📱 WhatsApp bot" mode (see ModeToggle). */}
       <nav className="mt-4 flex flex-wrap gap-2 text-sm">
         {(
           ["ALL", "PENDING", "UNVERIFIED", "VERIFIED", "REJECTED"] as const
         ).map((s) => {
           const active = s === tab;
-          // Preserve the active search across tab changes — admins
+          // Preserve the active search across tab changes, admins
           // often want to narrow their search result by status.
           const href = q
             ? `/admin?status=${s}&q=${encodeURIComponent(q)}`
@@ -314,7 +314,7 @@ export default async function AdminPage({
       ) : (
         <ul className="mt-6 grid gap-5">
           {bhandaras.map((b) => {
-            // Compute the row's *actual* state — used for both the
+            // Compute the row's *actual* state, used for both the
             // status pill and the action-button cluster. The previous
             // logic keyed off `tab`, which was wrong on the ALL tab
             // (mixed statuses) and made the buttons offer the wrong
@@ -346,7 +346,7 @@ export default async function AdminPage({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 {/* Photo thumbnail + name block.
                     The bhandara list previously rendered photoUrl only as
-                    a text Row inside the dl below — admins had to click
+                    a text Row inside the dl below, admins had to click
                     the URL to see what they were reviewing. Now the
                     photo sits left of the name, same pattern the Spots
                     view already uses. Falls back to a 🕉️ glyph for the
@@ -354,7 +354,7 @@ export default async function AdminPage({
                 <div className="flex items-start gap-4 min-w-0">
                   {b.photoUrl ? (
                     // Wrap the thumbnail in a new-tab link so the admin can
-                    // see the *full-resolution* invite poster — text on the
+                    // see the *full-resolution* invite poster, text on the
                     // 80px thumb is unreadable for any banner with more than
                     // a sentence or two of Hindi. `noopener` keeps the
                     // launched tab from being able to script back into the
@@ -513,7 +513,7 @@ export default async function AdminPage({
                         ✓ Mark as Verified
                       </SubmitButton>
                     </form>
-                    {/* Edit on every live row — previously only PENDING
+                    {/* Edit on every live row, previously only PENDING
                         rows had an Edit path, so the only way to fix
                         wrong coordinates / typos on a Live row was via
                         Delist → re-edit → re-approve, which had a
@@ -585,7 +585,7 @@ export default async function AdminPage({
                     </form>
                   </>
                 ) : (
-                  // REJECTED row — Edit + Re-publish.
+                  // REJECTED row, Edit + Re-publish.
                   <>
                     <Link
                       href={`/admin/edit/${b.id}`}
@@ -626,7 +626,7 @@ function ModeToggle({
 }) {
   // Three top-level admin queues. "WhatsApp bot" is its own slot
   // (distinct sindoor styling) because it's a *source*, not a
-  // *status* — it holds rows from the WhatsApp ingest pipeline that
+  // *status*, it holds rows from the WhatsApp ingest pipeline that
   // are awaiting admin review, grouped by their source group.
   const items = [
     { id: "bhandara", label: "Bhandaras", href: "/admin" },
@@ -668,7 +668,7 @@ function ModeToggle({
 //
 // Spots are simpler than bhandaras:
 //   • Status: APPROVED or REJECTED only (no PENDING / VERIFIED).
-//   • Auto-expire 8 h after createdAt — once past `expiresAt`, they
+//   • Auto-expire 8 h after createdAt, once past `expiresAt`, they
 //     vanish from the public map even though `status` may still be
 //     APPROVED. The "Live" tab below filters on both conditions.
 // Tabs:
@@ -682,7 +682,7 @@ async function SpotsView({
   q,
 }: {
   // Re-decode searchParams here because the Promise was already
-  // awaited up in AdminPage — passing the resolved value avoids a
+  // awaited up in AdminPage, passing the resolved value avoids a
   // second await.
   sp: { status?: string; q?: string; type?: string };
   q: string;
@@ -705,7 +705,7 @@ async function SpotsView({
 
   // Spot search hits the human-facing fields: caption, area, address,
   // and reporter name. Phone is hashed (`reporterPhoneHash`) so we
-  // skip it — there's nothing useful to type-search there.
+  // skip it, there's nothing useful to type-search there.
   const where = q
     ? {
         AND: [
@@ -724,7 +724,7 @@ async function SpotsView({
       }
     : statusWhere;
 
-  // Single parallel batch — same speed-up as the Bhandaras view.
+  // Single parallel batch, same speed-up as the Bhandaras view.
   const [spots, liveCount, expiredCount, rejectedCount, allCount] =
     await Promise.all([
       prisma.spot.findMany({
@@ -919,7 +919,7 @@ async function SpotsView({
                 </dl>
 
                 <div className="mt-5 flex flex-wrap gap-2">
-                  {/* Edit & approve is available on every spot — caption
+                  {/* Edit & approve is available on every spot, caption
                       typos, area mis-tags, and coord fixes are common
                       after the initial APPROVED-by-default flow. Loops
                       back to /admin?type=spot on save. */}
@@ -984,8 +984,8 @@ async function SpotsView({
 // ────────────────────────────────────────────────────────────────────
 //
 // A *source-of-rows* queue (not a status filter). Surfaces everything
-// the WhatsApp ingest pipeline has dropped into the DB — both Bhandara
-// invite posters and Spot live-photos — grouped by the originating
+// the WhatsApp ingest pipeline has dropped into the DB, both Bhandara
+// invite posters and Spot live-photos, grouped by the originating
 // WhatsApp group so the admin can drain one group's submissions at a
 // time.
 //
@@ -1002,7 +1002,7 @@ function parseBotTag(text: string | null | undefined): {
   msgId: string;
 } {
   if (!text) return { sender: "", group: "", msgId: "" };
-  // Liberal match — bot tag may appear at the start of description or
+  // Liberal match, bot tag may appear at the start of description or
   // appended after the model-extracted prose with a blank line in
   // between. We capture the from/msg/timestamp fragment regardless of
   // surrounding whitespace.
@@ -1014,7 +1014,7 @@ function parseBotTag(text: string | null | undefined): {
   // The ingester encodes from-with-group as "Sender · Group Name".
   // Split on the first " · " to peel off the group; anything after is
   // the group name (groups can themselves contain "·" in their subject
-  // — we re-join the trailing parts so we don't truncate).
+  //, we re-join the trailing parts so we don't truncate).
   const parts = fromField.split(/\s*·\s*/);
   const sender = parts.shift() ?? "";
   const group = parts.join(" · ").trim();
@@ -1032,7 +1032,7 @@ type BotSpot = {
   // Spots are inserted with a non-null photoUrl by /api/bot/ingest,
   // but the Prisma Spot.photoUrl column type is `String?` (nullable)
   // so the type system still surfaces `string | null` here. We
-  // render an empty/placeholder photo if it ever lands null — which
+  // render an empty/placeholder photo if it ever lands null, which
   // shouldn't happen via the bot pipeline, but we don't want a runtime
   // crash if it does.
   photoUrl: string | null;
@@ -1137,7 +1137,7 @@ async function WhatsAppBotView({
   }));
 
   // Group rows by source WhatsApp group. Unknown / empty group falls
-  // into "(no group detected)" — usually means an older row from
+  // into "(no group detected)", usually means an older row from
   // before the ingester started forwarding group names, or a manual
   // curl smoke test.
   const groupBhandaras = groupBy(bhandaras, (b) => b._bot.group || "(no group detected)");
@@ -1181,7 +1181,7 @@ async function WhatsAppBotView({
           </div>
         </header>
 
-        {/* Search bar — same shape as the bhandara view so muscle memory
+        {/* Search bar, same shape as the bhandara view so muscle memory
             translates. The status prop is ignored by AdminSearchBox in
             this mode because the parent route forwards ?type=whatsapp. */}
         <div className="mt-5">
@@ -1225,7 +1225,7 @@ async function WhatsAppBotView({
       </div>
 
       {/* Group-by-source-group sections. Within each section, rows
-          render with a leaner card than the main bhandara queue —
+          render with a leaner card than the main bhandara queue,
           group + sender at the top, photo prominent, then minimal
           extracted fields. Heavy editing happens on /admin/edit/[id]
           for bhandaras; for spots admins just publish/reject. */}
@@ -1322,7 +1322,7 @@ function BotBhandaraCard({ b }: { b: BotBhandara }) {
           </a>
         ) : null}
         <div className="min-w-0 flex-1">
-          {/* Provenance line — sender · group · "Needs call" pill */}
+          {/* Provenance line, sender · group · "Needs call" pill */}
           <div className="flex flex-wrap items-center gap-2 text-xs text-ink-600">
             <span className="font-medium text-sindoor-700">
               {b._bot.sender || "Unknown sender"}
@@ -1353,7 +1353,7 @@ function BotBhandaraCard({ b }: { b: BotBhandara }) {
             </span>
           </div>
           <h3 className="font-tiro text-xl text-sindoor-700 mt-2">
-            {b.nameHi || "—"}
+            {b.nameHi || "-"}
           </h3>
           <p className="font-fraunces text-lg text-ink-900">{b.name}</p>
           <p className="mt-1 text-sm text-ink-600">
@@ -1365,18 +1365,18 @@ function BotBhandaraCard({ b }: { b: BotBhandara }) {
       </div>
 
       <dl className="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
-        <Row label="Address" value={b.address || "—"} />
+        <Row label="Address" value={b.address || "-"} />
         <Row
           label="Tuesdays"
-          value={b.tuesdayDates.length ? b.tuesdayDates.join(", ") : "—"}
+          value={b.tuesdayDates.length ? b.tuesdayDates.join(", ") : "-"}
         />
-        <Row label="Menu" value={b.menu.length ? b.menu.join(", ") : "—"} />
+        <Row label="Menu" value={b.menu.length ? b.menu.join(", ") : "-"} />
         <Row
           label="Organizer"
           value={
             b.organizerName || b.organizerPhone
-              ? `${b.organizerName || "—"} · ${b.organizerPhone || "—"}`
-              : "—"
+              ? `${b.organizerName || "-"} · ${b.organizerPhone || "-"}`
+              : "-"
           }
         />
       </dl>
@@ -1547,7 +1547,7 @@ function BotSpotCard({ s }: { s: BotSpot }) {
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2">
-        {/* Edit & approve is always available — bot-ingested spots
+        {/* Edit & approve is always available, bot-ingested spots
             often have a wrong caption / 0,0 coords / blank area that
             the admin needs to fix before going live. We surface it
             first for non-rejected rows so the muscle memory matches
@@ -1635,7 +1635,7 @@ function Row({
 
 function LoginScreen({ error }: { error: boolean }) {
   // The form fields (with show/hide password + submission spinner)
-  // live in <AdminLoginForm /> — a client component using
+  // live in <AdminLoginForm />, a client component using
   // useFormStatus() to render a "Signing in…" state while
   // loginAction does its server-side work.
   return (

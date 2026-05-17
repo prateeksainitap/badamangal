@@ -17,7 +17,7 @@ import { useState } from "react";
  * The lat/lng <input> fields below the helper are the actual form
  * fields (their `name="lat"` / `name="lng"` is what the server
  * action reads). The helper just *writes* their values via React
- * state — no shadow fields, no double-source-of-truth bugs.
+ * state, no shadow fields, no double-source-of-truth bugs.
  *
  * Why this exists:
  *   Hand-typing coordinates is error-prone and slow. The most
@@ -100,7 +100,7 @@ export default function MapLocationInput({ initialLat, initialLng }: Props) {
         source: json.source ?? "resolved",
         inLucknow: Boolean(json.inLucknow),
       });
-      // Clear the paste box on success — keeps the workflow tidy
+      // Clear the paste box on success, keeps the workflow tidy
       // when the admin pastes → resolves → continues.
       setPaste("");
     } catch (err) {
@@ -155,7 +155,7 @@ export default function MapLocationInput({ initialLat, initialLng }: Props) {
             ✓ Coordinates filled from {feedback.source.replace(/_/g, " ")}.
             {!feedback.inLucknow ? (
               <span className="ml-1 text-alert-500">
-                ⚠ Outside Lucknow bbox — double-check before saving.
+                ⚠ Outside Lucknow bbox, double-check before saving.
               </span>
             ) : null}
           </span>
@@ -168,7 +168,7 @@ export default function MapLocationInput({ initialLat, initialLng }: Props) {
         )}
       </label>
 
-      {/* Actual form fields — name="lat"/"lng" so the server action
+      {/* Actual form fields, name="lat"/"lng" so the server action
           reads them. Number inputs preserve the keyboard-friendly UX
           for admins who already have coordinates handy. */}
       <div className="grid sm:grid-cols-2 gap-4">
@@ -204,7 +204,7 @@ export default function MapLocationInput({ initialLat, initialLng }: Props) {
         </label>
       </div>
 
-      {/* Status strip below the inputs — surfaces the most common
+      {/* Status strip below the inputs, surfaces the most common
           footgun (lat=lng=0 silently published as a "null island"
           pin on the public map) BEFORE the admin clicks Save. */}
       {hasCoords ? (
@@ -224,12 +224,12 @@ export default function MapLocationInput({ initialLat, initialLng }: Props) {
           <p className="text-xs text-alert-500">
             ⚠ Coords ({latNum.toFixed(4)}, {lngNum.toFixed(4)}) are
             outside the Lucknow bounding box. The pin will display in
-            the wrong city — verify before saving.
+            the wrong city, verify before saving.
           </p>
         )
       ) : (
         <p className="text-xs text-alert-500">
-          ⚠ Coordinates are 0,0 — saving will publish the pin to the
+          ⚠ Coordinates are 0,0, saving will publish the pin to the
           middle of the ocean. Paste a Maps link above or type the
           coordinates manually.
         </p>

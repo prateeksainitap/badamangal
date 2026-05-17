@@ -16,7 +16,7 @@ import { LANG_COOKIE } from "@/lib/i18n";
  * Previously the root layout read the `bm_lang` cookie via Next's
  * server-side `cookies()` API and threaded the resolved locale into a
  * static <LocaleProvider value={...}>. That worked but the cookies()
- * read forced the entire app to render dynamically — every navigation
+ * read forced the entire app to render dynamically, every navigation
  * cold-started a Netlify Function, producing the 3-4 s click-to-paint
  * lag people noticed.
  *
@@ -25,7 +25,7 @@ import { LANG_COOKIE } from "@/lib/i18n";
  * keeps the value in React state, and reflects it onto `<html lang>`
  * for accessibility. The server-rendered HTML is always English (the
  * site default for new visitors), so Hindi-cookie visitors briefly see
- * English copy before the swap — acceptable trade for full edge-cached
+ * English copy before the swap, acceptable trade for full edge-cached
  * navigation across the rest of the site.
  */
 const LocaleContext = createContext<Locale>("en");
@@ -76,7 +76,7 @@ export function LocaleProvider({
     apply(resolve());
     const onChange = () => apply(resolve());
     // Listen for a custom event the <LangToggle /> dispatches the
-    // moment it writes the cookie — keeps the UI in lock-step with
+    // moment it writes the cookie, keeps the UI in lock-step with
     // the toggle without waiting for a window blur/focus cycle.
     window.addEventListener("bm:locale-change", onChange as EventListener);
     window.addEventListener("focus", onChange);

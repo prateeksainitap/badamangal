@@ -1,9 +1,6 @@
-import Link from "next/link";
 import type { Metadata } from "next";
-import { strings, type Locale } from "@/content/strings";
 import { CHALISA } from "@/content/devotional";
-import DevotionalReader from "@/components/DevotionalReader";
-import { MarigoldDivider } from "@/components/ornaments";
+import DevotionalPageView from "@/components/DevotionalPageView";
 import { faqPageSchema } from "@/lib/seo";
 
 export const revalidate = 300;
@@ -30,15 +27,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function ChalisaPage({}: {
-  // no-op
-}) {
-  // Server renders in English; client swaps via <LocaleProvider />.
-  const locale = "en" as Locale;
-  const t = strings[locale];
-  const isHi = locale === "hi";
-  const langSuffix = locale === "en" ? "?lang=en" : "";
-
+export default function ChalisaPage() {
+  // Thin server wrapper, JSON-LD scripts here, bilingual chrome in
+  // <DevotionalPageView /> (client) so the Hindi toggle swaps every
+  // label without a server-tree refresh.
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -58,7 +50,7 @@ export default async function ChalisaPage({}: {
     isAccessibleForFree: true,
   };
 
-  // FAQ schema — Google sometimes surfaces these as expandable Q&A
+  // FAQ schema, Google sometimes surfaces these as expandable Q&A
   // blocks directly in the SERP, doubling the listing's vertical
   // real estate. Keep the questions genuinely useful (not promotional)
   // so Google doesn't downgrade them as low-quality FAQ markup.
@@ -68,7 +60,7 @@ export default async function ChalisaPage({}: {
   const faqSchema = faqPageSchema([
     {
       q: "How long does the Hanuman Chalisa take to recite?",
-      a: "Around 7–10 minutes at a steady devotional pace. The Chalisa is 40 chaupais plus the opening doha and closing dohas — most devotees finish a single round in under ten minutes. Some chant it 11 or 108 times across the day on Tuesdays and Saturdays.",
+      a: "Around 7–10 minutes at a steady devotional pace. The Chalisa is 40 chaupais plus the opening doha and closing dohas, most devotees finish a single round in under ten minutes. Some chant it 11 or 108 times across the day on Tuesdays and Saturdays.",
     },
     {
       q: "When should I chant the Hanuman Chalisa?",
@@ -76,7 +68,7 @@ export default async function ChalisaPage({}: {
     },
     {
       q: "What is the meaning of the Hanuman Chalisa?",
-      a: "Composed in Awadhi by Tulsidas in the 16th century, the Chalisa is a forty-verse hymn praising Lord Hanuman — his birth, his strength, his devotion to Lord Ram, and the blessings he grants those who remember him. Each verse is short enough to memorise and recite together.",
+      a: "Composed in Awadhi by Tulsidas in the 16th century, the Chalisa is a forty-verse hymn praising Lord Hanuman, his birth, his strength, his devotion to Lord Ram, and the blessings he grants those who remember him. Each verse is short enough to memorise and recite together.",
     },
   ]);
 
@@ -90,55 +82,14 @@ export default async function ChalisaPage({}: {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
       />
-
-      <article className="pb-24">
-        {/* HEADER */}
-        <header className="mx-auto max-w-3xl px-4 sm:px-6 pt-12 sm:pt-16 pb-8 text-center">
-          <Link
-            href={`/resources${langSuffix}`}
-            className="inline-block text-sm text-ink-600 hover:text-saffron-600 transition-colors"
-          >
-            {t.resources.common.backToResources}
-          </Link>
-          <p className="mt-4 font-mukta uppercase tracking-[0.32em] text-gold-500 text-xs">
-            {t.resources.chalisa.kicker}
-          </p>
-          <h1 className="mt-3 font-deva font-medium text-[2rem] sm:text-[2.6rem] leading-[1.2] text-sindoor-700">
-            {CHALISA.titleHi}
-          </h1>
-          <p className="mt-3 font-fraunces italic text-xl sm:text-2xl text-ink-900">
-            {CHALISA.titleEn}
-          </p>
-          <p className="mt-5 max-w-xl mx-auto text-ink-600 leading-relaxed">
-            {t.resources.chalisa.body}
-          </p>
-        </header>
-
-        {/* PLAYER + VERSES */}
-        <section className="mx-auto max-w-4xl px-4 sm:px-6">
-          <DevotionalReader text={CHALISA} />
-        </section>
-
-        {/* DIVIDER */}
-        <div className="flex justify-center my-14">
-          <MarigoldDivider size={280} className="text-gold-500" />
-        </div>
-
-        {/* EDITORIAL NOTE */}
-        <section className="mx-auto max-w-3xl px-4 sm:px-6">
-          <p className="font-mukta uppercase tracking-[0.32em] text-gold-500 text-xs">
-            {isHi ? "संपादक की टिप्पणी" : "Editor's note"}
-          </p>
-          <p className="mt-3 font-fraunces italic text-ink-900/85 leading-relaxed">
-            {CHALISA.editorialNotes}
-          </p>
-          <p className="mt-4 text-sm text-ink-600">
-            {isHi
-              ? `रचयिता: ${CHALISA.author} · ${CHALISA.era}`
-              : `By ${CHALISA.author} · ${CHALISA.era}`}
-          </p>
-        </section>
-      </article>
+      <DevotionalPageView
+        text={CHALISA}
+        kickerKey="chalisa"
+        footer={{
+          en: `By ${CHALISA.author} · ${CHALISA.era}`,
+          hi: `रचयिता: ${CHALISA.author} · ${CHALISA.era}`,
+        }}
+      />
     </>
   );
 }

@@ -65,3 +65,6 @@ prisma/migrations/dev.db*
 # `npx tsx prisma/seed-whatsapp.ts` produce a site with working
 # photos on any machine.
 !/public/uploads/whatsapp/
+
+# Claude Code launch config (per-developer, not project code)
+.claude/

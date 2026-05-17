@@ -1,37 +1,41 @@
+"use client";
+
 import Link from "next/link";
 import type { Bhandara } from "@/types/bhandara";
-import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
+import { useLocaleFromContext } from "@/lib/locale-context";
 
 /**
- * "Featured" bhandara row — sits high on the homepage, above the
+ * "Featured" bhandara row, sits high on the homepage, above the
  * countdown and the map, so visitors who land via WhatsApp shares
  * or organic search see a concrete answer to "where can I go to a
  * bhandara today?" before they have to scroll, scan, or filter.
  *
  * The GA4 data showed only 12 bhandara-card clicks vs 246 hero-CTA
- * clicks (one bhandara open per 20+ landings) — cards were too far
+ * clicks (one bhandara open per 20+ landings), cards were too far
  * down the page. This section is the fix: highest-intent visitors
  * get 3-4 specific bhandaras up top, photographed, dated, and a
  * one-tap WhatsApp share button.
  *
+ * Why this is a CLIENT component: the Hindi toggle needs to flip
+ * the section heading + "Today / This week" pill + per-card
+ * area label + Today / Date badge text instantly. A server
+ * component would only swap on the next router.refresh() (which
+ * costs a cold-start delay on Netlify). Reading the locale via
+ * useLocaleFromContext() makes every text node respond to
+ * `bm:locale-change` synchronously.
+ *
  * Selection algorithm (priority order):
- *   1. Bhandaras serving TODAY (IST) — maximum relevance
+ *   1. Bhandaras serving TODAY (IST), maximum relevance
  *   2. Bhandaras serving in the next 7 days, with a photo, verified
  *   3. Any verified bhandara with a photo
  *   4. Any APPROVED bhandara with a photo
  *
  * Cap at 4 cards (the grid is 1col on mobile, 2col on tablet,
  * 4col on desktop). Cards link to the bhandara detail page.
- *
- * Important: this is a SERVER component. Selection runs on the
- * server during ISR revalidation — no client-side date arithmetic
- * means the "today" picks are accurate at render time (within the
- * 60s revalidation window) and don't flicker post-hydration.
  */
 type Props = {
   listings: Bhandara[];
-  locale: Locale;
 };
 
 /** "YYYY-MM-DD" of today's date in IST. */
@@ -112,7 +116,12 @@ function shortDate(iso: string, isHi: boolean): string {
   return `${d} ${(isHi ? hi : en)[m - 1]}`;
 }
 
-export default function FeaturedBhandaras({ listings, locale }: Props) {
+export default function FeaturedBhandaras({ listings }: Props) {
+  // Locale comes from the React context that LangToggle updates
+  // synchronously on switch. Initial server render is "en" (the
+  // static default); the cookie/URL-derived locale lands within a
+  // tick of mount via LocaleProvider's useEffect → useState.
+  const locale = useLocaleFromContext();
   const isHi = locale === "hi";
   const t = strings[locale];
   const langSuffix = isHi ? "" : "?lang=en";
@@ -185,7 +194,7 @@ export default function FeaturedBhandaras({ listings, locale }: Props) {
               className="group relative rounded-2xl overflow-hidden border border-gold-500/45 bg-cream-50 shadow-warm flex flex-col"
             >
               {/* Photo header, falls back to a saffron sunburst panel
-                  when no photo is uploaded — matches the card-grid
+                  when no photo is uploaded, matches the card-grid
                   treatment so the visual rhythm is consistent. */}
               {b.photoUrl ? (
                 <div className="relative aspect-[4/3] sm:aspect-square w-full overflow-hidden bg-saffron-50">
@@ -260,7 +269,7 @@ export default function FeaturedBhandaras({ listings, locale }: Props) {
                 </p>
               </div>
 
-              {/* Stretched-link overlay — whole card is clickable. */}
+              {/* Stretched-link overlay, whole card is clickable. */}
               <Link
                 href={`/bhandara/${b.slug}${langSuffix}`}
                 data-ga="featured_open_bhandara"

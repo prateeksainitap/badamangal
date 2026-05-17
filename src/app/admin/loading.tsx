@@ -45,7 +45,7 @@ export default function AdminLoading() {
         </nav>
       </div>
 
-      {/* Card list placeholder — three rows, same height as a real
+      {/* Card list placeholder, three rows, same height as a real
           bhandara row so the page doesn't reflow when content lands. */}
       <ul className="mt-5 grid gap-4">
         {Array.from({ length: 3 }).map((_, i) => (

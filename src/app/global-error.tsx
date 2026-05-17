@@ -2,7 +2,7 @@
 
 /**
  * Top-level error boundary for unhandled runtime errors. Next.js wraps
- * the entire app in this — when something throws past every nested
+ * the entire app in this, when something throws past every nested
  * `error.tsx`, we render a calm cream-and-saffron page so the visitor
  * doesn't see a raw Next.js error overlay or a blank screen.
  *

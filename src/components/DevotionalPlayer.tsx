@@ -28,7 +28,7 @@ export type DevotionalPlayerProps = {
  *      when the user scrolls past the full player AND the audio has
  *      been touched at least once. Contains play/pause, time, scrubber,
  *      mute. Sharing one audio element means playback state is unified
- *      — no duplicate streams, no out-of-sync controls.
+ *     , no duplicate streams, no out-of-sync controls.
  */
 export default function DevotionalPlayer({
   audioUrl,
@@ -49,7 +49,7 @@ export default function DevotionalPlayer({
   const [volume, setVolume] = useState(1);
   // Whether the user has ever interacted with the audio. Used to decide
   // if the mini sticky player should show. We don't surface it on a
-  // brand-new page load — only after they've actually played once.
+  // brand-new page load, only after they've actually played once.
   const [touched, setTouched] = useState(false);
   // Whether the main player band is visible in the viewport.
   const [mainVisible, setMainVisible] = useState(true);
@@ -83,7 +83,7 @@ export default function DevotionalPlayer({
     setTouched(true);
     if (a.paused) {
       void a.play().catch(() => {
-        /* autoplay blocked or asset missing — ignore */
+        /* autoplay blocked or asset missing, ignore */
       });
     } else {
       a.pause();
@@ -336,7 +336,7 @@ export default function DevotionalPlayer({
                 className="flex-1 min-w-0 h-1 accent-saffron-500 cursor-pointer"
               />
 
-              {/* Volume slider — desktop+ only (mobile keeps just the
+              {/* Volume slider, desktop+ only (mobile keeps just the
                   mute toggle to save horizontal space). The track uses
                   the same saffron accent as the scrubber for visual
                   consistency. */}
@@ -361,7 +361,7 @@ export default function DevotionalPlayer({
                 {muted ? <IconMuted /> : <IconVolume />}
               </button>
 
-              {/* Jump back to top — useful for getting back to the
+              {/* Jump back to top, useful for getting back to the
                   context the player is paired with. */}
               <button
                 type="button"

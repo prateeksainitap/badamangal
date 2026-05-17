@@ -33,7 +33,7 @@ export default function PinDropStep({ value, onChange }: Props) {
   const onChangeRef = useRef(onChange);
   /** Set to true by `pickSuggestion` so the upcoming `query` change
    *  (caused by stamping the picked label into the input) doesn't
-   *  re-trigger the autocomplete fetch — otherwise the dropdown would
+   *  re-trigger the autocomplete fetch, otherwise the dropdown would
    *  reopen 300 ms after the user selects an item. */
   const skipNextFetch = useRef(false);
   useEffect(() => {

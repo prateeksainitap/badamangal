@@ -3,7 +3,7 @@
  *
  * The MacBook running the OpenClaw agent pings this every 5 minutes via
  * a cron entry. We upsert a SiteCounter row whose `updatedAt` is auto-
- * managed by Prisma — `updatedAt` becomes our "last seen" timestamp.
+ * managed by Prisma, `updatedAt` becomes our "last seen" timestamp.
  * `/admin` reads it and renders "Bot last seen N min ago".
  *
  * Why we reuse SiteCounter instead of adding a new model:
@@ -13,7 +13,7 @@
  *
  * The endpoint is intentionally cheap + public-readable (no Bearer
  * required). If anyone discovers the URL and curls it, the worst they
- * do is bump `updatedAt` — same effect as the bot's normal ping.
+ * do is bump `updatedAt`, same effect as the bot's normal ping.
  * We *could* gate it on BOT_INGEST_SECRET like /ingest, but missing
  * pings need to be the alarm signal, so we'd rather minimize the
  * number of ways a real ping can be rejected.

@@ -32,7 +32,11 @@ export type LiveSpot = {
 
 type Props = {
   initial: LiveSpot[];
-  locale: Locale;
+  /** Optional, ignored at runtime, locale resolves from the
+   *  LocaleProvider context so the Hindi toggle flips the heading
+   *  ("bhandaras spotted live") and every label below without a
+   *  server-tree refresh. Kept on the type for back-compat. */
+  locale?: Locale;
 };
 
 const POLL_MS = 15_000;
@@ -110,7 +114,7 @@ export default function HappeningNow({ initial }: Props) {
                 : "font-fraunces font-bold text-sindoor-700"
             }`}
           >
-            {/* Saffron count prefix — mirrors the "19 Bhandaras listed
+            {/* Saffron count prefix, mirrors the "19 Bhandaras listed
                 across the city" treatment so the live-spot count
                 shares the same editorial-number language. The span
                 inherits Fraunces / Tiro from the parent so the digit
@@ -313,7 +317,7 @@ function SpotCard({
           backdrop + object-contain treatment used by listed bhandara
           cards so vertical posters and square photos both show their
           full content. When absent, fall back to the saffron sunburst
-          ornament — matches BhandaraCard's no-photo state. */}
+          ornament, matches BhandaraCard's no-photo state. */}
       {spot.photoUrl ? (
         <div className="relative aspect-square w-full overflow-hidden bg-saffron-50">
           <span
@@ -387,7 +391,7 @@ function SpotCard({
         {/* Reporter attribution. Surfaces who flagged the spot so other
             visitors can recognise neighbours / community members and
             trust the live photo a bit more than a faceless pin. We
-            truncate to one line so it never bumps the card height —
+            truncate to one line so it never bumps the card height,
             spots without a reporterName (rare; mostly legacy rows
             from before the field was required) simply drop this line. */}
         {spot.reporterName ? (
@@ -457,7 +461,7 @@ function SpotCard({
                 // WhatsApp share button sends, so a paste into any
                 // messenger produces a complete invite. Consistent
                 // with the /live feed and every other Copy on the
-                // site — see lib/share.ts for the message shape.
+                // site, see lib/share.ts for the message shape.
                 await navigator.clipboard.writeText(
                   spotShareText(
                     {
@@ -492,7 +496,7 @@ function SpotCard({
           </button>
         </div>
       </div>
-      {/* Stretched-link overlay — every spot card is now clickable
+      {/* Stretched-link overlay, every spot card is now clickable
           (previously only when bhandaraSlug existed). Tapping
           anywhere outside the action-bar lands the user on the
           /live timeline, scrolled to and focused on the exact post
@@ -509,7 +513,7 @@ function SpotCard({
         }
         aria-label={
           bhandaraName
-            ? `${bhandaraName} ${isHi ? "— लाइव फ़ीड में देखें" : "— view in live feed"}`
+            ? `${bhandaraName} ${isHi ? "- लाइव फ़ीड में देखें" : "- view in live feed"}`
             : isHi
               ? "लाइव फ़ीड में देखें"
               : "View in live feed"
@@ -601,7 +605,7 @@ function IconCamera() {
  * tinted "ghost cards" with photo placeholders + italic captions, and
  * usability testing showed users mistook them for real bhandaras.
  *
- * The fix: a single editorial moment — clear empty-state headline,
+ * The fix: a single editorial moment, clear empty-state headline,
  * one strong CTA, and (below) an unmistakably abstract 3-step diagram
  * that explains *how* the section fills, not *what* the future cards
  * look like. The three steps use big circular icons + short labels,
@@ -673,9 +677,9 @@ function HappeningNowEmpty({ isHi }: { isHi: boolean }) {
           </Link>
         </div>
 
-        {/* "How it works" — abstract 3-step diagram. Big circular
+        {/* "How it works", abstract 3-step diagram. Big circular
             icons + arrows. No avatars, no names, no italic quotes,
-            no card-like shapes — visually unmistakable as "process",
+            no card-like shapes, visually unmistakable as "process",
             not "content". */}
         <div className="mt-10">
           <p className="text-center text-[10px] uppercase tracking-[0.32em] text-gold-500/80 font-mukta font-semibold mb-5">

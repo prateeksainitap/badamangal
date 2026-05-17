@@ -8,6 +8,7 @@ import type { Bhandara } from "@/types/bhandara";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { trackEvent } from "@/lib/ga";
+import { useLocaleFromContext } from "@/lib/locale-context";
 import { useToast } from "@/components/Toast";
 import {
   bhandaraShareText,
@@ -34,8 +35,12 @@ export type SideListFilter = "all" | "listed" | "spotted";
 type Props = {
   listings: Bhandara[];
   liveSpots?: SideListSpot[];
-  locale: Locale;
-  isHi: boolean;
+  /** Optional, ignored at runtime, kept on the type so any caller
+   *  still passing them compiles. The component reads the real locale
+   *  from the LocaleProvider context so the Hindi toggle flips every
+   *  label here without a server-tree refresh. */
+  locale?: Locale;
+  isHi?: boolean;
   /** Currently active map filter, drives the side-list heading. */
   filter?: SideListFilter;
   /** Lifted near-me state, owned by the parent so the trigger button can
@@ -85,7 +90,7 @@ function shortDate(iso: string, isHi: boolean): string {
 }
 
 /** Pick the next upcoming Tuesday from a listing's tuesdayDates,
- *  or — if the listing serves today — return today. */
+ *  or, if the listing serves today, return today. */
 function nextServingDate(dates: string[]): string | null {
   if (!Array.isArray(dates) || dates.length === 0) return null;
   const today = istTodayIso();
@@ -93,7 +98,7 @@ function nextServingDate(dates: string[]): string | null {
   if (dates.includes(today)) return today;
   const upcoming = dates.filter((d) => d > today).sort();
   if (upcoming.length > 0) return upcoming[0];
-  // Whole season is in the past — show the most recent so the row isn't dateless.
+  // Whole season is in the past, show the most recent so the row isn't dateless.
   const past = [...dates].sort();
   return past[past.length - 1] ?? null;
 }
@@ -111,10 +116,10 @@ type Entry = {
   lat: number;
   lng: number;
   km?: number;
-  // Sharing — pre-built full wa.me URL + raw text body. Both come
+  // Sharing, pre-built full wa.me URL + raw text body. Both come
   // from the shared lib/share helpers so the message matches every
   // other card / detail page exactly. The Copy button pastes
-  // `shareText` (full warm message — see lib/share file header for
+  // `shareText` (full warm message, see lib/share file header for
   // the shape), the WhatsApp button uses `shareUrl` (wa.me wrapper).
   shareUrl: string;
   shareText: string;
@@ -124,11 +129,14 @@ type Entry = {
 export default function MapSideList({
   listings,
   liveSpots = [],
-  locale,
-  isHi,
   filter = "all",
   near = { status: "idle", coords: null },
 }: Props) {
+  // Locale + isHi resolve from context so the Hindi toggle flips every
+  // string here (heading, "showing", row tags, distance pill, share
+  // buttons, empty-state copy) without waiting on a server refresh.
+  const locale = useLocaleFromContext();
+  const isHi = locale === "hi";
   const t = strings[locale];
   const langSuffix = locale === "en" ? "?lang=en" : "";
 
@@ -251,7 +259,7 @@ export default function MapSideList({
     }
     // Use viewport-relative coords for both the scroll container's
     // bottom edge and each item's top edge. This is robust regardless
-    // of how the ancestors are positioned — `offsetTop` was returning
+    // of how the ancestors are positioned, `offsetTop` was returning
     // values relative to the nearest positioned ancestor (the `aside`
     // on desktop, the `ul` itself on some mobile layouts), which made
     // the comparison silently wrong on desktop and the chip never
@@ -285,7 +293,7 @@ export default function MapSideList({
   const scrollDown = useCallback(() => {
     const ul = listRef.current;
     if (!ul) return;
-    // One viewport-worth of scroll feels right — same gesture the user
+    // One viewport-worth of scroll feels right, same gesture the user
     // would do with a mouse-wheel click. Smooth scroll on top of that
     // for the gentle "there's more here" feedback.
     ul.scrollBy({
@@ -344,7 +352,7 @@ export default function MapSideList({
         {filtered.length === 0 ? (
           // Empty-state copy tailored to the active filter. The
           // generic one-liner "No bhandaras yet" looked broken when a
-          // visitor landed on the Spotted tab and saw nothing — they
+          // visitor landed on the Spotted tab and saw nothing, they
           // had no way to know spots are a separate, live-only stream
           // that requires someone in Lucknow to upload a photo. This
           // explains the mechanic and gives them a CTA to be the first.
@@ -366,7 +374,7 @@ export default function MapSideList({
         ) : null}
       </ul>
 
-      {/* "N more bhandaras" sticky chip — only renders when there are
+      {/* "N more bhandaras" sticky chip, only renders when there are
           items below the fold inside the scrollable list. Click scrolls
           the list down by one viewport's height. Sits above a gentle
           cream→transparent fade so the chip lifts off the last visible
@@ -424,7 +432,7 @@ export default function MapSideList({
 function SideRow({ entry: e, isHi }: { entry: Entry; isHi: boolean }) {
   const toast = useToast();
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lng}`;
-  // Pre-built by the shared share helpers — already encoded and
+  // Pre-built by the shared share helpers, already encoded and
   // wrapped as a full wa.me URL.
   const waUrl = e.shareUrl;
 
@@ -517,7 +525,7 @@ function SideRow({ entry: e, isHi }: { entry: Entry; isHi: boolean }) {
         head
       )}
 
-      {/* Round CTA cluster — same icon-only language as the spot cards */}
+      {/* Round CTA cluster, same icon-only language as the spot cards */}
       <div className="mt-2 flex items-center gap-1.5">
         <a
           href={directionsUrl}
@@ -619,7 +627,7 @@ function IconWhatsapp() {
 function EmptySpotted({ isHi }: { isHi: boolean }) {
   return (
     <div className="text-center px-2 py-4">
-      {/* Marker icon — mirrors the actual spotted pin: cream disc +
+      {/* Marker icon, mirrors the actual spotted pin: cream disc +
           gada + circular pulsing ring. Uses the same `bm-pin-ring`
           keyframe the map markers use so the legend, this empty
           state, and the live map all pulse on one rhythm. */}
@@ -661,7 +669,7 @@ function EmptySpotted({ isHi }: { isHi: boolean }) {
         className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-3.5 py-1.5 text-xs shadow-warm"
       >
         {/* Camera glyph evokes the "snap a photo" gesture that creates
-            a spot — clearer call-to-action than a bare arrow. */}
+            a spot, clearer call-to-action than a bare arrow. */}
         <svg
           width="14"
           height="14"
@@ -685,14 +693,14 @@ function EmptySpotted({ isHi }: { isHi: boolean }) {
 /**
  * Empty-state explainer for the "Listed" tab when no listed bhandaras
  * are upcoming. Mirrors the EmptySpotted treatment so both tabs feel
- * like part of the same family — but with copy + CTA tuned for a
+ * like part of the same family, but with copy + CTA tuned for a
  * *planned* bhandara rather than a live-now spot.
  *
  * When this renders: either the season hasn't started yet, OR every
  * listed bhandara's dates have already passed (the homepage filter
  * auto-hides past entries). Either way the visitor needs to know
  * what a "listed bhandara" is and how to bring the list back to
- * life — by listing their own.
+ * life, by listing their own.
  */
 function EmptyListed({ isHi }: { isHi: boolean }) {
   return (
@@ -701,7 +709,7 @@ function EmptyListed({ isHi }: { isHi: boolean }) {
         aria-hidden
         className="relative inline-flex h-9 w-9 items-center justify-center mx-auto"
       >
-        {/* Cream disc + gada — mirrors the actual listed marker
+        {/* Cream disc + gada, mirrors the actual listed marker
             (without the pulse, since listed pins are planned not
             live). Same visual language as the legend chip + the
             real map marker so the visitor can map this glyph to

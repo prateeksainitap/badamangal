@@ -25,12 +25,12 @@ type Attachment = {
 
 /**
  * Public contact form (paired with /api/contact). Mirrors the visual
- * language of the Spot / List forms — saffron-bordered card, round CTAs,
+ * language of the Spot / List forms, saffron-bordered card, round CTAs,
  * inline field errors. Honeypot field is rendered off-screen and any bot
  * that fills it gets a fake-success response from the API.
  */
 export default function ContactForm({ locale: _localeProp }: { locale?: Locale }) {
-  // Cookie-aware locale (prop kept for API back-compat but ignored —
+  // Cookie-aware locale (prop kept for API back-compat but ignored,
   // server always passes "en" now that pages are statically rendered).
   const locale = useLocaleFromContext();
   const isHi = locale === "hi";
@@ -67,7 +67,7 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
   // submission, so modern browser autoplay policies allow it without a
   // separate click. We:
   //   • respect prefers-reduced-motion as a proxy for "user wants a
-  //     quiet, distraction-free experience" — that media query is the
+  //     quiet, distraction-free experience", that media query is the
   //     closest standard to "reduced sensory output" we have without
   //     adding our own toggle
   //   • cap volume at 0.6 so the chant doesn't startle anyone who had
@@ -87,7 +87,7 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
     const audio = new Audio("/audio/jai-shree-ram.mp3");
     audio.volume = 0.6;
     // play() returns a Promise; ignore rejections (autoplay-policy
-    // edge cases, tab backgrounded, etc.) — the chant is delight, not
+    // edge cases, tab backgrounded, etc.), the chant is delight, not
     // a critical UX signal.
     audio.play().catch(() => {});
     return () => {
@@ -322,7 +322,7 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
           for organisers who don't check inboxes). Email is kept as an
           optional secondary so people can still leave a paper trail if
           they prefer written replies. The server-side validator in
-          /api/contact mirrors this — see notes in route.ts. */}
+          /api/contact mirrors this, see notes in route.ts. */}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           id="contact-phone"
@@ -499,7 +499,7 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
         </p>
       </div>
 
-      {/* Honeypot — visually hidden, keyboard-skipped, but in DOM so bots
+      {/* Honeypot, visually hidden, keyboard-skipped, but in DOM so bots
           that fill every input give themselves away. */}
       <div
         aria-hidden

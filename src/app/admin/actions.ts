@@ -56,7 +56,7 @@ export async function approveAction(id: string, _formData?: FormData): Promise<v
 /**
  * One-click "we called the organizer and confirmed" action used from the
  * PENDING moderation queue. Flips the listing live (status → APPROVED)
- * AND stamps the verified badge in the same write — this is the normal
+ * AND stamps the verified badge in the same write, this is the normal
  * flow for the Option-4 model where every submission starts hidden and
  * publish == verify.
  */
@@ -119,7 +119,7 @@ export async function unverifyAction(id: string, _formData?: FormData): Promise<
  * WhatsApp pipeline) and publish it in a single submit. All fields the
  * admin can fix in the edit form are written through to the database,
  * then status flips to APPROVED. If the "Verify" checkbox is on, the
- * verified badge stamps in the same write — matches the "called &
+ * verified badge stamps in the same write, matches the "called &
  * confirmed, publish" muscle memory from the row-level action cluster.
  *
  * Field-level validation is intentionally lenient: the bot row may have
@@ -140,7 +140,7 @@ export async function editAndPublishAction(
     return Number.isFinite(v) ? v : fallback;
   };
 
-  // Tuesdays come in as one date per line — empty lines stripped.
+  // Tuesdays come in as one date per line, empty lines stripped.
   // Menu comes in comma-separated; we keep entries as-typed (the
   // public schema allows free-form strings here now).
   const tuesdayDates = str("tuesdayDates")
@@ -152,7 +152,7 @@ export async function editAndPublishAction(
     .map((s) => s.trim())
     .filter(Boolean);
 
-  // Build the menuHi by mirroring the English entries — without re-
+  // Build the menuHi by mirroring the English entries, without re-
   // running Gemini we don't have Devanagari translations for the
   // admin-edited values. The public detail page renders nameHi where
   // available; menu strings tend to be short Latin transliterations
@@ -204,7 +204,7 @@ export async function editAndPublishAction(
  * `expiresAt` so the admin can give a freshly-reviewed spot the full
  * 8-hour TTL instead of inheriting whatever was left from upload time.
  *
- * Status flips to APPROVED on save — even from REJECTED — so the
+ * Status flips to APPROVED on save, even from REJECTED, so the
  * "Edit" CTA on a previously-rejected spot doubles as a re-approve.
  */
 export async function editAndApproveSpotAction(
@@ -229,7 +229,7 @@ export async function editAndApproveSpotAction(
   // Optional TTL extension: "reset" rebases expiresAt to now + 8h so a
   // spot that's been sitting in PENDING for hours still gets its full
   // 8-hour window on the public map. "keep" preserves the existing
-  // expiresAt — useful when you only edited a typo and want the
+  // expiresAt, useful when you only edited a typo and want the
   // original TTL countdown intact.
   const ttlChoice = str("ttl");
   const data: Record<string, unknown> = {
@@ -286,11 +286,11 @@ export async function clearBotQueueAction(): Promise<void> {
 // ────────────────────────────────────────────────────────────────────
 //
 // Spots are a lighter-weight cousin of Bhandara:
-//   • They auto-expire after 8 h via the public `expiresAt` field —
+//   • They auto-expire after 8 h via the public `expiresAt` field,
 //     once `expiresAt < now()` the spot disappears from the city map
 //     without admin intervention.
 //   • Two statuses only: APPROVED (live) and REJECTED (delisted).
-//     No PENDING / VERIFIED — spots are crowd-sourced and don't get a
+//     No PENDING / VERIFIED, spots are crowd-sourced and don't get a
 //     phone callback workflow.
 // All four actions below mirror the bhandara verbs so the admin row
 // card can use the same button cluster pattern for both kinds.
@@ -310,7 +310,7 @@ export async function delistSpotAction(
 }
 
 /** Flip a REJECTED spot back to APPROVED. Note: if its `expiresAt` has
- *  already passed, this won't make it visible again — use
+ *  already passed, this won't make it visible again, use
  *  `extendSpotAction` first or in combination. */
 export async function approveSpotAction(
   id: string,
@@ -342,7 +342,7 @@ export async function extendSpotAction(
   revalidatePath("/");
 }
 
-/** Hard-delete a spot row. Use for spam — for normal hides, prefer
+/** Hard-delete a spot row. Use for spam, for normal hides, prefer
  *  `delistSpotAction` (status flip) which is reversible. */
 export async function deleteSpotAction(
   id: string,
@@ -355,14 +355,14 @@ export async function deleteSpotAction(
 }
 
 /**
- * Hard-delete a bhandara row. Use sparingly — once gone, the row's
+ * Hard-delete a bhandara row. Use sparingly, once gone, the row's
  * coords, organizer details, and photo URL are unrecoverable from
  * inside the app (Supabase Storage still has the photo file, just
  * disconnected from any record).
  *
  * Cascade behaviour: Spots that auto-linked to this bhandara have a
  * nullable `bhandaraId` foreign key (Prisma default `SetNull` for
- * optional relations), so they are NOT cascade-deleted — the spots
+ * optional relations), so they are NOT cascade-deleted, the spots
  * stay live but lose their "linked to Bhandara X" annotation.
  *
  * Most of the time the right move is `rejectAction` (delist) instead,
@@ -383,7 +383,7 @@ export async function deleteBhandaraAction(
       data: { bhandaraId: null },
     });
   } catch {
-    /* ignore — the cascade will handle it */
+    /* ignore, the cascade will handle it */
   }
   await prisma.bhandara.delete({ where: { id } });
   revalidatePath("/admin");

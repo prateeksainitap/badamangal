@@ -10,7 +10,7 @@ import { sendContactEmail } from "@/lib/email";
  *
  * Honeypot: the form ships a hidden `website` field. Real users leave it
  * blank; bots tend to fill every input. If it's non-empty we silently
- * accept (200) without persisting — denies the bot useful feedback.
+ * accept (200) without persisting, denies the bot useful feedback.
  */
 
 const MAX_MESSAGES_PER_HOUR = 5;
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
       ? attachmentTypeRaw
       : null;
 
-  // Honeypot — silently 200, don't tell the bot anything useful.
+  // Honeypot, silently 200, don't tell the bot anything useful.
   if (honeypot.length > 0) {
     return NextResponse.json({ ok: true });
   }
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
 
   // Fire-and-forget email forwarding to the team inbox via Resend.
   // We `await` here only because Netlify Functions terminate the
-  // process the moment we return — a dangling promise would be
+  // process the moment we return, a dangling promise would be
   // cancelled mid-flight. The send itself is fast (~150ms) and the
   // helper swallows its own errors, so a misconfigured / down email
   // service can never block the contact form HTTP response.
@@ -125,7 +125,7 @@ export async function POST(req: Request) {
   // submitter doesn't provide an email, we still persist the row (and
   // the admin sees it in the inbox query), but we skip the email
   // forwarding because the helper uses the sender's email as reply-to
-  // — without it there's nowhere meaningful for the team's reply to
+  //, without it there's nowhere meaningful for the team's reply to
   // land. The team's standard path for those messages is a phone
   // callback instead.
   if (email) {

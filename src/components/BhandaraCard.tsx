@@ -6,7 +6,7 @@ import { JaliCorner, SunburstSpark } from "@/components/ornaments";
 // Single source-of-truth share builder. Card + detail page both call
 // this so the message a recipient sees is identical regardless of
 // where the sharer clicked from. See lib/share.ts for the rationale
-// behind the new "🪔 Bada Mangal Bhandara — <name>" layout.
+// behind the new "🪔 Bada Mangal Bhandara, <name>" layout.
 import { whatsappShareUrlForBhandara } from "@/lib/share";
 
 type Props = {
@@ -63,7 +63,7 @@ function nextServingDate(dates: string[]): string | null {
   return past[past.length - 1] ?? null;
 }
 
-// (whatsappShareUrl removed — replaced by lib/share's locale-aware
+// (whatsappShareUrl removed, replaced by lib/share's locale-aware
 // `whatsappShareUrlForBhandara`. The card now passes the active
 // locale so Hindi vs English shares get appropriate Devanagari name,
 // menu, and date formatting plus a localised ?lang query on the URL.)

@@ -12,7 +12,7 @@ export async function GET() {
   // Public listings are APPROVED AND have at least one upcoming
   // service date (IST). PENDING / REJECTED listings stay hidden, AND
   // rows whose every date has passed auto-fall off this list as the
-  // calendar advances — same behaviour as the homepage. Past rows
+  // calendar advances, same behaviour as the homepage. Past rows
   // stay in the DB for admin + historical permalinks.
   const records = await prisma.bhandara.findMany({
     where: { status: "APPROVED" },

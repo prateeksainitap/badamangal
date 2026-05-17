@@ -1,14 +1,50 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import PhotoPicker from "@/components/PhotoPicker";
 import SeasonDatePicker from "@/components/SeasonDatePicker";
 import { playJaiShreeRam } from "@/lib/playJaiShreeRam";
-import PinDropStep, { type PinValue } from "@/components/PinDropStep";
+// Keep the PinValue type as a type-only import so the dynamic-loaded
+// component below doesn't need to re-export it. Types are erased at
+// compile time and add zero bytes to the bundle.
+import type { PinValue } from "@/components/PinDropStep";
 import { useT } from "@/lib/useT";
 import FancySelect from "@/components/FancySelect";
 import TimeField from "@/components/TimeField";
+
+// Dynamic-import the heavy sub-components so the form's first paint
+// doesn't have to wait for them.
+//
+// Previously /list-bhandara took 3-4s to render because PinDropStep
+// pulls in the Ola Maps GL library (~120 KB of JS) and PhotoPicker
+// pulls in browser camera/file-handling code (~40 KB). Both were
+// eagerly bundled and parsed even though PinDropStep is only on
+// step 1 and PhotoPicker is only on step 6, and step 1's pin drop
+// is now OPTIONAL (since we ship the wave-3 form-UX cut), so many
+// organisers will skip step 1 entirely without ever needing the map.
+//
+// `ssr: false` is safe here because both components are interactive
+// (camera, geolocation, map clicks) and don't render anything
+// useful on the server. The placeholder keeps the layout stable
+// while the chunk loads, usually under 200ms on warm cache.
+const PhotoPicker = dynamic(() => import("@/components/PhotoPicker"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-48 rounded-2xl border-2 border-dashed border-gold-500/50 bg-cream-50 flex items-center justify-center text-sm text-ink-600 motion-safe:animate-pulse">
+      Loading photo upload…
+    </div>
+  ),
+});
+
+const PinDropStep = dynamic(() => import("@/components/PinDropStep"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[420px] rounded-2xl border-2 border-dashed border-gold-500/50 bg-cream-50 flex items-center justify-center text-sm text-ink-600 motion-safe:animate-pulse">
+      Loading map…
+    </div>
+  ),
+});
 import {
   ALL_TUESDAY_ISO,
   ALL_SATURDAY_ISO,
@@ -83,7 +119,7 @@ const TOTAL_STEPS = 6;
 // shape and crashes the form.
 const AUTOSAVE_KEY = "bm.bhandaraForm.v1";
 // How long a saved draft is considered valid (7 days). Past this we
-// drop it on next mount — the organiser probably moved on, and we
+// drop it on next mount, the organiser probably moved on, and we
 // don't want to silently re-populate a half-finished form from
 // weeks ago when they revisit /list-bhandara.
 const AUTOSAVE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -108,7 +144,7 @@ function readAutosave(): AutosaveBlob | null {
       return null;
     }
     if (Date.now() - parsed.savedAt > AUTOSAVE_TTL_MS) {
-      // Stale draft — clean up.
+      // Stale draft, clean up.
       window.localStorage.removeItem(AUTOSAVE_KEY);
       return null;
     }
@@ -136,7 +172,7 @@ export default function BhandaraForm() {
   //
   // We persist the entire form state + current step to localStorage
   // on every change, and on mount we check for a saved draft. If one
-  // exists, we silently restore it — the user re-opens /list-bhandara
+  // exists, we silently restore it, the user re-opens /list-bhandara
   // and continues where they left off, no "would you like to
   // restore?" dialog (that itself is friction).
   useEffect(() => {
@@ -148,7 +184,7 @@ export default function BhandaraForm() {
   }, []);
 
   // ── Autosave on every state / step change ──────────────────────────
-  // Debouncing isn't worth it here — the writes are tiny (~2KB JSON)
+  // Debouncing isn't worth it here, the writes are tiny (~2KB JSON)
   // and synchronous in modern browsers. Persisting every keystroke
   // is the safer choice for a multi-step form on a flaky mobile.
   useEffect(() => {
@@ -158,7 +194,7 @@ export default function BhandaraForm() {
       const blob: AutosaveBlob = { step, state, savedAt: Date.now() };
       window.localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(blob));
     } catch {
-      // Quota exceeded / private mode / blocked storage — fail silent.
+      // Quota exceeded / private mode / blocked storage, fail silent.
     }
   }, [step, state, success]);
 
@@ -227,13 +263,13 @@ export default function BhandaraForm() {
 
   const canAdvance = (s: number, st: FormState): boolean => {
     switch (s) {
-      // Step 1 (pin) is now SKIPPABLE — organisers can advance
+      // Step 1 (pin) is now SKIPPABLE, organisers can advance
       // without dropping a pin if they've at least typed an address.
       // /api/bhandaras runs Ola Maps forward-geocoding on submit to
       // turn the address into lat/lng. If geocoding misses, the row
       // saves with lat=0 and an admin sets the pin via /admin/edit.
       // Per GA4 the pin drop was the single biggest abandonment
-      // point in the form — making it optional is the largest
+      // point in the form, making it optional is the largest
       // single conversion-rate lever available without redesigning
       // the form entirely.
       case 1:
@@ -525,7 +561,7 @@ type StepProps = {
   setField: <K extends keyof FormState>(k: K, v: FormState[K]) => void;
 };
 
-// Sentinel value for the "Other — type your own" entry in the area
+// Sentinel value for the "Other, type your own" entry in the area
 // dropdown. Picking it doesn't write anything into state.area; it just
 // flips the field into custom-text mode (see useState below).
 const AREA_OTHER_SENTINEL = "__bm_area_other__";
@@ -620,8 +656,8 @@ function Step2({ state, errors, setField }: StepProps) {
                   value: AREA_OTHER_SENTINEL,
                   label:
                     locale === "hi"
-                      ? "अन्य — अपना क्षेत्र लिखें"
-                      : "Other — type your own",
+                      ? "अन्य, अपना क्षेत्र लिखें"
+                      : "Other, type your own",
                 },
               ]}
             />
@@ -673,12 +709,12 @@ function Step3({
   const tuesdays = dates.filter((d) => d.weekday === "tue");
   const saturdays = dates.filter((d) => d.weekday === "sat");
 
-  // ISO of any picked date that isn't in our preset list — these are the
+  // ISO of any picked date that isn't in our preset list, these are the
   // organizer's free calendar picks, surfaced as removable pills.
   const presetIsoSet = new Set(dates.map((d) => d.iso));
   const customDates = state.tuesdayDates.filter((iso) => !presetIsoSet.has(iso));
 
-  // Today, in IST, as the lower bound of the calendar picker — same logic
+  // Today, in IST, as the lower bound of the calendar picker, same logic
   // we use to filter past chips out of the preset grid.
   const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
   const todayIso = ist.toISOString().slice(0, 10);
@@ -774,7 +810,7 @@ function Step3({
         </div>
       ) : null}
 
-      {/* Free calendar pick — any day in the 2026 Bada Mangal season. */}
+      {/* Free calendar pick, any day in the 2026 Bada Mangal season. */}
       <div className="mt-5 rounded-2xl border border-gold-500/40 bg-cream-50 px-4 py-3">
         <p className="font-mukta uppercase tracking-[0.24em] text-[0.65rem] text-gold-500 font-semibold">
           <span className="font-tiro normal-case tracking-normal text-sm text-sindoor-700 mr-2">
@@ -996,13 +1032,13 @@ function Step4({
 }
 
 /**
- * Step 5 — organizer contact details.
+ * Step 5, organizer contact details.
  *
  * Option-4 launch model: no OTP at all. The bhandara team calls the
  * submitted number to confirm details before flipping the listing live.
  * Step 5 therefore collects just Name + Mobile, with a saffron banner that
  * sets the expectation up-front. The form's submit gate only checks for a
- * structurally-valid Indian mobile — there's no separate "verified" state
+ * structurally-valid Indian mobile, there's no separate "verified" state
  * to track or persist.
  */
 function Step5({ state, errors, setField }: StepProps) {
@@ -1014,7 +1050,7 @@ function Step5({ state, errors, setField }: StepProps) {
     <div>
       <StepHeading hi="व्यवस्थापक की जानकारी" en="Your contact details" />
 
-      {/* Honest expectation-setter — we WILL call this number. Keeping
+      {/* Honest expectation-setter, we WILL call this number. Keeping
           the language explicit avoids surprise + builds trust ("they
           actually picked up the phone" is the verification model). */}
       <div className="mb-5 rounded-2xl border border-saffron-500/40 bg-saffron-50/60 px-4 py-3 flex items-center gap-3">
@@ -1092,6 +1128,18 @@ function Step6({ state, setField, locale }: StepProps & { locale: "hi" | "en" })
   return (
     <div>
       <StepHeading hi="फ़ोटो (वैकल्पिक)" en="Add a photo (optional)" />
+
+      {/* INLINE PAMPHLET GENERATOR is hidden during the soft-launch
+          phase. The /pamphlet route still works for direct URL
+          access; we just don't surface this CTA inside the listing
+          form. Restore by uncommenting the JSX below:
+          <InlinePamphletGenerator
+            state={state}
+            setField={setField}
+            locale={locale}
+          />
+      */}
+
 
       {/* Hint card, surface the pamphlet/banner use-case up-front so
           organizers know they can upload printed invites, not just food
@@ -1223,7 +1271,7 @@ function ThankYou(_props: { slug: string }) {
       </div>
 
       {/* Devanagari "जय हनुमान" needs tighter tracking than the rest of
-          the kicker line — the global Hindi tracking reset would let the
+          the kicker line, the global Hindi tracking reset would let the
           letters drift apart at this size, so we override locally. */}
       <p className="mt-6 font-mukta uppercase text-saffron-600 text-xs font-semibold">
         <span className="font-deva [letter-spacing:0.02em]">जय हनुमान</span>
@@ -1272,7 +1320,7 @@ function ThankYou(_props: { slug: string }) {
         />
       </ol>
 
-      {/* Single CTA back home — we removed the WhatsApp share + copy-link
+      {/* Single CTA back home, we removed the WhatsApp share + copy-link
           row because there's no public URL to share yet. */}
       <div className="mt-7 mx-auto max-w-md">
         <Link
@@ -1337,5 +1385,263 @@ function NextStep({
         <span className="block text-xs text-ink-600">{en}</span>
       </span>
     </li>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────
+ * InlinePamphletGenerator
+ * ────────────────────────────────────────────────────────────────
+ * Generates the A4 printable pamphlet directly from the form's
+ * current state. Sits at the top of step 6 (photo upload) because
+ * by step 6 the organiser has typed all the fields the pamphlet
+ * needs (name, date, time, place, organiser, optional menu) and
+ * is about to leave the form to find a photo anyway.
+ *
+ * Two outputs:
+ *   1. Downloaded PNG, the print-ready pamphlet they'll WhatsApp
+ *      to the local press shop.
+ *   2. Auto-populated photoUrl (via Supabase upload) so the same
+ *      pamphlet image becomes the bhandara's listing photo on
+ *      BadaMangal.com. Eliminates "I don't have a good photo of
+ *      the venue yet" as a reason to skip the photo upload.
+ *
+ * Same `/api/pamphlet` endpoint the /pamphlet page uses, single
+ * source of truth for the design + render pipeline.
+ * ────────────────────────────────────────────────────────────── */
+
+function InlinePamphletGenerator({
+  state,
+  setField,
+  locale,
+}: {
+  state: FormState;
+  setField: <K extends keyof FormState>(k: K, v: FormState[K]) => void;
+  locale: "hi" | "en";
+}) {
+  const isHi = locale === "hi";
+  const [generating, setGenerating] = useState(false);
+  const [doneUrl, setDoneUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [usingForPhoto, setUsingForPhoto] = useState(false);
+
+  // The pamphlet needs a human-readable date. The form holds an
+  // ISO array of Tuesdays; pick the first upcoming one and format
+  // it for the pamphlet body. We don't surface this in the form
+  // UI, it's a derived value the pamphlet endpoint expects.
+  const firstDate = useMemo(() => {
+    const dates = state.tuesdayDates.slice().sort();
+    const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const upcoming = dates.filter((d) => d >= today);
+    const pick = upcoming[0] ?? dates[0];
+    if (!pick || !/^\d{4}-\d{2}-\d{2}$/.test(pick)) return "";
+    const [y, m, d] = pick.split("-").map(Number);
+    if (!y || !m || !d) return "";
+    const hiMonths = [
+      "जनवरी", "फ़रवरी", "मार्च", "अप्रैल", "मई", "जून",
+      "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर",
+    ];
+    const enMonths = [
+      "January", "February", "March", "April", "May", "June",
+      "July", "August", "September", "October", "November", "December",
+    ];
+    const date = new Date(`${pick}T00:00:00`);
+    const dow = date.getDay();
+    const hiDow = ["रविवार", "सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार"];
+    const enDow = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    return isHi
+      ? `${hiDow[dow]}, ${d} ${hiMonths[m - 1]} ${y}`
+      : `${enDow[dow]}, ${d} ${enMonths[m - 1]} ${y}`;
+  }, [state.tuesdayDates, isHi]);
+
+  const menuStr = useMemo(() => {
+    const all = [...state.menu, ...state.menuOther];
+    return all.join(", ");
+  }, [state.menu, state.menuOther]);
+
+  const address = state.pin?.address || state.addressOverride;
+
+  const canGenerate =
+    state.name.trim().length >= 2 && firstDate && (state.timeStart || "");
+
+  const generate = async (alsoUseAsPhoto: boolean) => {
+    if (!canGenerate || generating) return;
+    setGenerating(true);
+    setError(null);
+    setDoneUrl(null);
+    setUsingForPhoto(alsoUseAsPhoto);
+    trackEvent("form_pamphlet_generate", { use_as_photo: alsoUseAsPhoto ? 1 : 0 });
+    try {
+      const res = await fetch("/api/pamphlet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: state.name.trim() || undefined,
+          nameHi: state.name.trim() || undefined, // no separate Hindi field in form
+          organizerName: state.organizerName.trim() || undefined,
+          area: state.area || undefined,
+          address: address || undefined,
+          date: firstDate || undefined,
+          timeStart: state.timeStart || undefined,
+          timeEnd: state.timeEnd || undefined,
+          menu: menuStr || undefined,
+          organizerPhone: state.organizerPhone.trim() || undefined,
+          qrUrl:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/?q=${encodeURIComponent(state.name.trim())}`
+              : undefined,
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      setDoneUrl(url);
+
+      // Always auto-download, that's the primary deliverable.
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bada-mangal-pamphlet-${slugify(state.name)}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      // Optionally upload the generated PNG to Supabase via the
+      // existing /api/uploads endpoint so it becomes the
+      // bhandara's listing photo on BadaMangal.com.
+      if (alsoUseAsPhoto) {
+        const file = new File([blob], `pamphlet-${slugify(state.name)}.png`, {
+          type: "image/png",
+        });
+        const fd = new FormData();
+        fd.append("file", file);
+        const up = await fetch("/api/uploads", { method: "POST", body: fd });
+        if (up.ok) {
+          const upJson = (await up.json()) as { url?: string };
+          if (upJson.url) {
+            setField("photoUrl", upJson.url);
+            trackEvent("form_pamphlet_set_as_photo", {});
+          }
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setError(msg);
+      trackEvent("form_pamphlet_error", { msg });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="mb-5 rounded-2xl border-2 border-sindoor-700/30 bg-gradient-to-br from-saffron-50 via-cream-50 to-saffron-50 p-5 sm:p-6 shadow-warm">
+      <div className="flex items-start gap-4 flex-wrap">
+        {/* Mini pamphlet icon */}
+        <div
+          aria-hidden
+          className="shrink-0 inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-sindoor-700 text-cream-50 shadow-warm relative"
+        >
+          <span className="absolute top-1 left-1 w-1.5 h-1.5 rounded-full bg-saffron-500" />
+          <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-saffron-500" />
+          <span className="text-2xl">🪔</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-mukta uppercase tracking-[0.22em] text-saffron-600 text-[0.65rem] font-semibold">
+            {isHi ? "एक क्लिक में" : "One Click"}
+          </p>
+          <h3
+            className={`mt-1 ${
+              isHi
+                ? "font-tiro text-sindoor-700"
+                : "font-fraunces font-bold text-sindoor-700"
+            } text-lg sm:text-xl leading-snug`}
+          >
+            {isHi
+              ? "अपने भंडारे का पैम्फलेट यहीं बनाएँ, मुफ़्त"
+              : "Generate your bhandara pamphlet, free"}
+          </h3>
+          <p className="mt-1.5 text-xs sm:text-sm text-ink-600 leading-relaxed">
+            {isHi
+              ? "इस फ़ॉर्म की जानकारी से A4 पारंपरिक पैम्फलेट बनाइए। पास के प्रेस शॉप से छपवाएँ, या इसी को भंडारे की फ़ोटो भी बनाइए।"
+              : "Uses the details you've already typed to make an A4 traditional pamphlet. Print at any local press shop, or use it as the listing photo below."}
+          </p>
+          {!canGenerate ? (
+            <p className="mt-2 text-xs text-saffron-700">
+              {isHi
+                ? "नाम, दिनांक और समय भरने के बाद उपलब्ध होगा।"
+                : "Available once name, date, and time are filled."}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="mt-4 flex flex-wrap gap-2.5">
+        <button
+          type="button"
+          disabled={!canGenerate || generating}
+          onClick={() => void generate(false)}
+          data-ga="form_pamphlet_download"
+          className="inline-flex items-center justify-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-semibold px-4 py-2 text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {generating && !usingForPhoto
+            ? isHi
+              ? "बन रहा है…"
+              : "Generating…"
+            : isHi
+              ? "पैम्फलेट डाउनलोड करें"
+              : "Download pamphlet"}
+        </button>
+        <button
+          type="button"
+          disabled={!canGenerate || generating}
+          onClick={() => void generate(true)}
+          data-ga="form_pamphlet_use_as_photo"
+          className="inline-flex items-center justify-center gap-1.5 rounded-full border-2 border-sindoor-700 text-sindoor-700 hover:bg-sindoor-700 hover:text-cream-50 font-semibold px-4 py-2 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {generating && usingForPhoto
+            ? isHi
+              ? "अपलोड हो रहा है…"
+              : "Uploading…"
+            : isHi
+              ? "+ इसी को भंडारा की फ़ोटो बनाएँ"
+              : "+ Use as bhandara photo"}
+        </button>
+      </div>
+
+      {error ? (
+        <p className="mt-3 text-xs text-alert-500">
+          {isHi ? "त्रुटि: " : "Error: "}
+          {error}
+        </p>
+      ) : null}
+      {doneUrl ? (
+        <p className="mt-3 text-xs text-leaf-600 font-medium">
+          {isHi
+            ? "✓ पैम्फलेट तैयार। डाउनलोड डाउनलोड्स में सहेजा गया।"
+            : "✓ Pamphlet ready. PNG saved to your Downloads."}
+          {state.photoUrl ? (
+            <span className="block mt-1 text-ink-600">
+              {isHi
+                ? "और भंडारा की फ़ोटो भी इस पैम्फलेट से सेट हो गई।"
+                : "Bhandara photo also set from this pamphlet."}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function slugify(s: string): string {
+  return (
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "")
+      .slice(0, 60) || "bhandara"
   );
 }

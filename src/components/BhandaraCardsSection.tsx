@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import BhandaraCard from "@/components/BhandaraCard";
 import FancySelect from "@/components/FancySelect";
 import { trackEvent } from "@/lib/ga";
@@ -8,28 +9,74 @@ import type { Bhandara } from "@/types/bhandara";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { AREAS } from "@/lib/lucknow";
+import { areaToSlug } from "@/lib/areaSlug";
 import { useLocaleFromContext } from "@/lib/locale-context";
 
+/**
+ * Locale-derived heading/locale/isHi were once props (server-rendered
+ * from a hardcoded "en"), which meant the section title never swapped
+ * on the Hindi toggle. Now they're computed entirely from the
+ * LocaleProvider context. Props remain on the type purely so any
+ * legacy caller still compiles; values are ignored at runtime.
+ */
 type Props = {
   listings: Bhandara[];
-  locale: Locale;
-  heading: string;
-  isHi: boolean;
+  locale?: Locale;
+  heading?: string;
+  isHi?: boolean;
 };
 
 type DateFilter = "all" | string;
 
 export default function BhandaraCardsSection({
   listings,
-  heading,
 }: Props) {
-  // Locale from client context (cookie-aware). Props locale/isHi are
-  // kept on Props for type-compat but intentionally not destructured.
+  // Locale + heading derive from the LocaleProvider so the Hindi
+  // toggle flips the section title and every label below it
+  // synchronously.
   const locale = useLocaleFromContext();
   const isHi = locale === "hi";
+  const langSuffix = isHi ? "" : "?lang=en";
   const t = strings[locale];
+  const heading = t.cards.sectionHeading;
   const [area, setArea] = useState<"all" | string>("all");
   const [tuesday, setTuesday] = useState<DateFilter>("all");
+  // `q` is the freetext search filter. Populated either from the
+  // URL on mount (Google's sitelinks search box deep-link
+  // `${SITE_URL}/?q={search_term_string}`, declared in our
+  // WebSite SearchAction schema in lib/seo) or from the inline
+  // search input we mount alongside the filters. Stored as state
+  // so subsequent typing reacts client-side without server hits.
+  const [q, setQ] = useState<string>("");
+  // Tracks whether the section has been scrolled into view in
+  // response to an inbound ?q= URL. Used to ensure we only
+  // scroll once per page load rather than on every state change.
+  const scrolledRef = useRef(false);
+  const sectionRef = useRef<HTMLElement | null>(null);
+
+  // Read ?q= from the URL on mount + scroll into view if present.
+  // Runs once because deps are empty, only fires on initial mount.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const incoming = url.searchParams.get("q");
+    if (incoming) {
+      const cleaned = incoming.trim().slice(0, 80);
+      setQ(cleaned);
+      trackEvent("home_search_query_inbound", {
+        len: cleaned.length,
+      });
+      if (!scrolledRef.current) {
+        scrolledRef.current = true;
+        window.requestAnimationFrame(() => {
+          sectionRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
+        });
+      }
+    }
+  }, []);
 
   // Always show every Lucknow area we support, keeps the filter list
   // identical to the Add-bhandara form regardless of which listings exist.
@@ -47,15 +94,22 @@ export default function BhandaraCardsSection({
     return Array.from(set).sort();
   }, [listings]);
 
-  const filtered = useMemo(
-    () =>
-      listings.filter((b) => {
-        if (area !== "all" && b.area !== area) return false;
-        if (tuesday !== "all" && !b.tuesdayDates.includes(tuesday)) return false;
-        return true;
-      }),
-    [listings, area, tuesday],
-  );
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return listings.filter((b) => {
+      if (area !== "all" && b.area !== area) return false;
+      if (tuesday !== "all" && !b.tuesdayDates.includes(tuesday)) return false;
+      if (needle) {
+        // Match against name, nameHi, area, organizer, or address,
+        // any token gives a hit. Lowercased on both sides so the
+        // match is case-insensitive without an extra regex
+        // compilation per row.
+        const hay = `${b.name} ${b.nameHi ?? ""} ${b.area} ${b.organizerName} ${b.address}`.toLowerCase();
+        if (!hay.includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [listings, area, tuesday, q]);
 
   const areaOptions = [
     { value: "all", label: isHi ? "सभी क्षेत्र" : "All areas" },
@@ -76,7 +130,10 @@ export default function BhandaraCardsSection({
   ];
 
   return (
-    <section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-16">
+    <section
+      ref={sectionRef}
+      className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-16 scroll-mt-20"
+    >
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <h2
           className={`text-3xl sm:text-4xl ${
@@ -85,7 +142,7 @@ export default function BhandaraCardsSection({
               : "font-fraunces font-bold text-sindoor-700"
           }`}
         >
-          {/* Live count prefix — saffron coloured, but otherwise
+          {/* Live count prefix, saffron coloured, but otherwise
               inherits the heading's font (Fraunces in English, Tiro
               in Hindi) so the number reads as one continuous editorial
               headline instead of a sans-serif tag glued to a serif
@@ -128,6 +185,81 @@ export default function BhandaraCardsSection({
         </div>
       </div>
 
+      {/* Inline search input, also serves as the landing surface
+          for Google's sitelinks search box (WebSite SearchAction
+          deep-links here as `${SITE_URL}/?q=...`). The mount-effect
+          above reads the URL `q` param and scrolls into view + pre-
+          populates this input automatically. */}
+      <div className="mt-5 flex items-center gap-2 max-w-md">
+        <input
+          type="search"
+          inputMode="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={
+            isHi
+              ? "खोजें: नाम, क्षेत्र, संगठक…"
+              : "Search: name, area, organizer…"
+          }
+          aria-label={isHi ? "भंडारा खोजें" : "Search bhandaras"}
+          maxLength={80}
+          className="flex-1 rounded-full border border-gold-500/55 bg-cream-50 px-4 py-2 text-sm text-ink-900 placeholder:text-ink-600/60 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+        />
+        {q ? (
+          <button
+            type="button"
+            onClick={() => {
+              setQ("");
+              trackEvent("home_search_clear", {});
+            }}
+            className="shrink-0 text-xs font-semibold text-sindoor-700 hover:text-saffron-600 underline decoration-dotted underline-offset-4 px-2"
+          >
+            {isHi ? "साफ़ करें" : "Clear"}
+          </button>
+        ) : null}
+      </div>
+
+      {/* If the search was inbound via ?q= (from Google's sitelinks
+          search box), surface a banner so the user understands why
+          the grid is filtered. */}
+      {q ? (
+        <p className="mt-3 text-sm text-ink-600">
+          {isHi ? (
+            <>
+              <strong className="text-sindoor-700">{filtered.length}</strong>{" "}
+              परिणाम “{q}” के लिए
+            </>
+          ) : (
+            <>
+              <strong className="text-sindoor-700">{filtered.length}</strong>{" "}
+              result{filtered.length === 1 ? "" : "s"} for “{q}”
+            </>
+          )}
+        </p>
+      ) : null}
+
+      {/* When an area filter is active, surface a deep-link to the
+          dedicated /area/<slug> landing page. SEO + UX win:
+            • SEO, visible internal link to a high-priority area
+              page on a high-traffic source page (homepage).
+            • UX, area-filtered visitors get one-tap access to a
+              page that has only their area's bhandaras + adjacent
+              areas + the area's FAQ. Better than scrolling here. */}
+      {area !== "all" ? (
+        <div className="mt-4 flex justify-end">
+          <Link
+            href={`/area/${areaToSlug(area)}${langSuffix}`}
+            data-ga="cards_area_link"
+            data-ga-area={area}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-saffron-600 hover:text-sindoor-700 transition-colors"
+          >
+            {isHi
+              ? `${t.areas[area as keyof typeof t.areas] ?? area} का पूरा पेज देखें →`
+              : `View dedicated ${t.areas[area as keyof typeof t.areas] ?? area} page →`}
+          </Link>
+        </div>
+      ) : null}
+
       {filtered.length > 0 ? (
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
           {filtered.map((b) => (
@@ -167,7 +299,7 @@ export default function BhandaraCardsSection({
 
           return (
             <div className="mt-8 overflow-hidden rounded-3xl border border-dashed border-gold-500/50 bg-gradient-to-br from-cream-50 via-white to-saffron-50/40 px-6 py-10 sm:py-12 text-center">
-              {/* Decorative gada — sits above the copy as a soft hero
+              {/* Decorative gada, sits above the copy as a soft hero
                   glyph; saffron halo behind it ties to the rest of the
                   card family. Aria-hidden because it's pure decoration. */}
               <div

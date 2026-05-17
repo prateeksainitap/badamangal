@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import AddBhandaraSwitcher from "@/components/AddBhandaraSwitcher";
 import { prisma } from "@/lib/db";
 import { localised } from "@/lib/seo";
-import type { Locale } from "@/content/strings";
 
 // ISR: was force-dynamic for cookie-based locale + searchParams role.
 // Locale is now resolved client-side via <LocaleProvider />, and the
@@ -27,7 +26,9 @@ export const metadata: Metadata = {
 };
 
 export default async function ListBhandaraPage() {
-  const locale: Locale = "en";
+  // No server-side locale, AddBhandaraSwitcher resolves it from the
+  // LocaleProvider context so the Hindi toggle flips every label in
+  // the multi-step form synchronously.
 
   // Approved listings, surfaced as the "Pick from list" option in the
   // spotter flow so they don't have to drop a pin from scratch.
@@ -48,7 +49,6 @@ export default async function ListBhandaraPage() {
 
   return (
     <AddBhandaraSwitcher
-      locale={locale}
       bhandaras={listings.map((b) => ({
         id: b.id,
         slug: b.slug,

@@ -37,7 +37,7 @@ export default function StyleGuide() {
         </h1>
         <p className="mt-3 text-ink-600 max-w-2xl leading-relaxed">
           Every token, type style, ornament, and primitive that the
-          public site is built from — rendered live so you can see drift
+          public site is built from, rendered live so you can see drift
           the moment it happens. Pair this with{" "}
           <code className="text-sindoor-700">DESIGN_SYSTEM.md</code> at
           the repo root for the written rules.
@@ -106,7 +106,7 @@ export default function StyleGuide() {
               Hero card
             </h3>
             <p className="mt-2 text-sm text-ink-600">
-              Diagonal gradient — used on empty states + featured panels.
+              Diagonal gradient, used on empty states + featured panels.
             </p>
           </Card>
         </div>
@@ -135,7 +135,7 @@ export default function StyleGuide() {
         <div className="mt-6 flex items-center gap-3 text-ink-600">
           <GadaBullet className="text-saffron-600" />
           <span>
-            <code className="text-sindoor-700">&lt;GadaBullet /&gt;</code> —
+            <code className="text-sindoor-700">&lt;GadaBullet /&gt;</code>,
             inline list bullet for editorial prose.
           </span>
         </div>

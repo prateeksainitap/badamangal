@@ -9,7 +9,7 @@
  *
  * Admin moderation views parse and surface this tag (see
  * /admin?type=whatsapp's `parseBotTag`), but it's internal metadata
- * and should never leak into a public surface — detail pages, cards,
+ * and should never leak into a public surface, detail pages, cards,
  * meta tags, JSON APIs, RSS, etc. all need to display the human prose
  * only.
  *
@@ -31,7 +31,7 @@ const BOT_TAG_RE = /\s*\[bot:whatsapp[^\]]*\]\s*/g;
  *   - undefined when the input is null/undefined (callers can spread
  *     the result into an optional field cleanly)
  *   - the cleaned string otherwise (may be empty if the only content
- *     was the tag itself — common for spots where the model didn't
+ *     was the tag itself, common for spots where the model didn't
  *     extract a caption)
  *
  * Performance: this is called once per row during server render. The

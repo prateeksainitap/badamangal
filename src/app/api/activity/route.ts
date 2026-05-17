@@ -12,11 +12,11 @@ export const runtime = "nodejs";
  * Plus a single "viewers right now" entry derived from the SiteCounter
  * delta over the last hour (real number, not a random fake).
  *
- * The per-bhandara `Post` (live comments) record type was removed —
+ * The per-bhandara `Post` (live comments) record type was removed,
  * activity is now just listings + spots + viewer count.
  *
  * Cached aggressively at the edge (s-maxage=20) since the ticker doesn't
- * need second-by-second freshness — it polls every 60s on the client.
+ * need second-by-second freshness, it polls every 60s on the client.
  */
 
 type Activity =
@@ -107,12 +107,12 @@ export async function GET() {
     });
   }
 
-  // Real "viewers right now" — based on the homepage SSR counter. We can't
+  // Real "viewers right now", based on the homepage SSR counter. We can't
   // distinguish unique vs. revisit so we describe it as "devotees viewing
   // today" to stay honest. Skip if the counter is too small to be useful.
   if (counter && counter.count > 12) {
     // Approximate "today's hits" by taking the last 4-hour delta if we
-    // had finer-grained data — for now, surface the running total framed
+    // had finer-grained data, for now, surface the running total framed
     // as a soft figure.
     events.push({
       kind: "viewers",

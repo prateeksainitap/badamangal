@@ -10,8 +10,8 @@ import { useLocaleFromContext } from "@/lib/locale-context";
  * open every major section of the site (homepage stats, archive,
  * resources hub, history teaser, live empty state).
  *
- * The headline's typeface flips automatically based on locale —
- * Tiro Devanagari Hindi for Hindi, Fraunces for English — so callers
+ * The headline's typeface flips automatically based on locale,
+ * Tiro Devanagari Hindi for Hindi, Fraunces for English, so callers
  * never need to ternary on isHi just to pick a font.
  *
  *   <SectionHeader
@@ -31,7 +31,7 @@ type Props = {
   headline: string;
   /** One-sentence supporting paragraph. Optional. */
   body?: ReactNode;
-  /** Render as h1 (page hero) or h2 (section) — defaults to h2. */
+  /** Render as h1 (page hero) or h2 (section), defaults to h2. */
   as?: "h1" | "h2";
   /** Default true; set false to omit the marigold divider beneath. */
   divider?: boolean;
@@ -63,7 +63,7 @@ export default function SectionHeader({
       : "text-2xl sm:text-3xl leading-snug";
 
   // Devotional script gets Tiro; Latin gets Fraunces. Both are display
-  // serifs in their own writing system — they pair instead of compete.
+  // serifs in their own writing system, they pair instead of compete.
   const headingFont = isHi
     ? "font-tiro text-sindoor-700"
     : "font-fraunces font-semibold text-sindoor-700";

@@ -34,12 +34,12 @@ async function isAdmin(): Promise<boolean> {
 const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
 
 // Area is a free string (curated dictionary lives in @/lib/lucknow but
-// is no longer enforced at the input boundary — Lucknow has more
+// is no longer enforced at the input boundary, Lucknow has more
 // neighbourhoods than we curate, and forcing organisers / admins onto
 // the short list locked out legitimate submissions).
 const areaInput = z.string().trim().min(2).max(50);
 
-// Admin date validator — wider than the public form's. The public
+// Admin date validator, wider than the public form's. The public
 // /list-bhandara only accepts the season window (May–June 2026); the
 // admin needs full freedom to record one-off events that fall outside
 // the canonical Tuesdays (Saturday community lunches, post-season
@@ -53,7 +53,7 @@ const adminDate = z
     message: "Pick a date inside 2026",
   });
 
-// Phone-shaped, intentionally loose — the form already collects in a
+// Phone-shaped, intentionally loose, the form already collects in a
 // specific format and Indian mobile parsing has edge cases (+91, 0
 // prefix, missing prefix, hyphenated). Pure store-as-typed; the admin
 // reviews before publish so we don't need server-side parsing.
@@ -66,7 +66,7 @@ const optionalPhone = z
   .transform((v) => (v === "" || v === undefined ? undefined : v));
 
 // UPI IDs follow the pattern `<handle>@<provider>` (e.g. badamangal@upi).
-// Keep validation light — collect anything that looks UPI-ish and let
+// Keep validation light, collect anything that looks UPI-ish and let
 // the admin sanity-check.
 const optionalUpi = z
   .string()
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
         menuHi: JSON.stringify(finalMenuHi),
         organizerName: d.organizerName,
         organizerPhone: d.organizerPhone,
-        // Optional WhatsApp + UPI ID for sponsorship — public listing
+        // Optional WhatsApp + UPI ID for sponsorship, public listing
         // surfaces these on the bhandara detail page; admin can leave
         // blank if the invite didn't include them.
         organizerWhatsapp: d.organizerWhatsapp ?? null,
@@ -211,7 +211,7 @@ export async function POST(req: NextRequest) {
   }
   const d = parsed.data;
 
-  // Auto-link to a nearby APPROVED bhandara within ~120 m — same logic
+  // Auto-link to a nearby APPROVED bhandara within ~120 m, same logic
   // as the public spot endpoint, so admin-uploaded spots also pin to a
   // listed organizer when one is in range.
   let bhandaraId: string | null = null;

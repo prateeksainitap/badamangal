@@ -24,7 +24,7 @@
  *   Android 50 MP JPEG (≈8 MB)  → 280-500 KB
  */
 
-const MAX_DIMENSION = 1920; // px on the long edge — plenty for a feed photo
+const MAX_DIMENSION = 1920; // px on the long edge, plenty for a feed photo
 const QUALITY = 0.85;
 const COMPRESSED_MIME = "image/jpeg";
 
@@ -34,7 +34,7 @@ const COMPRESSED_MIME = "image/jpeg";
  * pipeline (sharp → WebP) handles the second pass without issue.
  *
  * Already-small images (under SKIP_BYTES) and non-image inputs are
- * passed through untouched — there's no point spending main-thread
+ * passed through untouched, there's no point spending main-thread
  * cycles on a 200 KB file that's already going to upload fine.
  */
 export async function compressImageForUpload(
@@ -43,7 +43,7 @@ export async function compressImageForUpload(
 ): Promise<File> {
   const skipUnderBytes = opts.skipUnderBytes ?? 1_500_000; // 1.5 MB
 
-  // Bail on anything that isn't a recognisable image — the upload
+  // Bail on anything that isn't a recognisable image, the upload
   // endpoint will reject (or accept) by content-type as it does today.
   if (!input.type.startsWith("image/")) return input;
 
@@ -88,7 +88,7 @@ export async function compressImageForUpload(
     if (!blob) return input;
 
     // If the compressed version is somehow larger than the original
-    // (rare — happens for tiny artworks on lossy re-encode), keep the
+    // (rare, happens for tiny artworks on lossy re-encode), keep the
     // original.
     if (blob.size >= input.size) return input;
 
@@ -100,7 +100,7 @@ export async function compressImageForUpload(
       lastModified: input.lastModified || Date.now(),
     });
   } catch {
-    // Decoding failed (HEIC outside Safari, corrupt image, etc.) —
+    // Decoding failed (HEIC outside Safari, corrupt image, etc.),
     // hand the original file back; server-side validation will produce
     // a meaningful error if the upload itself can't go through.
     return input;

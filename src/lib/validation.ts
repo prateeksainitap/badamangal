@@ -4,7 +4,7 @@ import { MENU_KEYS } from "@/lib/menu";
 
 const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
 
-// Bhandara service-day. Any YYYY-MM-DD inside the season window — we no
+// Bhandara service-day. Any YYYY-MM-DD inside the season window, we no
 // longer constrain to the 8 Tuesdays since organizers also run Saturday
 // bhandaras and may pick any custom date within the season via the
 // calendar picker.
@@ -65,7 +65,7 @@ export function isValidIndianMobile(raw: string): boolean {
   if (/^(\d)\1{9}$/.test(ten)) return false;
   // 7 or more identical digits in a row anywhere in the number.
   if (/(\d)\1{6,}/.test(ten)) return false;
-  // Strict ascending / descending run (9876543210 style — common bot fill).
+  // Strict ascending / descending run (9876543210 style, common bot fill).
   const isMonotonic = (s: string, step: 1 | -1): boolean => {
     for (let i = 1; i < s.length; i++) {
       if (Number(s[i]) - Number(s[i - 1]) !== step) return false;
@@ -103,7 +103,7 @@ export const submitSchema = z
     // Area is loosened from a strict enum to a free string. The form
     // dropdown still surfaces our curated list (which feeds homepage
     // filters + the area chip), but Lucknow has more neighbourhoods
-    // than we can reasonably curate, so an "Other — type your own"
+    // than we can reasonably curate, so an "Other, type your own"
     // option lets organisers submit colonies / sectors that aren't on
     // the short list. Display fallbacks already use `t.areas[a] ?? a`,
     // so the raw string renders cleanly when it isn't in the dictionary.

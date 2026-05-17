@@ -2,7 +2,7 @@
 
 /**
  * Tiny client component used to wrap an admin form's submit button
- * with a native browser `confirm()` prompt. Lives in /admin only —
+ * with a native browser `confirm()` prompt. Lives in /admin only,
  * we deliberately don't reach for a fancy modal here because admin
  * destructive actions are rare and the OS confirm is the most
  * scannable, unmissable UI for an irreversible operation.
@@ -16,7 +16,7 @@
  *
  * If the user clicks Cancel in the confirm dialog, we call
  * `event.preventDefault()` so the form never submits. If they click
- * OK, we let the normal form submission proceed — which triggers the
+ * OK, we let the normal form submission proceed, which triggers the
  * server action bound to the parent form.
  */
 import type { ReactNode } from "react";

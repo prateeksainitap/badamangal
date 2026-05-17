@@ -54,14 +54,14 @@ const DRAFT_KEY = "bm:spot:draft:v2";
 const LKO = { latMin: 26.6, latMax: 27.0, lngMin: 80.7, lngMax: 81.2 };
 
 /**
- * Spot form — designed for "1 minute, every age group".
+ * Spot form, designed for "1 minute, every age group".
  *
  * Stripped to the dominant case: someone walking past a bhandara,
  * holding a phone. Auto-requests location on mount, photo opens the
  * rear camera, every other field is optional, and the page is one
  * continuous flow with no numbered "Step" cards.
  *
- * Form data is intentionally NOT persisted across visits — every load
+ * Form data is intentionally NOT persisted across visits, every load
  * of /spot starts fresh. (See cleanup effect below.)
  */
 export default function SpotQuickForm({
@@ -104,13 +104,13 @@ export default function SpotQuickForm({
     }>
   >([]);
   const [searching, setSearching] = useState(false);
-  /** Mirror of PinDropStep's skip flag — see comment there. Set to true
+  /** Mirror of PinDropStep's skip flag, see comment there. Set to true
    *  by the suggestion-pick handler so the next searchQuery change
    *  doesn't reopen the dropdown after a selection. */
   const skipNextSearchFetch = useRef(false);
 
   /* ── Manual address search (only runs while editing) ─────────────────── */
-  // Backed by the shared Ola Maps Autocomplete helper — caches identical
+  // Backed by the shared Ola Maps Autocomplete helper, caches identical
   // queries, debounces network calls, and degrades to `[]` on quota /
   // network errors so the panel stays usable.
   useEffect(() => {
@@ -149,10 +149,10 @@ export default function SpotQuickForm({
 
   // Update area label whenever coords change. Two sources, in order of
   // preference:
-  //   1. Closest listed bhandara within 4 km — gives us the curated area
+  //   1. Closest listed bhandara within 4 km, gives us the curated area
   //      key (used both for the friendly label AND for the spot's `area`
   //      field on submit).
-  //   2. Ola reverse-geocode — fills the chip with a real-world locality
+  //   2. Ola reverse-geocode, fills the chip with a real-world locality
   //      (suburb / neighbourhood / city) so the user always sees a
   //      recognisable name, not just "Got your location".
   const inferArea = (lat: number, lng: number) => {
@@ -215,7 +215,7 @@ export default function SpotQuickForm({
    * Earlier versions of this form persisted in-progress data to
    * localStorage so a phone-screen-off mid-flow could resume. That
    * surprised users who navigated away and came back to find old data
-   * still there — the form should always feel fresh on a new visit.
+   * still there, the form should always feel fresh on a new visit.
    *
    * We:
    *   1. Wipe any draft from the previous session on mount.
@@ -423,7 +423,7 @@ export default function SpotQuickForm({
           reads the page as one continuous, focused task instead of
           loose stacked sections on the cream background. */}
       <div className="rounded-3xl border border-gold-500/40 bg-white shadow-warm p-5 sm:p-7 lg:p-9 space-y-6 lg:space-y-8 pb-6 mb-28 sm:mb-0">
-        {/* PHOTO — primary delight, big tap target */}
+        {/* PHOTO, primary delight, big tap target */}
         <section>
           <h2 className="font-fraunces font-semibold text-lg text-sindoor-700 mb-2 inline-flex items-center gap-2">
             <IconCamera className="text-saffron-600" />
@@ -442,7 +442,7 @@ export default function SpotQuickForm({
           />
         </section>
 
-        {/* LOCATION — auto-fetched, friendly chip */}
+        {/* LOCATION, auto-fetched, friendly chip */}
         <section>
           <h2 className="font-fraunces font-semibold text-lg text-sindoor-700 mb-2 inline-flex items-center gap-2">
             <IconPin className="text-saffron-600" />
@@ -462,7 +462,7 @@ export default function SpotQuickForm({
             }}
           />
 
-          {/* Manual edit panel — appears when the user taps "Edit" on
+          {/* Manual edit panel, appears when the user taps "Edit" on
               the location chip. Search-by-address + tap-to-drop on a
               small Leaflet map. Closes via the inline Done button. */}
           {editingLocation ? (
@@ -538,7 +538,7 @@ export default function SpotQuickForm({
                 ) : null}
               </div>
 
-              {/* Quick CTA — re-runs the browser geolocation request so a
+              {/* Quick CTA, re-runs the browser geolocation request so a
                   user who initially denied (or moved) can grab their
                   current coords without leaving the panel. The button
                   reuses the existing `askLocation()` flow so error states
@@ -654,7 +654,7 @@ export default function SpotQuickForm({
         </div>
       </div>
 
-      {/* STICKY MOBILE BAR — keeps the primary action always reachable */}
+      {/* STICKY MOBILE BAR, keeps the primary action always reachable */}
       <div
         className="sm:hidden fixed inset-x-0 bottom-0 z-[800] border-t border-gold-500/35 bg-cream-50/95 backdrop-blur px-4 pt-3 [padding-bottom:max(env(safe-area-inset-bottom),0.85rem)]"
       >
@@ -715,7 +715,7 @@ function LocationStatus({
 }: {
   status: LocStatus;
   areaLabel: string | null;
-  /** Full street address from reverse-geocode — shown under the
+  /** Full street address from reverse-geocode, shown under the
    *  "near X" line so the user can verify the exact spot. */
   formattedAddress: string | null;
   errorMessage: string | null;
@@ -742,7 +742,7 @@ function LocationStatus({
     // 3-column flex row: check icon · text stack · Edit pill, all
     // vertically centred. The old layout floated the Edit button to the
     // top of a 2-line text block which left an awkward empty gap below
-    // it — `items-center` on the outer flex resolves that by aligning
+    // it, `items-center` on the outer flex resolves that by aligning
     // every column to the same optical midline.
     return (
       <div className="rounded-2xl border border-leaf-600/45 bg-leaf-600/8 px-4 py-3 flex items-center gap-3">
@@ -764,7 +764,7 @@ function LocationStatus({
                 : "Pin is set on the map."}
             </p>
           )}
-          {/* Full street address from reverse-geocode — gives the user
+          {/* Full street address from reverse-geocode, gives the user
               a chance to verify the exact spot before they submit. Shown
               in a small, muted font so it reads as a confirmation line
               rather than competing with the curated area name above. */}
@@ -838,7 +838,7 @@ function LocationStatus({
       </div>
     );
   }
-  // "idle" — shouldn't show in practice since we auto-ask on mount
+  // "idle", shouldn't show in practice since we auto-ask on mount
   return (
     <button
       type="button"
@@ -952,7 +952,7 @@ function IconCheck() {
  * locality / town). Never throws, returns null on any failure so the
  * caller can fall back gracefully.
  */
-// The previous local `reverseGeocode` helper was removed — every caller
+// The previous local `reverseGeocode` helper was removed, every caller
 // now uses `olaReverseGeocode` directly so we get the full
 // ReverseGeocodeResult (area + formatted + geo* fields) in one shot.
 

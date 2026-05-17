@@ -9,14 +9,17 @@ import { trackEvent } from "@/lib/ga";
 import { useLocaleFromContext } from "@/lib/locale-context";
 
 type Props = {
-  locale: Locale;
-  isHi: boolean;
+  /** Optional, ignored at runtime. Locale resolves from
+   *  LocaleProvider context so the Hindi toggle flips every label
+   *  on this section without waiting on a server-tree refresh. */
+  locale?: Locale;
+  isHi?: boolean;
 };
 
 const INITIAL_VISIBLE = 6;
 
 /**
- * "Famous bhandaras of Lucknow" — curated landmark venues. Six cards
+ * "Famous bhandaras of Lucknow", curated landmark venues. Six cards
  * render by default; the rest expand on click so the section stays
  * digestible on first paint.
  */
@@ -141,7 +144,7 @@ function FamousCard({
   }[b.kind];
 
   // Card is clickable only when there's a dedicated /bhandara/[slug]
-  // page for this venue. Otherwise it renders as a static info tile —
+  // page for this venue. Otherwise it renders as a static info tile,
   // the Google Maps and directions affordances were intentionally
   // removed from this list so the page stays visually quiet.
   const hasInternalPage = !!b.slug;

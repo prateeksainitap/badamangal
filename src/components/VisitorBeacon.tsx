@@ -5,7 +5,7 @@
  *
  * Posts to `/api/visit` once per mount, after first paint. Used to keep
  * the homepage HTML statically-cacheable (ISR) without losing the
- * "welcome, visitor #N" counter — the counter just bumps a beat after
+ * "welcome, visitor #N" counter, the counter just bumps a beat after
  * paint instead of blocking SSR with a DB write.
  *
  * We guard with a session-scoped flag so a soft client-nav back to the
@@ -24,17 +24,17 @@ export default function VisitorBeacon() {
       sessionStorage.setItem(SESSION_KEY, "1");
     } catch {
       // Storage may be blocked (private mode / strict cookie settings).
-      // In that case we'll over-count slightly — better than under-counting.
+      // In that case we'll over-count slightly, better than under-counting.
     }
 
     // Use `keepalive` so the request survives even if the user navigates
-    // away in the same tick. No await — the beacon is fire-and-forget.
+    // away in the same tick. No await, the beacon is fire-and-forget.
     void fetch("/api/visit", {
       method: "POST",
       keepalive: true,
       cache: "no-store",
     }).catch(() => {
-      /* network blip — counter just misses this tick, no UX impact */
+      /* network blip, counter just misses this tick, no UX impact */
     });
   }, []);
 

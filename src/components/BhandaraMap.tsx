@@ -58,7 +58,7 @@ export type LiveSpotPin = {
   lat: number;
   lng: number;
   caption: string | null;
-  /** Photo uploaded with the spot, if any — shown as a thumbnail in the
+  /** Photo uploaded with the spot, if any, shown as a thumbnail in the
    *  popup header so users see what was actually spotted. */
   photoUrl?: string | null;
   bhandaraSlug: string | null;
@@ -91,20 +91,20 @@ export default function BhandaraMap({
   // builder produces a Hindi or English wa.me message matching the
   // visitor's reading language. The map itself doesn't render copy in
   // either language (icon-only popup chrome), so we only need locale
-  // for the share-text builder — not for any visible labels.
+  // for the share-text builder, not for any visible labels.
   const locale = useLocaleFromContext();
   /** Keyed marker registry, kept for future features that need to look
    *  up a marker by its side-list entry key (`org:<id>` / `spot:<id>`).
    *  Currently unused but cheap to maintain. */
   const markerElByKey = useRef<Map<string, HTMLElement>>(new Map());
   /** The persistent MapLibre instance. Mounted once via Effect A
-   *  below and reused for the component's entire lifetime — filter
+   *  below and reused for the component's entire lifetime, filter
    *  changes (All / Listed / Spotted) only touch the marker layer,
    *  never tear down the map itself. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mapRef = useRef<any>(null);
   /** Markers currently on the map. Replaced wholesale by Effect B on
-   *  every listings / liveSpots change — old markers `.remove()`,
+   *  every listings / liveSpots change, old markers `.remove()`,
    *  new ones get added. The map + tiles stay put. */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markersRef = useRef<any[]>([]);
@@ -137,7 +137,7 @@ export default function BhandaraMap({
   // ────────────────────────────────────────────────────────────────
   //
   // Previously this effect also rebuilt every marker, so its dep
-  // array included `listings` and `liveSpots` — which meant flipping
+  // array included `listings` and `liveSpots`, which meant flipping
   // the All/Listed/Spotted filter tore down the entire MapLibre
   // instance (canvas, tiles, controls) and re-initialised it from
   // scratch. Visible flash + 200-500 ms re-tile every click.
@@ -147,7 +147,7 @@ export default function BhandaraMap({
   // below) handles marker sync when filters change. Marker `.remove()`
   // and `.addTo(map)` are cheap; nothing else has to re-init.
   //
-  // The microtask deferral + StrictMode-race fix is preserved — see
+  // The microtask deferral + StrictMode-race fix is preserved, see
   // the previous comment trail; that bug is structural to React 18
   // dev mode + MapLibre's sync canvas construction inside async init.
   useEffect(() => {
@@ -190,7 +190,7 @@ export default function BhandaraMap({
         attachMapControls(map, { showGeolocate: true, position: "top-right" });
 
         // Once the user starts panning or pinch-zooming the map, lock
-        // in their viewport — Effect B's fitBounds will respect this
+        // in their viewport, Effect B's fitBounds will respect this
         // and stop refitting on incidental re-renders. MapLibre fires
         // `dragstart` for pans and `zoomstart` with an `originalEvent`
         // for user-initiated zooms (programmatic camera moves leave
@@ -204,7 +204,7 @@ export default function BhandaraMap({
           }
         });
 
-        // Known-benign Ola style noise filter — same list as before.
+        // Known-benign Ola style noise filter, same list as before.
         map.on("error", (e: { error?: { message?: string } }) => {
           const msg = e?.error?.message ?? "";
           if (
@@ -222,7 +222,7 @@ export default function BhandaraMap({
         // Ola's standard style ships every commercial POI label in
         // the tile (gym, salon, ice-cream parlour, beer shop, …).
         // For a city map focused on bhandara discovery these compete
-        // visually with our gada pins — the user's marker drowns
+        // visually with our gada pins, the user's marker drowns
         // among unrelated shop labels at street-level zoom. We hide
         // every layer whose id flags it as POI / commercial / brand
         // content via the MapLibre style spec, leaving roads, place
@@ -258,12 +258,12 @@ export default function BhandaraMap({
                 try {
                   map.setLayoutProperty(layer.id, "visibility", "none");
                 } catch {
-                  /* layer disappeared mid-iteration — ignore */
+                  /* layer disappeared mid-iteration, ignore */
                 }
               }
             }
           } catch {
-            /* style not ready yet — the styledata listener below
+            /* style not ready yet, the styledata listener below
                will pick it up on the next event */
           }
         };
@@ -286,7 +286,7 @@ export default function BhandaraMap({
                 data: new Uint8Array(4),
               });
             } catch {
-              /* concurrent add — ignore */
+              /* concurrent add, ignore */
             }
           }
         });
@@ -365,7 +365,7 @@ export default function BhandaraMap({
       setMapReady(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intentionally empty — map mounts once for the page's life
+  }, []); // intentionally empty, map mounts once for the page's life
 
   // ────────────────────────────────────────────────────────────────
   // Effect B: sync markers when listings / liveSpots / handlers change
@@ -496,11 +496,11 @@ export default function BhandaraMap({
 
     // Auto-fit rules:
     //   1. Skip if `center` was explicitly passed (detail page case).
-    //   2. Skip if the pin set is identical to the previous render —
+    //   2. Skip if the pin set is identical to the previous render,
     //      Effect B re-fires on unrelated prop changes; refitting in
     //      that case is exactly the "map keeps zooming out + popup
     //      closes" symptom the visitor was complaining about.
-    //   3. Skip if the user has manually panned / pinch-zoomed —
+    //   3. Skip if the user has manually panned / pinch-zoomed,
     //      they've taken control; respect their viewport.
     //   4. When a filter change DOES reshape the pin set, reset the
     //      user-moved flag so the next refit will run, and ease the
@@ -508,7 +508,7 @@ export default function BhandaraMap({
     const shouldRefit =
       !center && pinsChanged && bounds.length > 0;
     if (shouldRefit) {
-      // Filter changed meaningfully — let the camera re-frame.
+      // Filter changed meaningfully, let the camera re-frame.
       userMovedMapRef.current = false;
     }
     if (shouldRefit && !userMovedMapRef.current) {
@@ -530,7 +530,7 @@ export default function BhandaraMap({
             duration: 400,
           });
         } catch {
-          /* style not loaded yet — fine, default centre stands */
+          /* style not loaded yet, fine, default centre stands */
         }
       } else if (bounds.length === 1) {
         try {
@@ -548,7 +548,7 @@ export default function BhandaraMap({
       // Inline `position: relative` so MapLibre's absolutely-positioned
       // canvas always pins to this container, never to a distant
       // positioned ancestor (or the page body). See PinDropMap for the
-      // full story — same bug bites both maps.
+      // full story, same bug bites both maps.
       style={{ position: "relative" }}
       className={
         className ??
@@ -604,7 +604,7 @@ function buildSpotPopupHtml(
   );
   // Full warm share message body (BadaMangal link first, Google Maps
   // link second, intro / caption / closer). Same content the Share
-  // button sends to wa.me — the Copy button below pastes this same
+  // button sends to wa.me, the Copy button below pastes this same
   // text so a paste into ANY messenger produces a complete invite.
   // Consistent with HappeningNow / MapSideList / live feed Copies.
   const shareText = spotShareText(
@@ -686,11 +686,11 @@ function buildListedBhandaraPopupHtml(
 ): string {
   const dirUrl = `https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}`;
   const detailUrl = `/bhandara/${b.slug}`;
-  // Full warm bhandara share message body — same content the
+  // Full warm bhandara share message body, same content the
   // BhandaraCard's WhatsApp button sends. Pasted by the Copy button
   // so the receiver gets the full invite, not just a coords URL.
   const shareText = bhandaraShareText(b, locale);
-  // wa.me URL for the Share button — added to the listed popup so it
+  // wa.me URL for the Share button, added to the listed popup so it
   // matches the spot popup's action triplet (Directions / Share /
   // Copy). Earlier the listed popup only had View + Directions + Copy
   // with no one-tap "share to WhatsApp" path, which was inconsistent

@@ -6,7 +6,7 @@
  * Fires once per device on the very first visit. The mark is stored
  * in localStorage so it never replays for the same visitor.
  *
- * Trigger: window 'load' event — the page is fully parsed, all
+ * Trigger: window 'load' event, the page is fully parsed, all
  * critical resources have finished, and the browser is ready. The
  * <audio> element gets a real play() call at that point.
  *
@@ -16,7 +16,7 @@
  * workaround. If the visitor arrived from a link that recently saw
  * a click (WhatsApp / external referral within the user-activation
  * window) the browser MAY allow it; otherwise the play() promise
- * silently rejects. We do not show any fallback prompt — the
+ * silently rejects. We do not show any fallback prompt, the
  * intent is "auto-play or nothing", as requested.
  */
 import { useEffect } from "react";
@@ -32,7 +32,7 @@ export default function FirstVisitChant() {
     try {
       alreadyPlayed = window.localStorage.getItem(STORAGE_KEY) === "1";
     } catch {
-      /* private mode — treat as not-played; skip the storage write */
+      /* private mode, treat as not-played; skip the storage write */
     }
     if (alreadyPlayed) return;
 
@@ -44,17 +44,17 @@ export default function FirstVisitChant() {
       try {
         window.localStorage.setItem(STORAGE_KEY, "1");
       } catch {
-        /* private mode — just skip */
+        /* private mode, just skip */
       }
     };
 
-    /** Single play attempt — no retries, no gesture fallback.
+    /** Single play attempt, no retries, no gesture fallback.
      *  If the browser blocks it, the promise rejects silently. */
     const tryPlay = () => {
       const p = audio.play();
       if (p && typeof p.then === "function") {
         p.then(markPlayed).catch(() => {
-          /* autoplay blocked by the browser — accept silently */
+          /* autoplay blocked by the browser, accept silently */
         });
       } else {
         markPlayed();

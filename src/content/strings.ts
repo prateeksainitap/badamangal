@@ -27,7 +27,7 @@ type Dict = {
     seconds: string;
     seasonComplete: string;
     /** Banner phrase rendered above the timer on a Bada Mangal day.
-     *  Use `{ordinal}` as the placeholder — replaced at runtime with
+     *  Use `{ordinal}` as the placeholder, replaced at runtime with
      *  the ordinal phrase from `liveOrdinals`. e.g. "Today is the 2nd Bada Mangal". */
     liveToday: string;
     /** Ordinal phrases for "1st Bada Mangal" → "8th Bada Mangal".
@@ -523,7 +523,7 @@ const hi: Dict = {
     rareCycleFactNextLabel: "अगली बार",
     rareCycleFactNext: "2045",
     nextBadaMangal: "अगला बड़ा मंगल",
-    // Live-day banner — `{ordinal}` is interpolated with one of
+    // Live-day banner, `{ordinal}` is interpolated with one of
     // liveOrdinals below ("दूसरा", "तीसरा" …) at runtime.
     days: "दिन",
     hours: "घंटे",

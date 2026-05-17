@@ -56,7 +56,7 @@ export default function StatsSection({ stats }: Props) {
           <p className="mt-2 text-sm text-ink-600 leading-relaxed">{t.stats.sectionBody}</p>
         </header>
 
-        {/* Visitor pill — tightened to a single inline row so it reads
+        {/* Visitor pill, tightened to a single inline row so it reads
             as a quiet headline number rather than a hero billboard. */}
         <div
           role="region"
@@ -67,7 +67,7 @@ export default function StatsSection({ stats }: Props) {
           <JaliCorner position="tr" className="absolute top-1 right-1.5 w-5 h-5 text-saffron-600/50" />
           <JaliCorner position="bl" className="absolute bottom-1 left-1.5 w-5 h-5 text-saffron-600/50" />
           <JaliCorner position="br" className="absolute bottom-1 right-1.5 w-5 h-5 text-saffron-600/50" />
-          {/* No "Live" pill — the number is a cumulative running total
+          {/* No "Live" pill, the number is a cumulative running total
               of all visits, not a count of users currently on the site,
               and labelling it "live" misleads readers. */}
           <div className="px-5 sm:px-8 py-3 flex flex-col items-center justify-center gap-1 text-center">
@@ -111,7 +111,7 @@ export default function StatsSection({ stats }: Props) {
             />
           ) : null}
           {/* Tuesdays-served is calendar-derived, so 0 is a valid value
-              early in the season — keep the tile visible regardless. */}
+              early in the season, keep the tile visible regardless. */}
           <StatCard
             icon={<IconMangal />}
             value={format(stats.tuesdaysSoFar, locale)}
@@ -197,7 +197,7 @@ function IconNeighborhood() {
   );
 }
 
-/** Camera with a small heart-spark inside — represents a passer-by
+/** Camera with a small heart-spark inside, represents a passer-by
  *  spotting a bhandara and snapping a photo. Same stroke weight as the
  *  other tile icons so the row reads as a set. */
 function IconCamera() {

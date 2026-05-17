@@ -10,7 +10,7 @@ export type DevotionalReaderProps = {
 
 /**
  * Renders the player surface plus the verse stack. The Roman + English
- * language toggle has been removed — verses always render in Devanagari,
+ * language toggle has been removed, verses always render in Devanagari,
  * which keeps the page focused on the original text and matches the
  * audio recordings.
  */
@@ -18,7 +18,7 @@ export default function DevotionalReader({ text }: DevotionalReaderProps) {
   const { t } = useT();
 
   // Map the slug to the right strings block. Each devotional text has
-  // its own copy block in `t.resources` — bajrang-baan uses a camelCase
+  // its own copy block in `t.resources`, bajrang-baan uses a camelCase
   // key (`bajrangBaan`) since slugs aren't valid object-property syntax.
   const sourceCaption = (() => {
     switch (text.slug) {
@@ -86,7 +86,7 @@ function VerifyingBlock() {
 function VerseRow({ verse }: { verse: DevotionalVerse }) {
   return (
     <li className="grid gap-4 sm:grid-cols-[auto_1fr] items-start rounded-2xl border border-gold-500/30 bg-white px-5 py-4">
-      {/* Verse number — uses font-deva because verse numbers are now in
+      {/* Verse number, uses font-deva because verse numbers are now in
           Devanagari numerals (१, २, ३ …). `font-numerals` is for Latin
           digits in countdown / stats UIs. */}
       <p className="font-deva font-bold text-saffron-600 text-lg sm:w-20 leading-snug">

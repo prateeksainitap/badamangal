@@ -12,7 +12,7 @@ const SPOT_TTL_HOURS = 8;
 // Both `photoUrl` and `caption` are individually optional, but the
 // form (SpotQuickForm) requires AT LEAST one of them. The `.refine()`
 // below mirrors that gate on the server so a photo-only submission
-// (the common case — someone snaps a banner and posts it without
+// (the common case, someone snaps a banner and posts it without
 // typing) goes through cleanly. Previously caption was required at
 // the schema level, which made every photo-only POST 400 with
 // "Validation failed" even though the UI explicitly labelled it
@@ -34,7 +34,7 @@ const bodySchema = z
       .max(200)
       .optional()
       .or(z.literal("").transform(() => undefined)),
-    // Free-string area — no longer enum-restricted. Spot's area is
+    // Free-string area, no longer enum-restricted. Spot's area is
     // typically auto-derived from the visitor's GPS (closest curated
     // bhandara → reverse-geocoded neighbourhood) so the value can be
     // anything Ola Maps returns.
@@ -81,7 +81,7 @@ export async function GET(req: NextRequest) {
     area: s.area,
     address: s.address,
     photoUrl: s.photoUrl,
-    // Strip [bot:whatsapp …] from public JSON — see lib/sanitize.ts.
+    // Strip [bot:whatsapp …] from public JSON, see lib/sanitize.ts.
     caption: stripBotProvenance(s.caption) || null,
     language: s.language,
     reporterName: s.reporterName,

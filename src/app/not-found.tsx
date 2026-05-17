@@ -1,11 +1,20 @@
+"use client";
+
 import Link from "next/link";
-import { strings, type Locale } from "@/content/strings";
+import { strings } from "@/content/strings";
 import { MarigoldDivider } from "@/components/ornaments";
+import { useLocaleFromContext } from "@/lib/locale-context";
 
-export const revalidate = 300;
-
-export default async function NotFound() {
-  const locale = "en" as Locale;
+/**
+ * 404 not-found page. Converted from a server component (which had
+ * hardcoded `locale = "en"`) to a client component reading from
+ * LocaleProvider context so the Hindi toggle flips every label here
+ * too. Next.js doesn't require this file to be server-rendered, and
+ * the page is rarely the LCP for any user journey, making it client
+ * is fine.
+ */
+export default function NotFound() {
+  const locale = useLocaleFromContext();
   const t = strings[locale];
   const isHi = locale === "hi";
   const langSuffix = locale === "en" ? "?lang=en" : "";
@@ -32,7 +41,11 @@ export default async function NotFound() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/illustrations/404-diya-smoke.png"
-          alt="A tipped-over clay diya with a curl of smoke and a marigold."
+          alt={
+            isHi
+              ? "एक उलटी हुई मिट्टी की दिया, धुँए की लकीर और गेंदा।"
+              : "A tipped-over clay diya with a curl of smoke and a marigold."
+          }
           loading="eager"
           decoding="async"
           className="w-full h-full object-cover"

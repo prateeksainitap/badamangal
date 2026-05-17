@@ -4,9 +4,9 @@
  * Mirrors /admin/edit/[id] (the bhandara edit page) but for the simpler
  * Spot row shape:
  *   - caption + area + address + language
- *   - lat / lng — bot-ingested spots often land 0,0 because the WhatsApp
+ *   - lat / lng, bot-ingested spots often land 0,0 because the WhatsApp
  *     forward strips EXIF GPS; the admin fills these in from the photo
- *   - reporterName — the WA forward's sender, kept editable so admin
+ *   - reporterName, the WA forward's sender, kept editable so admin
  *     can correct "Praveen" → "Praveen Yadav" etc.
  *   - TTL choice: keep the existing expiresAt, or reset it to now + 8h
  *     so a freshly-reviewed spot gets a full window on the city map
@@ -197,7 +197,7 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
             <span>
               <strong>Reset to 8 hours from now</strong>{" "}
               <span className="text-ink-600">
-                — gives this spot a full TTL window even if the upload
+               , gives this spot a full TTL window even if the upload
                 sat in PENDING for a while.
               </span>
             </span>

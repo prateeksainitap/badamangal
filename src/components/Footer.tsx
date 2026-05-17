@@ -13,8 +13,8 @@ function FooterInner() {
   const cols: { heading: string; links: { href: string; label: string }[] }[] = [
     {
       // Merged "Discover" + "Get involved" column. All four primary
-      // user actions live here — finding, seeing live, listing, spotting
-      // — under a single umbrella heading so the footer reads tighter
+      // user actions live here, finding, seeing live, listing, spotting
+      //, under a single umbrella heading so the footer reads tighter
       // without orphaning the two-item Get-involved column next door.
       heading: t.footer.discoverHeading,
       links: [
@@ -24,15 +24,16 @@ function FooterInner() {
         // skips the "are you an organizer or spotter?" chooser and
         // drops the visitor straight on the listing form.
         { href: "/list-bhandara?role=organizer", label: t.footer.getInvolvedAdd },
-        // Pamphlet generator — surfaces the printable-invite tool
-        // for organisers who haven't yet considered listing online
-        // (the QR on the generated pamphlet pulls them in regardless).
-        {
-          href: "/pamphlet",
-          label: isHi ? "मुफ़्त पैम्फलेट बनाएँ" : "Free pamphlet maker",
-        },
+        // Pamphlet generator link intentionally hidden during the
+        // soft-launch phase. The /pamphlet route still works for
+        // direct URL access; we just don't promote it from the
+        // footer, homepage, or BhandaraForm. Restore by uncommenting:
+        // {
+        //   href: "/pamphlet",
+        //   label: isHi ? "मुफ़्त पैम्फलेट बनाएँ" : "Free pamphlet maker",
+        // },
         { href: "/spot", label: isHi ? "भंडारा स्पॉट करें" : "Spot a bhandara" },
-        // Past-bhandaras archive — listed venues whose Tuesdays are
+        // Past-bhandaras archive, listed venues whose Tuesdays are
         // over + spotted sightings whose 8-hour window expired.
         // Sits inside Discover (next to /live + /spot) so the
         // present/past pair reads naturally as one trip through the
@@ -65,7 +66,7 @@ function FooterInner() {
       ],
     },
     {
-      // Dedicated Contact column — single link to the /contact form.
+      // Dedicated Contact column, single link to the /contact form.
       // Email mailto continues to live in the copyright strip below.
       heading: isHi ? "संपर्क" : "Contact",
       links: [
@@ -108,8 +109,8 @@ function FooterInner() {
           {/* Link columns. Resources gets a 2-cell allocation (because
               it has 8 items and reads better as two short lists than
               one tall one); the rest stay at 1 cell each. The grid is
-              5 columns on md+ — Discover · Resources (×2) · About ·
-              Contact — totalling 5 cells. */}
+              5 columns on md+, Discover · Resources (×2) · About ·
+              Contact, totalling 5 cells. */}
           <nav
             aria-label="Footer"
             className="grid gap-8 sm:grid-cols-2 md:grid-cols-5"
@@ -130,7 +131,7 @@ function FooterInner() {
                     // Resources flows its links into two CSS columns
                     // (instead of a grid) so a wrapping item like
                     // "Sankat Mochan Hanuman Ashtak" only steals
-                    // vertical space inside its own column — the
+                    // vertical space inside its own column, the
                     // adjacent column doesn't inherit a phantom gap.
                     // `break-inside-avoid` keeps each list item on
                     // a single column even if it has to spill the
@@ -177,7 +178,7 @@ function FooterInner() {
           </p>
         </div>
 
-        {/* Copyright strip — legal links live in the About column
+        {/* Copyright strip, legal links live in the About column
             above. The contact email sits inline here too (between the
             copyright and the "Made with seva" tagline) so a reader
             scanning the foot of the page can grab it without scrolling

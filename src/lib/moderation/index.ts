@@ -1,4 +1,4 @@
-// Moderation pipeline used by /api/spots (and previously /api/posts —
+// Moderation pipeline used by /api/spots (and previously /api/posts,
 // now removed). Composes the four content-quality stages into a single
 // entry point. Stage 5 (phone-keyed rate-limit + dedup) was specific
 // to Posts and has been removed along with the Post model.

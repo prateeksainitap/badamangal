@@ -7,14 +7,14 @@ import { trackEvent } from "@/lib/ga";
 import { useLocaleFromContext } from "@/lib/locale-context";
 
 /**
- * /archive — public record of bhandaras whose moment has passed:
+ * /archive, public record of bhandaras whose moment has passed:
  *   • Listed (organiser-submitted) bhandaras whose every Tuesday is over
  *   • Spotted (crowd-sourced) sightings whose 8-hour live window expired
  *
  * Both tabs render in the same brand language as the rest of the site
  * (jali corners, marigold divider, sindoor headline + saffron kicker).
  * Tab state lives entirely on the client so the page itself can stay
- * statically prerendered — clicking either tab is instant.
+ * statically prerendered, clicking either tab is instant.
  */
 
 type ListedItem = {
@@ -127,7 +127,7 @@ export default function ArchiveTabs({
   };
 
   // Substring search across the fields a visitor would plausibly type
-  // — bhandara name (both scripts), area, organiser, address, caption.
+  //, bhandara name (both scripts), area, organiser, address, caption.
   // Pure JS .filter() over the prerendered set; the page itself is
   // statically cached and we don't want a per-keystroke API hit.
   const q = normalise(query);
@@ -162,7 +162,7 @@ export default function ArchiveTabs({
 
   const onSearchChange = (next: string) => {
     setQuery(next);
-    // Only emit the GA event on real searches — debounce by length so
+    // Only emit the GA event on real searches, debounce by length so
     // we don't spam the funnel with one event per keystroke.
     if (next.trim().length >= 3) {
       trackEvent("archive_search", { length: next.trim().length });
@@ -190,7 +190,7 @@ export default function ArchiveTabs({
         </h1>
         <p className="mt-3 max-w-2xl mx-auto text-ink-600 leading-relaxed">
           {isHi
-            ? "हर मंगल जिसका वक़्त बीत गया, यहाँ दर्ज है। ऑर्गनाइज़र के सूचीबद्ध भंडारे और राहगीरों के स्पॉट किए हुए — दोनों एक जगह।"
+            ? "हर मंगल जिसका वक़्त बीत गया, यहाँ दर्ज है। ऑर्गनाइज़र के सूचीबद्ध भंडारे और राहगीरों के स्पॉट किए हुए, दोनों एक जगह।"
             : "Every Tuesday whose moment has passed, kept here on the record. Both organiser-listed bhandaras and passer-by spotted sightings, side by side."}
         </p>
         <div className="mt-6 flex justify-center">
@@ -412,7 +412,7 @@ function ListedGrid({ items, isHi }: { items: ListedItem[]; isHi: boolean }) {
             >
               {/* Pamphlet / venue photo. Most listed bhandaras come in
                   via the WhatsApp invite scan, so photoUrl is usually
-                  the original poster — leading with it makes the card
+                  the original poster, leading with it makes the card
                   scannable at a glance and matches the spotted-tab
                   layout. Cards without a photo fall back to a soft
                   cream banner so the grid stays visually even. */}

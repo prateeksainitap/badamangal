@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 /**
  * Rounded pill chip used for filters, badges, status indicators,
  * relative-time labels, area tags. The version of `<Kicker />` that
- * gets a background — same typography (Mukta uppercase, tracked-out)
+ * gets a background, same typography (Mukta uppercase, tracked-out)
  * but sitting on a coloured pill instead of being a paragraph.
  *
  *   <Pill tone="saffron">Live</Pill>
@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
  *   <Pill tone="gold">Read · listen</Pill>
  *
  * For interactive pills (filter tabs, language toggle pieces), keep
- * styling them inline — those need :focus-visible and aria-selected
+ * styling them inline, those need :focus-visible and aria-selected
  * which would bloat this primitive.
  */
 type Tone = "saffron" | "sindoor" | "gold" | "leaf" | "cream";

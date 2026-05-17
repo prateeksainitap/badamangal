@@ -34,7 +34,7 @@ export default function SpotHero() {
           : "One photo and your location is enough. We'll handle the rest."}
       </p>
 
-      {/* Trust strip — moved to the top so people see it before doubting */}
+      {/* Trust strip, moved to the top so people see it before doubting */}
       <div className="mt-4 inline-flex items-center gap-2 sm:gap-3 flex-wrap justify-center text-[11px] text-ink-600">
         <span className="inline-flex items-center gap-1">
           <IconClock /> {isHi ? "30 सेकंड" : "30 seconds"}

@@ -20,7 +20,7 @@ import { OLA_API_KEY } from "@/lib/olaMaps";
 const AUTOCOMPLETE_URL = "https://api.olamaps.io/places/v1/autocomplete";
 const REVERSE_URL = "https://api.olamaps.io/places/v1/reverse-geocode";
 
-// Lucknow bounding box — biases autosuggest results to the city.
+// Lucknow bounding box, biases autosuggest results to the city.
 // Same box the previous Nominatim queries used, so search relevance is
 // at least as good as before.
 const LUCKNOW_BBOX = {
@@ -87,7 +87,7 @@ export async function olaAutocomplete(
     input: q,
     api_key: OLA_API_KEY,
     location: `${LUCKNOW_CENTER.lat},${LUCKNOW_CENTER.lng}`,
-    radius: "15000", // 15 km — covers the whole Lucknow built-up area
+    radius: "15000", // 15 km, covers the whole Lucknow built-up area
   });
   const url = `${AUTOCOMPLETE_URL}?${params.toString()}`;
 
@@ -116,7 +116,7 @@ export async function olaAutocomplete(
         const lng = p.geometry?.location?.lng;
         if (typeof lat !== "number" || typeof lng !== "number") return null;
 
-        // Ola's response shape is inconsistent — sometimes
+        // Ola's response shape is inconsistent, sometimes
         // structured_formatting carries both main+secondary, sometimes
         // only main, sometimes only `description`. Walk through every
         // shape so the user always sees the most useful pair.
@@ -131,7 +131,7 @@ export async function olaAutocomplete(
           if (secondaryRaw) {
             secondary = secondaryRaw;
           } else if (descRaw && descRaw !== mainRaw) {
-            // Description usually reads "Main, Area, City" — strip the
+            // Description usually reads "Main, Area, City", strip the
             // leading `main, ` so the secondary line is just the rest.
             const trimmed = descRaw.replace(
               new RegExp(`^${escapeRegex(mainRaw)}\\s*,?\\s*`, "i"),
@@ -168,7 +168,7 @@ export async function olaAutocomplete(
     trimCache(autocompleteCache);
     return hits;
   } catch {
-    // Network error, abort, parse failure — degrade silently.
+    // Network error, abort, parse failure, degrade silently.
     return [];
   }
 }
@@ -185,7 +185,7 @@ export type ReverseGeocodeResult = {
 
 /**
  * Coordinates → human-readable place name. Returns `null` if the API
- * fails or returns no results — callers always fall back to the raw
+ * fails or returns no results, callers always fall back to the raw
  * coordinate string in that case.
  */
 export async function olaReverseGeocode(
@@ -274,7 +274,7 @@ function extractAreaFromFormatted(formatted: string): string | null {
   return parts[1] ?? parts[0];
 }
 
-/** Bbox check — used to flag pins dropped outside Lucknow. */
+/** Bbox check, used to flag pins dropped outside Lucknow. */
 export function isInLucknow(lat: number, lng: number): boolean {
   return (
     lat >= LUCKNOW_BBOX.latMin &&

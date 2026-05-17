@@ -5,7 +5,7 @@ import { stripBotProvenance } from "@/lib/sanitize";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Public-shape projection — strips moderation/identity fields.
+// Public-shape projection, strips moderation/identity fields.
 // Naming kept (`PublicPost`, `posts:` envelope) so the existing client
 // components (LiveFeedMarquee, LiveFeedTimeline) don't need any change
 // even though the only record-type now is Spots.
@@ -60,16 +60,16 @@ export async function GET(req: NextRequest) {
     bhandaraId: s.bhandaraId,
     bhandaraSlug: s.bhandara?.slug ?? null,
     bhandaraName: s.bhandara?.name ?? null,
-    // Spots always have their own coords — fall back to those when there's
+    // Spots always have their own coords, fall back to those when there's
     // no linked bhandara so the "Get directions" CTA still works.
     bhandaraLat: s.bhandara?.lat ?? s.lat,
     bhandaraLng: s.bhandara?.lng ?? s.lng,
     authorName: s.reporterName?.trim() || "Spotter",
-    // Public feed — strip the [bot:whatsapp …] provenance tag so it
+    // Public feed, strip the [bot:whatsapp …] provenance tag so it
     // never surfaces in the activity ticker, RSS, or third-party API
     // consumers. See lib/sanitize.ts.
     // `|| null` (not `??`) collapses an empty post-strip result down
-    // to null — happens when the original caption was nothing but the
+    // to null, happens when the original caption was nothing but the
     // bot tag (e.g. an image-only forward where Gemini emitted no
     // caption text). Empty strings would render as awkward gaps in
     // the activity ticker.

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
  *
  * Why this exists: writing `document.cookie` from the client and then
  * immediately calling `router.refresh()` race-conditions under Next 15
- * — the refresh sometimes fires the new server request before the
+ *, the refresh sometimes fires the new server request before the
  * just-written cookie is visible to that request. Going through a
  * server endpoint that returns `Set-Cookie` guarantees the browser has
  * fully committed the cookie before the next render, so a follow-up

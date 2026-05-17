@@ -6,7 +6,7 @@
 //     (the chain still runs, the LLM stage just doesn't gatekeep). This
 //     lets us ship without an API key and turn it on later.
 //   - 7-day in-memory cache keyed by SHA-256 of the trimmed lowercased
-//     input — Gemini's free tier is generous but we don't pay for cache
+//     input, Gemini's free tier is generous but we don't pay for cache
 //     hits either, and the latency win on duplicates is real.
 //   - Migrated from Claude Haiku → Gemini 2.5 Flash in May 2026 alongside
 //     the vision pipeline. Same prompt, same JSON contract, same fail-
@@ -81,7 +81,7 @@ export async function llmCheck(
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        // System prompt rides on Gemini's `systemInstruction` field —
+        // System prompt rides on Gemini's `systemInstruction` field,
         // analogous to the `system:` argument we used on Claude.
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [{ parts: [{ text: userMessage }] }],
@@ -103,7 +103,7 @@ export async function llmCheck(
     };
     // Gemini's safety filters may block the prompt entirely. When that
     // happens we get a `promptFeedback.blockReason` and no candidates.
-    // Treat as a "reject" — Gemini already concluded the content is
+    // Treat as a "reject", Gemini already concluded the content is
     // unsafe, so respect that decision rather than fail-open.
     if (data.promptFeedback?.blockReason) {
       decision = {
@@ -128,7 +128,7 @@ export async function llmCheck(
 
 function parseDecision(raw: string): Decision {
   // Gemini's JSON mode rarely wraps in fences, but tolerate stray prose
-  // around the JSON anyway — cheaper than a retry.
+  // around the JSON anyway, cheaper than a retry.
   const match = raw.match(/\{[^}]*\}/);
   if (!match) return { action: "approve", category: null };
   try {

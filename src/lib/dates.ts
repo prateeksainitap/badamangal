@@ -19,7 +19,7 @@ export const ALL_TUESDAY_ISO: readonly string[] = BADA_MANGAL_DATES_2026.map(
   (d) => d.toISOString().slice(0, 10),
 );
 
-// Bada Shanivars of the same Jyeshtha + Adhik Maas window — organizers
+// Bada Shanivars of the same Jyeshtha + Adhik Maas window, organizers
 // often run a parallel Saturday bhandara, so we surface these alongside
 // the Tuesdays in the form.
 export const BADA_SHANIVAR_DATES_2026: ReadonlyArray<Date> = [
@@ -40,7 +40,7 @@ export const ALL_SATURDAY_ISO: readonly string[] =
 /**
  * Combined preset list of season service-days (Tuesdays + Saturdays),
  * sorted chronologically. Organizers also have a free calendar picker
- * for any other date, so this list is preset-only — not the closed set.
+ * for any other date, so this list is preset-only, not the closed set.
  */
 export const ALL_SEASON_ISO: readonly string[] = [
   ...ALL_TUESDAY_ISO,
@@ -60,7 +60,7 @@ export function nextBadaMangal(now: Date = new Date()): Date | null {
 
 /** Today's date as YYYY-MM-DD in IST (Asia/Kolkata, UTC+5:30).
  *  Exported so server-rendered pages can use the same calendar
- *  boundary the user sees — important when "auto-delisting past
+ *  boundary the user sees, important when "auto-delisting past
  *  bhandaras" needs to agree with the visitor's local sense of "today".
  *  Several components have inlined copies of this; over time we'll
  *  collapse those onto this one.
@@ -77,13 +77,13 @@ export function istTodayIso(now: Date = new Date()): string {
  *
  * Used to auto-hide bhandaras whose date has fully passed from every
  * public-facing query (homepage listing, /api/bhandaras, etc.) without
- * deleting the DB row. The data stays — admins see it under the
+ * deleting the DB row. The data stays, admins see it under the
  * /admin "All" tab, and historical share links to /bhandara/[slug]
- * keep working — but the public map and counters only reflect what's
+ * keep working, but the public map and counters only reflect what's
  * still upcoming, no manual delisting needed.
  *
  * `tuesdayDates` is the unfortunate name for what's actually "all
- * service days" — Tuesdays + the occasional Bade Shanivar — kept for
+ * service days", Tuesdays + the occasional Bade Shanivar, kept for
  * back-compat with the DB column.
  */
 export function hasUpcomingDate(
@@ -113,7 +113,7 @@ export function currentBadaMangalOrdinal(
 
 /**
  * The first Bada Mangal strictly AFTER today (IST). On live days this
- * is needed for the countdown timer — `nextBadaMangal()` would return
+ * is needed for the countdown timer, `nextBadaMangal()` would return
  * today's date earlier in the day (before its 10 AM IST anchor),
  * giving a sub-1-day countdown that flips to the next one at 10 AM.
  * This variant always points at the next future Tuesday.

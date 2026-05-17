@@ -7,7 +7,7 @@ export const SITE_URL =
 /**
  * Build a `Metadata.alternates` block with canonical + bilingual
  * hreflang + x-default. Pass the path with no query string and no
- * leading site URL — e.g. `localised("/spot")` produces:
+ * leading site URL, e.g. `localised("/spot")` produces:
  *   canonical: https://badamangal.com/spot
  *   languages.en-IN: https://badamangal.com/spot?lang=en
  *   languages.hi-IN: https://badamangal.com/spot
@@ -35,11 +35,11 @@ export function localised(path: string): Metadata["alternates"] {
 /**
  * WebSite + sitelinks SearchAction so Google can wire its in-result
  * search box (the small site-scoped search input that appears below
- * branded results — e.g. "BadaMangal" + a search field inside the
+ * branded results, e.g. "BadaMangal" + a search field inside the
  * Google SERP card itself).
  *
  * The SearchAction `urlTemplate` points at `/?q={search_term_string}`.
- * The homepage's search input lives inside `BhandaraCardsSection` —
+ * The homepage's search input lives inside `BhandaraCardsSection`,
  * it currently filters client-side only, but reading a `q` query
  * param at mount and pre-filling the input is a small follow-up that
  * lets Google's site-search box land users directly on a filtered
@@ -70,7 +70,7 @@ export function websiteSchema() {
   };
 }
 
-/** Organization — anchors the brand, used as `publisher` on every Article. */
+/** Organization, anchors the brand, used as `publisher` on every Article. */
 export function organizationSchema() {
   return {
     "@context": "https://schema.org",
@@ -230,16 +230,16 @@ export function bhandaraEventSchema(opts: {
 /**
  * LocalBusiness schema for an individual bhandara venue.
  *
- * Complements the per-Tuesday Event schemas above — Google treats
+ * Complements the per-Tuesday Event schemas above, Google treats
  * `LocalBusiness` as the canonical "what is this place" entity for
  * Knowledge Panel + Local Pack ranking, whereas `Event` is best for
  * "what's happening here on date X". Both together is the rich-
  * results sweet spot for a recurring free meal at a fixed venue.
  *
  * Notes:
- *   • priceRange "Free" — schema.org accepts strings; "Free" reads
+ *   • priceRange "Free", schema.org accepts strings; "Free" reads
  *     correctly in test tools.
- *   • openingHoursSpecification limited to Tuesday — the venue
+ *   • openingHoursSpecification limited to Tuesday, the venue
  *     isn't a daily business; misrepresenting hours hurts trust.
  *     If a bhandara also serves on Shani Jayanti Saturday, the
  *     EventSchedule list above carries those dates explicitly.
@@ -310,7 +310,7 @@ export function bhandaraLocalBusinessSchema(opts: {
 }
 
 /**
- * Generic FAQPage schema. Pass a list of `{ q, a }` pairs — emits the
+ * Generic FAQPage schema. Pass a list of `{ q, a }` pairs, emits the
  * shape Google wants for FAQ rich-result eligibility.
  *
  * Use sparingly: Google sometimes downgrades FAQ rich results when
@@ -336,7 +336,7 @@ export function faqPageSchema(items: ReadonlyArray<{ q: string; a: string }>) {
 /**
  * FAQPage JSON-LD targeting the highest-intent questions for Bada
  * Mangal queries. When present, Google often surfaces these as
- * expandable "People also ask" boxes directly on the SERP — pure
+ * expandable "People also ask" boxes directly on the SERP, pure
  * top-of-search real estate that no amount of meta-keywords work
  * can buy.
  *
@@ -379,7 +379,7 @@ export function faqSchema() {
         name: "How do I find a Bada Mangal bhandara near me?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Open the city map on BadaMangal.com — every listed bhandara appears as a pin with the menu, time window, and organizer details. Use the 'Bhandaras near me' button to filter to a 3 km radius around you, or tap any pin to get directions.",
+          text: "Open the city map on BadaMangal.com, every listed bhandara appears as a pin with the menu, time window, and organizer details. Use the 'Bhandaras near me' button to filter to a 3 km radius around you, or tap any pin to get directions.",
         },
       },
       {
@@ -395,7 +395,7 @@ export function faqSchema() {
         name: "Is participating in a Bada Mangal bhandara free?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Yes — every bhandara is free, open to anyone, and serves as long as the prasad lasts. The tradition is rooted in seva (selfless service); organizers cover all costs from their own resources or community donations.",
+          text: "Yes, every bhandara is free, open to anyone, and serves as long as the prasad lasts. The tradition is rooted in seva (selfless service); organizers cover all costs from their own resources or community donations.",
         },
       },
       {

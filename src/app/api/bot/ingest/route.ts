@@ -14,13 +14,13 @@
  *      provenance tag in the `description` so the admin can see at
  *      a glance where it came from.
  *   5. Return JSON with `ok`, `kind`, `id`, `reviewUrl`. The agent
- *      stays silent in the WhatsApp group — no replies, no DMs.
+ *      stays silent in the WhatsApp group, no replies, no DMs.
  *      The admin queue is the notification surface.
  *
  * The endpoint is Bearer-token gated by BOT_INGEST_SECRET. Treat that
  * secret like a password: anyone with it can create unlimited PENDING
  * rows. They can't publish (only the admin password can flip
- * APPROVED), so the blast radius of a leak is bounded — an attacker
+ * APPROVED), so the blast radius of a leak is bounded, an attacker
  * can clutter the admin queue, nothing more. Rotate at the first sign
  * of trouble.
  *
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
   // Resolve `kind`. Default flow from the bot is `kind: "auto"`, which
   // asks us to classify the image via Gemini and route. We can't run
   // classification yet (the image bytes are still raw + un-validated
-  // here) — we resolve it further down once we have a normalised WebP
+  // here), we resolve it further down once we have a normalised WebP
   // in hand. Explicit "bhandara" / "spot" still works (e.g. for the
   // smoke-test curl invocations and the legacy ingester build).
   const requestedKind: "bhandara" | "spot" | "auto" =
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
   // We compute the WebP base64 once and reuse for both classification
   // (when needed) and extraction below. Classifying after the WebP
   // round-trip means the model is looking at the same bytes we'll
-  // later extract from — slightly more accurate than classifying the
+  // later extract from, slightly more accurate than classifying the
   // raw upload and then re-encoding.
   const base64Webp = webp.toString("base64");
   const kind: "bhandara" | "spot" =
@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
   // into the provenance tag so a second forward of the EXACT same
   // image (cross-posted between groups, which happens constantly with
   // bhandara posters) can be detected via a substring search. 12 chars
-  // = 48 bits of collision space — comfortably more than the volume
+  // = 48 bits of collision space, comfortably more than the volume
   // of unique posters we'll ever see in a single season.
   const imageHash = createHash("sha256").update(webp).digest("hex").slice(0, 12);
 
@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
   // already carries this image hash in its description / caption tag.
   // We return 200 + `kind: "duplicate"` so the ingester logs cleanly
   // and the BM Ingest 2 notifier can show "already ingested" instead
-  // of a fresh review link — admins shouldn't have to triage the same
+  // of a fresh review link, admins shouldn't have to triage the same
   // poster N times when it cascades through 14 WhatsApp groups.
   const hashMarker = `hash:${imageHash}`;
   const [dupBhandara, dupSpot] = await Promise.all([
@@ -220,7 +220,7 @@ export async function POST(req: NextRequest) {
   // the timestamp. Otherwise the regex stops matching and the bot
   // moderation view loses its sender/group display.
   //
-  // `hash:<12-char>` powers the cross-group dedup search above —
+  // `hash:<12-char>` powers the cross-group dedup search above,
   // 48 bits of collision space, more than enough for a season's
   // worth of unique posters. The whole [bot:…] block is stripped
   // from every public surface by stripBotProvenance (lib/sanitize).
@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
 
     // Build a Bhandara row. Fields we can't infer get sane defaults the
     // admin will fix in /admin. status=PENDING so the row never appears
-    // on the public map until an admin picks it up — even if the
+    // on the public map until an admin picks it up, even if the
     // Bhandara enum-default elsewhere is APPROVED, the explicit PENDING
     // here wins.
     const baseSlug = extracted.name
@@ -252,7 +252,7 @@ export async function POST(req: NextRequest) {
     // Forward-geocode the extracted address via Ola Maps so the row
     // lands with real lat/lng (matched against Lucknow's bounding box)
     // instead of 0,0. The admin can still edit, but most rows now go
-    // live without manual coord-pasting — which was the #1 reason
+    // live without manual coord-pasting, which was the #1 reason
     // /admin/edit/[id] existed for bot rows in the first place.
     // Returns null on network failure, missing key, or zero results
     // in the Lucknow bbox; in that case we keep 0,0 + the admin fills
@@ -278,7 +278,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Tag carries the geocode outcome too — admin can spot whether a
+    // Tag carries the geocode outcome too, admin can spot whether a
     // row was auto-located vs. left blank without opening the edit
     // page. Stripped from public surfaces by stripBotProvenance.
     const taggedDescription = `${tag.slice(0, -1)} · ${geocodeNote}]`;
@@ -306,7 +306,7 @@ export async function POST(req: NextRequest) {
         menu: JSON.stringify(extracted.menu ?? []),
         menuHi: JSON.stringify(menuHiFor(extracted.menu ?? [])),
         // organizerName is taken ONLY from the banner. We deliberately
-        // do NOT fall back to the WhatsApp sender's pushName — the
+        // do NOT fall back to the WhatsApp sender's pushName, the
         // person forwarding the invite is rarely the organiser, and
         // pre-filling their name made admins have to delete it before
         // every publish. Leave blank if the model couldn't read a host
@@ -351,7 +351,7 @@ export async function POST(req: NextRequest) {
       language: extracted.language || "mixed",
       reporterName: senderName,
       reporterPhoneHash: null,
-      // Hold for admin review — forwarded photos shouldn't auto-publish
+      // Hold for admin review, forwarded photos shouldn't auto-publish
       // even with the 8-hour TTL backstop. Less surprise on the map.
       status: "PENDING",
       expiresAt,

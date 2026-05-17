@@ -19,6 +19,12 @@ export const metadata: Metadata = {
     "बड़ा मंगल पम्पलेट",
   ],
   alternates: localised("/pamphlet"),
+  // Soft-launch posture: the feature ships and works at /pamphlet,
+  // but we don't want search engines indexing it or the public
+  // discovering it via SERPs until the design is finalised. Pair
+  // this with the sitemap.ts exclusion + the removed homepage
+  // promo + footer link so the only way in is a direct URL share.
+  robots: { index: false, follow: false },
   openGraph: {
     title: "Free Bada Mangal Pamphlet Generator",
     description:

@@ -58,7 +58,7 @@ const notoDeva = Noto_Sans_Devanagari({
 // numbering). Only used on a handful of low-traffic pages, so we load
 // just the three weights actually referenced (semibold/bold/extrabold)
 // instead of the original four. Previously also pulled a 500 weight
-// that nothing on the site used — pure dead bytes on every page load.
+// that nothing on the site used, pure dead bytes on every page load.
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
   weight: ["600", "700", "800"],
@@ -100,7 +100,7 @@ export const metadata: Metadata = {
     telephone: true,
   },
   // Favicon stack:
-  //   • SVG first — modern browsers prefer it (scales perfectly at any DPR)
+  //   • SVG first, modern browsers prefer it (scales perfectly at any DPR)
   //   • 32 / 16 PNG fallbacks for older browsers + Android Chrome's
   //     limited SVG support
   //   • Apple touch icon (180×180) for iOS home-screen installs
@@ -139,14 +139,14 @@ export const viewport: Viewport = {
 // served from the edge cache. Previously we awaited cookies() here to
 // pick the visitor's locale and render `<html lang="hi-IN">` server-
 // side. That single line forced Next to treat the entire app as
-// per-request dynamic — every navigation cold-started a Netlify
+// per-request dynamic, every navigation cold-started a Netlify
 // Function, producing the 3-4s click-to-paint lag.
 //
 // Locale now resolves entirely client-side: `<LocaleHtmlSync />` reads
 // the bm_lang cookie on mount and flips the `lang` attribute + the
 // LocaleProvider value if the visitor has chosen Hindi. The trade-off
 // is one frame of English-default markup for Hindi-cookie visitors
-// before the swap — acceptable for the speed gain (and English is
+// before the swap, acceptable for the speed gain (and English is
 // already the new-visitor default).
 export default function RootLayout({
   children,
@@ -167,7 +167,7 @@ export default function RootLayout({
             handshake on cold loads. dns-prefetch handles the long-tail
             origins we don't always hit (YouTube embeds, OSM fallback). */}
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/* Supabase Storage is the photo CDN — every bhandara card hits it.
+        {/* Supabase Storage is the photo CDN, every bhandara card hits it.
             preconnect (not just dns-prefetch) opens the TLS socket eagerly
             so the first <img> already has a warm connection. Origin is
             read from SUPABASE_URL so it stays in sync with whichever
@@ -197,7 +197,7 @@ export default function RootLayout({
             Skip to content
           </a>
           <FirstVisitGreeting />
-          {/* First-ever-visit audio chant was retired — autoplay surprised
+          {/* First-ever-visit audio chant was retired, autoplay surprised
               users on the home page (especially on mobile data) and the
               visual "जय श्री राम" greeting above already carries the
               welcome moment. The <FirstVisitChant /> component is left
@@ -216,7 +216,7 @@ export default function RootLayout({
 
         {gaId ? (
           <>
-            {/* GA loader + init snippet — wrapped in a client component
+            {/* GA loader + init snippet, wrapped in a client component
                 so its onError function prop doesn't try to cross the
                 server/client boundary (which Next.js app-router
                 disallows). See components/GAScripts.tsx for the why. */}

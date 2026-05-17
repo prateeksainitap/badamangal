@@ -7,7 +7,7 @@ import JaliFrame from "@/components/ui/JaliFrame";
 import { useLocaleFromContext } from "@/lib/locale-context";
 
 /**
- * Canonical empty-state surface — the visual pattern shared by:
+ * Canonical empty-state surface, the visual pattern shared by:
  *   • homepage "no bhandaras yet"
  *   • /live "the pandals are quiet right now"
  *   • /archive "no bhandaras have wrapped up yet"
@@ -39,7 +39,7 @@ type Cta = {
 };
 
 type Props = {
-  /** Path to the illustration — typically a webp under /illustrations. */
+  /** Path to the illustration, typically a webp under /illustrations. */
   illustration: string;
   illustrationAlt?: string;
   kicker: string;

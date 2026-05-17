@@ -2,7 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Server-side Supabase client. Uses the service-role key, so it bypasses
- * Row-Level Security — keep it OUT of any client component.
+ * Row-Level Security, keep it OUT of any client component.
  *
  * In dev (or any environment without the env vars set), this returns null
  * and the upload route falls back to writing into /public/uploads so local

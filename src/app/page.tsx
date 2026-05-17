@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
   SITE_URL,
   eventSchemaBatch,
@@ -10,33 +9,32 @@ import {
 } from "@/lib/seo";
 import { ALL_TUESDAY_ISO } from "@/lib/dates";
 import { stripBotProvenance } from "@/lib/sanitize";
-import AnimatedHeading from "@/components/AnimatedHeading";
+import AreaIndexGrid from "@/components/AreaIndexGrid";
 import BhandaraCardsSection from "@/components/BhandaraCardsSection";
 import FeaturedBhandaras from "@/components/FeaturedBhandaras";
 import HappeningNow from "@/components/HappeningNow";
+import HomeCardsEmpty from "@/components/HomeCardsEmpty";
+import HomeClosingBenediction from "@/components/HomeClosingBenediction";
+import HomeHero from "@/components/HomeHero";
+import HomeHistoryTeaser from "@/components/HomeHistoryTeaser";
+// PamphletPromo intentionally not imported, the homepage section
+// for it is commented out below during the soft-launch phase. See the
+// matching comment near the FAMOUS BHANDARAS block.
+// import PamphletPromo from "@/components/PamphletPromo";
 import MapBoard from "@/components/MapBoard";
 import CountdownTimer from "@/components/CountdownTimer";
 import LiveFeedMarquee from "@/components/LiveFeedMarquee";
-import MaharajjiBlessing from "@/components/MaharajjiBlessing";
 import SeasonTimeline from "@/components/SeasonTimeline";
 import StatsSection from "@/components/StatsSection";
 import FamousBhandaras from "@/components/FamousBhandaras";
 import HomeResourcesTeaser from "@/components/HomeResourcesTeaser";
 import VisitorBeacon from "@/components/VisitorBeacon";
 import { MarigoldDivider } from "@/components/ornaments";
-import { strings } from "@/content/strings";
 import { prisma, toBhandara } from "@/lib/db";
-import type { Locale } from "@/content/strings";
 import { getHomepageStats } from "@/lib/stats";
-import {
-  BADA_MANGAL_DATES_2026,
-  formatEnglishDate,
-  formatHindiDate,
-  hasUpcomingDate,
-  nextBadaMangal,
-} from "@/lib/dates";
+import { hasUpcomingDate } from "@/lib/dates";
 
-// True ISR — the page no longer reads cookies() or searchParams, so
+// True ISR, the page no longer reads cookies() or searchParams, so
 // Next can prerender it once and serve cached HTML from the edge.
 // Revalidates every 60 seconds to surface new bhandaras / spots /
 // counter ticks. Visitor-counter bump is fire-and-forget via the
@@ -44,7 +42,7 @@ import {
 export const revalidate = 60;
 
 // Homepage metadata, tuned to the queries Search Console is ACTUALLY
-// showing us impressions for — not the queries we wish we ranked for.
+// showing us impressions for, not the queries we wish we ranked for.
 //
 // GSC data (as of mid-May 2026 season-start):
 //   • "bhandara near me today"          12 imp · position 6.1 · CTR 0%
@@ -54,13 +52,13 @@ export const revalidate = 60;
 //
 // We were ranking page-1-bottom for "near me" queries but seeing
 // zero clicks because the SERP snippet promised "2026 Jyeshtha
-// season" and "directory" — abstract / institutional. Searchers
+// season" and "directory", abstract / institutional. Searchers
 // typing "bhandara near me today" want a concrete here-and-now
 // answer ("open now", "live map", "free prasad").
 //
 // New title leads with "Bhandara Near Me" (matches the query
 // verbatim), then anchors with the brand. New description leads
-// with "happening today" + "free" + "every Tuesday" — every word
+// with "happening today" + "free" + "every Tuesday", every word
 // is an answer to something the searcher actually wants to know.
 //
 // Expected impact: CTR from 0% → 4-7% at position 6, which 3-5×
@@ -69,9 +67,9 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "Bhandara Near Me · Bada Mangal Lucknow 2026 · Live Map & Today's Bhandaras",
   description:
-    "Find every Bada Mangal bhandara in Lucknow happening today and every Tuesday of the 8-Tuesday 2026 Jyeshtha season. Live map, timings, prasad menu, directions — free. लखनऊ के सभी बड़े मंगल भंडारे एक नक़्शे पर।",
+    "Find every Bada Mangal bhandara in Lucknow happening today and every Tuesday of the 8-Tuesday 2026 Jyeshtha season. Live map, timings, prasad menu, directions, free. लखनऊ के सभी बड़े मंगल भंडारे एक नक़्शे पर।",
   keywords: [
-    // "near me" intent — matches the queries actually in GSC
+    // "near me" intent, matches the queries actually in GSC
     "bhandara near me",
     "bhandara near me today",
     "bhandara lucknow near me",
@@ -108,18 +106,23 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  // Server renders in the site's default locale (English). Interactive
-  // client components reading useLocaleFromContext() will swap to Hindi
-  // after hydration if the bm_lang cookie says so. Reading cookies or
-  // searchParams here would opt the homepage out of static generation
-  // and put us right back at the 3-4s cold-Function lag.
-  const locale: Locale = "en";
-  const t = strings[locale];
-  const isHi = false;
+  // NB: The page itself is locale-AGNOSTIC. Every text-bearing
+  // section is rendered by a client component that reads the
+  // visitor's bm_lang cookie via LocaleProvider context, so the
+  // Hindi toggle swaps every label instantly without re-fetching the
+  // page. Reading cookies here would opt the homepage out of static
+  // generation and reintroduce the 3-4 s Function cold-start lag.
+  //
+  // The previous version hardcoded `locale = "en"` and threaded that
+  // into 6+ server-rendered headings (hero body, map heading,
+  // history teaser, etc.). On the Hindi toggle, router.refresh()
+  // re-rendered the page on the server with locale STILL pinned to
+  // English, so visitors saw the toggle pill animate but the text
+  // never changed. Hence this refactor.
 
   // Fire all three DB reads in parallel. Previously they were awaited
   // sequentially (bhandaras → stats → spots) which serialised three
-  // round-trips through the Supabase pooler — ~600-900ms of pure wait
+  // round-trips through the Supabase pooler, ~600-900ms of pure wait
   // on cold-start cold-pool. Running them together cuts that to one
   // round-trip's worth of latency.
   const [records, statsRaw, spotRecords] = await Promise.all([
@@ -143,42 +146,13 @@ export default async function HomePage() {
   // see it in /admin and historical /bhandara/[slug] links keep
   // working; only the public map + counters trim to what's still
   // upcoming. As the calendar advances, rows drop off this list
-  // organically — no cron, no manual flips, no data loss.
+  // organically, no cron, no manual flips, no data loss.
   const listings = records.map(toBhandara).filter((b) => hasUpcomingDate(b));
   const stats = statsRaw;
 
-  // Pick the Tuesday this rule under the hero refers to.
-  // - If today (IST) is itself a Bada Mangal Tuesday, surface it as "Today".
-  // - Else show the next upcoming one.
-  // - Once the season is over (no upcoming dates), fall back to a quiet
-  //   season-complete line so we never show a stale 2026 date.
-  const now = new Date();
-  const istTodayIso = new Date(now.getTime() + 5.5 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  const todayIsBadaMangal = BADA_MANGAL_DATES_2026.find(
-    (d) => d.toISOString().slice(0, 10) === istTodayIso,
-  );
-  const upcomingBadaMangal = todayIsBadaMangal ?? nextBadaMangal(now);
-  const seasonOver = !upcomingBadaMangal;
-  const tuesdayKicker = todayIsBadaMangal
-    ? isHi
-      ? "आज"
-      : "Today"
-    : isHi
-      ? "अगला मंगल"
-      : "Next Tuesday";
-  const tuesdayLine = seasonOver
-    ? isHi
-      ? "इस वर्ष के सभी आठ बड़े मंगल पूर्ण। जय हनुमान।"
-      : "This year's eight Bada Mangals are complete. Jai Hanuman."
-    : isHi
-      ? `${formatHindiDate(upcomingBadaMangal)}, सुबह से शाम तक, शहर भर के द्वार खुले रहेंगे।`
-      : `${formatEnglishDate(upcomingBadaMangal)}, gates open across the city, dawn to dusk.`;
-
   // Live "spots", crowd-sourced sightings of bhandaras happening right
   // now (auto-expire after 8 hours). Already fetched above in the
-  // Promise.all batch — just shape into the wire format here.
+  // Promise.all batch, just shape into the wire format here.
   const liveSpots = spotRecords.map((s) => ({
     id: s.id,
     lat: s.lat,
@@ -197,15 +171,17 @@ export default async function HomePage() {
     bhandaraNameHi: s.bhandara?.nameHi ?? null,
   }));
 
-  // Live feed initial payload — active spots only. The Post model
+  // Live feed initial payload, active spots only. The Post model
   // (per-bhandara comments) was removed, so the marquee + /live feed
-  // now mirror just the crowd-sourced spots stream.
+  // now mirror just the crowd-sourced spots stream. authorName falls
+  // back to a generic "Spotter" / "स्पॉटर" label on the client because
+  // the page now renders without a server-side locale.
   const feedInitial = spotRecords
     .map((s) => ({
       id: `spot:${s.id}`,
       bhandaraSlug: s.bhandara?.slug ?? null,
       bhandaraName: s.bhandara?.name ?? null,
-      authorName: s.reporterName?.trim() || (isHi ? "स्पॉटर" : "Spotter"),
+      authorName: s.reporterName?.trim() || "Spotter",
       text: s.caption,
       photoUrl: s.photoUrl,
       language: s.language,
@@ -234,7 +210,7 @@ export default async function HomePage() {
           first paint. Replaces the per-render DB write that used to
           force the homepage to be server-dynamic. */}
       <VisitorBeacon />
-      {/* JSON-LD structured data — embedded inline so search-engine
+      {/* JSON-LD structured data, embedded inline so search-engine
           crawlers (which usually don't run client JS) see them on
           first paint. */}
       {jsonLdBlocks.map((block, i) => (
@@ -265,7 +241,7 @@ export default async function HomePage() {
         />
 
         {/* Soft fade at the bottom edge so the cut-off where the
-            illustration ends doesn't read as abrupt — a thin band of
+            illustration ends doesn't read as abrupt, a thin band of
             warm shadow tapers into the cream paper of the next
             section. Sits on top of the background but below content. */}
         <div
@@ -285,107 +261,10 @@ export default async function HomePage() {
 
         <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-10 pb-0 sm:pt-20 sm:pb-0">
           <div className="grid gap-10 lg:gap-14 lg:grid-cols-12 items-center">
-            {/* Left 7/12: text, centred on mobile, left-aligned on desktop. */}
-            <div className="lg:col-span-6 text-ink-900 text-center lg:text-left">
-              {/* Devotional benediction, wraps cleanly on narrow screens. */}
-              <div className="mb-5 flex items-center gap-2 sm:gap-3 max-w-md mx-auto lg:mx-0">
-                <span className="h-px flex-1 bg-gold-500/45" />
-                <p className="font-tiro text-base sm:text-xl text-sindoor-700 text-center">
-                  ॥ जय श्री राम · जय हनुमान ॥
-                </p>
-                <span className="h-px flex-1 bg-gold-500/45" />
-              </div>
-
-              {/* Eyebrow with brand mark */}
-              <div className="inline-flex items-center gap-2.5 sm:gap-3 rounded-full border border-gold-500/45 bg-cream-50/70 backdrop-blur px-3 py-1.5 shadow-warm">
-                <span className="block w-2 h-2 rounded-full bg-saffron-600 motion-safe:animate-pulse" />
-                <span className="font-mukta font-semibold uppercase tracking-[0.22em] text-[0.65rem] sm:text-[0.8rem] text-sindoor-700">
-                  {isHi
-                    ? "बड़ा मंगल · लखनऊ · 2026"
-                    : "Bada Mangal · Lucknow · 2026"}
-                </span>
-              </div>
-
-              <AnimatedHeading
-                as="h1"
-                text="जहाँ भक्ति, वहाँ भंडारा"
-                lang="hi"
-                className="mt-5 sm:mt-6 font-mukta font-extrabold text-[2rem] sm:text-[3rem] lg:text-[4rem] leading-[1.05] tracking-tight text-sindoor-700 [text-wrap:balance]"
-              />
-
-              <p className="mt-5 sm:mt-6 max-w-xl mx-auto lg:mx-0 text-ink-900/85 text-base sm:text-lg leading-relaxed">
-                {isHi
-                  ? "हर मंगलवार लखनऊ एक बड़ी रसोई बन जाता है। इस दुर्लभ 8-मंगल वर्ष में, हर भंडारा एक नक़्शे पर।"
-                  : "Every Tuesday of Jyeshtha, Lucknow becomes one giant kitchen. In this rare 8-Tuesday year, every bhandara on one map."}
-              </p>
-
-              {/* Hero CTAs — both pinned to the same min-width so the
-                  primary sindoor pill and the secondary ghost pill read
-                  as a balanced pair. Each carries a leading glyph that
-                  matches its action (magnifier for find, plus-circle
-                  for add). On mobile the row stays centred and the
-                  buttons keep equal width via `w-[240px]` so they
-                  align in a single column when wrap kicks in. */}
-              <div className="mt-7 sm:mt-8 flex flex-wrap gap-3 justify-center lg:justify-start">
-                <Link
-                  href="#map"
-                  className="btn btn-sindoor btn-lg w-[240px] justify-center gap-2"
-                  data-ga="cta_hero_find_bhandara"
-                  data-ga-source="hero"
-                >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden
-                  >
-                    <circle cx="11" cy="11" r="7" />
-                    <path d="m21 21-4.3-4.3" />
-                  </svg>
-                  {t.cta.findBhandara}
-                </Link>
-                <Link
-                  href="/list-bhandara"
-                  className="btn btn-ghost btn-lg w-[240px] justify-center gap-2"
-                  data-ga="cta_hero_list_bhandara"
-                  data-ga-source="hero"
-                >
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden
-                  >
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M12 8v8" />
-                    <path d="M8 12h8" />
-                  </svg>
-                  {t.cta.listBhandara}
-                </Link>
-              </div>
-
-              {/* Marigold rule under the CTAs */}
-              <div className="mt-8 flex items-center gap-3 max-w-md mx-auto lg:mx-0">
-                <span className="h-px flex-1 bg-gold-500/40" />
-                <span className="text-[0.62rem] sm:text-[0.65rem] uppercase tracking-[0.28em] sm:tracking-[0.32em] text-gold-500 font-medium">
-                  {tuesdayKicker}
-                </span>
-                <span className="h-px flex-1 bg-gold-500/40" />
-              </div>
-              <p className="mt-3 text-sm text-ink-600 max-w-md mx-auto lg:mx-0">
-                {tuesdayLine}
-              </p>
-            </div>
+            {/* Left 7/12: bilingual hero text rendered by the
+                HomeHero client component so the Hindi toggle flips
+                eyebrow / body / Tuesday line synchronously. */}
+            <HomeHero />
 
             {/* Right 5/12: real Hanuman Ji illustration */}
             <div className="lg:col-span-6">
@@ -395,7 +274,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* FEATURED BHANDARAS — concrete answer to "where can I go to a
+      {/* FEATURED BHANDARAS, concrete answer to "where can I go to a
           bhandara today?" up high, before the countdown/map. GA4
           data showed 20× more hero-CTA clicks than bhandara-card
           opens, meaning the cards were too deep in the page. This
@@ -403,7 +282,10 @@ export default async function HomePage() {
           bhandaras above the fold so visitors arriving from
           WhatsApp shares + organic search ("bhandara near me today")
           land on a specific answer without scrolling. */}
-      <FeaturedBhandaras listings={listings} locale={locale} />
+      {/* locale is read from React context inside FeaturedBhandaras
+          so the Hindi toggle swaps the section heading + Today
+          pills + area labels synchronously. */}
+      <FeaturedBhandaras listings={listings} />
 
       {/* COUNTDOWN + 8-MANGAL TIMELINE
           Hierarchy rebuild: the previous version had a giant
@@ -412,7 +294,7 @@ export default async function HomePage() {
           with the countdown, the "Today is" banner, the date pill,
           and the timeline. Seven focal points, all visually loud.
           The rare-cycle framing is *interesting context* but not
-          *actionable info* — the actionable bits are "today is
+          *actionable info*, the actionable bits are "today is
           happening" (live days) and "countdown to next" (other days).
           So: rare-cycle is compressed into a single subtle kicker
           line above the date pill, and everything actionable
@@ -421,28 +303,21 @@ export default async function HomePage() {
         <div className="rounded-3xl border border-gold-500/40 bg-cream-50 px-6 py-10 sm:px-10 sm:py-12">
           {/* Countdown to the next Bada Mangal (or, on a Bada Mangal
               day itself, a big "Today is the Nth" headline + timer
-              for the *next* one). The rare-cycle trivia line was
-              pulled out of this band and folded into the SeasonTimeline
-              kicker below — keeps the rarity context near the eight
-              dots that illustrate it, instead of duplicating focal
-              points at the top of the section. */}
+              for the *next* one). Both Countdown + Timeline read locale
+              from context so the Hindi toggle swaps every label here
+              without a server-tree refresh. */}
           <CountdownTimer />
 
           {/* 8-Mangal timeline + the rare-cycle subtitle */}
-          <SeasonTimeline locale={locale} />
+          <SeasonTimeline />
         </div>
       </section>
 
-      {/* MAP + side list — promoted up so primary discovery happens
-          immediately after the season-context band. The MapBoard wraps
-          the filter pills, Leaflet markers and side list so they always
-          render off the same filtered slice. */}
+      {/* MAP + side list, promoted up so primary discovery happens
+          immediately after the season-context band. MapBoard now
+          reads its heading + body + "List your bhandara" label from
+          the LocaleProvider context, no locale props needed. */}
       <MapBoard
-        locale={locale}
-        isHi={isHi}
-        heading={t.map.sectionHeading}
-        body={t.map.sectionBody}
-        listBhandaraLabel={t.cta.listBhandara}
         listings={listings}
         liveSpots={liveSpots.map((s) => ({
           id: s.id,
@@ -458,88 +333,61 @@ export default async function HomePage() {
         }))}
       />
 
-      {/* HAPPENING NOW — crowd-sourced live spots, sits right under
+      {/* HAPPENING NOW, crowd-sourced live spots, sits right under
           the map so the urgency layer reads as an overlay on top of
-          the discovery surface. */}
-      <HappeningNow initial={liveSpots} locale={locale} />
+          the discovery surface. Reads locale from context. */}
+      <HappeningNow initial={liveSpots} />
 
-      {/* CARDS, equal-height grid with filters */}
+      {/* CARDS, equal-height grid with filters. Locale reads from
+          context inside the component. */}
       {listings.length > 0 ? (
-        <BhandaraCardsSection
-          listings={listings}
-          locale={locale}
-          heading={t.cards.sectionHeading}
-          isHi={isHi}
-        />
+        <BhandaraCardsSection listings={listings} />
       ) : (
-        <section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-16">
-          <h2
-            className={`text-2xl sm:text-3xl ${
-              isHi ? "font-tiro text-sindoor-700" : "font-fraunces text-sindoor-700"
-            }`}
-          >
-              {t.cards.sectionHeading}
-          </h2>
-          <div className="mt-8 rounded-3xl border border-gold-500/40 bg-saffron-50 px-6 py-10 sm:py-14 grid gap-6 sm:grid-cols-[200px_1fr] items-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/illustrations/empty-state-plate.webp"
-              alt=""
-              loading="lazy"
-              decoding="async"
-              className="mx-auto w-40 sm:w-48 aspect-square object-contain"
-            />
-            <div>
-              <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
-                {isHi ? "अभी कोई भंडारा नहीं" : "No bhandaras yet"}
-              </p>
-              <h3
-                className={`mt-2 ${
-                  isHi ? "font-tiro text-sindoor-700" : "font-fraunces text-sindoor-700"
-                } text-2xl`}
-              >
-                {isHi
-                  ? "थाली तैयार है, बस सेवक की प्रतीक्षा है।"
-                  : "The plate is set. We're waiting for the first sevak."}
-              </h3>
-              <p className="mt-2 text-ink-600 max-w-xl">
-                {isHi
-                  ? "अपना भंडारा सबसे पहले सूचीबद्ध करें, यह रसोई आप ही से शुरू होगी।"
-                  : "List your bhandara first, this kitchen begins with you."}
-              </p>
-              <Link
-                href={`/list-bhandara${isHi ? "" : "?lang=en"}`}
-                data-ga="cta_empty_list_bhandara"
-                data-ga-source="cards_empty"
-                className="btn btn-primary btn-sm mt-5 inline-flex items-center gap-2"
-              >
-                {t.cta.listBhandara}
-                <span aria-hidden>→</span>
-              </Link>
-            </div>
-          </div>
-        </section>
+        <HomeCardsEmpty />
       )}
 
-      {/* FAMOUS BHANDARAS — curated landmark venues. Sits below the
+      {/* AREA INDEX, 36 pill chips, one per Lucknow neighbourhood,
+          each a direct Link to /area/[slug]. Two wins:
+          1. SEO: distributes PageRank from the homepage to every
+             area landing page (the biggest SEO lever from the
+             audit), accelerates ranking on "bada mangal <area>"
+             queries.
+          2. UX: visitors who know their area jump in one tap
+             instead of scrolling through the cards. */}
+      <AreaIndexGrid
+        activeAreaCount={
+          new Set(listings.map((l) => l.area)).size
+        }
+      />
+
+      {/* PAMPHLET PROMO is temporarily hidden, the /pamphlet feature
+          ships but is not publicly promoted during the soft-launch
+          phase. Re-enable by uncommenting <PamphletPromo /> below
+          (and the import at the top of the file) once the design
+          is finalised. Sitemap and footer link have also been
+          stripped so the only way in is a direct URL.
+          <PamphletPromo />
+      */}
+
+      {/* FAMOUS BHANDARAS, curated landmark venues. Sits below the
           listed-bhandaras grid so visitors first see what organisers
           have actually submitted, then the city-wide landmark anchors. */}
-      <FamousBhandaras locale={locale} isHi={isHi} />
+      <FamousBhandaras />
 
-      {/* STATS — pulled up to lead the lower half of the page. The
+      {/* STATS, pulled up to lead the lower half of the page. The
           city's running tally (visitors, listings, spotted bhandaras,
           areas, Tuesdays served) sets the tone for the editorial /
           live content that follows. Tiles with value 0 are hidden so
           the panel doesn't read as empty on a quiet day. */}
-      <StatsSection stats={stats} locale={locale} />
+      <StatsSection stats={stats} />
 
-      {/* RESOURCES TEASER — extracted into a client component so the
+      {/* RESOURCES TEASER, extracted into a client component so the
           card titles + bodies localise from the LocaleProvider context
           after the static HTML lands (otherwise Hindi-cookie visitors
           would see this band in English). */}
       <HomeResourcesTeaser />
 
-      {/* LIVE FEED MARQUEE — sits between resources and the editorial
+      {/* LIVE FEED MARQUEE, sits between resources and the editorial
           history teaser; renders an empty-state band when there are <3
           entries instead of disappearing. */}
       <LiveFeedMarquee initial={feedInitial} />
@@ -549,61 +397,13 @@ export default async function HomePage() {
         <MarigoldDivider size={320} className="text-gold-500" />
       </div>
 
-      {/* HISTORY TEASER */}
-      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-12 sm:py-16">
-        <div className="rounded-3xl bg-saffron-50 border border-gold-500/40 px-6 py-10 sm:px-10 sm:py-14 text-center">
-          <h2
-            className={`text-3xl sm:text-4xl ${
-              isHi
-                ? "font-tiro text-sindoor-700"
-                : "font-fraunces font-bold text-sindoor-700"
-            }`}
-          >
-            {t.history.teaserHeading}
-          </h2>
-          <p className="mt-3 text-ink-600 max-w-2xl mx-auto">
-            {t.history.teaserBody}
-          </p>
-          <Link
-            href={`/history${isHi ? "" : "?lang=en"}`}
-            data-ga="cta_home_history_readmore"
-            className="mt-6 inline-flex items-center rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 font-medium px-5 py-2 transition-colors"
-          >
-            {t.history.readMore} →
-          </Link>
-        </div>
-      </section>
+      {/* HISTORY TEASER, client component, locale from context. */}
+      <HomeHistoryTeaser />
 
-      {/* CLOSING BENEDICTION */}
-      <section
-        aria-label="Benediction"
-        className="relative mx-auto max-w-3xl px-4 sm:px-6 pt-2 pb-16 sm:pb-20 text-center"
-      >
-        <div className="flex items-center justify-center gap-3 text-gold-500">
-          <span className="block h-px w-16 sm:w-24 bg-gradient-to-r from-transparent to-gold-500/60" />
-          <span aria-hidden className="text-xl">🪔</span>
-          <span className="block h-px w-16 sm:w-24 bg-gradient-to-l from-transparent to-gold-500/60" />
-        </div>
-        <p className="mt-5 font-tiro text-2xl sm:text-4xl text-sindoor-700 leading-tight">
-          ॥ जय श्री राम · जय हनुमान ॥
-        </p>
-        {/* English transliteration of the slogan above. Promoted from
-            a muted italic caption to a bold sindoor headline so it
-            matches the editorial "section heading" family used across
-            the page — feels like a benediction, not a footnote. */}
-        <p className="mt-3 font-fraunces font-bold text-3xl sm:text-4xl text-sindoor-700">
-          Jai Shri Ram &middot; Jai Hanuman
-        </p>
-        <p className="mt-4 max-w-xl mx-auto text-sm text-ink-600 leading-relaxed">
-          {isHi
-            ? "बजरंगबली की कृपा से हर थाली शुभ हो, हर हाथ सेवा में लगे।"
-            : "May Hanuman Ji bless every plate served and every hand that serves."}
-        </p>
-
-        {/* Maharajji medallion. Hover the portrait to wake the gold
-            spirals and hear the Maharajji-Ram-Ram aarti chant. */}
-        <MaharajjiBlessing />
-      </section>
+      {/* CLOSING BENEDICTION, bilingual blessing line + Maharajji
+          medallion. Client component so the body line ("May Hanuman
+          Ji bless..." / "बजरंगबली की कृपा...") swaps on toggle. */}
+      <HomeClosingBenediction />
     </>
   );
 }
@@ -612,7 +412,7 @@ function HeroIllustrationFrame() {
   // Two-layer composition:
   //   1. Ram-name halo SVG, slowly rotating behind the figure's head
   //   2. Hanuman Ji illustration on top (transparent PNG)
-  // Both float directly on the page paper — no card, no border,
+  // Both float directly on the page paper, no card, no border,
   // no vignette. The halo is sized + positioned so its centre sits
   // roughly behind the painted halo on the figure's head; the
   // illustration's transparent areas around the body let the rotating
@@ -621,7 +421,7 @@ function HeroIllustrationFrame() {
     <div className="relative mx-auto w-full max-w-lg lg:max-w-none aspect-[4/5]">
       {/* Rotating Ram-name halo. Two nested divs so the outer one
           can position the halo's centre exactly behind the head
-          while the inner one handles rotation independently —
+          while the inner one handles rotation independently,
           combining position translates with a rotation animation
           in a single transform would cancel one out. Position
           values fine-tuned visually to align with the standing

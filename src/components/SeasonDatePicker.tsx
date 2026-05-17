@@ -19,7 +19,7 @@ type Props = {
   minIso: string;
   /** Upper bound (inclusive). ISO YYYY-MM-DD. */
   maxIso: string;
-  /** Dates that are already chosen — highlighted, but still pickable to undo. */
+  /** Dates that are already chosen, highlighted, but still pickable to undo. */
   selectedIsos?: string[];
   /** Fired when the user commits a fresh date. ISO YYYY-MM-DD. */
   onPick: (iso: string) => void;
@@ -61,7 +61,7 @@ export default function SeasonDatePicker({
   );
   const defaultMonth = useMemo(() => {
     // Open the calendar on the first month of the season the user can
-    // still pick into — usually the current month, but pinned to the
+    // still pick into, usually the current month, but pinned to the
     // season bounds.
     const today = new Date();
     if (today < min) return min;
@@ -133,7 +133,7 @@ export default function SeasonDatePicker({
             endMonth={max}
             disabled={[{ before: min }, { after: max }]}
             // The picker is "add a date to the list", not "show one
-            // selected date" — so we don't pass `selected`. Already-chosen
+            // selected date", so we don't pass `selected`. Already-chosen
             // dates are highlighted via a custom modifier instead.
             modifiers={{ chosen: selectedDates }}
             modifiersClassNames={{
@@ -158,7 +158,7 @@ export default function SeasonDatePicker({
 
 /**
  * Theme overrides for react-day-picker v9. We only set the keys we want
- * to restyle — anything left unset keeps the library's default class
+ * to restyle, anything left unset keeps the library's default class
  * name, which is fine because we don't load the default stylesheet.
  *
  * Brand mapping:
@@ -173,7 +173,7 @@ const CLASS_NAMES: NonNullable<
   root: "rdp font-mukta text-ink-900",
   months: "flex flex-col sm:flex-row gap-4",
   month: "flex flex-col",
-  // Default nav is hidden — we render arrows inline inside our own
+  // Default nav is hidden, we render arrows inline inside our own
   // MonthCaption component below so the header reads `‹  Month YYYY  ›`
   // on one row.
   nav: "hidden",

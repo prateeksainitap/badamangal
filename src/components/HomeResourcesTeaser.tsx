@@ -20,7 +20,7 @@ export default function HomeResourcesTeaser() {
   const t = strings[locale];
   const langSuffix = isHi ? "" : "?lang=en";
 
-  // `gaSlug` is a stable short identifier used by GA — keep it
+  // `gaSlug` is a stable short identifier used by GA, keep it
   // detached from `href` so changing the URL (e.g. adding a locale
   // suffix) doesn't fork the GA event ID.
   const cards = [

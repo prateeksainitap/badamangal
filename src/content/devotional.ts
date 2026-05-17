@@ -1,7 +1,7 @@
 /**
  * Devotional content for /resources/chalisa, /aarti, /ashtak, /bajrang-baan.
  *
- * Each verse object has 4 slots — the page renders the Devanagari only,
+ * Each verse object has 4 slots, the page renders the Devanagari only,
  * but `roman` and `en` remain in the schema for future expansion:
  *   - num:   verse number
  *   - deva:  Devanagari text
@@ -68,7 +68,7 @@ export const CHALISA: DevotionalText = {
     "The Hanuman Chalisa is forty quatrains preceded by two introductory dohas, composed by Goswami Tulsidas in the 16th century. Press play above to listen along.",
   // Canonical Hanuman Chalisa: two opening dohas, 40 chaupais, one
   // closing doha. Devanagari is the standard Gita Press / Wikisource
-  // text — public domain (Tulsidas, 16th c.). Roman + English fields
+  // text, public domain (Tulsidas, 16th c.). Roman + English fields
   // are intentionally empty; the page renders Devanagari only.
   verses: [
     {
@@ -150,7 +150,7 @@ export const AARTI: DevotionalText = {
   audioUrl: "/audio/hanuman-aarti.mp3",
   editorialNotes:
     "“Aarti Kije Hanuman Lala Ki”, the aarti sung at most Lucknow Hanuman temples on Tuesday evenings. Press play above to listen along.",
-  // Canonical "Aarti Kije Hanuman Lala Ki" — traditional, public domain.
+  // Canonical "Aarti Kije Hanuman Lala Ki", traditional, public domain.
   verses: [
     {
       num: "१",
@@ -222,7 +222,7 @@ export const AARTI: DevotionalText = {
 };
 
 /**
- * Sankat Mochan Hanuman Ashtak — eight stanzas Tulsidas composed in
+ * Sankat Mochan Hanuman Ashtak, eight stanzas Tulsidas composed in
  * distress, recited when an obstacle feels immovable. Audio is fully
  * wired; verses can be filled in by editing the array below.
  */
@@ -238,7 +238,7 @@ export const ASHTAK: DevotionalText = {
   audioUrl: "/audio/hanuman-ashtak.mp3",
   editorialNotes:
     "Eight stanzas of equal weight, each ending with the refrain to Hanuman Ji as the remover of distress, followed by a closing doha. Press play above to listen along.",
-  // Sankat Mochan Hanuman Ashtak — Tulsidas, 8 ashtakas + closing doha.
+  // Sankat Mochan Hanuman Ashtak, Tulsidas, 8 ashtakas + closing doha.
   // Each stanza ends with the refrain "को नहिं जानत है जग में कपि,
   // संकटमोचन नाम तिहारो".
   verses: [
@@ -334,7 +334,7 @@ export const ASHTAK: DevotionalText = {
 };
 
 /**
- * Bajrang Baan — a fierce, protective recitation invoking Hanuman Ji's
+ * Bajrang Baan, a fierce, protective recitation invoking Hanuman Ji's
  * force in moments of fear or threat. Audio is fully wired.
  */
 export const BAJRANG_BAAN: DevotionalText = {
@@ -349,7 +349,7 @@ export const BAJRANG_BAAN: DevotionalText = {
   audioUrl: "/audio/bajrang-baan.mp3",
   editorialNotes:
     "Opens with a doha, moves through a chain of chaupais invoking Hanuman Ji's protection, closes with a doha. Press play above to listen along.",
-  // Bajrang Baan — traditional, public domain. Opening doha + chain of
+  // Bajrang Baan, traditional, public domain. Opening doha + chain of
   // chaupais invoking Hanuman Ji's protection + closing doha.
   verses: [
     {
@@ -407,7 +407,7 @@ export const BAJRANG_BAAN: DevotionalText = {
 };
 
 /**
- * Shri Ram Stuti — "श्रीरामचन्द्र कृपालु भजुमन" — five-stanza prayer
+ * Shri Ram Stuti, "श्रीरामचन्द्र कृपालु भजुमन", five-stanza prayer
  * to Shri Ram from Ramcharitmanas (Bal Kand) by Goswami Tulsidas, 16th
  * century. Sung at most Lucknow Hanuman temples alongside the Aarti.
  */

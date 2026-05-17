@@ -3,7 +3,7 @@
 /**
  * Instant-search input for the admin moderation page.
  *
- * The page itself is a server component — `/admin` reads from Prisma
+ * The page itself is a server component, `/admin` reads from Prisma
  * on every request (force-dynamic) and renders the filtered list
  * server-side. To make typing feel snappy without abandoning that
  * URL-driven model, this client component updates `router.replace`
@@ -28,7 +28,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 const DEBOUNCE_MS = 200;
 
 export default function AdminSearchBox({
-  /** Active tab — passed in so we preserve `?status=` on every URL update. */
+  /** Active tab, passed in so we preserve `?status=` on every URL update. */
   status,
   /** Active moderation mode ("bhandara" default, "spot", or "whatsapp"
    *  for the bot-ingest queue). Preserved on every URL update so typing
@@ -49,7 +49,7 @@ export default function AdminSearchBox({
 
   /**
    * Keep local state in sync with the URL when the URL changes
-   * externally — e.g. when the admin clicks "Clear" or hits a "All"
+   * externally, e.g. when the admin clicks "Clear" or hits a "All"
    * tab link that strips `?q=`. Without this the input would still
    * display the old query.
    */
@@ -75,7 +75,7 @@ export default function AdminSearchBox({
   function scheduleUpdate(next: string) {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
-      // `scroll: false` keeps the user's scroll position — useful when
+      // `scroll: false` keeps the user's scroll position, useful when
       // they're typing while looking at a row in the list below.
       router.replace(`${pathname}?${buildParams(next).toString()}`, {
         scroll: false,
@@ -112,7 +112,7 @@ export default function AdminSearchBox({
           setValue(e.target.value);
           scheduleUpdate(e.target.value);
         }}
-        // Pressing Enter should also fire immediately — flush the
+        // Pressing Enter should also fire immediately, flush the
         // debounced timer so the user doesn't wait 200 ms for nothing.
         onKeyDown={(e) => {
           if (e.key === "Enter") {

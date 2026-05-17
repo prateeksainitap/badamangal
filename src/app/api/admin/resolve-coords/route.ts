@@ -1,5 +1,5 @@
 /**
- * Admin helper — turn a pasted "anything" into a {lat, lng} pair so
+ * Admin helper, turn a pasted "anything" into a {lat, lng} pair so
  * the moderation team doesn't have to hand-type coordinates.
  *
  * Inputs we handle:
@@ -18,7 +18,7 @@
  * (CORS + opaque redirect responses). Plus-Code lookups also benefit
  * from a server fetch with proper UA headers.
  *
- * Auth: gated by the same admin cookie as every other /admin tool —
+ * Auth: gated by the same admin cookie as every other /admin tool,
  * the endpoint is useful only to authenticated admins entering data
  * into the edit form, never called from a public surface.
  *
@@ -42,7 +42,7 @@ async function isAdmin(): Promise<boolean> {
 }
 
 // Lucknow bounding box (matches the public bhandara form + geocoder).
-// We use it as a sanity filter — any extracted point outside the box
+// We use it as a sanity filter, any extracted point outside the box
 // is almost certainly wrong (typo, share of a different city's map).
 const LKO_BBOX = {
   latMin: 26.6,
@@ -63,13 +63,13 @@ function inLucknow(lat: number, lng: number): boolean {
  * Extract a `{lat, lng}` from a string using all the regex shapes
  * Google Maps URLs come in. Returns null if no pattern matched.
  *
- * Patterns (most specific first — earlier match wins):
- *   • `!3dLAT!4dLNG`  — the canonical "place pin" coords in
+ * Patterns (most specific first, earlier match wins):
+ *   • `!3dLAT!4dLNG` , the canonical "place pin" coords in
  *     /place/… URLs. Most accurate for a specific venue.
- *   • `/@LAT,LNG,Zz`  — viewport / map-center coords in maps URLs.
- *   • `?q=LAT,LNG`    — basic share URL.
- *   • `?ll=LAT,LNG`   — legacy.
- *   • `LAT,LNG`       — raw paste of `26.89,80.96`.
+ *   • `/@LAT,LNG,Zz` , viewport / map-center coords in maps URLs.
+ *   • `?q=LAT,LNG`   , basic share URL.
+ *   • `?ll=LAT,LNG`  , legacy.
+ *   • `LAT,LNG`      , raw paste of `26.89,80.96`.
  */
 function extractFromUrl(input: string): { lat: number; lng: number } | null {
   const s = input.trim();
@@ -86,7 +86,7 @@ function extractFromUrl(input: string): { lat: number; lng: number } | null {
   if (qParam) {
     return { lat: Number(qParam[1]), lng: Number(qParam[2]) };
   }
-  // Raw "lat,lng" — only accept when the WHOLE string is the pair, so
+  // Raw "lat,lng", only accept when the WHOLE string is the pair, so
   // we don't accidentally swallow a longitude that looks like a comma
   // inside other text.
   const raw = s.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
@@ -97,7 +97,7 @@ function extractFromUrl(input: string): { lat: number; lng: number } | null {
 }
 
 /**
- * Follow a short URL one hop (HEAD-style — but Google's short-link
+ * Follow a short URL one hop (HEAD-style, but Google's short-link
  * service responds 302 to both GET and HEAD). Returns the resolved
  * `Location:` header URL, or null if the input wasn't a known short
  * domain / no redirect happened.
@@ -128,7 +128,7 @@ async function resolveShortUrl(input: string): Promise<string | null> {
 /**
  * Resolve a Plus Code (Open Location Code) to {lat, lng}.
  *
- * We don't ship the open-location-code npm package — to keep the
+ * We don't ship the open-location-code npm package, to keep the
  * deploy small and avoid a new dependency, we route the lookup
  * through Google's public Plus Codes resolver. The endpoint at
  * https://plus.codes/<code> returns an HTML page with the
@@ -136,7 +136,7 @@ async function resolveShortUrl(input: string): Promise<string | null> {
  * canonical place URL. We grab whichever appears first.
  *
  * If you want offline / no-network decoding, swap this for the
- * `open-location-code` package — it's ~12KB and supports both full
+ * `open-location-code` package, it's ~12KB and supports both full
  * and short codes (the latter needs a reference lat/lng, which we
  * have from Lucknow's centroid).
  */
@@ -149,7 +149,7 @@ async function resolvePlusCode(input: string): Promise<{ lat: number; lng: numbe
   }
   try {
     // The plus.codes web app understands the full text including the
-    // anchor city — e.g. "VXR6+QP Lucknow". URL-encode the entire
+    // anchor city, e.g. "VXR6+QP Lucknow". URL-encode the entire
     // input as the path segment.
     const url = `https://plus.codes/${encodeURIComponent(s)}`;
     const res = await fetch(url, {
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 1) Direct extraction from the raw string (covers full URLs +
-  //    raw `lat,lng` pastes — no network call needed).
+  //    raw `lat,lng` pastes, no network call needed).
   const direct = extractFromUrl(input);
   if (direct) {
     return NextResponse.json({
@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // 2) Short URL — follow the redirect, then re-parse.
+  // 2) Short URL, follow the redirect, then re-parse.
   const resolved = await resolveShortUrl(input);
   if (resolved) {
     const fromShort = extractFromUrl(resolved);
@@ -221,7 +221,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 3) Plus Code — resolve via plus.codes.
+  // 3) Plus Code, resolve via plus.codes.
   const plus = await resolvePlusCode(input);
   if (plus) {
     return NextResponse.json({

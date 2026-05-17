@@ -1,9 +1,19 @@
+"use client";
+
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { ALL_TUESDAY_ISO } from "@/lib/dates";
+import { useLocaleFromContext } from "@/lib/locale-context";
 
+/**
+ * Props are kept for backwards compatibility with call sites that still
+ * pass a server-resolved locale, but the value is intentionally ignored.
+ * Locale resolves entirely from the LocaleProvider context now, so the
+ * Hindi toggle swaps every label in this component without waiting on a
+ * server-tree refresh.
+ */
 type Props = {
-  locale: Locale;
+  locale?: Locale;
 };
 
 const HI_MONTHS_SHORT = [
@@ -17,7 +27,10 @@ const EN_MONTHS_SHORT = [
 
 type NodeStatus = "past" | "live" | "next" | "future";
 
-export default function SeasonTimeline({ locale }: Props) {
+export default function SeasonTimeline(_props: Props) {
+  // Cookie-aware locale from context. The `locale` prop is ignored on
+  // purpose, keeping it on the type so existing call-sites compile.
+  const locale = useLocaleFromContext();
   const t = strings[locale];
   const isHi = locale === "hi";
 
@@ -189,7 +202,7 @@ function Node({ day, month, status, statusLabelText }: NodeRenderProps) {
       >
         {month}
       </p>
-      {/* Status pill — hidden on the smallest widths to avoid two
+      {/* Status pill, hidden on the smallest widths to avoid two
           tiny lines under each disc; reappears at sm+. */}
       <p
         className={[

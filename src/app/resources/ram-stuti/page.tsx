@@ -1,9 +1,6 @@
-import Link from "next/link";
 import type { Metadata } from "next";
-import { strings, type Locale } from "@/content/strings";
 import { RAM_STUTI } from "@/content/devotional";
-import DevotionalReader from "@/components/DevotionalReader";
-import { MarigoldDivider } from "@/components/ornaments";
+import DevotionalPageView from "@/components/DevotionalPageView";
 
 export const revalidate = 300;
 
@@ -30,15 +27,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RamStutiPage({}: {
-  // no-op
-}) {
-  // Server renders in English; client swaps via <LocaleProvider />.
-  const locale = "en" as Locale;
-  const t = strings[locale];
-  const isHi = locale === "hi";
-  const langSuffix = locale === "en" ? "?lang=en" : "";
-
+export default function RamStutiPage() {
+  // Thin server wrapper, JSON-LD here, bilingual chrome in
+  // <DevotionalPageView /> (client) so the Hindi toggle swaps every
+  // label without a server-tree refresh.
   const articleSchema = {
     "@context": "https://schema.org",
     "@type": "Article",
@@ -63,49 +55,14 @@ export default async function RamStutiPage({}: {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
       />
-
-      <article className="pb-24">
-        <header className="mx-auto max-w-3xl px-4 sm:px-6 pt-12 sm:pt-16 pb-8 text-center">
-          <Link
-            href={`/resources${langSuffix}`}
-            className="inline-block text-sm text-ink-600 hover:text-saffron-600 transition-colors"
-          >
-            {t.resources.common.backToResources}
-          </Link>
-          <p className="mt-4 font-mukta uppercase tracking-[0.32em] text-gold-500 text-xs">
-            {t.resources.ramStuti.kicker}
-          </p>
-          <h1 className="mt-3 font-deva font-medium text-[2rem] sm:text-[2.6rem] leading-[1.2] text-sindoor-700">
-            {RAM_STUTI.titleHi}
-          </h1>
-          <p className="mt-3 font-fraunces italic text-xl sm:text-2xl text-ink-900">
-            {RAM_STUTI.titleEn}
-          </p>
-          <p className="mt-5 max-w-xl mx-auto text-ink-600 leading-relaxed">
-            {t.resources.ramStuti.body}
-          </p>
-        </header>
-
-        <section className="mx-auto max-w-4xl px-4 sm:px-6">
-          <DevotionalReader text={RAM_STUTI} />
-        </section>
-
-        <div className="flex justify-center my-14">
-          <MarigoldDivider size={280} className="text-gold-500" />
-        </div>
-
-        <section className="mx-auto max-w-3xl px-4 sm:px-6">
-          <p className="font-mukta uppercase tracking-[0.32em] text-gold-500 text-xs">
-            {isHi ? "संपादक की टिप्पणी" : "Editor's note"}
-          </p>
-          <p className="mt-3 font-fraunces italic text-ink-900/85 leading-relaxed">
-            {RAM_STUTI.editorialNotes}
-          </p>
-          <p className="mt-4 text-sm text-ink-600">
-            {isHi ? `तुलसीदास · ${RAM_STUTI.era}` : `Tulsidas · ${RAM_STUTI.era}`}
-          </p>
-        </section>
-      </article>
+      <DevotionalPageView
+        text={RAM_STUTI}
+        kickerKey="ramStuti"
+        footer={{
+          en: `Tulsidas · ${RAM_STUTI.era}`,
+          hi: `तुलसीदास · ${RAM_STUTI.era}`,
+        }}
+      />
     </>
   );
 }

@@ -17,7 +17,7 @@ export type SiteStats = {
 };
 
 /**
- * Read-only homepage stats — safe to call from a cacheable (ISR) page.
+ * Read-only homepage stats, safe to call from a cacheable (ISR) page.
  *
  * We deliberately do NOT mutate the visitor counter here anymore. Bumping
  * inside the page render forced the route to be `force-dynamic` (every
@@ -28,7 +28,7 @@ export type SiteStats = {
  * paint (see `src/components/VisitorBeacon.tsx` POSTing to `/api/visit`),
  * which keeps the page itself fully cacheable while still tracking real
  * traffic. The visible number lags by a few seconds for the first
- * visitor of a new revalidate window — fine for a homepage stat.
+ * visitor of a new revalidate window, fine for a homepage stat.
  */
 export async function getHomepageStats(): Promise<SiteStats> {
   // Pure read on the counter; if the row doesn't exist yet, treat as 0.
@@ -43,7 +43,7 @@ export async function getHomepageStats(): Promise<SiteStats> {
     .slice(0, 10);
   const pastTuesdays = ALL_TUESDAY_ISO.filter((iso) => iso < todayIso);
 
-  // Fan out the two reads in parallel — both go through the same
+  // Fan out the two reads in parallel, both go through the same
   // Supabase pooler so serialising them would double the round-trip
   // cost on a cold pool.
   const [records, spottedCount] = await Promise.all([

@@ -20,7 +20,7 @@ export type FamousBhandara = {
   area: string;
   /** Same area in Hindi. */
   areaHi: string;
-  /** One-line descriptor — fresh prose, never copied from a source. */
+  /** One-line descriptor, fresh prose, never copied from a source. */
   note: string;
   noteHi: string;
   /** Loose category, used to colour the card pill. */

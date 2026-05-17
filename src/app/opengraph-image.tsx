@@ -25,7 +25,7 @@ export const contentType = "image/png";
  * Satori constraints we honour:
  *   • Every <div> with multiple children has explicit `display: "flex"`.
  *   • All <img>/<svg> dimensions are numeric (no `width: "auto"`).
- *   • SVGs are kept minimal — a handful of shapes, no complex paths.
+ *   • SVGs are kept minimal, a handful of shapes, no complex paths.
  *   • Fonts loaded as TTF via @/lib/og-fonts (Satori can't parse WOFF2).
  *
  * When we want to add a real Hanuman illustration:
@@ -34,7 +34,7 @@ export const contentType = "image/png";
  *   2. readFile that PNG into a data-URL, render with explicit
  *      numeric width AND height (Satori has no flex-based image
  *      sizing).
- *   3. Test locally with `npm run build` before pushing — the OG
+ *   3. Test locally with `npm run build` before pushing, the OG
  *      route is pre-rendered at build time, so a Satori crash
  *      surfaces as a hard build failure, not a runtime 500.
  */
@@ -72,7 +72,7 @@ export default async function OG() {
   // English-only OG card. We previously rendered the Hindi headline
   // "जहाँ भक्ति, वहाँ भंडारा" using Noto Serif Devanagari, but Satori
   // (the renderer behind next/og) doesn't fully shape the `क्ति`
-  // conjunct — the `ि` matra rendered AFTER the cluster instead of
+  // conjunct, the `ि` matra rendered AFTER the cluster instead of
   // fused into it, producing visibly broken text. Rather than ship a
   // visibly-wrong Hindi headline on the most-shared surface on the
   // site, we render the OG card entirely in English. The rest of the
@@ -81,7 +81,7 @@ export default async function OG() {
   const [fraunces500, fraunces700, hanumanPng] = await Promise.all([
     loadGoogleFont("Fraunces", 500),
     loadGoogleFont("Fraunces", 700),
-    // PNG (converted from the original WebP via sharp at build time —
+    // PNG (converted from the original WebP via sharp at build time,
     // see public/illustrations/hanuman-standing-og.png). Satori parses
     // PNG reliably; the WebP route crashed with [TypeError: u2 is not
     // iterable] in earlier deploys.
@@ -126,7 +126,7 @@ export default async function OG() {
           position: "relative",
         }}
       >
-        {/* Saffron halo behind the Hanuman figure — same warm radial
+        {/* Saffron halo behind the Hanuman figure, same warm radial
             glow the homepage hero uses. Rendered before the figure
             so the figure sits on top of the glow rather than vice
             versa (CSS z-stacking respects source order in Satori). */}
@@ -144,7 +144,7 @@ export default async function OG() {
           }}
         />
 
-        {/* Hanuman figure — converted from the original
+        {/* Hanuman figure, converted from the original
             /illustrations/hanuman-standing.webp to a 480×640 PNG
             (~154 KB) via sharp at edit time; the conversion script
             ran as a one-shot during this commit. Satori parses PNG
@@ -229,7 +229,7 @@ export default async function OG() {
           <circle cx="190" cy="190" r="78" fill={SAFFRON_600} opacity="0.45" />
           <circle cx="190" cy="190" r="62" fill={SAFFRON_600} />
 
-          {/* Inner ॐ-suggesting flame mark — abstract, not the literal
+          {/* Inner ॐ-suggesting flame mark, abstract, not the literal
               glyph (which would need a font we don't have inline). */}
           <path
             d="M190 145 C170 165, 165 200, 190 230 C215 200, 210 165, 190 145 Z"
@@ -310,7 +310,7 @@ export default async function OG() {
           </div>
         </div>
 
-        {/* Main copy block — bottom-anchored under the decorative
+        {/* Main copy block, bottom-anchored under the decorative
             composition. `maxWidth` keeps the headline clear of the
             absolutely-positioned mandala on the right. */}
         <div
@@ -324,7 +324,7 @@ export default async function OG() {
           {/* Two-line couplet, matching the rhythm of the original
               Devanagari "जहाँ भक्ति, वहाँ भंडारा". Romanised here so
               Satori (which can't shape the क्ति conjunct) doesn't
-              produce visibly broken text on the share card — see
+              produce visibly broken text on the share card, see
               file-header notes for the renderer-limitation context. */}
           <div
             style={{

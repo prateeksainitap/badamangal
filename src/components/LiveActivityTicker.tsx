@@ -18,7 +18,7 @@ const SESSION_KEY = "bm:activity:dismissed";
 /**
  * Bottom-left "live activity" pill that surfaces real recent events
  * (new bhandaras, spots, posts, viewer count) one at a time. Builds
- * social proof without resorting to fabricated names — every line ties
+ * social proof without resorting to fabricated names, every line ties
  * back to a row in Postgres.
  *
  * Behaviour:
@@ -27,7 +27,7 @@ const SESSION_KEY = "bm:activity:dismissed";
  *    next slides in. When the queue empties, it loops with a shuffle so
  *    the ticker still feels alive on quiet days.
  *  - Has a small × to dismiss for the rest of the session.
- *  - Hidden until first event arrives — never flashes empty markup.
+ *  - Hidden until first event arrives, never flashes empty markup.
  *  - Pauses while reduce-motion users haven't interacted, and respects
  *    the safe-area-inset for iOS browsers with the home indicator.
  */
@@ -63,7 +63,7 @@ export default function LiveActivityTicker() {
           setEvents(shuffle(data.events));
         }
       } catch {
-        /* network blip — try again next tick */
+        /* network blip, try again next tick */
       }
     };
     void load();
@@ -119,7 +119,7 @@ export default function LiveActivityTicker() {
     try {
       window.sessionStorage.setItem(SESSION_KEY, "1");
     } catch {
-      /* storage may be blocked — fine */
+      /* storage may be blocked, fine */
     }
   };
 

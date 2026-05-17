@@ -17,7 +17,7 @@ type Props = {
  *   • If the user arrived from another page on this site (referrer
  *     matches current origin AND there's at least one history entry),
  *     calls `history.back()` so the browser restores their scroll
- *     position — they land back on the exact map pin / card row they
+ *     position, they land back on the exact map pin / card row they
  *     clicked from.
  *   • Otherwise (deep link, fresh tab, social share), falls through
  *     to a normal client-side navigation to `fallbackHref`

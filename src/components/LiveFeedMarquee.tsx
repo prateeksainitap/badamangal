@@ -53,7 +53,7 @@ export default function LiveFeedMarquee({ initial }: Props) {
   const isEmpty = posts.length < 3;
 
   // Render the post list twice so the CSS marquee animation loops
-  // seamlessly — when the first copy has fully translated out of view,
+  // seamlessly, when the first copy has fully translated out of view,
   // the second identical copy is already in position, then the
   // animation resets without a visible jump.
   const train = useMemo(() => [...posts, ...posts], [posts]);
@@ -82,7 +82,7 @@ export default function LiveFeedMarquee({ initial }: Props) {
         </Link>
       </div>
 
-      {/* Continuous CSS marquee — the cards translate left at a steady
+      {/* Continuous CSS marquee, the cards translate left at a steady
           rate, no scrollbar, no arrows. Pauses on hover so the user can
           read a card mid-flight.
 
@@ -147,7 +147,7 @@ function FeedCard({ post }: { post: FeedPost }) {
         motion-safe:hover:-translate-y-0.5
         transition-all duration-300"
     >
-      {/* Jali corner ornaments — small, subtle, only at top corners. */}
+      {/* Jali corner ornaments, small, subtle, only at top corners. */}
       <JaliCorner
         position="tl"
         className="absolute top-1.5 left-1.5 w-4 h-4 text-gold-500/55 z-10 pointer-events-none"
@@ -157,7 +157,7 @@ function FeedCard({ post }: { post: FeedPost }) {
         className="absolute top-1.5 right-1.5 w-4 h-4 text-gold-500/55 z-10 pointer-events-none"
       />
 
-      {/* IMAGE WELL — slightly shorter than before so the body has more
+      {/* IMAGE WELL, slightly shorter than before so the body has more
           presence and the card overall reads sleeker. */}
       <div className="relative w-full h-[136px] overflow-hidden">
         {post.photoUrl ? (
@@ -215,7 +215,7 @@ function FeedCard({ post }: { post: FeedPost }) {
         />
       </div>
 
-      {/* BODY — caption pull-quote + author byline */}
+      {/* BODY, caption pull-quote + author byline */}
       <div className="flex-1 px-3.5 pt-2.5 pb-2.5 flex flex-col min-h-0">
         {post.text ? (
           <p
@@ -231,7 +231,7 @@ function FeedCard({ post }: { post: FeedPost }) {
           </p>
         )}
 
-        {/* Author byline — tighter avatar + em-dash + name. */}
+        {/* Author byline, tighter avatar + em-dash + name. */}
         <div className="mt-auto pt-2 flex items-center gap-1.5 border-t border-gold-500/20">
           <span
             aria-hidden

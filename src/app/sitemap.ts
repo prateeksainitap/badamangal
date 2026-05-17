@@ -25,7 +25,7 @@ export const revalidate = 3600;
  *
  * Convention: the bare URL (no query) is Hindi-first (matches the
  * site's primary audience + cookie default). `?lang=en` is English.
- * `x-default` points at Hindi too — Google falls back to it when no
+ * `x-default` points at Hindi too, Google falls back to it when no
  * other hreflang matches the searcher's locale.
  */
 function urlWithAlternates(
@@ -76,7 +76,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     urlWithAlternates("/live", { changeFrequency: "always", priority: 0.85 }),
     urlWithAlternates("/archive", { changeFrequency: "weekly", priority: 0.7 }),
     urlWithAlternates("/list-bhandara", { changeFrequency: "weekly", priority: 0.7 }),
-    urlWithAlternates("/pamphlet", { changeFrequency: "weekly", priority: 0.75 }),
+    // /pamphlet intentionally omitted from the sitemap, the feature is
+    // shipped but not publicly promoted (no nav, no homepage CTA, no
+    // footer link). Direct-link access at /pamphlet still works for
+    // localhost / internal sharing during the soft-launch phase.
     urlWithAlternates("/spot", { changeFrequency: "weekly", priority: 0.6 }),
     urlWithAlternates("/contact", { changeFrequency: "monthly", priority: 0.5 }),
     urlWithAlternates("/resources", { changeFrequency: "weekly", priority: 0.8 }),
@@ -106,7 +109,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   );
 
   // Per-area landing pages. One static entry per area (36 total).
-  // Priority 0.8 — these are the SEO long-tail surfaces targeting
+  // Priority 0.8, these are the SEO long-tail surfaces targeting
   // queries like "bada mangal aliganj" / "bhandara gomti nagar".
   // Higher than per-bhandara (0.6) because each area page rolls up
   // many bhandaras + cross-links to others, so it's a stronger

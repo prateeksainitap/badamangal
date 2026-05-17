@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import LiveFeedTimeline from "@/components/LiveFeedTimeline";
-import { strings, type Locale } from "@/content/strings";
+import LiveHero from "@/components/LiveHero";
 import { prisma } from "@/lib/db";
 import { localised } from "@/lib/seo";
 import { stripBotProvenance } from "@/lib/sanitize";
 
 // ISR. Previously force-dynamic because the page read `?bhandara=<slug>`
-// from searchParams on the server to pre-filter the feed — that gave
+// from searchParams on the server to pre-filter the feed, that gave
 // every click on a filter pill a Netlify Function cold-start. The
 // filter now lives inside <LiveFeedTimeline />, which reads it from
 // window.location.search on mount and updates as the user clicks
 // pills. Server fetches the full active-spot set; the client filters.
 //
 // 30s revalidate keeps the first-paint feed reasonably fresh; the
-// in-page poll (every 8s) is what actually drives "real time" — this
+// in-page poll (every 8s) is what actually drives "real time", this
 // is just the initial server snapshot.
 export const revalidate = 30;
 
@@ -33,11 +33,11 @@ export const metadata: Metadata = {
 };
 
 export default async function LivePage() {
-  // Server renders English; client components consume the real locale
-  // from <LocaleProvider />.
-  const locale = "en" as Locale;
-  const t = strings[locale];
-  const isHi = false;
+  // Page is locale-agnostic on the server, every text-bearing block
+  // (LiveHero, LiveFeedTimeline empty state, post card chrome) is a
+  // client component that reads the visitor's bm_lang cookie via the
+  // LocaleProvider context, so the Hindi toggle swaps every label
+  // instantly without re-fetching the page.
 
   // Spots-only feed. The Post model (per-bhandara comments) was retired;
   // the live timeline now shows just crowd-sourced photo/pin reports
@@ -63,7 +63,7 @@ export default async function LivePage() {
     bhandaraLat: s.bhandara?.lat ?? s.lat,
     bhandaraLng: s.bhandara?.lng ?? s.lng,
     authorName: s.reporterName?.trim() || "Spotter",
-    // Strip [bot:whatsapp …] tag — public live feed must show prose
+    // Strip [bot:whatsapp …] tag, public live feed must show prose
     // only. See lib/sanitize.ts.
     text: stripBotProvenance(s.caption) || null,
     photoUrl: s.photoUrl,
@@ -89,25 +89,7 @@ export default async function LivePage() {
 
   return (
     <div className="relative">
-      {/* Hero */}
-      <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 pb-6 sm:pt-14 sm:pb-8 text-center">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-saffron-50 border border-saffron-500/40 px-3 py-1 text-[0.65rem] font-mukta uppercase tracking-[0.28em] text-saffron-600 font-semibold">
-          <span className="block w-1.5 h-1.5 rounded-full bg-saffron-600 motion-safe:animate-pulse" />
-          {isHi ? "लाइव" : "Live"}
-        </span>
-        <h1
-          className={`mt-4 text-4xl sm:text-5xl ${
-            isHi ? "font-tiro text-sindoor-700" : "font-fraunces font-semibold text-sindoor-700"
-          }`}
-        >
-          {isHi ? "भंडारा से सीधा" : "Live from the bhandara"}
-        </h1>
-        <p className="mt-3 text-ink-600 max-w-2xl mx-auto leading-relaxed">
-          {isHi
-            ? "लखनऊ के पंडालों से तस्वीरें, संदेश, और सेवा की झलक, हर कुछ सेकंड में नई।"
-            : "Photos, blessings, and live updates from Lucknow's pandals, refreshed every few seconds."}
-        </p>
-      </section>
+      <LiveHero />
 
       <LiveFeedTimeline
         initial={feed}
@@ -115,10 +97,6 @@ export default async function LivePage() {
           slug: b.slug,
           name: b.name,
         }))}
-        locale={locale}
-        kicker={t.stats.sectionKicker}
-        emptyHi="अभी कोई पोस्ट नहीं। बहुत जल्द भंडारा से तस्वीरें यहाँ दिखेंगी।"
-        emptyEn="No posts yet. Photos and updates from the bhandara will appear here soon."
       />
     </div>
   );

@@ -2,7 +2,7 @@
  * Shared client-side file-validation helpers used by PhotoPicker and
  * ContactForm. Every check here mirrors the server-side guard in
  * /api/uploads/route.ts so the user is told "this file won't work" the
- * instant they pick it from the file browser — not after they've filled
+ * instant they pick it from the file browser, not after they've filled
  * in the whole form and clicked Submit.
  *
  * Keep these limits in sync with the server route. The server is still
@@ -19,7 +19,7 @@ export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_PDF_BYTES = 5 * 1024 * 1024;
 
 // HEIC/HEIF were rejected for a while because the server's sharp
-// pipeline couldn't decode them — we now ship a sharp build with
+// pipeline couldn't decode them, we now ship a sharp build with
 // libheif bundled (sharp ≥ 0.32 prebuilt for linux-x64 includes it),
 // so iPhone "Most Efficient" defaults work without forcing visitors
 // to flip Camera → Formats → Most Compatible. Client-side compression
@@ -51,7 +51,7 @@ function bilingual(locale: Locale, hi: string, en: string): string {
  * Validate an image-only upload (PhotoPicker on /list-bhandara, /spot, etc.).
  * Rejects:
  *   - Anything that isn't JPG / PNG / WebP (HEIC, AVIF-without-fallback,
- *     GIF, BMP, SVG, etc. — the server can't process them safely).
+ *     GIF, BMP, SVG, etc., the server can't process them safely).
  *   - Empty files.
  *   - Files over 5 MB.
  */
@@ -67,7 +67,7 @@ export function validateImage(file: File, locale: Locale): ValidationResult {
     };
   }
   if (!ALLOWED_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_IMAGE_TYPES)[number])) {
-    // iPhones often hand over HEIC by default — call that out by name so
+    // iPhones often hand over HEIC by default, call that out by name so
     // the user knows what's wrong, instead of a generic "type mismatch".
     const heicHint =
       file.name.toLowerCase().endsWith(".heic") ||
@@ -131,7 +131,7 @@ export function validateAttachment(file: File, locale: Locale): ValidationResult
     }
     return { ok: true };
   }
-  // Defer to the image validator for everything else — it carries the
+  // Defer to the image validator for everything else, it carries the
   // HEIC-specific hint that PhotoPicker users care about.
   return validateImage(file, locale);
 }

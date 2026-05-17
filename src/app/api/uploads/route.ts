@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 // Two storage modes:
 //   1. Production: Supabase Storage `bhandara-photos` bucket → public URL.
 //   2. Local dev (no Supabase env): writes to `/public/uploads/`.
-// Both caps held at 5 MB — Netlify Functions reject request bodies
+// Both caps held at 5 MB, Netlify Functions reject request bodies
 // larger than 6 MB at the platform level, so 8 MB+ images would fail
 // with a generic 413 before reaching this handler.
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;

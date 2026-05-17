@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
  * Reads the `bot_heartbeat_mbp` row from SiteCounter. The MacBook's
  * cron POSTs to `/api/bot/heartbeat?source=mbp` every 5 minutes, so a
  * healthy gap should sit between 0 and ~6 minutes. Anything beyond
- * that surfaces red — either the MacBook is asleep / unplugged or the
+ * that surfaces red, either the MacBook is asleep / unplugged or the
  * OpenClaw daemon has died.
  *
  * Renders nothing if the row doesn't exist yet (i.e. the bot has

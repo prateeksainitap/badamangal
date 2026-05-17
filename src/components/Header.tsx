@@ -131,7 +131,7 @@ function HeaderInner() {
       ].join(" ")}
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-        {/* Brand — the new logo SVG already bakes the wordmark
+        {/* Brand, the new logo SVG already bakes the wordmark
             (बड़ा मंगल + BADAMANGAL.COM) inside the artwork, so the
             side-text lockup that used to live here was redundant.
             We render the SVG at a tall fixed height with `w-auto`
@@ -372,7 +372,7 @@ function HeaderInner() {
             </p>
           </nav>
 
-          {/* Sticky footer cluster — language toggle only. The "Add a
+          {/* Sticky footer cluster, language toggle only. The "Add a
               bhandara" CTA was dropped from this strip because the same
               action is already promoted via the featured Spot card up
               top, the header button on desktop, and the map toolbar. */}

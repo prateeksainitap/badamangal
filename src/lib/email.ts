@@ -2,21 +2,21 @@
  * Server-side email dispatch via Resend.
  *
  * Currently the only email we send is the contact-form forwarding
- * notification — visitors fill out /contact and we mirror their
+ * notification, visitors fill out /contact and we mirror their
  * message into the team inbox in addition to persisting it in the
  * ContactMessage table.
  *
  * Configured via env vars:
- *   RESEND_API_KEY       — from https://resend.com → API Keys
- *   CONTACT_EMAIL_TO     — comma-separated list of receivers
+ *   RESEND_API_KEY      , from https://resend.com → API Keys
+ *   CONTACT_EMAIL_TO    , comma-separated list of receivers
  *                          (e.g. "namaste@badamangal.com,prateek@…")
- *   CONTACT_EMAIL_FROM   — verified sender, defaults to
+ *   CONTACT_EMAIL_FROM  , verified sender, defaults to
  *                          "BadaMangal <namaste@badamangal.com>".
  *                          The domain MUST be verified in Resend
  *                          (DNS records take ~10 min) before sends
  *                          succeed; until then sends 4xx silently.
  *
- * If RESEND_API_KEY isn't set, every send is a clean no-op — the
+ * If RESEND_API_KEY isn't set, every send is a clean no-op, the
  * site still works, ContactMessage rows still save to Prisma, the
  * team just doesn't get the immediate notification. This makes
  * local dev painless: no email setup required.
@@ -65,7 +65,7 @@ function escapeHtml(s: string): string {
 /**
  * Forward a contact-form submission to the configured inbox.
  * Silently no-ops if Resend isn't configured. Errors are logged
- * server-side but never thrown — a failed email must not block the
+ * server-side but never thrown, a failed email must not block the
  * contact-form HTTP response.
  */
 export async function sendContactEmail(
@@ -89,7 +89,7 @@ export async function sendContactEmail(
 
   const subject = `Contact form: ${
     input.subject?.trim() || "no subject"
-  } — ${input.name}`;
+  }, ${input.name}`;
 
   // Plain-text version for clients that strip HTML.
   const text = [
@@ -104,13 +104,13 @@ export async function sendContactEmail(
       ? `Attachment (${input.attachmentType ?? "file"}): ${input.attachmentUrl}`
       : null,
     "",
-    "—",
+    "-",
     `Message ID: ${input.contactMessageId}`,
   ]
     .filter(Boolean)
     .join("\n");
 
-  // Lightweight HTML — Resend renders just fine without tables/CSS.
+  // Lightweight HTML, Resend renders just fine without tables/CSS.
   // Quoted message uses a left-border block to feel email-native.
   const attachmentLine = input.attachmentUrl
     ? `<p style="margin:16px 0 0;font-size:13px;color:#666"><strong>Attachment (${escapeHtml(
