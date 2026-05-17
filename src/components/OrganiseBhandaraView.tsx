@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AREAS } from "@/lib/lucknow";
 import { ALL_SEASON_ISO } from "@/lib/dates";
 import { JaliCorner, MarigoldDivider } from "@/components/ornaments";
 import { trackEvent } from "@/lib/ga";
 import { useLocaleFromContext } from "@/lib/locale-context";
+import FancySelect, { type FancySelectOption } from "@/components/FancySelect";
+import TimeField from "@/components/TimeField";
 
 /**
  * /organise-bhandara page body.
@@ -195,6 +197,32 @@ export default function OrganiseBhandaraView() {
   }, []);
 
   const formRef = useRef<HTMLFormElement | null>(null);
+
+  // Build the area + date dropdown option arrays in one memo per list.
+  // Recomputed only when locale flips (the Hindi labels for the
+  // weekday prefix change), not on every keystroke in the rest of
+  // the form. Both feed the shared <FancySelect variant="input" />
+  // so the dropdowns match the rest of the site's selects (homepage
+  // filters, BhandaraForm) instead of the native OS dropdown.
+  const areaOptions: FancySelectOption[] = useMemo(
+    () => [
+      { value: "", label: t("Select an area", "क्षेत्र चुनें") },
+      ...AREAS.map((a) => ({ value: a, label: a })),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isHi],
+  );
+  const dateOptions: FancySelectOption[] = useMemo(
+    () => [
+      { value: "", label: t("Pick a Tuesday / Saturday", "मंगल / शनि चुनें") },
+      ...ALL_SEASON_ISO.map((iso) => ({
+        value: iso,
+        label: formatIsoForOption(iso, isHi),
+      })),
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isHi],
+  );
 
   function pickPackage(p: PackageDef) {
     setTier(p.id);
@@ -528,20 +556,22 @@ export default function OrganiseBhandaraView() {
               <span className="text-sm text-ink-900 font-medium">
                 {t("Area in Lucknow", "लखनऊ में क्षेत्र")}
               </span>
-              <select
+              {/* FancySelect (input variant) so this dropdown matches
+                  every other select on the site, BhandaraForm's
+                  area picker, homepage filters, etc. The shared
+                  component handles the search field automatically
+                  once there are 8+ options (36 areas here, so it
+                  always shows the search). */}
+              <FancySelect
+                ariaLabel={t("Area in Lucknow", "लखनऊ में क्षेत्र")}
                 value={area}
-                onChange={(e) => setArea(e.target.value)}
-                className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
-              >
-                <option value="">
-                  {t("Select an area", "क्षेत्र चुनें")}
-                </option>
-                {AREAS.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
-                ))}
-              </select>
+                onChange={setArea}
+                options={areaOptions}
+                variant="input"
+                size="md"
+                searchable
+                searchPlaceholder={t("Search areas…", "क्षेत्र खोजें…")}
+              />
             </label>
             <FieldText
               label={t("Venue / landmark", "स्थान / लैंडमार्क")}
@@ -560,33 +590,41 @@ export default function OrganiseBhandaraView() {
               <span className="text-sm text-ink-900 font-medium">
                 {t("Date", "तारीख़")}
               </span>
-              <select
+              {/* Season dates dropdown (Tuesdays + Bade Shanivars from
+                  ALL_SEASON_ISO). Shared FancySelect so the panel + chips
+                  look identical to the homepage's date filter. */}
+              <FancySelect
+                ariaLabel={t("Pick a date", "तारीख़ चुनें")}
                 value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-                className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
-              >
-                <option value="">
-                  {t("Pick a Tuesday / Saturday", "मंगल / शनि चुनें")}
-                </option>
-                {ALL_SEASON_ISO.map((iso) => (
-                  <option key={iso} value={iso}>
-                    {formatIsoForOption(iso, isHi)}
-                  </option>
-                ))}
-              </select>
+                onChange={setEventDate}
+                options={dateOptions}
+                variant="input"
+                size="md"
+              />
               {fieldErrors.eventDate ? (
                 <span className="text-xs text-alert-500">
                   {fieldErrors.eventDate}
                 </span>
               ) : null}
             </label>
-            <FieldText
-              label={t("Time (24h)", "समय (24 घंटे)")}
-              value={eventTime}
-              onChange={setEventTime}
-              type="time"
-              error={fieldErrors.eventTime}
-            />
+            <label className="grid gap-1.5">
+              <span className="text-sm text-ink-900 font-medium">
+                {t("Time", "समय")}
+              </span>
+              {/* Shared TimeField: 12-hour popover with hour / minute /
+                  AM-PM columns. Same picker BhandaraForm uses for
+                  Start / End time, no native OS time wheel here. */}
+              <TimeField
+                ariaLabel={t("Pick a time", "समय चुनें")}
+                value={eventTime}
+                onChange={setEventTime}
+              />
+              {fieldErrors.eventTime ? (
+                <span className="text-xs text-alert-500">
+                  {fieldErrors.eventTime}
+                </span>
+              ) : null}
+            </label>
           </div>
 
           {/* Size: plates OR kg of wheat. Two-button toggle so the
