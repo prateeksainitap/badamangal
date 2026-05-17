@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { ALL_TUESDAY_ISO, hasUpcomingDate } from "@/lib/dates";
+import { ALL_TUESDAY_ISO } from "@/lib/dates";
 import { AREAS } from "@/lib/lucknow";
 
 export type SiteStats = {
@@ -53,45 +53,32 @@ export async function getHomepageStats(): Promise<SiteStats> {
 
   // Fan out the two reads in parallel, both go through the same
   // Supabase pooler so serialising them would double the round-trip
-  // cost on a cold pool. We pull `tuesdayDates` alongside `area` so
-  // the upcoming-only filter can run in-memory without a second
-  // query, the count below mirrors what the homepage's `listings`
-  // (and the map, area pages, /api/bhandaras GET) actually surface.
+  // cost on a cold pool.
   const [records, spottedCount] = await Promise.all([
     prisma.bhandara.findMany({
       where: { status: "APPROVED" },
-      select: { area: true, tuesdayDates: true },
+      select: { area: true },
     }),
     prisma.spot.count({ where: { status: "APPROVED" } }),
   ]);
 
-  // hasUpcomingDate expects an object with `tuesdayDates: string[]`;
-  // the DB column is JSON-encoded so we parse here. Malformed JSON
-  // (legacy rows) collapses to []; those rows then fail the predicate
-  // and get auto-archived from the public counters.
-  const upcoming = records.filter((r) => {
-    let arr: string[] = [];
-    try {
-      const v: unknown = JSON.parse(r.tuesdayDates);
-      if (Array.isArray(v)) arr = v.filter((x): x is string => typeof x === "string");
-    } catch {
-      /* keep arr = [] */
-    }
-    return hasUpcomingDate({ tuesdayDates: arr }, now);
-  });
-
-  // areasCovered now counts only areas where AT LEAST ONE bhandara
-  // has an upcoming date. Same lens as the homepage area chips and
-  // the area-page listings, so the panel doesn't claim "22 areas
-  // covered" while the visible map only spans 8.
+  // Stats panel counters are cumulative ("so far" in the labels):
+  // every APPROVED bhandara counts toward `bhandarasListed`, every
+  // APPROVED spot toward `bhandarasSpotted`, and the area set spans
+  // all-time. This is intentionally a different lens from the main
+  // list / map / area chips, which filter to upcoming-only via
+  // `hasUpcomingDate` (a past-only bhandara still happened — it
+  // should count toward "the city did this" stats even though it's
+  // no longer on the active map). The "so far" word in the labels
+  // tells visitors the number is cumulative.
   const areas = new Set<string>();
-  for (const r of upcoming) {
+  for (const r of records) {
     if (r.area) areas.add(r.area);
   }
 
   return {
     visitorNumber: counter?.count ?? 0,
-    bhandarasListed: upcoming.length,
+    bhandarasListed: records.length,
     bhandarasSpotted: spottedCount,
     areasCovered: areas.size,
     areasTotal: AREAS.length,
