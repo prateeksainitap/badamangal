@@ -12,6 +12,7 @@ import { stripBotProvenance } from "@/lib/sanitize";
 import AreaIndexGrid from "@/components/AreaIndexGrid";
 import BhandaraCardsSection from "@/components/BhandaraCardsSection";
 import FeaturedBhandaras from "@/components/FeaturedBhandaras";
+import OrganisePromo from "@/components/OrganisePromo";
 import HappeningNow from "@/components/HappeningNow";
 import HomeCardsEmpty from "@/components/HomeCardsEmpty";
 import HomeClosingBenediction from "@/components/HomeClosingBenediction";
@@ -380,6 +381,14 @@ export default async function HomePage() {
           stripped so the only way in is a direct URL.
           <PamphletPromo />
       */}
+
+      {/* ORGANISE-BHANDARA promo, lead-capture banner for the
+          full-service path. Sits right under AreaIndexGrid so a
+          visitor who just scanned the area chips and didn't find
+          their neighbourhood's bhandara (or wants to be the one
+          adding it) is one tap from the request form. ?from=banner
+          attributes the inbound channel on the lead's email. */}
+      <OrganisePromo />
 
       {/* FAMOUS BHANDARAS, curated landmark venues. Sits below the
           listed-bhandaras grid so visitors first see what organisers

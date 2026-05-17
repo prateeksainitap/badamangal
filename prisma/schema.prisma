@@ -151,3 +151,52 @@ model ContactMessage {
 
   @@index([status, createdAt])
 }
+
+// ── Organise-Bhandara requests ──────────────────────────────────────────
+//
+// Lead-capture rows from /organise-bhandara, the full-service module
+// where the team helps an organiser arrange a bhandara (tent, catering,
+// logistics, etc.). Same store-then-email pattern as ContactMessage so
+// nothing is lost if mail-out fails, and the team can triage by status
+// in the admin queue.
+//
+// quantityType + quantityValue model "how big a bhandara?" Two units the
+// organiser can express it in:
+//   PLATES   → headcount served (e.g. 500 plates)
+//   WHEAT_KG → kg of wheat / atta to be cooked (e.g. 200 kg)
+// We capture whichever the organiser is comfortable with; the team
+// normalises internally during the follow-up call.
+//
+// packageTier is what they picked off the public packages section, or
+// "CUSTOM" if they built their own request from the form. Lets us
+// segment by package-tier conversion in the queue.
+model OrganiseRequest {
+  id             String   @id @default(cuid())
+  // contact
+  name           String
+  phone          String
+  email          String?
+  // event
+  area           String? // Lucknow neighbourhood (free-form)
+  addressNotes   String? // landmark / venue / extra location detail
+  eventDate      String? // YYYY-MM-DD; nullable because organisers
+  //                       sometimes ask before they've fixed a date
+  eventTime      String? // HH:MM
+  // size
+  quantityType   String // "PLATES" | "WHEAT_KG"
+  quantityValue  Int    // 50 .. ~10000
+  packageTier    String // "SMALL" | "MEDIUM" | "LARGE" | "CUSTOM"
+  // misc
+  notes          String? // free-form additional requirements
+  // moderation
+  status         String   @default("NEW") // NEW | CONTACTED | CONFIRMED | COMPLETED | REJECTED
+  // attribution: where the user clicked through from
+  // (page | banner | upsell | footer | other)
+  source         String?
+  // metadata
+  createdAt      DateTime @default(now())
+  ipHash         String
+  userAgent      String?
+
+  @@index([status, createdAt])
+}

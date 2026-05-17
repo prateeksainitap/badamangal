@@ -76,6 +76,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     urlWithAlternates("/live", { changeFrequency: "always", priority: 0.85 }),
     urlWithAlternates("/archive", { changeFrequency: "weekly", priority: 0.7 }),
     urlWithAlternates("/list-bhandara", { changeFrequency: "weekly", priority: 0.7 }),
+    // Higher priority than /list-bhandara because the organise flow
+    // is the commercial-intent surface (lead capture → callback →
+    // service), whereas /list-bhandara is the directory entry. SEO
+    // weight should mirror the business value, not the page age.
+    urlWithAlternates("/organise-bhandara", { changeFrequency: "weekly", priority: 0.85 }),
     // /pamphlet intentionally omitted from the sitemap, the feature is
     // shipped but not publicly promoted (no nav, no homepage CTA, no
     // footer link). Direct-link access at /pamphlet still works for

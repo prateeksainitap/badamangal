@@ -168,3 +168,137 @@ export async function sendContactEmail(
     };
   }
 }
+
+// ── Organise-Bhandara lead-capture notification ─────────────────────────
+//
+// Sister to sendContactEmail, fires when someone submits the request
+// form on /organise-bhandara. Same Resend client, same CONTACT_EMAIL_TO
+// inbox; the email subject + body shape are tuned to a service-quote
+// inquiry rather than a generic message so the triage queue can
+// distinguish them at a glance.
+//
+// replyTo flips to the requester's email when provided so hitting
+// Reply lands in their inbox; when only phone is given (the common
+// case), the team's standard reply path is a callback.
+
+export type OrganiseRequestEmailInput = {
+  name: string;
+  phone: string;
+  email?: string;
+  area?: string;
+  addressNotes?: string;
+  eventDate?: string;
+  eventTime?: string;
+  /** "PLATES" | "WHEAT_KG" */
+  quantityType: string;
+  quantityValue: number;
+  /** "SMALL" | "MEDIUM" | "LARGE" | "CUSTOM" */
+  packageTier: string;
+  notes?: string;
+  source?: string;
+  /** OrganiseRequest row ID for traceability in the body footer. */
+  requestId: string;
+  ipHash: string;
+};
+
+export async function sendOrganiseRequestEmail(
+  input: OrganiseRequestEmailInput,
+): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
+  const resend = client();
+  if (!resend) return { ok: false, skipped: true };
+
+  const to = (process.env.CONTACT_EMAIL_TO ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (to.length === 0) {
+    console.warn(
+      "[email] RESEND_API_KEY set but CONTACT_EMAIL_TO empty (organise request)",
+    );
+    return { ok: false, skipped: true };
+  }
+
+  const from = process.env.CONTACT_EMAIL_FROM || DEFAULT_FROM;
+
+  // Quantity prettified: "500 plates" or "200 kg wheat".
+  const qtyLabel =
+    input.quantityType === "WHEAT_KG"
+      ? `${input.quantityValue} kg wheat`
+      : `${input.quantityValue} plates`;
+  const tierLabel =
+    input.packageTier === "CUSTOM"
+      ? "Custom request"
+      : `${input.packageTier.charAt(0)}${input.packageTier.slice(1).toLowerCase()} package`;
+  const eventWhen =
+    input.eventDate && input.eventTime
+      ? `${input.eventDate} · ${input.eventTime}`
+      : input.eventDate || input.eventTime || "Date TBD";
+
+  const subject = `Organise-bhandara request: ${input.name}, ${qtyLabel} (${tierLabel})`;
+
+  const text = [
+    `New /organise-bhandara request — ${tierLabel}`,
+    "",
+    `From: ${input.name}`,
+    `Phone: ${input.phone}`,
+    input.email ? `Email: ${input.email}` : null,
+    "",
+    `When: ${eventWhen}`,
+    input.area ? `Area: ${input.area}` : null,
+    input.addressNotes ? `Address / venue: ${input.addressNotes}` : null,
+    `Size: ${qtyLabel}`,
+    input.notes ? `Notes: ${input.notes}` : null,
+    input.source ? `Source: ${input.source}` : null,
+    "",
+    "-",
+    `Request ID: ${input.requestId}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const row = (label: string, value: string): string =>
+    `<p style="margin:0 0 4px"><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`;
+  const html = `
+<div style="font-family:-apple-system,Segoe UI,sans-serif;color:#1a1410;max-width:560px">
+  <p style="margin:0 0 6px;font-size:13px;color:#9c2a2a;text-transform:uppercase;letter-spacing:0.12em">New organise-bhandara request · ${escapeHtml(tierLabel)}</p>
+  <h2 style="margin:0 0 16px;font-size:20px">${escapeHtml(input.name)} · ${escapeHtml(input.phone)}</h2>
+  ${input.email ? row("Email", input.email) : ""}
+  ${row("When", eventWhen)}
+  ${input.area ? row("Area", input.area) : ""}
+  ${input.addressNotes ? row("Address / venue", input.addressNotes) : ""}
+  ${row("Size", qtyLabel)}
+  ${
+    input.notes
+      ? `<p style="margin:14px 0 0"><strong>Notes:</strong></p><blockquote style="margin:6px 0 0;padding:10px 14px;border-left:3px solid #C9A24A;background:#fffaf3;white-space:pre-wrap">${escapeHtml(
+          input.notes,
+        )}</blockquote>`
+      : ""
+  }
+  <hr style="border:none;border-top:1px solid #e8d9b8;margin:24px 0 12px" />
+  <p style="margin:0;font-size:11px;color:#888">Request ID: <code>${escapeHtml(input.requestId)}</code>${
+    input.source ? ` · Source: ${escapeHtml(input.source)}` : ""
+  } · Reply hits the requester if they gave an email; otherwise call ${escapeHtml(input.phone)}.</p>
+</div>`;
+
+  try {
+    const { error } = await resend.emails.send({
+      from,
+      to,
+      replyTo: input.email || undefined,
+      subject,
+      text,
+      html,
+    });
+    if (error) {
+      console.error("[email] organise-request send failed", error);
+      return { ok: false, error: String(error.message ?? error) };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error("[email] unexpected organise-request send error", err);
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}

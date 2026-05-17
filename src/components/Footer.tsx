@@ -45,6 +45,17 @@ function FooterInner() {
         //   label: isHi ? "मुफ़्त पैम्फलेट बनाएँ" : "Free pamphlet maker",
         // },
         { href: "/spot", label: isHi ? "भंडारा स्पॉट करें" : "Spot a bhandara" },
+        // Full-service organising entry. Lead-capture flow at
+        // /organise-bhandara, distinct from "List my bhandara" (which
+        // is for organisers who DIY logistics and just want to be on
+        // the map). ?from=footer for source attribution on the
+        // intake email.
+        {
+          href: "/organise-bhandara?from=footer",
+          label: isHi
+            ? "हमसे भंडारा का आयोजन करवाएँ"
+            : "Organise a bhandara (full service)",
+        },
         // Past-bhandaras archive, listed venues whose Tuesdays are
         // over + spotted sightings whose 8-hour window expired.
         // Sits inside Discover (next to /live + /spot) so the
