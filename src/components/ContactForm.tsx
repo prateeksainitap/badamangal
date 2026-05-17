@@ -43,7 +43,10 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
   const [phone, setPhone] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
-  const [website, setWebsite] = useState(""); // honeypot
+  // Honeypot field removed (was state `website`). Browser autofill /
+  // password managers were filling it on legit users, causing their
+  // messages to silently 200 without saving. /api/contact still logs
+  // any trip for visibility but no longer blocks on it.
 
   const [stage, setStage] = useState<Stage>("compose");
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -178,7 +181,7 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
           phone,
           subject,
           message,
-          website, // honeypot
+          // honeypot removed; see note next to state declaration above
           attachmentUrl: attachment?.url,
           attachmentName: attachment?.name,
           attachmentType: attachment?.kind,
@@ -499,28 +502,7 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
         </p>
       </div>
 
-      {/* Honeypot, visually hidden, keyboard-skipped, but in DOM so bots
-          that fill every input give themselves away. */}
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          left: "-10000px",
-          width: "1px",
-          height: "1px",
-          overflow: "hidden",
-        }}
-      >
-        <label htmlFor="contact-website">Website</label>
-        <input
-          id="contact-website"
-          type="text"
-          tabIndex={-1}
-          autoComplete="off"
-          value={website}
-          onChange={(e) => setWebsite(e.target.value)}
-        />
-      </div>
+      {/* Honeypot DOM removed — see comment near state declaration. */}
 
       <div className="pt-2">
         <button

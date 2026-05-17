@@ -87,10 +87,21 @@ export async function POST(req: Request): Promise<NextResponse> {
   const source = String(body.source ?? "").trim();
   const honeypot = String(body.website ?? "").trim();
 
-  // Silent honeypot — return 200 without persisting so the bot's
-  // automated retries don't escalate looking for the "right" response.
+  // Honeypot REMOVED as a hard-fail gate. Browser autofill / password
+  // managers were filling the hidden `website` field on legitimate
+  // visitors, causing their submissions to silently 200 without ever
+  // being saved (form showed thank-you screen, DB stayed empty).
+  // Rate-limiting + ipHash + strict field validation already deter
+  // the cheap-bot class this guard was meant to stop, and a low-
+  // volume lead-capture form like this is not a meaningful spam
+  // target. We still LOG the trip for visibility, so if real
+  // bot traffic does start showing up we have signal.
   if (honeypot.length > 0) {
-    return NextResponse.json({ ok: true });
+    console.warn(
+      "[organise-request] honeypot filled (likely browser autofill, not bot):",
+      { honeypotLen: honeypot.length, name: name.slice(0, 40) },
+    );
+    // No early return — let the submission flow through.
   }
 
   const errors: Record<string, string> = {};

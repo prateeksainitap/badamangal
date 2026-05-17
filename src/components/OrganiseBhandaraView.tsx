@@ -193,7 +193,6 @@ export default function OrganiseBhandaraView() {
   const [quantityType, setQuantityType] = useState<QuantityType>("PLATES");
   const [quantityValue, setQuantityValue] = useState<string>("500");
   const [notes, setNotes] = useState("");
-  const [honeypot, setHoneypot] = useState(""); // bot trap, must stay empty
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -312,7 +311,6 @@ export default function OrganiseBhandaraView() {
           packageTier: tier,
           notes,
           source,
-          website: honeypot, // honeypot
         }),
       });
       if (res.ok) {
@@ -541,20 +539,12 @@ export default function OrganiseBhandaraView() {
           <JaliCorner position="bl" className="absolute bottom-3 left-3 w-8 h-8 text-gold-500/55" />
           <JaliCorner position="br" className="absolute bottom-3 right-3 w-8 h-8 text-gold-500/55" />
 
-          {/* Honeypot. Real users leave it blank; bots fill every input. */}
-          <label
-            aria-hidden
-            className="absolute left-[-9999px] w-px h-px overflow-hidden"
-          >
-            Website
-            <input
-              type="text"
-              value={honeypot}
-              onChange={(e) => setHoneypot(e.target.value)}
-              autoComplete="off"
-              tabIndex={-1}
-            />
-          </label>
+          {/* Honeypot removed — modern password managers / autofill
+              extensions were filling the hidden `website` field on
+              legitimate users, causing their submissions to silently
+              200 without ever being saved. Rate-limit + ipHash +
+              validation in /api/organise-request are sufficient
+              protection for this low-volume lead-capture surface. */}
 
           {/* ── Package tier chip row ─────────────────────────────── */}
           <fieldset className="grid gap-2">

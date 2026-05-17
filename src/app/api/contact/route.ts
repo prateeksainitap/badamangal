@@ -42,9 +42,16 @@ export async function POST(req: Request) {
       ? attachmentTypeRaw
       : null;
 
-  // Honeypot, silently 200, don't tell the bot anything useful.
+  // Honeypot REMOVED as a silent-drop gate. Browser autofill / password
+  // managers were filling the hidden `website` field on legit users,
+  // causing their messages to silently 200 without saving (form showed
+  // success, inbox stayed empty). Same fix as /api/organise-request.
+  // We still log trips for visibility, but no longer block on them.
   if (honeypot.length > 0) {
-    return NextResponse.json({ ok: true });
+    console.warn(
+      "[contact] honeypot filled (likely browser autofill, not bot):",
+      { honeypotLen: honeypot.length, name: name.slice(0, 40) },
+    );
   }
 
   // Field validation, returned as a flat map so the UI can highlight
