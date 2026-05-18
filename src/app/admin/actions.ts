@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
+import { prisma, invalidateBhandaraQueryCache } from "@/lib/db";
 
 const COOKIE = "admin";
 
@@ -48,6 +48,9 @@ export async function approveAction(id: string, _formData?: FormData): Promise<v
     where: { id },
     data: { status: "APPROVED", approvedAt: new Date() },
   });
+  // Drop the in-process Bhandara cache so the next /bhandara/[slug]
+  // regeneration reads fresh. See lib/db.ts MUTATION CONTRACT.
+  invalidateBhandaraQueryCache();
   revalidatePath("/admin");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
@@ -73,6 +76,7 @@ export async function publishVerifiedAction(
       approvedAt: new Date(),
     },
   });
+  invalidateBhandaraQueryCache();
   revalidatePath("/admin");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
@@ -84,7 +88,15 @@ export async function rejectAction(id: string, _formData?: FormData): Promise<vo
     where: { id },
     data: { status: "REJECTED" },
   });
+  // Previously only revalidated /admin, which left a previously-
+  // APPROVED bhandara lingering on the homepage map and its own
+  // /bhandara/[slug] detail page until the next 5-min ISR window
+  // expired. Reject is a real public-state change → revalidate the
+  // public surfaces too + drop the in-process cache.
+  invalidateBhandaraQueryCache();
   revalidatePath("/admin");
+  revalidatePath("/");
+  revalidatePath(`/bhandara/[slug]`, "page");
 }
 
 /**
@@ -98,6 +110,7 @@ export async function verifyAction(id: string, _formData?: FormData): Promise<vo
     where: { id },
     data: { isVerified: true },
   });
+  invalidateBhandaraQueryCache();
   revalidatePath("/admin");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
@@ -109,6 +122,7 @@ export async function unverifyAction(id: string, _formData?: FormData): Promise<
     where: { id },
     data: { isVerified: false },
   });
+  invalidateBhandaraQueryCache();
   revalidatePath("/admin");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
@@ -219,6 +233,13 @@ export async function editAndPublishAction(
     },
   });
 
+  // CRITICAL: invalidate the in-process Bhandara cache before
+  // revalidating Next's HTML cache. Without this, the next
+  // /bhandara/[slug] regeneration reads the cached stale Promise
+  // and re-renders the OLD photoUrl / fields — see lib/db.ts
+  // MUTATION CONTRACT for the full story. This was the bug behind
+  // "I uploaded a new photo but the detail page won't update."
+  invalidateBhandaraQueryCache();
   revalidatePath("/admin");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
@@ -316,8 +337,16 @@ export async function clearBotQueueAction(): Promise<void> {
     prisma.bhandara.deleteMany({ where: { description: { contains: "[bot:" } } }),
     prisma.spot.deleteMany({ where: { ipHash: "bot:whatsapp" } }),
   ]);
+  // Drop the in-process Bhandara cache + revalidate detail pages
+  // too. Even though the bot rows are usually PENDING (so they
+  // never made it to the public site), defensive consistency: if
+  // ANY of them ever got promoted to APPROVED before the admin
+  // hit this button, the detail page would 404 on next visit
+  // unless we kick off a regeneration.
+  invalidateBhandaraQueryCache();
   revalidatePath("/admin");
   revalidatePath("/");
+  revalidatePath(`/bhandara/[slug]`, "page");
   redirect("/admin?type=whatsapp");
 }
 
@@ -426,6 +455,7 @@ export async function deleteBhandaraAction(
     /* ignore, the cascade will handle it */
   }
   await prisma.bhandara.delete({ where: { id } });
+  invalidateBhandaraQueryCache();
   revalidatePath("/admin");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");

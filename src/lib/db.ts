@@ -53,15 +53,29 @@ function safeJsonArray(input: string): string[] {
 
    Runtime behaviour:
      - During `next build`: 1 query for all 36 area pages.
-     - In production ISR (revalidate=300): each regeneration is a
-       fresh function invocation so the cache resets per regen, which
-       is exactly what we want — we don't want stale data living for
-       the lifetime of a warm Function.
+     - In production ISR (revalidate=300): the cache survives across
+       page regenerations inside a WARM Netlify Function (the
+       previous comment claimed otherwise — that was the bug). The
+       Promise lives at module scope, the module is evaluated once
+       per JS realm, and warm Functions reuse the realm. So a
+       revalidatePath() that re-renders /bhandara/[slug] will hit
+       this same stale Promise and re-render with stale photoUrl /
+       fields — fixed waves later but seen first when an admin
+       photo-replace didn't propagate to the public detail page.
      - In dev: persists for the dev process lifetime; restart to clear.
 
    Callers can ALSO pass `{ fresh: true }` to skip the cache (used by
    the admin /admin page which needs the absolute-latest list, not a
    build-time snapshot).
+
+   MUTATION CONTRACT:
+     Every server action that creates / updates / deletes a Bhandara
+     row MUST call `invalidateBhandaraQueryCache()` alongside its
+     `revalidatePath()` calls. Without that pairing, the page is
+     marked stale + regenerates + reads the cached Promise + renders
+     the old data. The two helpers are codependent: revalidatePath
+     handles Next's HTML cache, invalidateBhandaraQueryCache handles
+     our in-process DB cache.
    ──────────────────────────────────────────────────────────────── */
 
 let allApprovedBhandarasPromise: Promise<DbBhandara[]> | null = null;
@@ -90,6 +104,32 @@ export async function getAllApprovedBhandarasMapped(opts?: {
 }): Promise<Bhandara[]> {
   const records = await getAllApprovedBhandaras(opts);
   return records.map(toBhandara);
+}
+
+/**
+ * Drop the module-level Bhandara query cache so the next caller
+ * fetches fresh from the DB. MUST be called from every server
+ * action that mutates a Bhandara row, alongside the usual
+ * revalidatePath() calls.
+ *
+ * Why this exists:
+ *   `getAllApprovedBhandaras` memoizes a Promise at module scope to
+ *   collapse 72 build-time queries into one (see the big comment
+ *   above). That Promise survives across page regenerations in a
+ *   warm Netlify Function — so an admin photo-replace would write
+ *   the new URL to the DB, revalidatePath would mark the page
+ *   stale, the page would regenerate, but the regeneration call
+ *   would receive the SAME cached Promise and render the OLD
+ *   photoUrl. The fix is this explicit hook: clear the Promise the
+ *   moment we mutate, so the next render fetches fresh.
+ *
+ * If you forget to call this from a new admin action, the symptom
+ * is: admin save succeeds, DB row updates correctly, but the public
+ * /bhandara/[slug] keeps showing old data until the Function cold-
+ * starts (could be minutes, could be never on a busy server).
+ */
+export function invalidateBhandaraQueryCache(): void {
+  allApprovedBhandarasPromise = null;
 }
 
 export function toBhandara(record: DbBhandara): Bhandara {

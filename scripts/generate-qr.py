@@ -3,9 +3,11 @@
 Generate the BadaMangal QR code with a faded brand logo in the center.
 
 Outputs (under public/brand/qr/):
-  • badamangal-qr-1200.png  — newsprint / web (1200×1200, 300 dpi → 10cm)
-  • badamangal-qr-3000.png  — poster / vinyl / hoarding (3000×3000)
-  • badamangal-qr-flat.png  — pure B&W, no logo (fallback / scanner test)
+  • badamangal-qr-1200.png        — branded + faded logo, 1200×1200 (newsprint / web)
+  • badamangal-qr-3000.png        — branded + faded logo, 3000×3000 (poster / vinyl)
+  • badamangal-qr-plain-1200.png  — branded sindoor, NO logo, 1200×1200
+  • badamangal-qr-plain-3000.png  — branded sindoor, NO logo, 3000×3000
+  • badamangal-qr-flat.png        — pure B&W, no logo (printer fallback / scanner test)
 
 Design choices:
   • Encodes the canonical brandable URL `https://badamangal.com` (NOT a
@@ -82,11 +84,17 @@ def render_logo(target_px: int) -> Image.Image:
     return Image.open(io.BytesIO(png_bytes)).convert("RGBA")
 
 
-def make_qr(size_px: int, with_logo: bool, out_path: Path) -> None:
+def make_qr(
+    size_px: int,
+    with_logo: bool,
+    out_path: Path,
+    fill_color: tuple[int, int, int] | None = None,
+) -> None:
     """Build a single QR at the given pixel size and write it to
     out_path. When with_logo is True, the brand mark is faded over
-    the center; otherwise a plain B&W QR is written (used for the
-    scanner-test fallback)."""
+    the center. fill_color overrides the module colour — pass
+    SINDOOR_700 for a no-logo branded variant; leave None to get
+    the defaults (sindoor with logo, ink-black without)."""
 
     # box_size is per-module pixels. We pick it so the final image
     # is at least `size_px` wide; qrcode rounds to integer modules.
@@ -103,8 +111,12 @@ def make_qr(size_px: int, with_logo: bool, out_path: Path) -> None:
     qr.make(fit=True)
 
     # Custom fill/back colors → brand cohesion vs default black.
+    # Caller can override via fill_color; otherwise we pick sindoor
+    # for the logo variant (matches the faded saffron mark) and
+    # ink-black for the no-logo variant (printer-bulletproof B&W).
+    effective_fill = fill_color or (SINDOOR_700 if with_logo else INK_900)
     qr_img = qr.make_image(
-        fill_color=INK_900 if not with_logo else SINDOOR_700,
+        fill_color=effective_fill,
         back_color=CREAM_50,
     ).convert("RGBA")
 
@@ -164,6 +176,16 @@ def main() -> None:
 
     make_qr(1200, with_logo=True,  out_path=OUT_DIR / "badamangal-qr-1200.png")
     make_qr(3000, with_logo=True,  out_path=OUT_DIR / "badamangal-qr-3000.png")
+    # "plain" = brand sindoor on cream, no logo overlay. Same visual
+    # family as the branded version so an ad can use either without
+    # the page looking like two different campaigns, but cleaner /
+    # more legible for tiny placements (rickshaw stickers, sub-2cm
+    # newspaper slots) where even a faded center logo eats too much
+    # of the module area.
+    make_qr(1200, with_logo=False, out_path=OUT_DIR / "badamangal-qr-plain-1200.png", fill_color=SINDOOR_700)
+    make_qr(3000, with_logo=False, out_path=OUT_DIR / "badamangal-qr-plain-3000.png", fill_color=SINDOOR_700)
+    # Pure B&W flat — printer-bulletproof fallback when a print shop
+    # rejects the colour version (cheap offset presses sometimes do).
     make_qr(1200, with_logo=False, out_path=OUT_DIR / "badamangal-qr-flat.png")
 
     print("\nDone. Verify by opening any of the PNGs with your phone")
