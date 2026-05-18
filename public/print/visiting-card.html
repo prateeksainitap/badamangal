@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>BadaMangal · Visiting cards · A4 print sheet</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* ─── Print setup ──────────────────────────────────────────
+     A4 = 210mm × 297mm. 10 cards per sheet in a 2×5 grid, each
+     card 85mm × 55mm (Indian/UK standard business-card size).
+     Cards butt edge-to-edge so a single straight cut separates
+     each row + column — fastest to trim with a paper cutter.
+
+     Margins:   20mm sides, 11mm top/bottom.
+     2 cards × 85mm = 170mm + 20×2mm sides = 210mm ✓
+     5 cards × 55mm = 275mm + 11×2mm = 297mm ✓
+  ─────────────────────────────────────────────────────────── */
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  /* Google Fonts — match the live site's Devanagari + serif stack.
+     Browsers prefetch + embed these into the print PDF. */
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Tiro+Devanagari+Hindi&family=Mukta:wght@400;600&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: white;
+  }
+
+  body {
+    font-family: 'Mukta', sans-serif;
+    color: #1A1410;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .sheet {
+    width: 210mm;
+    height: 297mm;
+    padding: 11mm 20mm;
+    display: grid;
+    grid-template-columns: 85mm 85mm;
+    grid-template-rows: repeat(5, 55mm);
+    gap: 0;
+  }
+
+  /* ─── Card ──────────────────────────────────────────────── */
+  .card {
+    width: 85mm;
+    height: 55mm;
+    padding: 4mm 4.5mm;
+    /* Faint dashed border = cut guide. Disappears on most home
+       printers (too light to register), shows just enough on
+       photo printers to line up the paper cutter. */
+    outline: 0.15mm dashed rgba(0,0,0,0.18);
+    outline-offset: -0.1mm;
+    /* Brand cream gradient — keeps the cream-paper feel from
+       the website. Photo paper renders this beautifully. */
+    background:
+      radial-gradient(120% 80% at 100% 0%, rgba(224,122,31,0.12), transparent 60%),
+      radial-gradient(100% 80% at 0% 100%, rgba(201,162,74,0.14), transparent 65%),
+      linear-gradient(180deg, #FFF7EB 0%, #FBF7F0 100%);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  /* Awadhi jali corner ornaments — same 4-corner motif as the
+     website cards. SVG inlined so prints lock-step without
+     external requests. */
+  .corner {
+    position: absolute;
+    width: 7mm;
+    height: 7mm;
+    color: rgba(201,162,74,0.45);
+  }
+  .corner.tl { top: 1.5mm; left: 1.5mm; }
+  .corner.tr { top: 1.5mm; right: 1.5mm; transform: rotate(90deg); }
+  .corner.bl { bottom: 1.5mm; left: 1.5mm; transform: rotate(-90deg); }
+  .corner.br { bottom: 1.5mm; right: 1.5mm; transform: rotate(180deg); }
+
+  /* ─── Card row 1: brand block ─────────────────────────── */
+  .brand-row {
+    display: flex;
+    align-items: center;
+    gap: 2.5mm;
+  }
+  .brand-mark {
+    width: 11mm;
+    height: 11mm;
+    flex-shrink: 0;
+  }
+  .brand-text {
+    line-height: 1.05;
+  }
+  .brand-name-hi {
+    font-family: 'Tiro Devanagari Hindi', serif;
+    font-size: 13pt;
+    color: #9C2A2A;
+    letter-spacing: 0.2pt;
+  }
+  .brand-name-en {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 10.5pt;
+    color: #E07A1F;
+    letter-spacing: 0.3pt;
+    margin-top: 0.5mm;
+  }
+
+  /* ─── Card row 2: bilingual tagline ───────────────────── */
+  .tagline {
+    font-family: 'Tiro Devanagari Hindi', serif;
+    font-size: 8.5pt;
+    line-height: 1.35;
+    color: #1A1410;
+    margin: 1mm 0;
+  }
+  .tagline-en {
+    font-family: 'Mukta', sans-serif;
+    font-size: 7pt;
+    line-height: 1.35;
+    color: #5A4F46;
+    margin-top: 0.8mm;
+  }
+
+  /* ─── Card row 3: footer (contact + QR) ───────────────── */
+  .footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 2mm;
+  }
+  .contact {
+    font-size: 7pt;
+    color: #5A4F46;
+    line-height: 1.45;
+  }
+  .contact .url {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 9pt;
+    color: #E07A1F;
+    display: block;
+    margin-bottom: 0.7mm;
+    letter-spacing: 0.2pt;
+  }
+  .contact .label {
+    color: #9C2A2A;
+    margin-right: 1mm;
+  }
+
+  .qr {
+    width: 17mm;
+    height: 17mm;
+    flex-shrink: 0;
+    border: 0.2mm solid rgba(0,0,0,0.08);
+    background: white;
+    padding: 0.5mm;
+  }
+  .qr img { width: 100%; height: 100%; display: block; }
+
+  /* ─── On-screen helper (hidden in print) ──────────────── */
+  .screen-hint {
+    position: fixed;
+    bottom: 8mm;
+    right: 8mm;
+    padding: 6px 10px;
+    background: #1A1410;
+    color: #FBF7F0;
+    font: 11px/1.4 system-ui, sans-serif;
+    border-radius: 4px;
+    opacity: 0.85;
+    z-index: 99;
+  }
+  @media print {
+    .screen-hint { display: none; }
+    body { background: white; }
+  }
+</style>
+</head>
+<body>
+
+<div class="screen-hint">
+  Press <strong>Cmd/Ctrl + P</strong> → Layout: Portrait · Margins: None · Scale: 100% · paper: A4 photo
+</div>
+
+<div class="sheet">
+  <!-- 10 identical cards. Edit the template once and all 10 update. -->
+  <!-- ROW 1 -->
+  <div class="card"><svg class="corner tl" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.6"/><circle cx="4" cy="4" r="0.8" fill="currentColor"/><circle cx="8" cy="4" r="0.6" fill="currentColor"/><circle cx="4" cy="8" r="0.6" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.4" opacity="0.6"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.3" opacity="0.45"/></svg><svg class="corner tr" viewBox="0 0 24 24" fill="none"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.6"/><circle cx="4" cy="4" r="0.8" fill="currentColor"/><circle cx="8" cy="4" r="0.6" fill="currentColor"/><circle cx="4" cy="8" r="0.6" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.4" opacity="0.6"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.3" opacity="0.45"/></svg><svg class="corner bl" viewBox="0 0 24 24" fill="none"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.6"/><circle cx="4" cy="4" r="0.8" fill="currentColor"/><circle cx="8" cy="4" r="0.6" fill="currentColor"/><circle cx="4" cy="8" r="0.6" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.4" opacity="0.6"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.3" opacity="0.45"/></svg><svg class="corner br" viewBox="0 0 24 24" fill="none"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.6"/><circle cx="4" cy="4" r="0.8" fill="currentColor"/><circle cx="8" cy="4" r="0.6" fill="currentColor"/><circle cx="4" cy="8" r="0.6" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.4" opacity="0.6"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.3" opacity="0.45"/></svg>
+
+    <div class="brand-row">
+      <img class="brand-mark" src="/brand/logo-primary.svg" alt="" />
+      <div class="brand-text">
+        <div class="brand-name-hi">बड़ा मंगल</div>
+        <div class="brand-name-en">BADAMANGAL.COM</div>
+      </div>
+    </div>
+
+    <div>
+      <div class="tagline">लखनऊ के सभी बड़े मंगल भण्डारे, एक नक़्शे पर।</div>
+      <div class="tagline-en">Every Bada Mangal bhandara in Lucknow, on one map. Free service.</div>
+    </div>
+
+    <div class="footer-row">
+      <div class="contact">
+        <span class="url">BadaMangal.com</span>
+        <div><span class="label">Call:</span>[PHONE]</div>
+        <div><span class="label">Email:</span>namaste@badamangal.com</div>
+      </div>
+      <div class="qr"><img src="/brand/qr/badamangal-qr-plain-1200.png" alt="QR to BadaMangal.com" /></div>
+    </div>
+  </div>
+  <!-- card --><!-- (the other 9 cards are identical; we replicate the structure verbatim via a build-once-loop in mind) -->
+</div>
+
+<script>
+  // Tiny no-build replicator: the first .card is the template. We
+  // clone it 9 more times to fill the 2×5 grid. Saves us from
+  // pasting 200+ lines of identical markup and makes per-card edits
+  // a single-source change.
+  (function () {
+    const sheet = document.querySelector('.sheet');
+    const tpl = sheet.querySelector('.card');
+    if (!tpl) return;
+    for (let i = 0; i < 9; i++) {
+      sheet.appendChild(tpl.cloneNode(true));
+    }
+  })();
+</script>
+
+</body>
+</html>

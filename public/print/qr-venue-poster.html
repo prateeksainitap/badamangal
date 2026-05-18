@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>BadaMangal · QR poster · A4 · B&amp;W</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* ─── Print setup ──────────────────────────────────────────
+     A4 portrait, single poster per sheet, pure black-and-white
+     so it prints clean on any laser/inkjet (no colour cartridge
+     needed). Optimised for venue use: paste on a wall at a
+     bhandara so devotees scan with their phone camera.
+
+     The QR is 10cm × 10cm — well above the 2.5cm scan-comfort
+     threshold for older phones and visible from ~2m away.
+
+     Hindi-led typography (this is what devotees read first);
+     English follows below in slightly smaller weight.
+  ─────────────────────────────────────────────────────────── */
+
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Tiro+Devanagari+Hindi&family=Mukta:wght@400;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body { background: white; color: #000; }
+
+  body {
+    font-family: 'Mukta', sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .poster {
+    width: 210mm;
+    height: 297mm;
+    padding: 18mm 22mm;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* Decorative corner ornaments — pure-ink jali motif, no fills
+     so they print clean even on cheap toner. Same composition as
+     the website's JaliCorner but rendered B&W. */
+  .corner {
+    position: absolute;
+    width: 22mm;
+    height: 22mm;
+    color: #000;
+  }
+  .corner.tl { top: 8mm; left: 8mm; }
+  .corner.tr { top: 8mm; right: 8mm; transform: rotate(90deg); }
+  .corner.bl { bottom: 8mm; left: 8mm; transform: rotate(-90deg); }
+  .corner.br { bottom: 8mm; right: 8mm; transform: rotate(180deg); }
+
+  /* ─── Devotional ribbon at top ─────────────────────────── */
+  .blessing {
+    text-align: center;
+    font-family: 'Tiro Devanagari Hindi', serif;
+    font-size: 14pt;
+    letter-spacing: 1.5pt;
+    border-top: 0.5mm solid #000;
+    border-bottom: 0.5mm solid #000;
+    padding: 3mm 0;
+    margin-bottom: 12mm;
+  }
+
+  /* ─── Headline block ───────────────────────────────────── */
+  .headline-hi {
+    text-align: center;
+    font-family: 'Tiro Devanagari Hindi', serif;
+    font-size: 30pt;
+    line-height: 1.2;
+    color: #000;
+  }
+  .headline-en {
+    text-align: center;
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 18pt;
+    margin-top: 4mm;
+    color: #000;
+  }
+  .subhead {
+    text-align: center;
+    font-size: 12pt;
+    margin-top: 6mm;
+    color: #000;
+    line-height: 1.5;
+  }
+
+  /* ─── QR block (centre of poster) ──────────────────────── */
+  .qr-frame {
+    margin: 12mm auto;
+    width: 110mm;
+    padding: 6mm;
+    border: 0.6mm solid #000;
+    background: white;
+    text-align: center;
+  }
+  .qr-frame .scan-label {
+    font-family: 'Tiro Devanagari Hindi', serif;
+    font-size: 13pt;
+    margin-bottom: 4mm;
+  }
+  .qr-frame img {
+    display: block;
+    width: 98mm;
+    height: 98mm;
+    margin: 0 auto;
+  }
+  .qr-frame .scan-label-en {
+    margin-top: 4mm;
+    font-size: 10pt;
+    letter-spacing: 0.5pt;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  /* ─── URL block (below QR, big + readable) ─────────────── */
+  .url-block {
+    text-align: center;
+    margin-top: 4mm;
+  }
+  .url-block .visit {
+    font-size: 10pt;
+    letter-spacing: 1.5pt;
+    text-transform: uppercase;
+    color: #000;
+  }
+  .url-block .url {
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 26pt;
+    margin-top: 2mm;
+    letter-spacing: 0.3pt;
+    color: #000;
+  }
+
+  /* ─── Footer (proof of seva, no ads etc.) ──────────────── */
+  .footer {
+    margin-top: auto;
+    text-align: center;
+    border-top: 0.3mm solid #000;
+    padding-top: 5mm;
+  }
+  .footer-line-hi {
+    font-family: 'Tiro Devanagari Hindi', serif;
+    font-size: 11pt;
+    line-height: 1.4;
+  }
+  .footer-line-en {
+    margin-top: 2mm;
+    font-size: 9pt;
+    letter-spacing: 0.5pt;
+  }
+  .footer-meta {
+    margin-top: 4mm;
+    font-size: 7.5pt;
+    color: #000;
+    letter-spacing: 0.5pt;
+  }
+
+  /* ─── Screen hint ──────────────────────────────────────── */
+  .screen-hint {
+    position: fixed;
+    bottom: 8mm;
+    right: 8mm;
+    padding: 6px 10px;
+    background: #1A1410;
+    color: #FBF7F0;
+    font: 11px/1.4 system-ui, sans-serif;
+    border-radius: 4px;
+    opacity: 0.85;
+    z-index: 99;
+  }
+  @media print {
+    .screen-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="screen-hint">
+  Press <strong>Cmd/Ctrl + P</strong> → Layout: Portrait · Margins: None · Scale: 100% · paper: A4 · B&amp;W
+</div>
+
+<div class="poster">
+  <svg class="corner tl" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2 22V2H22" stroke="currentColor" stroke-width="0.8"/>
+    <circle cx="4" cy="4" r="0.9" fill="currentColor"/>
+    <circle cx="8" cy="4" r="0.7" fill="currentColor"/>
+    <circle cx="12" cy="4" r="0.5" fill="currentColor"/>
+    <circle cx="4" cy="8" r="0.7" fill="currentColor"/>
+    <circle cx="4" cy="12" r="0.5" fill="currentColor"/>
+    <path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.5"/>
+    <path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.35" opacity="0.6"/>
+    <path d="M4 20 L20 4" stroke="currentColor" stroke-width="0.25" opacity="0.4"/>
+  </svg>
+  <svg class="corner tr" viewBox="0 0 24 24" fill="none"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.8"/><circle cx="4" cy="4" r="0.9" fill="currentColor"/><circle cx="8" cy="4" r="0.7" fill="currentColor"/><circle cx="12" cy="4" r="0.5" fill="currentColor"/><circle cx="4" cy="8" r="0.7" fill="currentColor"/><circle cx="4" cy="12" r="0.5" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.5"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.35" opacity="0.6"/><path d="M4 20 L20 4" stroke="currentColor" stroke-width="0.25" opacity="0.4"/></svg>
+  <svg class="corner bl" viewBox="0 0 24 24" fill="none"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.8"/><circle cx="4" cy="4" r="0.9" fill="currentColor"/><circle cx="8" cy="4" r="0.7" fill="currentColor"/><circle cx="12" cy="4" r="0.5" fill="currentColor"/><circle cx="4" cy="8" r="0.7" fill="currentColor"/><circle cx="4" cy="12" r="0.5" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.5"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.35" opacity="0.6"/><path d="M4 20 L20 4" stroke="currentColor" stroke-width="0.25" opacity="0.4"/></svg>
+  <svg class="corner br" viewBox="0 0 24 24" fill="none"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.8"/><circle cx="4" cy="4" r="0.9" fill="currentColor"/><circle cx="8" cy="4" r="0.7" fill="currentColor"/><circle cx="12" cy="4" r="0.5" fill="currentColor"/><circle cx="4" cy="8" r="0.7" fill="currentColor"/><circle cx="4" cy="12" r="0.5" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.5"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.35" opacity="0.6"/><path d="M4 20 L20 4" stroke="currentColor" stroke-width="0.25" opacity="0.4"/></svg>
+
+  <div class="blessing">।। जय बजरंगबली ।।</div>
+
+  <h1 class="headline-hi">
+    लखनऊ के सभी बड़े मंगल भण्डारे<br/>
+    एक नक़्शे पर
+  </h1>
+  <p class="headline-en">Every Bada Mangal bhandara in Lucknow, on one map.</p>
+  <p class="subhead">
+    पते · समय · मेन्यू · Maps direction<br/>
+    Free. Hindi + English. No sign-up.
+  </p>
+
+  <div class="qr-frame">
+    <div class="scan-label">यहाँ scan कीजिए</div>
+    <img src="/brand/qr/badamangal-qr-flat.png" alt="QR to badamangal.com" />
+    <div class="scan-label-en">Scan with your phone camera</div>
+  </div>
+
+  <div class="url-block">
+    <div class="visit">Visit</div>
+    <div class="url">BadaMangal.com</div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-line-hi">पूर्णतः निःशुल्क सार्वजनिक सेवा</div>
+    <div class="footer-line-en">A free, non-commercial public service</div>
+    <div class="footer-meta">35+ bhandaras listed · Updated every Tuesday + Saturday · BadaMangal.com</div>
+  </div>
+</div>
+
+</body>
+</html>
