@@ -203,6 +203,16 @@ model OrganiseRequest {
   createdAt      DateTime @default(now())
   ipHash         String
   userAgent      String?
+  // bot WhatsApp notification tracking. NULL = the bot hasn't sent
+  // a team alert for this row yet; timestamp = bot confirmed delivery
+  // to the BM Ingest 2 group. The /api/bot/organise-requests/pending
+  // endpoint returns rows where this is NULL; the bot polls every
+  // 60s, sends the alert, then POSTs back to mark-notified. Robust
+  // against bot crashes: if delivery fails the row stays NULL and is
+  // retried on the next poll. No duplicate WhatsApp messages on
+  // success because the bot only marks AFTER successful send.
+  notifiedAt     DateTime?
 
   @@index([status, createdAt])
+  @@index([notifiedAt])
 }
