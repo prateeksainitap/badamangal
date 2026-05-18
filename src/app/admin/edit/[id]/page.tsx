@@ -23,6 +23,7 @@ import { editAndPublishAction } from "@/app/admin/actions";
 import { stripBotProvenance } from "@/lib/sanitize";
 import MapLocationInput from "@/components/admin/MapLocationInput";
 import SubmitButton from "@/components/admin/SubmitButton";
+import AdminPhotoField from "@/components/admin/AdminPhotoField";
 import PhoneInput from "@/components/PhoneInput";
 
 export const dynamic = "force-dynamic";
@@ -87,27 +88,19 @@ export default async function AdminEditPage({ params }: PageProps) {
         </Link>
       </header>
 
-      {/* Photo preview band, the most important context for the admin
-          while filling fields. The thumbnail in /admin is 80px; here we
-          render up to ~360px and link the open-full-tab fallback. */}
-      {b.photoUrl ? (
-        <a
-          href={b.photoUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block mt-2 rounded-2xl border border-gold-500/40 overflow-hidden bg-cream-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600"
-          title="Open full image in a new tab"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={b.photoUrl}
-            alt=""
-            className="max-h-[420px] w-full object-contain"
-          />
-        </a>
-      ) : null}
-
+      {/* Photo field lives inside the form now (vs the old read-only
+          preview band that sat above it). AdminPhotoField renders the
+          same wide preview at the top of the form and adds Replace /
+          Take photo buttons that POST to /api/admin/upload-image. The
+          new URL flows through a hidden <input name="photoUrl"> so
+          the form action keeps reading photoUrl unchanged. */}
       <form action={action} className="mt-6 grid gap-5">
+        <AdminPhotoField
+          name="photoUrl"
+          defaultValue={b.photoUrl ?? ""}
+          label="Photo"
+          hint="Replacing the photo only swaps the image — all other fields below stay as they are until you click Save & publish."
+        />
         <Pair label="Name (English)" name="name" defaultValue={b.name} required />
         <Pair label="Name (हिन्दी)" name="nameHi" defaultValue={b.nameHi ?? ""} />
 
@@ -242,11 +235,10 @@ export default async function AdminEditPage({ params }: PageProps) {
           />
         </div>
 
-        <Pair
-          label="Photo URL"
-          name="photoUrl"
-          defaultValue={b.photoUrl ?? ""}
-        />
+        {/* Photo URL field used to live here as a plain text input.
+            Now handled by the AdminPhotoField at the top of the form,
+            which writes to a hidden <input name="photoUrl"> so the
+            server action signature is unchanged. */}
 
         <label className="flex items-center gap-2 text-sm text-ink-900 mt-2">
           <input

@@ -261,6 +261,14 @@ export async function editAndApproveSpotAction(
   // expiresAt, useful when you only edited a typo and want the
   // original TTL countdown intact.
   const ttlChoice = str("ttl");
+  // photoUrl is fed by AdminPhotoField via a hidden form input. If the
+  // admin never replaced the image it round-trips as the original DB
+  // value; if they uploaded a new one, the field carries the new
+  // Supabase URL. We only overwrite the column when the field is
+  // non-empty — an empty string would blank out a previously-uploaded
+  // photo, which is never what the admin meant (they'd have hit the
+  // explicit "Reject" workflow for that).
+  const newPhotoUrl = str("photoUrl");
   const data: Record<string, unknown> = {
     caption: str("caption") || null,
     area: str("area") || null,
@@ -271,6 +279,9 @@ export async function editAndApproveSpotAction(
     reporterName: str("reporterName") || null,
     status: "APPROVED",
   };
+  if (newPhotoUrl) {
+    data.photoUrl = newPhotoUrl;
+  }
   if (ttlChoice === "reset") {
     data.expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
   }

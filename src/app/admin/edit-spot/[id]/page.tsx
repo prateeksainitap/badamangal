@@ -22,6 +22,7 @@ import { prisma } from "@/lib/db";
 import { editAndApproveSpotAction } from "@/app/admin/actions";
 import { stripBotProvenance } from "@/lib/sanitize";
 import SubmitButton from "@/components/admin/SubmitButton";
+import AdminPhotoField from "@/components/admin/AdminPhotoField";
 
 export const dynamic = "force-dynamic";
 const COOKIE = "admin";
@@ -79,24 +80,19 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
         </Link>
       </header>
 
-      {s.photoUrl ? (
-        <a
-          href={s.photoUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block mt-2 rounded-2xl border border-gold-500/40 overflow-hidden bg-cream-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600"
-          title="Open full image in a new tab"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={s.photoUrl}
-            alt=""
-            className="max-h-[420px] w-full object-contain"
-          />
-        </a>
-      ) : null}
-
+      {/* Photo field is now editable inside the form via AdminPhotoField.
+          Old read-only preview band was removed; the field still shows
+          the current photo on top (same look as before) and adds
+          Replace / Take photo buttons that POST to /api/admin/upload-image.
+          The new URL flows through a hidden <input name="photoUrl"> read
+          by editAndApproveSpotAction on save. */}
       <form action={action} className="mt-6 grid gap-5">
+        <AdminPhotoField
+          name="photoUrl"
+          defaultValue={s.photoUrl ?? ""}
+          label="Photo"
+          hint="Spots are time-limited live photos — only swap this if the original is genuinely wrong (rotated, cropped poorly, etc)."
+        />
         <label className="grid gap-1.5">
           <span className="text-sm text-ink-600">
             Caption <span className="text-sindoor-700">*</span>
