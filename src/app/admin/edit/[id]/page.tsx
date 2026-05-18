@@ -99,7 +99,7 @@ export default async function AdminEditPage({ params }: PageProps) {
           name="photoUrl"
           defaultValue={b.photoUrl ?? ""}
           label="Photo"
-          hint="Replacing the photo only swaps the image — all other fields below stay as they are until you click Save & publish."
+          hint="Replacing the photo only swaps the image. All other fields below stay as they are until you click Save & publish."
         />
         <Pair label="Name (English)" name="name" defaultValue={b.name} required />
         <Pair label="Name (हिन्दी)" name="nameHi" defaultValue={b.nameHi ?? ""} />

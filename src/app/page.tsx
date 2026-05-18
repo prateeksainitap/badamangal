@@ -13,6 +13,7 @@ import AreaIndexGrid from "@/components/AreaIndexGrid";
 import BhandaraCardsSection from "@/components/BhandaraCardsSection";
 import FeaturedBhandaras from "@/components/FeaturedBhandaras";
 import OrganisePromo from "@/components/OrganisePromo";
+import VolunteerPromo from "@/components/VolunteerPromo";
 import HappeningNow from "@/components/HappeningNow";
 import HomeCardsEmpty from "@/components/HomeCardsEmpty";
 import HomeClosingBenediction from "@/components/HomeClosingBenediction";
@@ -428,6 +429,13 @@ export default async function HomePage() {
 
       {/* HISTORY TEASER, client component, locale from context. */}
       <HomeHistoryTeaser />
+
+      {/* Quiet volunteer-programme nudge — slim strip near the bottom
+          of the page rather than a banner near the top. Reaches the
+          long-scroll user who's already invested in the site without
+          competing with discovery (map / listings) or the primary
+          OrganisePromo CTA up top. */}
+      <VolunteerPromo />
 
       {/* CLOSING BENEDICTION, bilingual blessing line + Maharajji
           medallion. Client component so the body line ("May Hanuman

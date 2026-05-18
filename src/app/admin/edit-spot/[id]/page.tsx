@@ -91,7 +91,7 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
           name="photoUrl"
           defaultValue={s.photoUrl ?? ""}
           label="Photo"
-          hint="Spots are time-limited live photos — only swap this if the original is genuinely wrong (rotated, cropped poorly, etc)."
+          hint="Spots are time-limited live photos. Only swap this if the original is genuinely wrong (rotated, cropped poorly, etc)."
         />
         <label className="grid gap-1.5">
           <span className="text-sm text-ink-600">

@@ -4,6 +4,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma, invalidateBhandaraQueryCache } from "@/lib/db";
+import { slugify, ensureUniqueSlug } from "@/lib/slugify";
+import { generateVolunteerCode } from "@/lib/volunteer-server";
 
 const COOKIE = "admin";
 
@@ -547,4 +549,417 @@ export async function deleteOrganiseRequestAction(
   await requireAdmin();
   await prisma.organiseRequest.delete({ where: { id } });
   revalidatePath("/admin/organise");
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Volunteer-programme moderation actions
+// ────────────────────────────────────────────────────────────────────
+//
+// Lifecycle of a VolunteerSubmission:
+//   NEW       → fresh from the volunteer, awaiting admin review
+//   APPROVED  → admin approved → ₹50 owed + auto-created Bhandara
+//               + Spot rows (linked back via resultingBhandara/SpotId)
+//   PARTIAL   → admin gave partial credit (₹25) → still creates
+//               Bhandara + Spot if photos were enough
+//   REJECTED  → fraud / unusable / no payout. Does NOT create
+//               Bhandara/Spot. Reversible (admin can flip back to
+//               NEW for re-review).
+//   DUPLICATE → admin flagged this as a re-submission of an already-
+//               listed bhandara. ₹0 payout.
+//
+// approve / partial both auto-create a Bhandara row (status=PENDING)
+// from the submission data, so the listing is in the admin queue
+// for editing/polish before going public. We don't auto-publish
+// because the volunteer's text fields can be sparse/typo'd, and
+// /admin/edit/[id] already exists for the polish step.
+//
+// The spot auto-creates as APPROVED (volunteer was physically there,
+// 8h TTL starts now, fits the spot model's "right now" semantics).
+
+const VOLUNTEER_PAYOUT_FULL = 50;
+const VOLUNTEER_PAYOUT_PARTIAL = 25;
+
+/**
+ * Shared write: flip a VolunteerSubmission to a new status +
+ * payout amount, and optionally create the linked Bhandara + Spot
+ * rows. Idempotent for the Bhandara/Spot creation — if the
+ * submission already has resultingBhandaraId / resultingSpotId set,
+ * we skip the create to avoid duplicate listings on a double-click.
+ */
+async function setVolunteerSubmissionStatus(
+  id: string,
+  newStatus: "APPROVED" | "PARTIAL" | "REJECTED" | "DUPLICATE" | "NEW",
+  payoutAmount: number,
+  shouldCreateBhandaraAndSpot: boolean,
+): Promise<void> {
+  const sub = await prisma.volunteerSubmission.findUnique({
+    where: { id },
+    include: { volunteer: { select: { name: true, phone: true } } },
+  });
+  if (!sub) return;
+
+  let resultingBhandaraId = sub.resultingBhandaraId;
+  let resultingSpotId = sub.resultingSpotId;
+
+  if (shouldCreateBhandaraAndSpot) {
+    // Bhandara: create if we don't already have one for this
+    // submission. Status PENDING so admin can edit/polish via the
+    // existing /admin/edit/[id] flow before flipping to APPROVED.
+    if (!resultingBhandaraId) {
+      const photoUrls = safeParseUrls(sub.photoUrls);
+      const heroPhoto = photoUrls[0] ?? sub.spotPhotoUrl ?? null;
+      const baseSlug = slugify(sub.bhandaraName || "bhandara");
+      const slug = await ensureUniqueSlug(baseSlug);
+      const today = new Date().toISOString().slice(0, 10);
+      const newBhandara = await prisma.bhandara.create({
+        data: {
+          slug,
+          name: sub.bhandaraName,
+          nameHi: null,
+          description: `Submitted by volunteer ${sub.volunteerCode} on ${today}. ${sub.volunteerNotes ?? ""}`.trim(),
+          descriptionHi: null,
+          area: sub.area,
+          address: sub.address,
+          addressHi: null,
+          landmark: null,
+          lat: sub.gpsLat ?? 0,
+          lng: sub.gpsLng ?? 0,
+          tuesdayDates: JSON.stringify([today]),
+          timeStart: sub.startTime ?? "09:00",
+          timeEnd: "", // non-nullable in schema; admin can fill via /admin/edit/[id]
+          menu: JSON.stringify(
+            (sub.menu ?? "")
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean),
+          ),
+          menuHi: JSON.stringify([]),
+          organizerName: sub.organizerName ?? sub.volunteer.name,
+          organizerPhone: sub.organizerPhone ?? "",
+          organizerWhatsapp: null,
+          upiId: null,
+          photoUrl: heroPhoto,
+          googleMapsUrl:
+            sub.mapsUrl ||
+            (sub.gpsLat && sub.gpsLng
+              ? `https://www.google.com/maps?q=${sub.gpsLat},${sub.gpsLng}&z=18`
+              : null),
+          status: "PENDING", // admin can flip to APPROVED via /admin/edit/[id]
+          isVerified: false,
+        },
+        select: { id: true },
+      });
+      resultingBhandaraId = newBhandara.id;
+    }
+
+    // Spot: create only if we have a spot photo AND none exists yet.
+    if (sub.spotPhotoUrl && !resultingSpotId) {
+      const eightHours = new Date(Date.now() + 8 * 60 * 60 * 1000);
+      const newSpot = await prisma.spot.create({
+        data: {
+          caption: `Live at ${sub.bhandaraName} · ${sub.area}`,
+          area: sub.area,
+          address: sub.address,
+          language: "mixed",
+          lat: sub.gpsLat ?? 0,
+          lng: sub.gpsLng ?? 0,
+          photoUrl: sub.spotPhotoUrl,
+          reporterName: sub.volunteer.name,
+          bhandaraId: resultingBhandaraId,
+          status: "APPROVED",
+          expiresAt: eightHours,
+          ipHash: `volunteer:${sub.volunteerCode}`,
+          userAgent: sub.userAgent,
+        },
+        select: { id: true },
+      });
+      resultingSpotId = newSpot.id;
+    }
+  }
+
+  await prisma.volunteerSubmission.update({
+    where: { id },
+    data: {
+      status: newStatus,
+      payoutAmount,
+      reviewedAt: new Date(),
+      resultingBhandaraId,
+      resultingSpotId,
+    },
+  });
+
+  // Bhandara + Spot creation touches the public site, so invalidate
+  // the relevant caches even if we only created one of them.
+  if (shouldCreateBhandaraAndSpot && (resultingBhandaraId || resultingSpotId)) {
+    invalidateBhandaraQueryCache();
+    revalidatePath("/");
+    revalidatePath(`/bhandara/[slug]`, "page");
+  }
+  revalidatePath("/admin");
+  revalidatePath("/admin/volunteer-submissions");
+}
+
+/** Approve = full ₹50 + create Bhandara/Spot. */
+export async function approveVolunteerSubmissionAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await requireAdmin();
+  await setVolunteerSubmissionStatus(id, "APPROVED", VOLUNTEER_PAYOUT_FULL, true);
+}
+
+/** Partial = ₹25 + still create Bhandara/Spot (data was useful). */
+export async function partialVolunteerSubmissionAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await requireAdmin();
+  await setVolunteerSubmissionStatus(id, "PARTIAL", VOLUNTEER_PAYOUT_PARTIAL, true);
+}
+
+/** Reject = ₹0, no Bhandara, no Spot. Reversible. */
+export async function rejectVolunteerSubmissionAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await requireAdmin();
+  await setVolunteerSubmissionStatus(id, "REJECTED", 0, false);
+}
+
+/** Mark as duplicate of an existing listing. ₹0 payout. */
+export async function markVolunteerSubmissionDuplicateAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await requireAdmin();
+  await setVolunteerSubmissionStatus(id, "DUPLICATE", 0, false);
+}
+
+/** Re-open a previously-reviewed submission for another look. */
+export async function reopenVolunteerSubmissionAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await requireAdmin();
+  await setVolunteerSubmissionStatus(id, "NEW", 0, false);
+}
+
+/**
+ * Mark a single submission as paid. Sets `paidAt = now` and stores
+ * the UPI transaction ref if provided. The CSV export at
+ * /admin/volunteers handles the bulk path; this exists for one-off
+ * manual reconciliation (e.g. you paid a volunteer outside the
+ * weekly batch).
+ */
+export async function markVolunteerSubmissionPaidAction(
+  id: string,
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const ref = String(formData.get("paymentRef") ?? "").trim().slice(0, 80);
+  await prisma.volunteerSubmission.update({
+    where: { id },
+    data: {
+      paidAt: new Date(),
+      paymentRef: ref || null,
+    },
+  });
+  revalidatePath("/admin/volunteer-submissions");
+  revalidatePath("/admin/volunteers");
+}
+
+/**
+ * Bulk mark every APPROVED/PARTIAL submission with paidAt=NULL as
+ * paid. Use after running a weekly UPI batch — saves the admin from
+ * clicking through each row. Takes no formData (no per-row UPI ref).
+ */
+export async function markAllVolunteerSubmissionsPaidAction(
+  _formData?: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const now = new Date();
+  await prisma.volunteerSubmission.updateMany({
+    where: {
+      status: { in: ["APPROVED", "PARTIAL"] },
+      paidAt: null,
+    },
+    data: { paidAt: now },
+  });
+  revalidatePath("/admin/volunteer-submissions");
+  revalidatePath("/admin/volunteers");
+}
+
+/** Flip a volunteer between PROBATIONARY / TRUSTED / SUSPENDED. */
+export async function setVolunteerStatusAction(
+  id: string,
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const status = String(formData.get("status") ?? "");
+  const allowed = ["PROBATIONARY", "TRUSTED", "SUSPENDED"] as const;
+  if (!(allowed as readonly string[]).includes(status)) return;
+  await prisma.volunteer.update({
+    where: { id },
+    data: { status: status as (typeof allowed)[number] },
+  });
+  revalidatePath("/admin/volunteers");
+}
+
+/**
+ * The PENDING → PROBATIONARY transition. Called from the admin
+ * registry's "Approve & send code on WhatsApp" button.
+ *
+ * Does three things atomically (one DB write, one URL build):
+ *   1. Generates a unique volunteer code (retries on the rare
+ *      collision against the @@unique constraint).
+ *   2. Flips status PENDING → PROBATIONARY + persists the code.
+ *   3. Returns a pre-filled wa.me URL the client opens in a new
+ *      tab. The admin hits "Send" in WhatsApp and the code lands
+ *      on the volunteer's phone.
+ *
+ * Idempotent: if the volunteer already has a code (admin clicked
+ * twice, or already approved earlier), we reuse the existing code
+ * and rebuild the wa.me URL — same message, same outcome, no
+ * duplicate codes generated.
+ *
+ * Why it's a server action returning data (vs a redirect): a
+ * redirect to wa.me would navigate the admin AWAY from the admin
+ * page. Returning the URL lets the client component open it in a
+ * NEW tab and keep the admin on the registry so they can keep
+ * approving the next pending volunteer without losing their place.
+ */
+export async function approveAndIssueVolunteerCodeAction(
+  id: string,
+): Promise<
+  | { ok: true; code: string; waUrl: string; alreadyIssued: boolean }
+  | { ok: false; error: string }
+> {
+  await requireAdmin();
+
+  const volunteer = await prisma.volunteer.findUnique({
+    where: { id },
+    select: { id: true, code: true, status: true, name: true, phone: true },
+  });
+  if (!volunteer) return { ok: false, error: "not_found" };
+  if (volunteer.status === "SUSPENDED") {
+    return { ok: false, error: "suspended" };
+  }
+
+  // Idempotent path: code already issued → reuse it.
+  if (volunteer.code) {
+    return {
+      ok: true,
+      code: volunteer.code,
+      waUrl: buildVolunteerCodeWhatsappUrl({
+        name: volunteer.name,
+        phone: volunteer.phone,
+        code: volunteer.code,
+      }),
+      alreadyIssued: true,
+    };
+  }
+
+  // Generate + persist a new code. Up to 5 retries on the
+  // astronomically rare unique-constraint collision (~1 in 729M).
+  let issuedCode: string | null = null;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = generateVolunteerCode();
+    try {
+      await prisma.volunteer.update({
+        where: { id },
+        data: { code: candidate, status: "PROBATIONARY" },
+      });
+      issuedCode = candidate;
+      break;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes("P2002") && !msg.includes("Unique constraint")) {
+        console.error("approveAndIssueVolunteerCode failed", err);
+        return { ok: false, error: "db_error" };
+      }
+      // else: code collision, retry
+    }
+  }
+  if (!issuedCode) {
+    return { ok: false, error: "code_collision_exhausted" };
+  }
+
+  revalidatePath("/admin/volunteers");
+
+  return {
+    ok: true,
+    code: issuedCode,
+    waUrl: buildVolunteerCodeWhatsappUrl({
+      name: volunteer.name,
+      phone: volunteer.phone,
+      code: issuedCode,
+    }),
+    alreadyIssued: false,
+  };
+}
+
+/**
+ * Mark a PENDING signup as SUSPENDED — for fake / spammy / clearly-
+ * not-a-volunteer applications. Keeps the row in the DB (audit
+ * trail) but ensures no code can ever be issued for it. The admin
+ * can flip back to PENDING via setVolunteerStatusAction if rejection
+ * was a mistake.
+ */
+export async function rejectVolunteerSignupAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await requireAdmin();
+  await prisma.volunteer.update({
+    where: { id },
+    data: { status: "SUSPENDED" },
+  });
+  revalidatePath("/admin/volunteers");
+}
+
+/**
+ * Build the wa.me deep-link the admin opens in a new tab to send
+ * a fresh volunteer their code + first submission link.
+ *
+ * Plain text only, no emojis. WhatsApp Web's preview pane uses a
+ * font without emoji support and renders them as `�` replacement
+ * glyphs (the actual delivered message would be fine, but the
+ * preview looks broken — better to ship text that's bulletproof
+ * across every WA client + version). Bilingual: Hindi block first,
+ * English block second, separated by a simple text divider.
+ *
+ * No em dashes either (site-wide style rule).
+ */
+function buildVolunteerCodeWhatsappUrl(args: {
+  name: string;
+  phone: string; // 10 digits, no +91
+  code: string;
+}): string {
+  const submitUrl = `https://badamangal.com/volunteer/submit?code=${args.code}`;
+  const message =
+    `*जय बजरंगबली*\n\n` +
+    `नमस्कार ${args.name} जी,\n\n` +
+    `BadaMangal volunteer programme में आपका स्वागत है। आपका आवेदन स्वीकृत हो गया है।\n\n` +
+    `*आपका volunteer code:*\n*${args.code}*\n\n` +
+    `*पहला भण्डारा submit करें:*\n${submitUrl}\n\n` +
+    `यह code save कर लीजिए। हर submission में इसकी ज़रूरत होगी।\n\n` +
+    `==========\n\n` +
+    `Welcome to the BadaMangal volunteer programme. Your application is approved.\n\n` +
+    `*Your volunteer code:* *${args.code}*\n` +
+    `*Submit your first bhandara:* ${submitUrl}\n\n` +
+    `Save this code. You will need it for every submission.\n\n` +
+    `धन्यवाद · Dhanyavaad\nBadaMangal Team`;
+  return `https://wa.me/91${args.phone}?text=${encodeURIComponent(message)}`;
+}
+
+/** Helper: parse a JSON-encoded URL list, tolerant of legacy/empty. */
+function safeParseUrls(json: string | null | undefined): string[] {
+  if (!json) return [];
+  try {
+    const parsed = JSON.parse(json);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((x): x is string => typeof x === "string");
+  } catch {
+    return [];
+  }
 }

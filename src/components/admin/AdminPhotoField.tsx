@@ -81,7 +81,7 @@ export default function AdminPhotoField({
     if (file.size > MAX_INPUT_BYTES) {
       setStatus({
         kind: "err",
-        message: `That image is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Max 8 MB — try a smaller crop.`,
+        message: `That image is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Max 8 MB. Try a smaller crop.`,
       });
       return;
     }

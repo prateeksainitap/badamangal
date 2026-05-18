@@ -56,6 +56,19 @@ function FooterInner() {
             ? "हमसे भंडारा का आयोजन करवाएँ"
             : "Organise a bhandara (full service)",
         },
+        // Volunteer programme entry — supply-side recruitment for
+        // documenting more bhandaras. Distinct from "Organise"
+        // (which is service-sales for hosts). Sits next to the
+        // organise link so both "get involved" CTAs cluster. Copy
+        // intentionally devotional vs gig-economy: the small
+        // honorarium is acknowledged on /volunteer itself, not in
+        // the footer label.
+        {
+          href: "/volunteer",
+          label: isHi
+            ? "स्वयंसेवक बनें"
+            : "Volunteer with us",
+        },
         // Past-bhandaras archive, listed venues whose Tuesdays are
         // over + spotted sightings whose 8-hour window expired.
         // Sits inside Discover (next to /live + /spot) so the

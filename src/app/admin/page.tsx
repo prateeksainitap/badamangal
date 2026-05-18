@@ -204,44 +204,52 @@ export default async function AdminPage({
           viewport as the bhandara list scrolls under it. The slight
           translucent background + backdrop blur (cream tinted so it
           matches the page) keeps text legible as cards pass behind. */}
-      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-8 pb-4 bg-cream-50/92 backdrop-blur-md border-b border-gold-500/30">
-      <header className="flex flex-wrap items-end justify-between gap-4 pb-4">
-        <div>
-          <p className="font-cormorant text-sm uppercase tracking-[0.25em] text-gold-500">
-            Admin · Bhandaras
-          </p>
-          <h1 className="font-fraunces text-3xl text-sindoor-700 mt-1">
-            Moderation queue
-          </h1>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Bot ingest liveness, renders only after the MacBook has
-              pinged at least once. Green pulsing dot when fresh,
-              gold when stale, red when offline. */}
-          <BotHeartbeat />
-          {/* Mode toggle: jump to the Spots moderation view. */}
+      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-8 pb-3 bg-cream-50/92 backdrop-blur-md border-b border-gold-500/30">
+        {/* ── Header row 1: title (left) · auxiliary status + sign-out (right)
+            Aux controls grouped here so they don't compete with primary
+            navigation for attention. */}
+        <header className="flex flex-wrap items-start justify-between gap-3 pb-3">
+          <div>
+            <p className="font-cormorant text-sm uppercase tracking-[0.25em] text-gold-500">
+              Admin · Bhandaras
+            </p>
+            <h1 className="font-fraunces text-3xl text-sindoor-700 mt-1">
+              Moderation queue
+            </h1>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Bot ingest liveness, renders only after the MacBook has
+                pinged at least once. Green pulsing dot when fresh,
+                gold when stale, red when offline. */}
+            <BotHeartbeat />
+            <form action={logoutAction}>
+              <SubmitButton variant="outline-ink" pendingLabel="Signing out…">
+                Sign out
+              </SubmitButton>
+            </form>
+          </div>
+        </header>
+
+        {/* ── Header row 2: current view (left) · actions + queues (right)
+            ModeToggle anchors the "where you ARE" position. The right
+            cluster has primary CTA (Scan & publish — saffron filled,
+            most visual weight) followed by cross-queue navigation
+            pills (Organise / Volunteer subs / Volunteer registry).
+            All wrap onto multiple lines on narrow viewports. */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
           <ModeToggle current="bhandara" />
-          {/* Quick path to the AI-assisted ingest flow. The orange pill
-              colour-codes it as a primary action, distinct from the
-              quieter "Sign out" link to its right. */}
-          <a
-            href="/admin/scan"
-            className="inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-warm"
-          >
-            ✨ Scan &amp; publish
-          </a>
-          {/* Lead-capture queue for /organise-bhandara submissions.
-              Renders its own NEW-count badge so the admin sees fresh
-              leads without clicking through. Shares getAdminTabCounts
-              with ModeToggle so both render off one DB roundtrip. */}
-          <OrganiseRequestsLink />
-          <form action={logoutAction}>
-            <SubmitButton variant="outline-ink" pendingLabel="Signing out…">
-              Sign out
-            </SubmitButton>
-          </form>
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              href="/admin/scan"
+              className="inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-warm"
+            >
+              ✨ Scan &amp; publish
+            </a>
+            <OrganiseRequestsLink />
+            <VolunteerSubmissionsLink />
+            <VolunteersRegistryLink />
+          </div>
         </div>
-      </header>
 
       {/* Instant search: AdminSearchBox is a tiny client component
           that debounces keystrokes and `router.replace`s the URL with
@@ -643,21 +651,40 @@ export default async function AdminPage({
  */
 const getAdminTabCounts = cache(async () => {
   const now = new Date();
-  const [bhandaraPending, spotLive, whatsappBot, organiseNew] =
-    await Promise.all([
-      prisma.bhandara.count({ where: { status: "PENDING" } }),
-      prisma.spot.count({
-        where: { status: "APPROVED", expiresAt: { gt: now } },
-      }),
-      prisma.bhandara.count({
-        where: {
-          status: "PENDING",
-          description: { contains: "[bot:" },
-        },
-      }),
-      prisma.organiseRequest.count({ where: { status: "NEW" } }),
-    ]);
-  return { bhandaraPending, spotLive, whatsappBot, organiseNew };
+  const [
+    bhandaraPending,
+    spotLive,
+    whatsappBot,
+    organiseNew,
+    volunteerNew,
+    volunteerPending,
+  ] = await Promise.all([
+    prisma.bhandara.count({ where: { status: "PENDING" } }),
+    prisma.spot.count({
+      where: { status: "APPROVED", expiresAt: { gt: now } },
+    }),
+    prisma.bhandara.count({
+      where: {
+        status: "PENDING",
+        description: { contains: "[bot:" },
+      },
+    }),
+    prisma.organiseRequest.count({ where: { status: "NEW" } }),
+    prisma.volunteerSubmission.count({ where: { status: "NEW" } }),
+    // PENDING signups in the volunteer programme — admin must
+    // approve each before a code can be issued. Surfaced as a
+    // count badge on the "👥 Volunteers" pill so the admin sees
+    // unactioned applications without having to click in.
+    prisma.volunteer.count({ where: { status: "PENDING" } }),
+  ]);
+  return {
+    bhandaraPending,
+    spotLive,
+    whatsappBot,
+    organiseNew,
+    volunteerNew,
+    volunteerPending,
+  };
 });
 
 /**
@@ -776,6 +803,51 @@ async function OrganiseRequestsLink() {
   );
 }
 
+/**
+ * Header link to the volunteer-programme moderation queue. Same
+ * gold-outline pill style as OrganiseRequestsLink. NEW count comes
+ * from the shared getAdminTabCounts cache — single DB roundtrip
+ * even though it's the 5th caller. The 🧑‍🤝‍🧑 emoji signals "this is
+ * people-managed" vs the OrganiseRequest's 📋 (which is paperwork).
+ */
+async function VolunteerSubmissionsLink() {
+  const counts = await getAdminTabCounts();
+  return (
+    <a
+      href="/admin/volunteer-submissions"
+      className="inline-flex items-center gap-1.5 rounded-full border border-gold-500/55 text-sindoor-700 hover:bg-gold-500/10 font-medium px-4 py-2 text-sm"
+    >
+      📥 Volunteer submissions
+      <CountBadge n={counts.volunteerNew} tone="saffron" />
+    </a>
+  );
+}
+
+/**
+ * Header link to the Volunteer registry (the directory of all
+ * signed-up volunteers + per-volunteer earnings + the weekly
+ * payout CSV + the PENDING approval queue). Companion to
+ * VolunteerSubmissionsLink — that one shows work submitted by
+ * approved volunteers, this one shows the people behind it.
+ *
+ * NEW-count badge surfaces PENDING applications waiting for
+ * admin approval (admin needs to issue codes via WhatsApp before
+ * the volunteer can do anything). Same getAdminTabCounts cache
+ * as the other pill counts, single roundtrip.
+ */
+async function VolunteersRegistryLink() {
+  const counts = await getAdminTabCounts();
+  return (
+    <a
+      href="/admin/volunteers"
+      className="inline-flex items-center gap-1.5 rounded-full border border-gold-500/55 text-sindoor-700 hover:bg-gold-500/10 font-medium px-4 py-2 text-sm"
+    >
+      👥 Volunteers
+      <CountBadge n={counts.volunteerPending} tone="saffron" />
+    </a>
+  );
+}
+
 // ────────────────────────────────────────────────────────────────────
 // Spots moderation view
 // ────────────────────────────────────────────────────────────────────
@@ -870,8 +942,11 @@ async function SpotsView({
 
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 pb-10">
-      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-8 pb-4 bg-cream-50/92 backdrop-blur-md border-b border-gold-500/30">
-        <header className="flex flex-wrap items-end justify-between gap-4 pb-4">
+      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-8 pb-3 bg-cream-50/92 backdrop-blur-md border-b border-gold-500/30">
+        {/* Mirrors BhandarasView's 2-row header — same hierarchy so the
+            admin's eye lands on the right thing regardless of which
+            mode tab they're on. */}
+        <header className="flex flex-wrap items-start justify-between gap-3 pb-3">
           <div>
             <p className="font-cormorant text-sm uppercase tracking-[0.25em] text-gold-500">
               Admin · Spotted
@@ -880,25 +955,30 @@ async function SpotsView({
               Live spots queue
             </h1>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
             <BotHeartbeat />
-            <ModeToggle current="spot" />
+            <form action={logoutAction}>
+              <SubmitButton variant="outline-ink" pendingLabel="Signing out…">
+                Sign out
+              </SubmitButton>
+            </form>
+          </div>
+        </header>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
+          <ModeToggle current="spot" />
+          <div className="flex items-center gap-2 flex-wrap">
             <a
               href="/admin/scan"
               className="inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-warm"
             >
               ✨ Scan &amp; publish
             </a>
-            {/* Mirror the BhandarasView header — keep nav consistent
-                across the three top-level admin queues. */}
             <OrganiseRequestsLink />
-            <form action={logoutAction}>
-              <button className="text-sm text-ink-600 hover:text-sindoor-700">
-                Sign out
-              </button>
-            </form>
+            <VolunteerSubmissionsLink />
+            <VolunteersRegistryLink />
           </div>
-        </header>
+        </div>
 
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <AdminSearchBox status={tab} type="spot" />
@@ -1262,8 +1342,13 @@ async function WhatsAppBotView({
 
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6 pb-24">
-      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-8 pb-4 bg-cream-50/92 backdrop-blur-md border-b border-gold-500/30">
-        <header className="flex flex-wrap items-end justify-between gap-4 pb-4">
+      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-8 pb-3 bg-cream-50/92 backdrop-blur-md border-b border-gold-500/30">
+        {/* Mirrors the 2-row header of the other admin views. Difference
+            here: there's no "Scan & publish" CTA (this view ingests
+            from WhatsApp, not from manual scan), and we keep "Clear
+            queue" as the destructive maintenance action grouped with
+            the other view-scoped controls. */}
+        <header className="flex flex-wrap items-start justify-between gap-3 pb-3">
           <div>
             <p className="text-xs uppercase tracking-wider text-ink-600">
               Source · WhatsApp ingest
@@ -1276,13 +1361,19 @@ async function WhatsAppBotView({
               Grouped by source group below.
             </p>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <ModeToggle current="whatsapp" />
+          <div className="flex items-center gap-3">
             <BotHeartbeat />
-            {/* Keep Organise queue link in this header too — admin
-                shouldn't lose access to the lead queue when bouncing
-                between mode tabs. Same component everywhere. */}
-            <OrganiseRequestsLink />
+            <form action={logoutAction}>
+              <SubmitButton variant="outline-ink" pendingLabel="Signing out…">
+                Sign out
+              </SubmitButton>
+            </form>
+          </div>
+        </header>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
+          <ModeToggle current="whatsapp" />
+          <div className="flex items-center gap-2 flex-wrap">
             <form action={clearBotQueueAction}>
               <SubmitButton
                 variant="outline-alert"
@@ -1292,13 +1383,11 @@ async function WhatsAppBotView({
                 🗑 Clear queue
               </SubmitButton>
             </form>
-            <form action={logoutAction}>
-              <SubmitButton variant="outline-ink" pendingLabel="Signing out…">
-                Sign out
-              </SubmitButton>
-            </form>
+            <OrganiseRequestsLink />
+            <VolunteerSubmissionsLink />
+            <VolunteersRegistryLink />
           </div>
-        </header>
+        </div>
 
         {/* Search bar, same shape as the bhandara view so muscle memory
             translates. The status prop is ignored by AdminSearchBox in
