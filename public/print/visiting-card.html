@@ -86,32 +86,19 @@
   .corner.br { bottom: 1.5mm; right: 1.5mm; transform: rotate(180deg); }
 
   /* ─── Card row 1: brand block ─────────────────────────── */
+  /* Use the actual horizontal logo lockup (gada-sun icon + Hindi
+     "बड़ा मंगल" + Latin "BadaMangal" wordmark all baked in).
+     viewBox is 800×220 so the natural aspect is ~3.6:1.
+     58mm wide → ~16mm tall, sits comfortably as the card's
+     top band without crowding the tagline + footer below. */
   .brand-row {
     display: flex;
     align-items: center;
-    gap: 2.5mm;
   }
-  .brand-mark {
-    width: 11mm;
-    height: 11mm;
-    flex-shrink: 0;
-  }
-  .brand-text {
-    line-height: 1.05;
-  }
-  .brand-name-hi {
-    font-family: 'Tiro Devanagari Hindi', serif;
-    font-size: 13pt;
-    color: #9C2A2A;
-    letter-spacing: 0.2pt;
-  }
-  .brand-name-en {
-    font-family: 'Fraunces', serif;
-    font-weight: 600;
-    font-size: 10.5pt;
-    color: #E07A1F;
-    letter-spacing: 0.3pt;
-    margin-top: 0.5mm;
+  .brand-logo {
+    width: 58mm;
+    height: auto;
+    display: block;
   }
 
   /* ─── Card row 2: bilingual tagline ───────────────────── */
@@ -197,11 +184,7 @@
   <div class="card"><svg class="corner tl" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.6"/><circle cx="4" cy="4" r="0.8" fill="currentColor"/><circle cx="8" cy="4" r="0.6" fill="currentColor"/><circle cx="4" cy="8" r="0.6" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.4" opacity="0.6"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.3" opacity="0.45"/></svg><svg class="corner tr" viewBox="0 0 24 24" fill="none"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.6"/><circle cx="4" cy="4" r="0.8" fill="currentColor"/><circle cx="8" cy="4" r="0.6" fill="currentColor"/><circle cx="4" cy="8" r="0.6" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.4" opacity="0.6"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.3" opacity="0.45"/></svg><svg class="corner bl" viewBox="0 0 24 24" fill="none"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.6"/><circle cx="4" cy="4" r="0.8" fill="currentColor"/><circle cx="8" cy="4" r="0.6" fill="currentColor"/><circle cx="4" cy="8" r="0.6" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.4" opacity="0.6"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.3" opacity="0.45"/></svg><svg class="corner br" viewBox="0 0 24 24" fill="none"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.6"/><circle cx="4" cy="4" r="0.8" fill="currentColor"/><circle cx="8" cy="4" r="0.6" fill="currentColor"/><circle cx="4" cy="8" r="0.6" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.4" opacity="0.6"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.3" opacity="0.45"/></svg>
 
     <div class="brand-row">
-      <img class="brand-mark" src="/brand/logo-primary.svg" alt="" />
-      <div class="brand-text">
-        <div class="brand-name-hi">बड़ा मंगल</div>
-        <div class="brand-name-en">BADAMANGAL.COM</div>
-      </div>
+      <img class="brand-logo" src="/brand/logo-horizontal.svg" alt="BadaMangal logo — गदा at the heart of an 8-rayed sun · बड़ा मंगल · BadaMangal" />
     </div>
 
     <div>

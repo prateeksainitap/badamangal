@@ -58,6 +58,22 @@
   .corner.bl { bottom: 8mm; left: 8mm; transform: rotate(-90deg); }
   .corner.br { bottom: 8mm; right: 8mm; transform: rotate(180deg); }
 
+  /* ─── Brand logo at the top ────────────────────────────
+     Renders the actual BadaMangal horizontal lockup (gada-sun
+     icon + Hindi + English wordmark). The source SVG is full-
+     colour (saffron/sindoor/gold); we knock it down to pure
+     monochrome with grayscale + contrast filters so it prints
+     cleanly on B&W laser without muddy mid-greys eating the
+     ink budget. -webkit-print-color-adjust: exact (set on
+     body) ensures the filter actually applies in print. */
+  .brand-logo {
+    display: block;
+    margin: 0 auto 8mm;
+    width: 90mm;
+    height: auto;
+    filter: grayscale(1) contrast(1.6) brightness(0.85);
+  }
+
   /* ─── Devotional ribbon at top ─────────────────────────── */
   .blessing {
     text-align: center;
@@ -67,7 +83,7 @@
     border-top: 0.5mm solid #000;
     border-bottom: 0.5mm solid #000;
     padding: 3mm 0;
-    margin-bottom: 12mm;
+    margin-bottom: 10mm;
   }
 
   /* ─── Headline block ───────────────────────────────────── */
@@ -205,6 +221,8 @@
   <svg class="corner tr" viewBox="0 0 24 24" fill="none"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.8"/><circle cx="4" cy="4" r="0.9" fill="currentColor"/><circle cx="8" cy="4" r="0.7" fill="currentColor"/><circle cx="12" cy="4" r="0.5" fill="currentColor"/><circle cx="4" cy="8" r="0.7" fill="currentColor"/><circle cx="4" cy="12" r="0.5" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.5"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.35" opacity="0.6"/><path d="M4 20 L20 4" stroke="currentColor" stroke-width="0.25" opacity="0.4"/></svg>
   <svg class="corner bl" viewBox="0 0 24 24" fill="none"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.8"/><circle cx="4" cy="4" r="0.9" fill="currentColor"/><circle cx="8" cy="4" r="0.7" fill="currentColor"/><circle cx="12" cy="4" r="0.5" fill="currentColor"/><circle cx="4" cy="8" r="0.7" fill="currentColor"/><circle cx="4" cy="12" r="0.5" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.5"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.35" opacity="0.6"/><path d="M4 20 L20 4" stroke="currentColor" stroke-width="0.25" opacity="0.4"/></svg>
   <svg class="corner br" viewBox="0 0 24 24" fill="none"><path d="M2 22V2H22" stroke="currentColor" stroke-width="0.8"/><circle cx="4" cy="4" r="0.9" fill="currentColor"/><circle cx="8" cy="4" r="0.7" fill="currentColor"/><circle cx="12" cy="4" r="0.5" fill="currentColor"/><circle cx="4" cy="8" r="0.7" fill="currentColor"/><circle cx="4" cy="12" r="0.5" fill="currentColor"/><path d="M4 12 L12 4" stroke="currentColor" stroke-width="0.5"/><path d="M4 16 L16 4" stroke="currentColor" stroke-width="0.35" opacity="0.6"/><path d="M4 20 L20 4" stroke="currentColor" stroke-width="0.25" opacity="0.4"/></svg>
+
+  <img class="brand-logo" src="/brand/logo-horizontal.svg" alt="BadaMangal — गदा at the heart of an 8-rayed sun · बड़ा मंगल · BadaMangal" />
 
   <div class="blessing">।। जय बजरंगबली ।।</div>
 
