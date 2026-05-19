@@ -47,22 +47,33 @@ export function normaliseVolunteerCode(s: string): string {
 
 /**
  * Normalise a 10-digit Indian mobile number from a user-typed string.
- * Strips +91, leading zeros, spaces, dashes, parens. Returns the
- * 10-digit number if valid, or null if not.
+ * Returns the canonical 10 digits if valid, or null if not.
  *
- * Mirrors the same logic as src/components/PhoneInput.tsx so server
- * + client agree on what counts as "valid". The pattern allows
- * 6/7/8/9 as the leading digit (current Indian mobile prefixes).
+ * MUST match src/components/PhoneInput.tsx → toDigits() so the
+ * client + server agree on what counts as "valid". See that file
+ * for the full reasoning; the short version is: don't strip a
+ * leading "91" off a real 10-digit mobile that happens to start
+ * with 9. Only strip "91" when the input was clearly country-code-
+ * prefixed (had a "+" OR was 12 digits long).
  */
 export function toIndianMobileDigits(s: unknown): string | null {
   if (typeof s !== "string") return null;
-  const stripped = s.replace(/[\s\-()]/g, "");
-  // Allow leading +91, 91, or 0 — strip them.
-  const noPrefix = stripped
-    .replace(/^\+?91/, "")
-    .replace(/^0+/, "");
-  if (!/^[6-9]\d{9}$/.test(noPrefix)) return null;
-  return noPrefix;
+  const trimmed = s.trim();
+  const hasPlusPrefix = trimmed.startsWith("+");
+  let digits = trimmed.replace(/\D/g, "");
+
+  if (hasPlusPrefix && digits.startsWith("91")) {
+    digits = digits.slice(2);
+  } else if (digits.length === 12 && digits.startsWith("91")) {
+    digits = digits.slice(2);
+  } else if (digits.length === 11 && digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+  // Cap at 10 to mirror the client-side max-length.
+  digits = digits.slice(0, 10);
+
+  if (!/^[6-9]\d{9}$/.test(digits)) return null;
+  return digits;
 }
 
 /**

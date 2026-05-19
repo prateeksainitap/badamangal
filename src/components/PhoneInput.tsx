@@ -58,18 +58,48 @@ type Props = {
 
 /** Normalize an incoming raw string to the 10-digit canonical form.
  *
- * Strips spaces, dashes, parens, and known prefixes (+91 / 91 / 0).
- * Then takes the trailing 10 digits. If fewer than 10 digits remain
- * (incomplete entry), returns whatever's there so the input still
- * shows what the user has typed so far.
+ * The hard part: telling the country-code "91" apart from a user's
+ * mobile number that genuinely starts with "9". Real-life examples:
+ *   • "+919876543210"  → 13 chars, has `+` → strip "+91" → "9876543210"
+ *   • "919876543210"   → 12 digits, starts "91" → strip "91" → "9876543210"
+ *   • "09876543210"    → 11 digits, starts "0"  → strip "0"  → "9876543210"
+ *   • "9151019102"     → 10 digits, starts "91" → DO NOT STRIP — it IS the number
+ *
+ * Previous logic was `replace(/^(\+?91|0)/, "")` which unconditionally
+ * stripped any leading "91", silently eating the first two digits of
+ * any valid Indian mobile beginning with 91 (e.g. 9151xxxxxx). Bug
+ * surfaced in the admin organiser-phone field — typing "9151019102"
+ * showed "51019102" on screen.
+ *
+ * New rule: only strip a "91" / "+91" / "0" prefix when the resulting
+ * length is still consistent with a 10-digit Indian mobile (i.e. the
+ * input had to have BEEN a 10-digit number with a country code or
+ * leading zero attached). Otherwise leave the digits alone so a
+ * real-life "9xxxxxxxxx" number types through correctly.
  */
 function toDigits(raw: string): string {
-  const cleaned = raw.replace(/[\s\-()]/g, "");
-  // Trim leading +91 / 91 / 0 if present
-  const noPrefix = cleaned.replace(/^(\+?91|0)/, "");
-  // Keep only digits, cap at 10
-  const digits = noPrefix.replace(/\D/g, "").slice(0, 10);
-  return digits;
+  const trimmed = raw.trim();
+  // Explicit "+" makes the country code unambiguous regardless of
+  // the digit count behind it.
+  const hasPlusPrefix = trimmed.startsWith("+");
+  // Pure digits only — drops spaces, dashes, parens, "+", any letters.
+  let digits = trimmed.replace(/\D/g, "");
+
+  if (hasPlusPrefix && digits.startsWith("91")) {
+    // "+91 98765 43210" → strip the "91" we just normalised the "+" off
+    digits = digits.slice(2);
+  } else if (digits.length === 12 && digits.startsWith("91")) {
+    // Bare "919876543210" — 12 digits beginning with "91" can only
+    // be country-code + 10-digit mobile. Strip.
+    digits = digits.slice(2);
+  } else if (digits.length === 11 && digits.startsWith("0")) {
+    // "09876543210" — old-style leading-zero national format. Strip.
+    digits = digits.slice(1);
+  }
+  // Else: leave it as the user typed it. A 10-digit number that
+  // happens to start with "91" (e.g. 9151019102) survives intact.
+
+  return digits.slice(0, 10);
 }
 
 export default function PhoneInput({
