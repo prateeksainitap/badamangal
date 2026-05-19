@@ -38,6 +38,7 @@ import {
   normaliseVolunteerCode,
 } from "@/lib/volunteer";
 import { resizeImageForUpload } from "@/lib/image-resize";
+import { olaReverseGeocode } from "@/lib/geocode";
 
 type UploadedMedia = {
   url: string;
@@ -75,6 +76,21 @@ export default function VolunteerSubmitForm({
   // the Drive folder during moderation.
   const [videosUploadedToDrive, setVideosUploadedToDrive] = useState<boolean>(false);
   const [spotPhoto, setSpotPhoto] = useState<UploadedMedia | null>(null);
+  // Area + address are controlled inputs so the reverse-geocoder
+  // can pre-fill them from the captured GPS coords. We track
+  // user-touched flags via refs (not state — flag flips never need
+  // to trigger a re-render) so the auto-fill effect knows to skip
+  // any field the volunteer has already typed in.
+  const [areaValue, setAreaValue] = useState<string>("");
+  const [addressValue, setAddressValue] = useState<string>("");
+  const [autoFilled, setAutoFilled] = useState<{ area: boolean; address: boolean }>({
+    area: false,
+    address: false,
+  });
+  const userTouchedRef = useRef<{ area: boolean; address: boolean }>({
+    area: false,
+    address: false,
+  });
   const [photoUploading, setPhotoUploading] = useState<number>(0);
   const [spotUploading, setSpotUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -154,6 +170,43 @@ export default function VolunteerSubmitForm({
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
   }
+
+  // ─── Auto-fill area + address from GPS via Ola reverse-geocode
+  //
+  // Fires whenever GPS state flips to "captured". Background fetch
+  // → fills `areaValue` and `addressValue` ONLY if the volunteer
+  // hasn't manually edited those fields yet (tracked via the
+  // userTouchedRef so a re-capture doesn't clobber typed text).
+  // Fail-open: any API error / null result just leaves the fields
+  // empty and the volunteer fills them by hand. The cleanup flag
+  // protects against a stale request landing after recapture.
+  useEffect(() => {
+    if (gps.kind !== "captured") return;
+    let cancelled = false;
+    void olaReverseGeocode(gps.lat, gps.lng).then((r) => {
+      if (cancelled || !r) return;
+      const nextArea = r.area ?? r.geoNeighborhood ?? r.geoDistrict ?? null;
+      const filled = { area: false, address: false };
+      if (nextArea && !userTouchedRef.current.area) {
+        setAreaValue(nextArea);
+        filled.area = true;
+      }
+      if (r.formatted && !userTouchedRef.current.address) {
+        setAddressValue(r.formatted);
+        filled.address = true;
+      }
+      if (filled.area || filled.address) {
+        setAutoFilled(filled);
+        trackEvent("volunteer_address_autofilled", {
+          area: filled.area ? 1 : 0,
+          address: filled.address ? 1 : 0,
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [gps]);
 
   // ─── Upload helpers ──────────────────────────────────────────
   async function uploadOne(file: File): Promise<UploadedMedia> {
@@ -366,15 +419,41 @@ export default function VolunteerSubmitForm({
         />
 
         <div className="grid sm:grid-cols-2 gap-4">
-          <Field
-            label="Area / mohalla"
-            labelHi="क्षेत्र / मोहल्ला"
-            name="area"
-            required
-            placeholder="e.g. Hazratganj, Aliganj"
-            error={fieldErrors.area}
-            list="vol-area-suggestions"
-          />
+          {/* Area + address are controlled so the reverse-geocoder
+              (effect on gps state above) can pre-fill them from the
+              captured GPS coords. Volunteer can edit anything that
+              landed; once they touch a field, userTouchedRef flips
+              and a later GPS re-capture won't overwrite their
+              changes. */}
+          <label className="grid gap-1.5">
+            <span className="text-sm text-ink-600">
+              Area / mohalla
+              <span className="ml-1 text-ink-600">· क्षेत्र / मोहल्ला</span>
+              <span className="text-sindoor-700"> *</span>
+            </span>
+            <input
+              name="area"
+              type="text"
+              required
+              value={areaValue}
+              onChange={(e) => {
+                userTouchedRef.current.area = true;
+                setAutoFilled((p) => ({ ...p, area: false }));
+                setAreaValue(e.target.value);
+              }}
+              placeholder="e.g. Hazratganj, Aliganj"
+              list="vol-area-suggestions"
+              className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+            />
+            {autoFilled.area ? (
+              <span className="text-xs text-leaf-600">
+                📍 Auto-filled from GPS. Edit if needed.
+              </span>
+            ) : null}
+            {fieldErrors.area ? (
+              <span className="text-xs text-alert-500">{fieldErrors.area}</span>
+            ) : null}
+          </label>
           <datalist id="vol-area-suggestions">
             {AREAS.map((a) => (
               <option key={a} value={a} />
@@ -389,14 +468,34 @@ export default function VolunteerSubmitForm({
           />
         </div>
 
-        <FieldArea
-          label="Full address"
-          labelHi="पूरा पता"
-          name="address"
-          required
-          placeholder="Street + landmark + area, e.g. Swati-Krutika Apartment Gate, CG City, Ansal API"
-          error={fieldErrors.address}
-        />
+        <label className="grid gap-1.5">
+          <span className="text-sm text-ink-600">
+            Full address
+            <span className="ml-1 text-ink-600">· पूरा पता</span>
+            <span className="text-sindoor-700"> *</span>
+          </span>
+          <textarea
+            name="address"
+            rows={3}
+            required
+            value={addressValue}
+            onChange={(e) => {
+              userTouchedRef.current.address = true;
+              setAutoFilled((p) => ({ ...p, address: false }));
+              setAddressValue(e.target.value);
+            }}
+            placeholder="Street + landmark + area, e.g. Swati-Krutika Apartment Gate, CG City, Ansal API"
+            className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+          />
+          {autoFilled.address ? (
+            <span className="text-xs text-leaf-600">
+              📍 Auto-filled from GPS. Edit / add landmark if it helps devotees find the spot.
+            </span>
+          ) : null}
+          {fieldErrors.address ? (
+            <span className="text-xs text-alert-500">{fieldErrors.address}</span>
+          ) : null}
+        </label>
 
         <div className="grid sm:grid-cols-2 gap-4">
           <Field
