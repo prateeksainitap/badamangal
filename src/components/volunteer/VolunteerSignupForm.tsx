@@ -20,14 +20,18 @@ import { AREAS } from "@/lib/lucknow";
 import { trackEvent } from "@/lib/ga";
 
 type SignupResponse =
-  | { ok: true; id: string; name: string; phoneLast4: string }
+  | { ok: true; id: string; code: string; name: string; phoneLast4: string }
   | { ok: false; error: string; fields?: Record<string, string> };
 
 type Phase =
   | { kind: "form" }
   | { kind: "submitting" }
-  | { kind: "success"; name: string; phoneLast4: string }
+  | { kind: "success"; code: string; name: string; phoneLast4: string }
   | { kind: "error"; message: string };
+
+// Must match VolunteerSubmitForm.tsx so the code persists across
+// signup → submit → return-visits in the same browser.
+const STORAGE_KEY = "bm.volunteer.code";
 
 export default function VolunteerSignupForm() {
   const [phase, setPhase] = useState<Phase>({ kind: "form" });
@@ -80,8 +84,20 @@ export default function VolunteerSignupForm() {
         return;
       }
       trackEvent("volunteer_signup_success", {});
+      // Cache the issued code to localStorage immediately so the
+      // submit form can auto-pick it up on first use AND on every
+      // return visit (until the volunteer clears their browser
+      // storage). Wrapped in try/catch because private-browsing
+      // mode disables setItem — fine, the success card still works
+      // and they can copy/share the code manually.
+      try {
+        window.localStorage.setItem(STORAGE_KEY, json.code);
+      } catch {
+        /* private mode or quota exceeded — fine */
+      }
       setPhase({
         kind: "success",
+        code: json.code,
         name: json.name,
         phoneLast4: json.phoneLast4,
       });
@@ -100,7 +116,13 @@ export default function VolunteerSignupForm() {
 
   // ─── SUCCESS STATE ────────────────────────────────────────────
   if (phase.kind === "success") {
-    return <ApplicationReceivedCard name={phase.name} phoneLast4={phase.phoneLast4} />;
+    return (
+      <CodeIssuedCard
+        code={phase.code}
+        name={phase.name}
+        phoneLast4={phase.phoneLast4}
+      />
+    );
   }
 
   // ─── FORM STATE ───────────────────────────────────────────────
@@ -230,106 +252,150 @@ export default function VolunteerSignupForm() {
   );
 }
 
-/* ─── Application-received card ────────────────────────────── */
-function ApplicationReceivedCard({
+/* ─── Code-issued card ─────────────────────────────────────────
+   Shown immediately after successful signup. The volunteer code
+   is generated server-side at signup time + stored in
+   localStorage by the parent component before this card mounts,
+   so the volunteer can leave/return/use it across browser
+   sessions without re-typing. The "Submit your first bhandara"
+   CTA carries the code in the URL so the submit form picks it
+   up even before localStorage is read. */
+function CodeIssuedCard({
+  code,
   name,
   phoneLast4,
 }: {
+  code: string;
   name: string;
   phoneLast4: string;
 }) {
+  const [copied, setCopied] = useState(false);
+
+  function copyCode() {
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    navigator.clipboard.writeText(code).then(
+      () => {
+        setCopied(true);
+        trackEvent("volunteer_code_copy", {});
+        setTimeout(() => setCopied(false), 1800);
+      },
+      () => {
+        /* clipboard blocked — fine, the code is also rendered on screen */
+      },
+    );
+  }
+
+  // Pre-filled wa.me message the volunteer sends to themselves on
+  // WhatsApp so the code lives permanently in their chat history.
+  // Most reliable retrieval mechanism for people who don't trust
+  // localStorage and won't bookmark a page.
+  const waMeMessage = encodeURIComponent(
+    `🚩 BadaMangal Volunteer\n\n*Volunteer code:* ${code}\n*Name:* ${name}\n\nSubmit a bhandara:\nhttps://badamangal.com/volunteer/submit?code=${code}\n\nजय बजरंगबली 🙏`,
+  );
+  const waMeUrl = `https://wa.me/?text=${waMeMessage}`;
+
   return (
     <div className="grid gap-5 text-center">
       <div>
         <p className="text-3xl">🙏</p>
         <h2 className="font-fraunces text-2xl sm:text-3xl text-sindoor-700 mt-2">
-          धन्यवाद {name} जी!
+          स्वागत है {name} जी!
         </h2>
         <p className="mt-1 font-fraunces text-lg text-sindoor-700/80">
-          Application received
-        </p>
-        <p className="mt-3 text-sm text-ink-900">
-          आपका आवेदन प्राप्त हो गया है। हम जल्द ही आपसे संपर्क करेंगे।
-        </p>
-        <p className="mt-1 text-sm text-ink-600">
-          Your application has been received. Our team will be in touch shortly.
+          Welcome aboard
         </p>
       </div>
 
-      <div className="rounded-2xl border-2 border-saffron-600/40 bg-saffron-50 p-5 text-left">
-        <p className="text-sm font-medium text-ink-900">
-          🕐 आगे क्या होगा? · What happens next
+      {/* Big bold code block — the focal point of the card. */}
+      <div className="rounded-2xl border-2 border-saffron-600 bg-saffron-50 p-5">
+        <p className="text-xs uppercase tracking-[0.18em] text-saffron-600 font-medium">
+          आपका volunteer code · Your volunteer code
         </p>
-        <ol className="mt-3 space-y-3 text-sm text-ink-900 list-decimal list-inside">
-          <li>
-            हमारी टीम हर आवेदन को manually review करती है (आमतौर पर 24 घंटे के
-            अंदर)।
-            <br />
-            <span className="text-ink-600 text-xs">
-              Our team manually reviews each application (usually within 24
-              hours).
-            </span>
-          </li>
-          <li>
-            Approve होने पर, आपका <strong>volunteer code</strong> और पहला भण्डारा
-            submit करने का link हम WhatsApp पर भेजेंगे, आपके नंबर{" "}
-            <strong className="font-mono">…{phoneLast4}</strong> पर।
-            <br />
-            <span className="text-ink-600 text-xs">
-              Once approved, we'll WhatsApp your{" "}
-              <strong>volunteer code</strong> plus a link to submit your first
-              bhandara, to the number ending in{" "}
-              <strong className="font-mono">…{phoneLast4}</strong>.
-            </span>
-          </li>
-          <li>
-            Code को safe जगह save कर लीजिए। हर submission में इसकी ज़रूरत होगी।
-            <br />
-            <span className="text-ink-600 text-xs">
-              Save the code somewhere safe. You'll need it for every submission.
-            </span>
-          </li>
-          <li>
-            अगले बड़े मंगल (मंगलवार) या बड़े शनिवार से documenting शुरू कीजिए।
-            <br />
-            <span className="text-ink-600 text-xs">
-              From the next Bada Mangal (Tuesday) or Bade Shanivar (Saturday),
-              start documenting.
-            </span>
-          </li>
-        </ol>
+        <p
+          className="mt-2 font-fraunces font-bold text-3xl sm:text-4xl text-sindoor-700 tracking-wider select-all"
+          aria-label={`Your volunteer code is ${code}`}
+        >
+          {code}
+        </p>
+        <p className="mt-2 text-xs text-ink-600">
+          यह code save कर लीजिए। हर submission में इसकी ज़रूरत होगी।
+        </p>
+        <p className="mt-1 text-xs text-ink-600">
+          Save this code — you'll need it for every submission.
+        </p>
+
+        {/* Two save options + visual confirmation */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={copyCode}
+            className="inline-flex items-center gap-1.5 rounded-full border border-saffron-600/55 bg-white hover:bg-cream-50 text-ink-900 font-medium px-4 py-2 text-sm transition-colors"
+          >
+            {copied ? "✓ Copied" : "📋 Copy code"}
+          </button>
+          <a
+            href={waMeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-ga="volunteer_code_save_to_whatsapp"
+            className="inline-flex items-center gap-1.5 rounded-full border border-saffron-600/55 bg-white hover:bg-cream-50 text-ink-900 font-medium px-4 py-2 text-sm transition-colors"
+          >
+            💬 Save to WhatsApp
+          </a>
+        </div>
       </div>
 
+      {/* What happens next — short, encouraging, no admin-wait copy. */}
       <div className="rounded-xl border border-gold-500/40 bg-cream-50 px-4 py-3 text-sm text-ink-900 text-left">
         <p className="font-medium">
-          ⚠️ 24 घंटे बाद भी WhatsApp message नहीं मिला? · Not getting a WhatsApp
-          message after 24 hours?
+          ✅ आप अभी से शुरू कर सकते हैं · You can start right now
         </p>
-        <p className="mt-1.5 text-xs text-ink-600">सबसे common reasons · Most common reasons:</p>
-        <ul className="mt-1.5 list-disc list-inside space-y-1 text-xs text-ink-600">
+        <ul className="mt-2 list-disc list-inside space-y-1.5 text-sm text-ink-900">
           <li>
-            जो number आपने दिया उसमें WhatsApp install नहीं है।
+            अगले बड़े मंगल (मंगलवार) या बड़े शनिवार को अपने क्षेत्र के
+            किसी भण्डारे पर जाइए।
             <br />
-            <span className="text-ink-600/80">
-              The number you entered doesn't have WhatsApp installed.
+            <span className="text-xs text-ink-600">
+              On the next Bada Mangal (Tuesday) or Bade Shanivar (Saturday),
+              visit any bhandara in your area.
             </span>
           </li>
           <li>
-            WhatsApp settings में आपने unknown senders को block किया है।
+            तस्वीरें + video + जानकारी फॉर्म में भर दीजिए।
             <br />
-            <span className="text-ink-600/80">
-              You've blocked unknown senders in WhatsApp settings.
+            <span className="text-xs text-ink-600">
+              Take photos + a video + fill the listing form.
             </span>
           </li>
           <li>
-            हम busy हैं। कल फिर check कीजिए, फिर भी न मिले तो team को WhatsApp
-            करें।
+            हम 24 घंटे के अंदर समीक्षा करेंगे, फिर आपका भण्डारा directory
+            पर live हो जाएगा।
             <br />
-            <span className="text-ink-600/80">
-              We're swamped (re-check tomorrow before WhatsApping the team).
+            <span className="text-xs text-ink-600">
+              We review within 24 hours, then your bhandara goes live on the
+              public directory.
             </span>
           </li>
         </ul>
+      </div>
+
+      {/* Primary CTA: jump straight to the submit form with the code
+          baked into the URL. The submit form will also see the code
+          via localStorage on return visits, so the URL param is just
+          the first-time helper. */}
+      <div className="flex flex-col gap-3 items-stretch">
+        <Link
+          href={`/volunteer/submit?code=${encodeURIComponent(code)}`}
+          data-ga="volunteer_signup_submit_first"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-6 py-3 text-base shadow-sm transition-colors"
+        >
+          📸 अपना पहला भण्डारा भेजें · Submit your first bhandara →
+        </Link>
+        <p className="text-xs text-ink-600">
+          आपका code इस browser में save हो गया है — अगली बार खुद से fill हो जाएगा।
+          <br />
+          Your code is saved in this browser — it'll auto-fill next time.
+        </p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -345,9 +411,16 @@ function ApplicationReceivedCard({
           data-ga="volunteer_signup_back_to_home"
           className="inline-flex items-center justify-center gap-2 rounded-full border border-gold-500/60 bg-white hover:bg-cream-50 text-ink-900 font-medium px-5 py-2.5 text-sm transition-colors"
         >
-          🏠 मुख्य पृष्ठ · Back to BadaMangal
+          🏠 मुख्य पृष्ठ · BadaMangal home
         </Link>
       </div>
+
+      {/* Phone-number reminder if they want to send the code there
+          themselves later. Tiny, last item, easy to ignore. */}
+      <p className="text-xs text-ink-600/80">
+        Your phone on record:{" "}
+        <span className="font-mono">…{phoneLast4}</span>
+      </p>
     </div>
   );
 }

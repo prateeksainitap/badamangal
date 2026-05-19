@@ -1,36 +1,36 @@
 /**
- * Public: create a new Volunteer row as PENDING.
+ * Public: create a new Volunteer row with an auto-issued code.
  *
- * Approval flow (Tier A, admin-gated):
+ * Flow (instant-code, Bada Mangal 2026 season):
  *   1. User fills /volunteer/signup → this endpoint creates a
- *      Volunteer row with status=PENDING and code=NULL. NO code is
- *      issued or returned to the client.
- *   2. Admin sees the PENDING row in /admin/volunteers + clicks
- *      "Approve & send code on WhatsApp" → that action generates
- *      the code, flips status to PROBATIONARY, and opens a wa.me
- *      link the admin sends with one tap.
- *   3. User receives the WhatsApp message with their code +
- *      submission link, can now use /volunteer/submit?code=...
+ *      Volunteer row with status=PROBATIONARY and a fresh unique
+ *      code (BM-LKO-XXXXXX). The code IS the auth.
+ *   2. Endpoint returns the code in the response. Client renders
+ *      the success card with the code visible + writes it to
+ *      localStorage so the volunteer can come back anytime.
+ *   3. Volunteer can immediately go to /volunteer/submit?code=...
+ *      and start documenting bhandaras. No admin gate.
  *
- * Why admin approval (vs. auto-issue at signup):
- *   • Fraud control without OTP — admin filters out obvious junk
- *     before any code can be used.
- *   • WhatsApp delivery doubles as number validation. If wa.me
- *     fails to deliver (number's not on WhatsApp), admin can flip
- *     the row to SUSPENDED without ever issuing a code.
- *   • Slight friction is acceptable for a paid programme — the
- *     team contacts each volunteer personally before onboarding.
+ * Why instant (vs the previously-built admin-approval path):
+ *   The admin-approval step added 24h friction without measurably
+ *   improving signup quality for a pure-seva (no payout) season.
+ *   The admin code path remains in the codebase
+ *   (approveAndIssueVolunteerCodeAction) for edge cases like
+ *   restoring a SUSPENDED row, but the normal happy path skips it.
  *
- * Anti-abuse (unchanged from Tier A v1):
+ * Anti-abuse (unchanged):
  *   • Per-IP rate limit: 3 signups per IP per 24 hours.
  *   • Phone: 10-digit Indian mobile (toIndianMobileDigits).
- *   • Name: 2-80 chars. UPI: 5-60 chars + must look like x@y.
+ *   • Name: 2-80 chars. UPI: optional, format-checked if provided.
  *   • Areas: ≤12 entries, each ≤60 chars (stringifyAreas).
+ *   • Code collision retry: 5 attempts against the @@unique
+ *     constraint on Volunteer.code before erroring.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { ipHash, readClientIp } from "@/lib/crypto";
 import { toIndianMobileDigits, stringifyAreas } from "@/lib/volunteer";
+import { generateVolunteerCode } from "@/lib/volunteer-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -92,37 +92,62 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
   }
 
-  // ── 4. Persist as PENDING (no code, no submission rights yet) ─
+  // ── 4. Generate a unique code + persist as PROBATIONARY ────────
+  //
+  // PROBATIONARY (not PENDING) because we're skipping the admin-
+  // approval step on the happy path. The code IS issued at signup
+  // and works immediately for /volunteer/submit. Admin can later
+  // promote to TRUSTED after accuracy is established, or demote to
+  // SUSPENDED for fraud.
+  //
+  // Code collision retry: theoretical ~1-in-729M from a 6-char
+  // alphabet, but the @@unique constraint still needs handling. 5
+  // attempts is plenty — has never tripped in practice but the
+  // loop costs nothing to write.
   const ua = req.headers.get("user-agent")?.slice(0, 240) ?? null;
-  let createdId: string;
-  try {
-    const created = await prisma.volunteer.create({
-      data: {
-        // code intentionally omitted — defaults to NULL. Issued
-        // later by the admin via approveAndIssueVolunteerCodeAction.
-        name,
-        phone: phone!,
-        upi,
-        areas: stringifyAreas(areasInput),
-        // status defaults to PENDING in the schema — no override needed.
-        ipHash: ip,
-        userAgent: ua,
-      },
-      select: { id: true },
-    });
-    createdId = created.id;
-  } catch (err) {
-    console.error("volunteer signup failed", err);
-    return jsonError(500, "server_error");
+  let createdId: string | null = null;
+  let issuedCode: string | null = null;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = generateVolunteerCode();
+    try {
+      const created = await prisma.volunteer.create({
+        data: {
+          code: candidate,
+          name,
+          phone: phone!,
+          upi,
+          areas: stringifyAreas(areasInput),
+          status: "PROBATIONARY",
+          ipHash: ip,
+          userAgent: ua,
+        },
+        select: { id: true },
+      });
+      createdId = created.id;
+      issuedCode = candidate;
+      break;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // P2002 = unique constraint violation on code. Retry with a
+      // fresh code. Anything else is a real failure.
+      if (!msg.includes("P2002") && !msg.includes("Unique constraint")) {
+        console.error("volunteer signup failed", err);
+        return jsonError(500, "server_error");
+      }
+      // else: collision, try next candidate
+    }
   }
 
-  // Deliberately do NOT return the code — there is no code yet.
-  // The client renders an "application under review" success
-  // screen + tells the user to expect a WhatsApp message.
+  if (!createdId || !issuedCode) {
+    return jsonError(500, "code_collision_exhausted");
+  }
+
   return NextResponse.json({
     ok: true,
     id: createdId,
+    code: issuedCode,
     name,
-    phoneLast4: phone!.slice(-4), // tiny tail for "we'll WhatsApp xxxxxx1234" UI
+    phoneLast4: phone!.slice(-4),
   });
 }

@@ -30,14 +30,14 @@ export default function VolunteerSignupPage() {
           🚩 Volunteer · स्वयंसेवक
         </p>
         <h1 className="font-fraunces text-3xl sm:text-4xl text-sindoor-700 mt-2">
-          आवेदन करें · Apply to volunteer
+          अभी जुड़ें · Sign up
         </h1>
         <p className="mt-3 text-sm text-ink-600 max-w-md mx-auto leading-relaxed">
-          आवेदन सिर्फ 30 seconds में। हमारी टीम review करेगी और आपका volunteer
-          code WhatsApp पर 24 घंटे के अंदर भेज देगी।
+          30 seconds का form भरिए। आपका volunteer code तुरंत मिल जाएगा
+          और आप उसी समय भण्डारे document करना शुरू कर सकते हैं।
         </p>
         <p className="mt-1.5 text-xs text-ink-600">
-          Form takes 30 seconds. Our team manually reviews each application and WhatsApps your volunteer code within 24 hours.{" "}
+          30-second form. You'll get your volunteer code instantly and can start submitting bhandaras right away.{" "}
           <Link
             href="/volunteer"
             data-ga="volunteer_signup_about_link"

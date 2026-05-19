@@ -101,9 +101,9 @@ export default function VolunteerLandingPage() {
         <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Step
             num="1"
-            title="Apply"
-            titleHi="आवेदन करें"
-            body="Fill 1 short form: name, WhatsApp, your areas. Our team manually reviews each application within 24 hours and sends your volunteer code to your WhatsApp."
+            title="Sign up"
+            titleHi="जुड़ें"
+            body="Fill 1 short form: name, WhatsApp, your areas. Get a personal volunteer code instantly — save it once, use it for every submission."
           />
           <Step
             num="2"
@@ -275,7 +275,7 @@ export default function VolunteerLandingPage() {
           तैयार हैं? · Ready to start?
         </h2>
         <p className="mt-3 text-base text-ink-600 max-w-xl mx-auto">
-          आवेदन सिर्फ 30 seconds में। Approval के बाद आपका volunteer code WhatsApp पर 24 घंटे के अंदर भेज दिया जाएगा।
+          30 seconds का form। Volunteer code तुरंत मिलेगा और आप अगले बड़े मंगल से documenting शुरू कर सकते हैं।
         </p>
         <Link
           href="/volunteer/signup"
