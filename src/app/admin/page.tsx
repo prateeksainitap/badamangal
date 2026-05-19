@@ -55,6 +55,53 @@ function format12h(time: string): string {
   return `${display}:${String(min).padStart(2, "0")} ${period}`;
 }
 
+/**
+ * Smart-formatted submission timestamp for the bot-ingest cards.
+ *
+ *   < 60s        →  "just now"
+ *   < 60 min     →  "12 min ago"
+ *   < 24 h       →  "5 hr ago"
+ *   ≥ 24 h       →  absolute IST: "19 May · 9:15 PM"
+ *
+ * The relative buckets help the admin triage today's burst (Bada
+ * Mangal mornings = lots of incoming spots); the absolute form
+ * surfaces stale rows ("why is this still PENDING from 3 days
+ * ago?"). The DB stores UTC, the admin team works in IST — explicit
+ * timeZone: "Asia/Kolkata" pins the absolute output regardless of
+ * which machine renders the page.
+ *
+ * Server-rendered, so the relative value is accurate AT page-load
+ * only. Refreshing the page recomputes. Acceptable for moderation
+ * UX since the admin reloads naturally after each action anyway.
+ */
+function formatSubmissionTime(d: Date): string {
+  const date = new Date(d);
+  const diffMs = Date.now() - date.getTime();
+  if (diffMs < 0) return formatAbsoluteIst(date);
+  const diffMin = Math.floor(diffMs / (60 * 1000));
+  const diffHr = Math.floor(diffMs / (60 * 60 * 1000));
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin} min ago`;
+  if (diffHr < 24) return `${diffHr} hr${diffHr === 1 ? "" : "s"} ago`;
+  return formatAbsoluteIst(date);
+}
+
+/** Helper for the absolute branch — "19 May · 9:15 PM" IST. */
+function formatAbsoluteIst(d: Date): string {
+  const date = d.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    timeZone: "Asia/Kolkata",
+  });
+  const time = d.toLocaleString("en-IN", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
+  });
+  return `${date} · ${time}`;
+}
+
 export default async function AdminPage({
   searchParams,
 }: {
@@ -1505,6 +1552,9 @@ function BotBhandaraCard({ b }: { b: BotBhandara }) {
         : b.isVerified
           ? "VERIFIED"
           : "UNVERIFIED";
+  // Same smart IST timestamp as BotSpotCard. Helps the admin spot
+  // bhandara invites that have been sitting in the queue too long.
+  const submittedAt = formatSubmissionTime(b.createdAt);
   return (
     <li
       id={b.id}
@@ -1558,6 +1608,12 @@ function BotBhandaraCard({ b }: { b: BotBhandara }) {
                   : rowState === "VERIFIED"
                     ? "Verified"
                     : "Live · unverified"}
+            </span>
+            <span
+              className="text-ink-600"
+              title={new Date(b.createdAt).toLocaleString("en-IN", { dateStyle: "full", timeStyle: "short", timeZone: "Asia/Kolkata" })}
+            >
+              🕐 {submittedAt}
             </span>
           </div>
           <h3 className="font-tiro text-xl text-sindoor-700 mt-2">
@@ -1686,6 +1742,12 @@ function BotSpotList({
 function BotSpotCard({ s }: { s: BotSpot }) {
   const isLive = s.status === "APPROVED" && s.expiresAt > new Date();
   const isExpired = s.status === "APPROVED" && s.expiresAt <= new Date();
+  // IST-formatted ingestion timestamp, surfaced inline in the
+  // metadata row so the admin can spot stale rows ("why is a
+  // 4-day-old spot still in pending?") at a glance + prioritise
+  // freshly-arrived ones. Smart formatting: relative for <24h,
+  // absolute for older.
+  const submittedAt = formatSubmissionTime(s.createdAt);
   return (
     <li
       id={s.id}
@@ -1742,6 +1804,12 @@ function BotSpotCard({ s }: { s: BotSpot }) {
                   : isExpired
                     ? "Expired"
                     : "Pending"}
+            </span>
+            <span
+              className="text-ink-600"
+              title={new Date(s.createdAt).toLocaleString("en-IN", { dateStyle: "full", timeStyle: "short", timeZone: "Asia/Kolkata" })}
+            >
+              🕐 {submittedAt}
             </span>
           </div>
           <p className="font-fraunces text-lg text-ink-900 mt-2">

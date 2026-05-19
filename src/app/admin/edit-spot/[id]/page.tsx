@@ -23,6 +23,7 @@ import { editAndApproveSpotAction } from "@/app/admin/actions";
 import { stripBotProvenance } from "@/lib/sanitize";
 import SubmitButton from "@/components/admin/SubmitButton";
 import AdminPhotoField from "@/components/admin/AdminPhotoField";
+import MapLocationInput from "@/components/admin/MapLocationInput";
 
 export const dynamic = "force-dynamic";
 const COOKIE = "admin";
@@ -139,26 +140,16 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
           hint="Visible signboard text or a quick locality description. Optional."
         />
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          <Pair
-            label="Latitude"
-            name="lat"
-            type="number"
-            step="any"
-            defaultValue={String(s.lat)}
-            required
-            hint="Lucknow ≈ 26.6 – 27.0"
-          />
-          <Pair
-            label="Longitude"
-            name="lng"
-            type="number"
-            step="any"
-            defaultValue={String(s.lng)}
-            required
-            hint="Lucknow ≈ 80.7 – 81.2"
-          />
-        </div>
+        {/* MapLocationInput replaces the two plain lat/lng number
+            inputs with the same paste-anything-Maps-y resolver the
+            bhandara edit page uses. The widget still renders the
+            name="lat" / name="lng" fields underneath that
+            editAndApproveSpotAction reads from FormData, so the
+            server action stays unchanged. Especially valuable here
+            because bot-ingested spots usually arrive at lat=lng=0
+            (WhatsApp strips EXIF GPS) and the admin needs a 1-click
+            way to drop a real pin from a pasted Maps share-link. */}
+        <MapLocationInput initialLat={s.lat} initialLng={s.lng} />
 
         <Pair
           label="Reporter / sender name"
