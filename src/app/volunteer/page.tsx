@@ -52,10 +52,10 @@ export default function VolunteerLandingPage() {
           <span className="text-saffron-600">सबके लिए सुलभ बनाएँ</span>
         </h1>
         <p className="mt-4 text-center text-lg sm:text-xl text-ink-900 max-w-2xl mx-auto">
-          अपने area के बड़े मंगल भण्डारों की जानकारी, फोटो और live spot map पर
-          भेजकर हमारी directory को बढ़ाने में सहयोग कीजिए।
+          अपने क्षेत्र के बड़े मंगल भण्डारों की जानकारी, तस्वीरें और लाइव नक़्शे
+          की सूचनाएँ भेजकर हमारी सूची को बढ़ाने में सहयोग कीजिए।
         </p>
-        <p className="mt-2 text-center text-base text-ink-600 max-w-2xl mx-auto">
+        <p className="mt-3 text-center text-base text-ink-600 max-w-2xl mx-auto">
           Help fellow devotees find every bhandara in Lucknow. Spend about 10 minutes
           at a bhandara, document it, and your work goes live on the public directory.
         </p>
@@ -184,18 +184,27 @@ export default function VolunteerLandingPage() {
           on a single line of copy: the ₹50 number is named once,
           the framing wraps it as a thank-you, not a wage. */}
       <section className="mx-auto max-w-3xl px-4 sm:px-6 mt-4">
-        <div className="rounded-2xl border border-gold-500/40 bg-cream-50/70 px-5 py-4 sm:px-6 sm:py-5 text-center">
+        <div className="rounded-2xl border border-gold-500/40 bg-cream-50/70 px-5 py-5 sm:px-6 sm:py-6 text-center">
           <p className="text-xs uppercase tracking-[0.18em] text-saffron-600 font-medium">
             सेवा-राशि · About the honorarium
           </p>
-          <p className="mt-2 text-sm sm:text-base text-ink-900">
-            प्रत्येक approved submission पर{" "}
-            <strong>₹50 की सेवा-राशि</strong> आपकी UPI पर हर रविवार
-            भेजी जाती है। (अधूरे submission पर ₹25)
+          {/* Hindi sentence */}
+          <p className="mt-3 text-sm sm:text-base text-ink-900 leading-relaxed">
+            प्रत्येक स्वीकृत प्रविष्टि पर{" "}
+            <strong>₹50 की सेवा-राशि</strong> हर रविवार आपके UPI पर
+            भेजी जाती है। (अधूरी प्रविष्टि पर ₹25)
           </p>
-          <p className="mt-1.5 text-xs text-ink-600 italic">
-            यह आपके समय और श्रम के प्रति एक छोटी कृतज्ञता है, वेतन
-            नहीं। Think of it as a thank-you for your time, not a wage.
+          {/* English sentence, separate line */}
+          <p className="mt-2 text-sm sm:text-base text-ink-900 leading-relaxed">
+            <strong>₹50</strong> honorarium per approved submission,
+            paid to your UPI every Sunday. (₹25 for partial submissions.)
+          </p>
+          {/* Bilingual closing note, each line one language */}
+          <p className="mt-3 text-xs text-ink-600 italic leading-relaxed">
+            यह आपके समय और श्रम के प्रति एक छोटी कृतज्ञता है, वेतन नहीं।
+          </p>
+          <p className="mt-1 text-xs text-ink-600 italic leading-relaxed">
+            Think of it as a thank-you for your time, not a wage.
           </p>
         </div>
       </section>
@@ -249,24 +258,34 @@ export default function VolunteerLandingPage() {
 
         <div className="mt-6 grid gap-3">
           <Faq
-            q="कब और कितने पैसे मिलेंगे? · When + how much do I get paid?"
-            a="हर submission approve होने पर ₹50, UPI में हर रविवार शाम। You pick how many bhandaras to do. No minimum, no cap. Theoretical max around ₹500/day per volunteer if you cover 10 bhandaras in your area."
+            qHi="कब और कितनी सेवा-राशि मिलेगी?"
+            qEn="When + how much honorarium do I receive?"
+            aHi="हर स्वीकृत प्रविष्टि पर ₹50, हर रविवार आपके UPI पर। आप जितने भण्डारे कर सकें, उतने करें। कोई न्यूनतम सीमा नहीं, कोई अधिकतम सीमा नहीं।"
+            aEn="₹50 per approved submission, paid to your UPI every Sunday. You decide how many bhandaras to document. No minimum, no cap."
           />
           <Faq
-            q="अगर मेरा submission reject हो जाए तो? · What if my submission is rejected?"
-            a="हम WhatsApp पर reason बताएँगे, usually photos blurry, बैनर missing, GPS mismatch, or duplicate (किसी और ने पहले डाल दिया)। आप दूसरा भण्डारा कर सकते हैं, no penalty।"
+            qHi="अगर मेरी प्रविष्टि अस्वीकृत हो जाए तो?"
+            qEn="What if my submission is rejected?"
+            aHi="हम WhatsApp पर कारण बताएँगे — आमतौर पर तस्वीरें धुँधली होने, बैनर न होने, GPS मेल न खाने, या किसी और ने पहले वही भण्डारा भेज देने पर। आप दूसरा भण्डारा कर सकते हैं, कोई दंड नहीं।"
+            aEn="We'll WhatsApp you the reason — usually blurry photos, missing banner, GPS mismatch, or duplicate (someone else submitted it first). You can submit another bhandara, no penalty."
           />
           <Faq
-            q="क्या मुझे रोज़ काम करना होगा? · Do I have to work every day?"
-            a="नहीं। सिर्फ़ Bada Mangal (Tuesday) और Bade Shanivar (Saturday) के दिन। बीच के दिनों में कोई काम नहीं। पूरे season में सिर्फ़ 10 दिन।"
+            qHi="क्या मुझे रोज़ काम करना होगा?"
+            qEn="Do I have to work every day?"
+            aHi="नहीं। सिर्फ बड़े मंगल (मंगलवार) और बड़े शनिवार के दिन। बीच के दिनों में कोई काम नहीं। पूरे ऋतु में कुल मिलाकर 10 दिन।"
+            aEn="No. Only on Bada Mangal (Tuesday) and Bade Shanivar (Saturday) days. Nothing in between. About 10 days across the whole season."
           />
           <Faq
-            q="मेरा volunteer code खो गया तो? · I lost my volunteer code?"
-            a="WhatsApp पर हमें phone number भेज दीजिए, हम code दोबारा भेज देंगे।"
+            qHi="मेरा volunteer code खो गया तो?"
+            qEn="I lost my volunteer code?"
+            aHi="WhatsApp पर हमें अपना मोबाइल नंबर भेज दीजिए, हम code दोबारा भेज देंगे।"
+            aEn="Send us your mobile number on WhatsApp and we'll resend your code."
           />
           <Faq
-            q="दो लोगों ने एक ही भण्डारा भेजा तो? · Two volunteers submitted the same bhandara?"
-            a="पहले जिसने पूरा bundle भेजा उसे ₹50, दूसरे को 'DUPLICATE' message, कोई payout नहीं। इसलिए जल्दी submit करना important है।"
+            qHi="दो लोगों ने एक ही भण्डारा भेजा तो?"
+            qEn="If two volunteers submit the same bhandara?"
+            aHi="पहले जिसने पूरी प्रविष्टि भेजी, उसे सेवा-राशि मिलेगी। दूसरे को 'DUPLICATE' संदेश मिल जाएगा, कोई सेवा-राशि नहीं। इसलिए जल्दी प्रविष्टि भेजना ज़रूरी है।"
+            aEn="Whoever submitted the complete entry first receives the honorarium. The other gets a 'DUPLICATE' notice, no honorarium. So submitting quickly matters."
           />
         </div>
       </section>
@@ -366,16 +385,40 @@ function AudienceCard({
   );
 }
 
-function Faq({ q, a }: { q: string; a: string }) {
+/**
+ * FAQ entry with cleanly-separated bilingual content. Hindi question
+ * + Hindi answer go on their own lines; English question + English
+ * answer go on theirs. No inline code-switching ("WhatsApp पर reason
+ * बताएँगे..."), which was hard to scan and made the page feel
+ * cluttered. Devanagari + Latin readers can each lock onto their
+ * own column without parsing the other.
+ */
+function Faq({
+  qHi,
+  qEn,
+  aHi,
+  aEn,
+}: {
+  qHi: string;
+  qEn: string;
+  aHi: string;
+  aEn: string;
+}) {
   return (
     <details className="group rounded-2xl border border-gold-500/40 bg-cream-50 p-4 shadow-sm">
       <summary className="cursor-pointer list-none flex justify-between items-start gap-3 font-medium text-ink-900">
-        <span>{q}</span>
-        <span className="text-saffron-600 group-open:rotate-45 transition-transform text-xl leading-none">
+        <span>
+          <span className="block">{qHi}</span>
+          <span className="block mt-0.5 text-sm font-normal text-ink-600">
+            {qEn}
+          </span>
+        </span>
+        <span className="text-saffron-600 group-open:rotate-45 transition-transform text-xl leading-none shrink-0">
           +
         </span>
       </summary>
-      <p className="mt-3 text-sm text-ink-600 leading-relaxed">{a}</p>
+      <p className="mt-3 text-sm text-ink-900 leading-relaxed">{aHi}</p>
+      <p className="mt-2 text-sm text-ink-600 leading-relaxed">{aEn}</p>
     </details>
   );
 }
