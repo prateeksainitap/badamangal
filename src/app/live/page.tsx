@@ -39,22 +39,34 @@ export default async function LivePage() {
   // LocaleProvider context, so the Hindi toggle swaps every label
   // instantly without re-fetching the page.
 
-  // Spots-only feed. The Post model (per-bhandara comments) was retired;
-  // the live timeline now shows just crowd-sourced photo/pin reports
-  // dropped via /spot that auto-expire after 8 hours.
-  const spotRecords = await prisma.spot.findMany({
-    where: {
-      status: "APPROVED",
-      expiresAt: { gt: new Date() },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-    include: {
-      bhandara: {
-        select: { slug: true, name: true, nameHi: true, lat: true, lng: true },
+  // Spots-only feed + a total-count query. The count is rendered in
+  // the LiveHero pill ("60 live right now") and is intentionally
+  // independent of the feed `take` so the hero stays truthful even
+  // when the feed itself is capped for wire-size reasons. Run in
+  // parallel so the additional count query doesn't add to the
+  // critical-path latency of the SSR.
+  const now = new Date();
+  const [spotRecords, liveCount] = await Promise.all([
+    prisma.spot.findMany({
+      where: {
+        status: "APPROVED",
+        expiresAt: { gt: now },
       },
-    },
-  });
+      orderBy: { createdAt: "desc" },
+      take: 50,
+      include: {
+        bhandara: {
+          select: { slug: true, name: true, nameHi: true, lat: true, lng: true },
+        },
+      },
+    }),
+    prisma.spot.count({
+      where: {
+        status: "APPROVED",
+        expiresAt: { gt: now },
+      },
+    }),
+  ]);
 
   const spots = spotRecords.map((s) => ({
     id: `spot:${s.id}`,
@@ -89,7 +101,7 @@ export default async function LivePage() {
 
   return (
     <div className="relative">
-      <LiveHero />
+      <LiveHero liveCount={liveCount} />
 
       <LiveFeedTimeline
         initial={feed}
