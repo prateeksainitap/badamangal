@@ -43,7 +43,9 @@ type Dict = {
     storyLeadCta: string;
   };
   map: {
-    sectionHeading: string;
+    /** Takes the total count (listed + live spots) so the heading
+     *  can say "All 28 …" with a live, server-fresh number. */
+    sectionHeading: (count: number) => string;
     sectionBody: string;
     legendOpen: string;
     legendClosed: string;
@@ -252,7 +254,8 @@ const en: Dict = {
     storyLeadCta: "Read the full story",
   },
   map: {
-    sectionHeading: "Find a bhandara on the map",
+    sectionHeading: (count) =>
+      `All ${count} Bada Mangal bhandaras in Lucknow, on one map`,
     sectionBody: "Tap any pin to see the menu, time, and how to get there.",
     legendOpen: "Open now",
     legendClosed: "Closed",
@@ -551,7 +554,8 @@ const hi: Dict = {
     storyLeadCta: "पूरी कहानी पढ़ें",
   },
   map: {
-    sectionHeading: "नक़्शे पर भंडारा खोजें",
+    sectionHeading: (count) =>
+      `लखनऊ के सभी ${count} बड़े मंगल भण्डारे, एक नक़्शे पर`,
     sectionBody: "किसी भी पिन पर टैप करें: मेन्यू, समय और रास्ता देखें।",
     legendOpen: "अभी खुला है",
     legendClosed: "बंद",

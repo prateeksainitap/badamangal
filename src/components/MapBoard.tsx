@@ -85,7 +85,11 @@ export default function MapBoard({
   const locale = useLocaleFromContext();
   const isHi = locale === "hi";
   const t = strings[locale];
-  const heading = t.map.sectionHeading;
+  // Total bhandaras on the map = listed bhandaras + live spots.
+  // Matches the "All N" count the filter chip strip already shows
+  // (single source of truth: both derive from the same prop arrays).
+  const totalCount = listings.length + liveSpots.length;
+  const heading = t.map.sectionHeading(totalCount);
   const body = t.map.sectionBody;
   const listBhandaraLabel = t.cta.listBhandara;
   const [filter, setFilter] = useState<Filter>("all");
