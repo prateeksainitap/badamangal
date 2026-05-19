@@ -15,6 +15,7 @@ import {
   organizationSchema,
   SITE_URL,
 } from "@/lib/seo";
+import { hasUpcomingDate } from "@/lib/dates";
 
 // ISR. Was force-dynamic, every visit cold-started a Netlify Function
 // (3-4s lag when clicking a bhandara from the homepage). Now each slug
@@ -166,8 +167,18 @@ export default async function BhandaraDetailPage({
   if (!record || record.status !== "APPROVED") notFound();
 
   const b = toBhandara(record);
+  // "Other bhandaras in <area>" — only surface rows that still have
+  // an upcoming service day. Past-only bhandaras live on /archive,
+  // not in the discovery flow; showing "12 May" rows on May 19 sends
+  // visitors to dead listings and undermines the "every bhandara,
+  // live and findable" promise. Same filter the homepage map uses.
   const otherRecords = all
-    .filter((r) => r.area === b.area && r.id !== b.id)
+    .filter(
+      (r) =>
+        r.area === b.area &&
+        r.id !== b.id &&
+        hasUpcomingDate(toBhandara(r)),
+    )
     .slice(0, 3);
   const others = otherRecords.map(toBhandara);
 

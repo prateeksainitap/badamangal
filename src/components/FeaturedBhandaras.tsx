@@ -130,7 +130,14 @@ export default function FeaturedBhandaras({ listings }: Props) {
   const featured = pickFeatured(listings, today, 4);
   if (featured.length === 0) return null;
 
-  const todayServing = featured.some((b) => b.tuesdayDates.includes(today));
+  // Count ALL bhandaras serving today (across the full listings prop,
+  // not just the 4-item featured slice). When zero, fall back to the
+  // count of upcoming bhandaras this week so the kicker still carries
+  // useful information instead of "0 SERVING TODAY".
+  const servingTodayCount = listings.filter((b) =>
+    b.tuesdayDates.includes(today),
+  ).length;
+  const todayServing = servingTodayCount > 0;
 
   return (
     <section className="mx-auto max-w-6xl px-4 sm:px-6 pt-6 pb-2 sm:pt-10 sm:pb-4">
@@ -139,8 +146,8 @@ export default function FeaturedBhandaras({ listings }: Props) {
           <p className="font-mukta uppercase tracking-[0.28em] text-saffron-600 text-[0.65rem] sm:text-xs font-semibold">
             {todayServing
               ? isHi
-                ? "आज सेवा हो रही है"
-                : "Serving today"
+                ? `आज सेवा हो रही है · ${servingTodayCount} भण्डारे`
+                : `Serving today · ${servingTodayCount} bhandara${servingTodayCount === 1 ? "" : "s"}`
               : isHi
                 ? "इस सप्ताह"
                 : "This week"}

@@ -8,7 +8,7 @@ import CopyButton from "@/components/CopyButton";
 import MobileStickyActions from "@/components/MobileStickyActions";
 import { JaliCorner } from "@/components/ornaments";
 import { strings } from "@/content/strings";
-import { formatEnglishDate, formatHindiDate } from "@/lib/dates";
+import { formatEnglishDate, formatHindiDate, istTodayIso } from "@/lib/dates";
 import type { Bhandara } from "@/types/bhandara";
 import { areaToSlug } from "@/lib/areaSlug";
 import { useLocaleFromContext } from "@/lib/locale-context";
@@ -92,6 +92,10 @@ export default function BhandaraDetailView({ b, others }: Props) {
   const langSuffix = locale === "en" ? "?lang=en" : "";
 
   const now = new Date();
+  // YYYY-MM-DD calendar day in IST. Used for date-string comparisons
+  // against b.tuesdayDates entries so a service day stays "today"
+  // for the entire calendar day, not just until the event time hits.
+  const todayIstStr = istTodayIso(now);
   const upi = upiUrl(b);
   const nextDate = nextServingDate(b, now);
   const servingNow = isServingNow(b, now);
@@ -380,7 +384,15 @@ export default function BhandaraDetailView({ b, others }: Props) {
             {b.tuesdayDates.map((iso) => {
               const d = new Date(`${iso}T04:30:00Z`);
               const label = isHi ? formatHindiDate(d) : formatEnglishDate(d);
-              const past = d.getTime() < now.getTime();
+              // Calendar-day comparison, not timestamp. Previous code
+              // used `d.getTime() < now.getTime()` which struck today's
+              // date through as "past" the moment the 10:00 AM IST
+              // event-time slot passed (e.g. visiting at 1 PM on
+              // Tuesday May 19 struck Tuesday May 19). Now we compare
+              // the ISO date string (YYYY-MM-DD) against today's IST
+              // calendar day so a service date is only "past" once the
+              // next calendar day starts.
+              const past = iso < todayIstStr;
               return (
                 <li
                   key={iso}
