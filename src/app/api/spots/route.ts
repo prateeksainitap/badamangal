@@ -103,7 +103,23 @@ export async function GET(req: NextRequest) {
     { count: spots.length, spots },
     {
       headers: {
-        "Cache-Control": "public, s-maxage=10, stale-while-revalidate=30",
+        // Disable the CDN cache entirely. The previous
+        //   `public, s-maxage=10, stale-while-revalidate=30`
+        // looked correct in isolation, but Netlify's edge cache
+        // normalises the URL for cache-keying (query strings get
+        // stripped/collapsed in practice), so a poll for
+        // `?limit=24` from an old tab poisoned the cache and
+        // subsequent `?limit=500` requests from the new
+        // HappeningNow client kept getting served the 24-spot
+        // response. End-user symptom: the homepage headline
+        // ("N bhandaras spotted live") randomly dropped to 24
+        // every poll, depending on which cache entry the CDN
+        // happened to serve. Public-facing damage from skipping
+        // the 10 s edge cache is tiny — the route is a single
+        // Prisma query over an 8h-bounded table (~60-100 rows
+        // peak), runs ~150 ms warm, polled every 15 s by each
+        // homepage tab.
+        "Cache-Control": "private, no-store, must-revalidate",
       },
     },
   );
