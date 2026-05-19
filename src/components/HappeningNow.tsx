@@ -56,11 +56,11 @@ export default function HappeningNow({ initial }: Props) {
     const tick = async () => {
       try {
         // Pull the full live set, not just 24. The grid still only
-        // *renders* a handful of cards (slice below), but the heading
-        // counter (`nearbySpots.length`) reads from this same `spots`
-        // array, so capping the poll at 24 made the headline drop from
-        // "60 spotted live" (SSR) to "24 spotted live" the moment the
-        // first poll fired. /api/spots is now clamped at 500 too.
+        // *renders* 15 cards (slice below), but the heading counter
+        // (`nearbySpots.length`) reads from this same `spots` array,
+        // so capping the poll at 24 made the headline drop from "60
+        // spotted live" to "24 spotted live" the moment the first
+        // poll fired. /api/spots is now clamped at 500 too.
         const res = await fetch("/api/spots?limit=500", { cache: "no-store" });
         if (!alive || !res.ok) return;
         const data = (await res.json()) as { spots: LiveSpot[] };
@@ -232,14 +232,17 @@ export default function HappeningNow({ initial }: Props) {
           return <HappeningNowEmpty isHi={isHi} />;
         }
         return (
-          // Mobile-first grid: 1 column on the smallest phones so the
-          // cards have room for their photo + title + action row
-          // without clipping. Old 2-cols-on-mobile setup squeezed each
-          // card to ~136 px wide, which couldn't fit the 3-button action
-          // row. Two columns kick in at xs (475 px+, custom breakpoint
-          // in tailwind.config), three at sm (640 px+), four at lg.
-          <ol className="mt-6 grid gap-4 grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-            {filtered.slice(0, 8).map((s) => (
+          // Denser grid for the live-feed redesign. Goes 1 → 2 → 3 →
+          // 4 → 5 columns as the viewport grows. The chat-style sender
+          // header at the top of each card lets us pack more cards
+          // visually because the "this is from a real person" signal
+          // lands in 1.5 lines instead of needing the whole card to
+          // breathe. 15 cards = exactly 3 rows at xl (5-col), 4 rows
+          // at md (4-col), 5 rows at sm (3-col), 8 rows at xs (2-col).
+          // The /api/spots fetch pulls up to 500, so the slice is the
+          // only display cap.
+          <ol className="mt-6 grid gap-3 grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+            {filtered.slice(0, 15).map((s) => (
               <SpotCard
                 key={s.id}
                 spot={s}
@@ -251,7 +254,7 @@ export default function HappeningNow({ initial }: Props) {
         );
       })()}
 
-      {spots.length > 8 ? (
+      {spots.length > 15 ? (
         <div className="mt-6 text-center">
           <Link
             href="/live"
@@ -298,8 +301,22 @@ function SpotCard({
         : `${distance.toFixed(1)} km`
       : null;
 
+  // "Fresh" = posted in the last 10 minutes. Gets a stronger saffron
+  // border + ring so the eye lands on the brand-new posts first, the
+  // most valuable behaviour during a live event. 10 min ≈ the window
+  // where the food is likely still being served and the photo is
+  // still actionable. After that the card joins the rest of the feed.
+  const ageMs = Date.now() - new Date(spot.createdAt).getTime();
+  const isFresh = ageMs >= 0 && ageMs < 10 * 60_000;
+
+  // Reporter avatar = first letter of name. When no name is present
+  // (legacy rows, edge cases) we fall back to a dot so the chat-style
+  // header still renders and the layout doesn't jump between cards.
+  const reporterInitial = spot.reporterName
+    ? spot.reporterName.trim().charAt(0).toUpperCase()
+    : null;
+
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`;
-  const mapsUrl = `https://www.google.com/maps?q=${spot.lat},${spot.lng}&z=18`;
   // Share message comes from the shared lib/share builder so that the
   // wording stays in sync with the bhandara share + the popup share
   // on the map. The intro + closer match the bhandara share's voice
@@ -317,13 +334,70 @@ function SpotCard({
     locale,
   );
 
+  // Distance / ETA chip — pulled out so we can render it inside both
+  // the photo and the no-photo branches without duplicating the JSX.
+  const distanceChip = distanceLabel ? (
+    <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-cream-50/95 backdrop-blur border border-saffron-500/45 px-2 py-0.5 text-[10px] font-semibold text-sindoor-700 shadow-warm">
+      <span className="font-numerals tabular-nums">{distanceLabel}</span>
+      <span className="text-ink-600/70" aria-hidden>·</span>
+      <span className="font-numerals tabular-nums">
+        {isHi ? `~${minutes} मि.` : `~${minutes} min`}
+      </span>
+    </span>
+  ) : null;
+
+  // LIVE pulse — same treatment, lifted into a const so both photo
+  // and no-photo branches use it identically.
+  const liveBadge = (
+    <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-saffron-600 text-cream-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] font-bold shadow-warm">
+      <span className="block w-1.5 h-1.5 rounded-full bg-cream-50 motion-safe:animate-pulse" />
+      {isHi ? "लाइव" : "Live"}
+    </span>
+  );
+
   const inner = (
-    <article className="group relative h-full rounded-2xl overflow-hidden border border-saffron-500/40 bg-cream-50 shadow-warm flex flex-col">
-      {/* Photo (optional). When present, render with the same blurred-
-          backdrop + object-contain treatment used by listed bhandara
-          cards so vertical posters and square photos both show their
-          full content. When absent, fall back to the saffron sunburst
-          ornament, matches BhandaraCard's no-photo state. */}
+    <article
+      className={`group relative h-full rounded-2xl overflow-hidden bg-cream-50 shadow-warm flex flex-col transition-all border ${
+        isFresh
+          ? "border-saffron-600 ring-2 ring-saffron-600/25"
+          : "border-saffron-500/40 hover:border-saffron-500"
+      }`}
+    >
+      {/* Chat-style sender header. Always renders — reinforces "real
+          photo from a real person right now" instead of the old card
+          which read more like a generic listing. The avatar is a
+          one-letter initial chip (no real avatars for privacy /
+          performance), the name truncates, and the time-ago lives
+          on the right. When reporterName is missing (legacy rows /
+          bot ingestion edge cases) the header still shows a neutral
+          "Spotted live" label so the layout doesn't jump card-to-card. */}
+      <header className="flex items-center justify-between gap-1.5 px-2.5 py-1.5 border-b border-saffron-500/25 bg-saffron-50/60">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span
+            aria-hidden
+            className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-cream-50 text-[10px] font-semibold shrink-0 ${
+              reporterInitial ? "bg-saffron-600" : "bg-saffron-500/70"
+            }`}
+          >
+            {reporterInitial ?? "•"}
+          </span>
+          <span
+            className="text-[11px] font-medium text-ink-900 truncate min-w-0"
+            title={spot.reporterName ?? undefined}
+          >
+            {spot.reporterName ?? (isHi ? "किसी ने भेजा" : "Spotted live")}
+          </span>
+        </div>
+        <span className="text-[10px] text-ink-600 tabular-nums shrink-0">
+          {relative(spot.createdAt, isHi)}
+        </span>
+      </header>
+
+      {/* Photo (optional). LIVE + distance badges sit INSIDE the
+          photo wrapper now (not the article root) so the chat-style
+          header above doesn't affect their absolute positioning.
+          When the photo is missing, fall back to the same saffron
+          sunburst ornament BhandaraCard uses for its no-photo state. */}
       {spot.photoUrl ? (
         <div className="relative aspect-square w-full overflow-hidden bg-saffron-50">
           <span
@@ -345,10 +419,12 @@ function SpotCard({
             referrerPolicy="no-referrer"
             className="relative w-full h-full object-contain"
           />
+          {liveBadge}
+          {distanceChip}
         </div>
       ) : (
         <div
-          className="aspect-square w-full flex items-center justify-center"
+          className="relative aspect-square w-full flex items-center justify-center"
           style={{
             background:
               "radial-gradient(420px 260px at 50% 40%, rgba(242,148,76,0.22), transparent 70%), #FFF7EB",
@@ -358,24 +434,14 @@ function SpotCard({
             size={72}
             className="text-saffron-600 opacity-60 transition-transform duration-500 group-hover:scale-105 group-hover:rotate-[8deg]"
           />
+          {liveBadge}
+          {distanceChip}
         </div>
       )}
-      {/* Live badge */}
-      <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-saffron-600 text-cream-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] font-semibold">
-        <span className="block w-1.5 h-1.5 rounded-full bg-cream-50 motion-safe:animate-pulse" />
-        {isHi ? "लाइव" : "Live"}
-      </span>
-      {/* Distance/ETA chip, only when we know where the user is */}
-      {distanceLabel ? (
-        <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-cream-50/95 backdrop-blur border border-saffron-500/45 px-2 py-0.5 text-[10px] font-semibold text-sindoor-700 shadow-warm">
-          <span className="font-numerals tabular-nums">{distanceLabel}</span>
-          <span className="text-ink-600/70" aria-hidden>·</span>
-          <span className="font-numerals tabular-nums">
-            {isHi ? `~${minutes} मि.` : `~${minutes} min`}
-          </span>
-        </span>
-      ) : null}
-      {/* Info */}
+
+      {/* Info — bhandara name (if linked) + caption + area pill.
+          Time-ago moved to the chat header above, so this block is
+          just "what + where" now. */}
       <div className="px-3 py-2 flex-1 flex flex-col gap-1">
         {bhandaraName ? (
           <p
@@ -389,42 +455,26 @@ function SpotCard({
         {spot.caption ? (
           <p className="text-xs text-ink-900 line-clamp-2">{spot.caption}</p>
         ) : null}
-        <p className="mt-auto text-[10px] text-ink-600 flex items-center gap-1.5">
-          {areaLabel ? <span>{areaLabel}</span> : null}
-          {areaLabel ? <span aria-hidden>·</span> : null}
-          <span>{relative(spot.createdAt, isHi)}</span>
-        </p>
-        {/* Reporter attribution. Surfaces who flagged the spot so other
-            visitors can recognise neighbours / community members and
-            trust the live photo a bit more than a faceless pin. We
-            truncate to one line so it never bumps the card height,
-            spots without a reporterName (rare; mostly legacy rows
-            from before the field was required) simply drop this line. */}
-        {spot.reporterName ? (
-          <p
-            className="text-[10px] text-ink-600 flex items-center gap-1 leading-tight line-clamp-1"
-            title={`Spotted by ${spot.reporterName}`}
-          >
-            <IconPerson />
-            <span className="truncate">
-              {isHi ? "द्वारा " : "by "}
-              <span className="text-ink-900 font-medium">
-                {spot.reporterName}
-              </span>
-            </span>
+        {areaLabel ? (
+          <p className="mt-auto text-[10px] text-ink-600 flex items-center gap-1">
+            <IconPinMini />
+            <span className="truncate">{areaLabel}</span>
           </p>
         ) : null}
-        {/* Single-row action bar: primary Directions takes the bulk of the
-            width, secondary Share + Copy collapse to icon-only chips on the
-            right. Reads cleanly even on the smallest card width.
-            `relative z-20` keeps these anchors above the stretched-link
-            overlay so they remain independently clickable. */}
-        <div className="relative z-20 mt-1 flex items-stretch gap-1.5 flex-wrap">
-          {/* Directions = primary saffron CTA, styled with the same
-              shared `btn btn-primary btn-sm` classes that listed
-              bhandara cards use, so both card families share one CTA
-              language. Share + Copy stay as icon-only round chips on
-              the right since they're secondary actions. */}
+
+        {/* Action bar: three same-size circular icon-only chips —
+            Directions (saffron-filled, primary CTA), Share (green
+            outline), Copy (saffron outline). Earlier iterations had
+            Directions as a wide text pill which broke the visual
+            rhythm at 5-col grid widths and dominated the tiny info
+            block. All three actions now share the same w-9 h-9
+            chip pattern so the action row reads as a tight three-
+            button cluster. Hover tooltips + aria-labels keep
+            "Get directions" discoverable for keyboard / screen-reader
+            users. `relative z-20` keeps these anchors above the
+            stretched-link overlay so they remain independently
+            clickable. */}
+        <div className="relative z-20 mt-1 flex items-center gap-1.5 flex-wrap">
           <a
             href={directionsUrl}
             target="_blank"
@@ -436,10 +486,11 @@ function SpotCard({
                 has_user_coords: userCoords ? 1 : 0,
               });
             }}
-            className="btn btn-primary btn-sm"
+            aria-label={isHi ? "रास्ता बताएँ" : "Get directions"}
+            title={isHi ? "रास्ता बताएँ" : "Get directions"}
+            className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 shadow-warm transition-colors"
           >
             <IconPin />
-            {isHi ? "रास्ता बताएँ" : "Get directions"}
           </a>
           <a
             href={waUrl}
@@ -465,9 +516,8 @@ function SpotCard({
                 // place + BadaMangal link + Google Maps link + closer)
                 // instead of the bare maps URL. Matches what the
                 // WhatsApp share button sends, so a paste into any
-                // messenger produces a complete invite. Consistent
-                // with the /live feed and every other Copy on the
-                // site, see lib/share.ts for the message shape.
+                // messenger produces a complete invite. See
+                // lib/share.ts for the message shape.
                 await navigator.clipboard.writeText(
                   spotShareText(
                     {
@@ -502,16 +552,17 @@ function SpotCard({
           </button>
         </div>
       </div>
-      {/* Stretched-link overlay, every spot card is now clickable
-          (previously only when bhandaraSlug existed). Tapping
-          anywhere outside the action-bar lands the user on the
-          /live timeline, scrolled to and focused on the exact post
-          they just clicked. The /live PostCard renders `id={post.id}`
-          so the URL fragment `#spot:<id>` resolves natively without
-          any JS. Lang query first, then fragment, per URL grammar.
-          Sits above the photo/info but BELOW the action bar
-          (z-10 vs z-20) so the inner Directions/Share/Copy anchors
-          stay clickable without nesting <a> inside <a>. */}
+
+      {/* Stretched-link overlay. Every spot card is clickable, taps
+          outside the action-bar land the user on the /live timeline
+          scrolled to this exact post. /live PostCard renders
+          `id={post.id}` so the URL fragment `#spot:<id>` resolves
+          natively without JS. z-[5] sits ABOVE the photo / info
+          (static, z-auto) but BELOW the action bar (z-20) so the
+          inner Directions / Share / Copy anchors stay clickable
+          without nesting <a> in <a>. Header sits above the link in
+          DOM order so the avatar + name still render through the
+          transparent overlay. */}
       <Link
         href={`/live${isHi ? "" : "?lang=en"}#spot:${spot.id}`}
         onClick={() =>
@@ -524,7 +575,7 @@ function SpotCard({
               ? "लाइव फ़ीड में देखें"
               : "View in live feed"
         }
-        className="absolute inset-0 z-10 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600/60"
+        className="absolute inset-0 z-[5] rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600/60"
       />
     </article>
   );
@@ -542,26 +593,27 @@ function relative(iso: string, isHi: boolean): string {
   return isHi ? `${h} घंटे पहले` : `${h} hr ago`;
 }
 
-function IconPerson() {
-  // 10px circle-and-bust glyph used as the reporter attribution
-  // marker on each live spot card. Stroke-current keeps it inheriting
-  // the surrounding `text-ink-600` tone so it sits quiet next to the
-  // copy without screaming.
+function IconPinMini() {
+  // 9px pin glyph used as the area marker in the bottom info row of
+  // each spot card. Stroke-current keeps it inheriting the surrounding
+  // `text-ink-600` tone so it sits quiet next to the area name.
+  // Smaller than the action-bar IconPin (which is 11px) because this
+  // is decorative metadata, not a CTA glyph.
   return (
     <svg
-      aria-hidden
-      width="10"
-      height="10"
+      width="9"
+      height="9"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="2.4"
       strokeLinecap="round"
       strokeLinejoin="round"
+      aria-hidden
       className="shrink-0"
     >
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21a8 8 0 0 1 16 0" />
+      <path d="M12 21s-6.5-7-6.5-12a6.5 6.5 0 1 1 13 0c0 5-6.5 12-6.5 12z" />
+      <circle cx="12" cy="9" r="2.25" />
     </svg>
   );
 }
@@ -584,8 +636,12 @@ function IconCopy() {
 }
 
 function IconPin() {
+  // Slightly bolder + larger than IconPinMini because this is the
+  // glyph for the icon-only Directions chip — needs to read at a
+  // glance against the saffron fill. 13px matches IconWhatsapp's
+  // optical weight inside the same w-9 h-9 chip pattern.
   return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M12 21s-6.5-7-6.5-12a6.5 6.5 0 1 1 13 0c0 5-6.5 12-6.5 12z" />
       <circle cx="12" cy="9" r="2.25" />
