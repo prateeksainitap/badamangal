@@ -33,9 +33,11 @@ import PhoneInput from "@/components/PhoneInput";
 import { AREAS } from "@/lib/lucknow";
 import { trackEvent } from "@/lib/ga";
 import {
+  VOLUNTEER_VIDEO_DRIVE_URL,
   isValidVolunteerCodeShape,
   normaliseVolunteerCode,
 } from "@/lib/volunteer";
+import { resizeImageForUpload } from "@/lib/image-resize";
 
 type UploadedMedia = {
   url: string;
@@ -67,17 +69,19 @@ export default function VolunteerSubmitForm({
   const [codeLocked, setCodeLocked] = useState<boolean>(false);
   const [gps, setGps] = useState<GpsState>({ kind: "pending" });
   const [photos, setPhotos] = useState<UploadedMedia[]>([]);
-  const [videos, setVideos] = useState<UploadedMedia[]>([]);
+  // Videos are not uploaded through this form anymore — they go to
+  // the shared Google Drive folder (see VOLUNTEER_VIDEO_DRIVE_URL).
+  // The bundle check uses a self-attested checkbox; admin verifies
+  // the Drive folder during moderation.
+  const [videosUploadedToDrive, setVideosUploadedToDrive] = useState<boolean>(false);
   const [spotPhoto, setSpotPhoto] = useState<UploadedMedia | null>(null);
   const [photoUploading, setPhotoUploading] = useState<number>(0);
-  const [videoUploading, setVideoUploading] = useState<number>(0);
   const [spotUploading, setSpotUploading] = useState<boolean>(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [phase, setPhase] = useState<SubmitPhase>({ kind: "form" });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const photoInputRef = useRef<HTMLInputElement | null>(null);
-  const videoInputRef = useRef<HTMLInputElement | null>(null);
   const spotInputRef = useRef<HTMLInputElement | null>(null);
 
   // ─── On mount: resolve code + capture GPS ────────────────────
@@ -153,8 +157,14 @@ export default function VolunteerSubmitForm({
 
   // ─── Upload helpers ──────────────────────────────────────────
   async function uploadOne(file: File): Promise<UploadedMedia> {
+    // Client-side resize for images BEFORE the network hop. Drops
+    // a 5-12 MB phone photo to ~500 KB → 5-10x faster upload on 4G.
+    // Non-images and HEIC files pass through unchanged (server's
+    // sharp handles them). Fully fail-open: any error returns the
+    // original file.
+    const fileToUpload = await resizeImageForUpload(file);
     const fd = new FormData();
-    fd.append("file", file);
+    fd.append("file", fileToUpload);
     const res = await fetch("/api/volunteer/upload-media", {
       method: "POST",
       headers: { "x-volunteer-code": code },
@@ -190,27 +200,11 @@ export default function VolunteerSubmitForm({
     trackEvent("volunteer_photos_uploaded", { added, total: photos.length + added });
   }
 
-  async function handleVideoPick(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    setUploadError(null);
-    const slots = Math.max(0, 2 - videos.length);
-    const toUpload = Array.from(files).slice(0, slots);
-    setVideoUploading(toUpload.length);
-    let added = 0;
-    for (const file of toUpload) {
-      try {
-        const uploaded = await uploadOne(file);
-        setVideos((prev) => [...prev, uploaded]);
-        added++;
-      } catch (err) {
-        setUploadError(err instanceof Error ? err.message : "Upload failed");
-        break;
-      } finally {
-        setVideoUploading((n) => Math.max(0, n - 1));
-      }
-    }
-    trackEvent("volunteer_videos_uploaded", { added });
-  }
+  // handleVideoPick was removed when videos moved to Google Drive
+  // (Section 3 of the form now shows a Drive folder link + a
+  // confirmation checkbox instead of an in-app file picker). The
+  // server upload endpoint still accepts video MIME types, kept
+  // as a safety net + for the parked paid-version flow.
 
   async function handleSpotPick(file: File | null) {
     if (!file) return;
@@ -230,9 +224,6 @@ export default function VolunteerSubmitForm({
   function removePhoto(idx: number) {
     setPhotos((prev) => prev.filter((_, i) => i !== idx));
   }
-  function removeVideo(idx: number) {
-    setVideos((prev) => prev.filter((_, i) => i !== idx));
-  }
 
   // ─── Submit ──────────────────────────────────────────────────
   async function onSubmit(ev: FormEvent<HTMLFormElement>) {
@@ -246,6 +237,16 @@ export default function VolunteerSubmitForm({
     setPhase({ kind: "submitting" });
 
     const fd = new FormData(ev.currentTarget);
+    const userNotes = String(fd.get("volunteerNotes") ?? "").trim();
+    // Auto-prepend a Drive marker to volunteerNotes so the admin
+    // moderation queue surfaces "this volunteer says they uploaded
+    // videos to Drive — go check folder X" at a glance. Volunteer's
+    // own note text follows after a blank line.
+    const drivePrefix = videosUploadedToDrive
+      ? "[Videos in Drive folder — prefixed with volunteer code]\n\n"
+      : "[Videos NOT marked as uploaded to Drive]\n\n";
+    const composedNotes = `${drivePrefix}${userNotes}`.trim();
+
     const payload = {
       code: normaliseVolunteerCode(code),
       bhandaraName: String(fd.get("bhandaraName") ?? "").trim(),
@@ -256,9 +257,11 @@ export default function VolunteerSubmitForm({
       startTime: String(fd.get("startTime") ?? "").trim(),
       menu: String(fd.get("menu") ?? "").trim(),
       mapsUrl: String(fd.get("mapsUrl") ?? "").trim(),
-      volunteerNotes: String(fd.get("volunteerNotes") ?? "").trim(),
+      volunteerNotes: composedNotes,
       photoUrls: photos.map((p) => p.url),
-      videoUrls: videos.map((v) => v.url),
+      // videoUrls stays in the payload shape (server expects the
+      // key) but is always empty now — videos live in Google Drive.
+      videoUrls: [] as string[],
       spotPhotoUrl: spotPhoto?.url ?? "",
       gpsLat: gps.kind === "captured" ? gps.lat : null,
       gpsLng: gps.kind === "captured" ? gps.lng : null,
@@ -282,7 +285,7 @@ export default function VolunteerSubmitForm({
       }
       trackEvent("volunteer_submit_success", {
         photo_count: photos.length,
-        video_count: videos.length,
+        videos_in_drive: videosUploadedToDrive ? 1 : 0,
         has_spot: spotPhoto ? 1 : 0,
         has_gps: gps.kind === "captured" ? 1 : 0,
       });
@@ -301,7 +304,12 @@ export default function VolunteerSubmitForm({
   // ─── FORM STATE ───────────────────────────────────────────────
   const submitting = phase.kind === "submitting";
   const photoBundleOk = photos.length >= 10;
-  const videoBundleOk = videos.length >= 2;
+  // Videos go to Google Drive now (see VOLUNTEER_VIDEO_DRIVE_URL) —
+  // the bundle check is a self-attested checkbox the volunteer
+  // ticks after uploading there. We can't programmatically verify
+  // the Drive upload happened, but the admin reviews the folder
+  // when moderating the submission.
+  const videoBundleOk = videosUploadedToDrive;
   const spotOk = spotPhoto !== null;
   const fullBundle = photoBundleOk && videoBundleOk && spotOk;
 
@@ -511,90 +519,83 @@ export default function VolunteerSubmitForm({
         ) : null}
       </fieldset>
 
-      {/* ─── Section 3: Videos ─── */}
+      {/* ─── Section 3: Videos via Google Drive ───────────────────
+          Phone videos are 30-120 MB each and in-app upload over 4G
+          is slow and failure-prone, with no server-side ffmpeg to
+          transcode. Videos route through a shared Google Drive
+          folder instead. Volunteer prefixes their code on each
+          filename so admin can match Drive uploads to submissions
+          during moderation. */}
       <fieldset className="grid gap-3">
         <legend className="font-fraunces text-lg text-sindoor-700">
-          3. 2 videos {videoBundleOk ? "✅" : `(${videos.length}/2)`}
+          3. 2 videos {videoBundleOk ? "✅" : "(via Google Drive)"}
         </legend>
         <p className="text-xs text-ink-600">
           10-30 sec each. One pandal pan, one prasad-serving moment.
+          Upload them to our shared Google Drive folder (phone
+          videos are too large to upload here directly).
         </p>
 
-        <input
-          ref={videoInputRef}
-          type="file"
-          accept="video/*"
-          multiple
-          className="sr-only"
-          onChange={(e) => {
-            void handleVideoPick(e.target.files);
-            e.target.value = "";
-          }}
-        />
-        <input
-          type="file"
-          accept="video/*"
-          capture="environment"
-          className="sr-only"
-          id="vol-video-camera"
-          onChange={(e) => {
-            void handleVideoPick(e.target.files);
-            e.target.value = "";
-          }}
-        />
+        <div className="mt-1 rounded-2xl border border-gold-500/45 bg-cream-50 p-4 space-y-3">
+          {/* Step A: open the Drive folder in a new tab */}
+          <div>
+            <p className="text-sm font-medium text-ink-900">
+              1. Drive folder खोलिए · Open the Drive folder
+            </p>
+            <a
+              href={VOLUNTEER_VIDEO_DRIVE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-ga="volunteer_open_drive_folder"
+              className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors"
+            >
+              📂 Open Google Drive folder ↗
+            </a>
+          </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => videoInputRef.current?.click()}
-            disabled={videos.length >= 2 || videoUploading > 0}
-            className="inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {videoUploading > 0 ? (
-              <>
-                <Spinner /> Uploading…
-              </>
-            ) : (
-              <>🎥 Add videos ({2 - videos.length} more)</>
-            )}
-          </button>
-          <label
-            htmlFor="vol-video-camera"
-            className={`inline-flex items-center gap-1.5 rounded-full border border-gold-500/50 bg-white hover:bg-saffron-50 text-ink-900 font-medium px-4 py-2 text-sm transition-colors cursor-pointer ${videos.length >= 2 || videoUploading > 0 ? "opacity-50 pointer-events-none" : ""}`}
-          >
-            📹 Record
+          {/* Step B: naming convention with the volunteer's code */}
+          <div>
+            <p className="text-sm font-medium text-ink-900">
+              2. File का नाम इस तरह रखें · Name your files like
+            </p>
+            <p className="mt-1.5 text-sm font-mono text-sindoor-700 bg-saffron-50 inline-block px-2.5 py-1 rounded border border-saffron-600/35">
+              {code || "BM-LKO-XXXXXX"}_bhandara-name.mp4
+            </p>
+            <p className="mt-1.5 text-xs text-ink-600">
+              आपका volunteer code <strong>{code || "—"}</strong> file
+              के नाम के शुरू में लगाएं ताकि हम आपकी video पहचान सकें।
+            </p>
+            <p className="text-xs text-ink-600">
+              Prefix every video file with your code so we can match
+              your Drive uploads to this submission.
+            </p>
+          </div>
+
+          {/* Step C: confirmation checkbox — gates the bundle */}
+          <label className="flex items-start gap-2.5 mt-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={videosUploadedToDrive}
+              onChange={(e) => {
+                setVideosUploadedToDrive(e.target.checked);
+                if (e.target.checked) {
+                  trackEvent("volunteer_videos_drive_confirmed", {});
+                }
+              }}
+              className="mt-1 h-4 w-4 accent-saffron-600 shrink-0"
+            />
+            <span className="text-sm text-ink-900">
+              <strong>
+                ✅ मैंने अपनी videos Drive folder में upload कर दी हैं
+              </strong>
+              <br />
+              <span className="text-xs text-ink-600">
+                I've uploaded my 2 videos to the Google Drive folder,
+                with my volunteer code as the filename prefix.
+              </span>
+            </span>
           </label>
         </div>
-
-        {videos.length > 0 ? (
-          <ul className="grid grid-cols-2 gap-2 mt-2">
-            {videos.map((v, i) => (
-              <li
-                key={v.url}
-                className="relative rounded-lg border border-gold-500/40 overflow-hidden bg-cream-50 p-2"
-              >
-                <video
-                  src={v.url}
-                  controls
-                  preload="metadata"
-                  className="w-full h-32 object-contain bg-ink-900/5 rounded"
-                />
-                <div className="mt-1 flex items-center justify-between gap-2">
-                  <span className="text-xs text-ink-600 truncate">
-                    {(v.sizeBytes / (1024 * 1024)).toFixed(1)} MB
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removeVideo(i)}
-                    className="text-xs text-alert-500 hover:underline"
-                  >
-                    Remove
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : null}
       </fieldset>
 
       {/* ─── Section 4: Live spot photo ─── */}
@@ -676,7 +677,6 @@ export default function VolunteerSubmitForm({
           disabled={
             submitting ||
             photoUploading > 0 ||
-            videoUploading > 0 ||
             spotUploading
           }
           className="inline-flex items-center justify-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-6 py-3 text-base shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

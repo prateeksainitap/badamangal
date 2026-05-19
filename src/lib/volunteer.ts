@@ -29,6 +29,25 @@
  */
 
 /**
+ * Shared Google Drive folder volunteers upload videos to.
+ *
+ * Why videos go to Drive instead of through /api/volunteer/upload-media:
+ *   Phone videos are typically 30-120 MB at default capture quality.
+ *   Our Supabase Storage upload + Netlify Function payload cap make
+ *   in-app video upload slow and failure-prone, and we don't have
+ *   server-side ffmpeg for transcoding. Drive handles the heavy
+ *   lifting end-to-end and admins can review videos directly in the
+ *   folder. Volunteers are instructed to prefix filenames with their
+ *   volunteer code so the admin can match uploads to submissions
+ *   when reviewing.
+ *
+ * If this URL changes (folder migrated, etc.), update the constant
+ * here — it's referenced from VolunteerSubmitForm + any admin docs.
+ */
+export const VOLUNTEER_VIDEO_DRIVE_URL =
+  "https://drive.google.com/drive/folders/19-99gSo8HagMEz_L6NoyfC6t3aXKBTNu?usp=sharing";
+
+/**
  * Validate the shape of an incoming volunteer code. Rejects obvious
  * garbage before we hit the DB. Does NOT confirm the code exists —
  * that's the caller's job (look it up in the Volunteer table).
