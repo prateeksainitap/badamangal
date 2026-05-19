@@ -134,10 +134,24 @@ export default async function HomePage() {
       orderBy: [{ isSponsored: "desc" }, { createdAt: "asc" }],
     }),
     getHomepageStats(),
+    // Pull ALL currently-live spots, not a capped slice. The previous
+    // `take: 24` was originally sized for the HappeningNow feed (which
+    // only renders 15 cards from this array), but the SAME array is
+    // fed into MapBoard for two things that need the full set:
+    //   • the map pins (1 pin per spot) — under the cap, ≥25th spot
+    //     never rendered on the map at all
+    //   • the heading counter `listings.length + liveSpots.length`
+    //     — under the cap, the headline froze at "Spotted 24" even
+    //     when the DB had 60+ live spots, which is exactly the bug
+    //     the user is staring at on the live homepage.
+    // Spot rows auto-expire after 8h and the table only keeps APPROVED,
+    // so this is naturally bounded by activity-in-the-last-8h. A safety
+    // ceiling of 500 protects the wire payload (~300 KB worst case) in
+    // case a future bug pushes expiresAt unusually far out.
     prisma.spot.findMany({
       where: { status: "APPROVED", expiresAt: { gt: new Date() } },
       orderBy: { createdAt: "desc" },
-      take: 24,
+      take: 500,
       include: {
         bhandara: { select: { slug: true, name: true, nameHi: true } },
       },
