@@ -393,23 +393,21 @@ function SpotCard({
         </span>
       </header>
 
-      {/* Photo (optional). LIVE + distance badges sit INSIDE the
-          photo wrapper now (not the article root) so the chat-style
-          header above doesn't affect their absolute positioning.
-          When the photo is missing, fall back to the same saffron
-          sunburst ornament BhandaraCard uses for its no-photo state. */}
+      {/* Photo (optional). `object-cover` fills the whole square and
+          center-crops the photo, which trades preserving the full
+          composition for a uniform, dense feed where every card reads
+          like a thumbnail of "what's being served right now". The
+          earlier `object-contain` + blurred backdrop treatment was
+          dropped here because vertical phone photos were ending up
+          ~50% empty space inside the card, which made the live feed
+          look sparser than the activity actually was. BhandaraCard
+          (curated listings) keeps the contain treatment because
+          those rows are often promotional posters where full content
+          matters more than visual rhythm. LIVE + distance badges sit
+          INSIDE the photo wrapper so the chat-style header above
+          doesn't affect their absolute positioning. */}
       {spot.photoUrl ? (
         <div className="relative aspect-square w-full overflow-hidden bg-saffron-50">
-          <span
-            aria-hidden
-            className="absolute inset-0 bg-center bg-cover scale-110"
-            style={{
-              backgroundImage: `url(${JSON.stringify(spot.photoUrl).slice(1, -1)})`,
-              filter: "blur(28px) saturate(1.1)",
-              opacity: 0.55,
-            }}
-          />
-          <span aria-hidden className="absolute inset-0 bg-cream-50/35" />
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={spot.photoUrl}
@@ -417,7 +415,7 @@ function SpotCard({
             loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"
-            className="relative w-full h-full object-contain"
+            className="w-full h-full object-cover"
           />
           {liveBadge}
           {distanceChip}
