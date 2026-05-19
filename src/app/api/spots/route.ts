@@ -52,12 +52,19 @@ const bodySchema = z
  * GET /api/spots, returns the live (active + non-expired) spots.
  * Default limit 60. Supports `?bbox=minLng,minLat,maxLng,maxLat` for
  * map-bounded queries and `?area=Aliganj` for area filters.
+ *
+ * The clamp ceiling was bumped from 120 to 500 so the HappeningNow
+ * client poll (which the homepage hits every 15 s) can request the
+ * same full set the SSR fetches with `take: 500`. The previous 120
+ * ceiling silently capped the heading counter to "24 spotted" on the
+ * homepage as soon as the first poll fired, even though the SSR
+ * had handed down a correct count of 60+.
  */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const limit = Math.max(
     1,
-    Math.min(120, Number(url.searchParams.get("limit") ?? "60") || 60),
+    Math.min(500, Number(url.searchParams.get("limit") ?? "60") || 60),
   );
   const area = url.searchParams.get("area") ?? undefined;
 

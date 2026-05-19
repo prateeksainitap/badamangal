@@ -55,7 +55,13 @@ export default function HappeningNow({ initial }: Props) {
     let alive = true;
     const tick = async () => {
       try {
-        const res = await fetch("/api/spots?limit=24", { cache: "no-store" });
+        // Pull the full live set, not just 24. The grid still only
+        // *renders* a handful of cards (slice below), but the heading
+        // counter (`nearbySpots.length`) reads from this same `spots`
+        // array, so capping the poll at 24 made the headline drop from
+        // "60 spotted live" (SSR) to "24 spotted live" the moment the
+        // first poll fired. /api/spots is now clamped at 500 too.
+        const res = await fetch("/api/spots?limit=500", { cache: "no-store" });
         if (!alive || !res.ok) return;
         const data = (await res.json()) as { spots: LiveSpot[] };
         setSpots(data.spots);
