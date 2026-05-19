@@ -59,10 +59,9 @@ export default function VolunteerLandingPage() {
           Help fellow devotees find every bhandara in Lucknow. Spend about 10 minutes
           at a bhandara, document it, and your work goes live on the public directory.
         </p>
-        <p className="mt-3 text-center text-xs text-ink-600/80 max-w-xl mx-auto italic">
-          प्रत्येक approved submission पर एक छोटी सेवा-राशि (honorarium) भी
-          UPI में भेजी जाती है।
-        </p>
+        {/* Hero stays seva-only — the honorarium info lives in its
+            own dedicated section lower on the page so it's discoverable
+            without colouring the lead message as a gig opportunity. */}
 
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
@@ -170,6 +169,34 @@ export default function VolunteerLandingPage() {
               GPS is auto-checked at submit time, so the photos must be taken from the actual bhandara location. Stock images or photos from a previous Tuesday are rejected. The honorarium exists to thank volunteers for their time, not to incentivise volume.
             </p>
           </div>
+        </div>
+      </section>
+
+      <div className="my-10 flex justify-center">
+        <MarigoldDivider size={320} className="text-gold-500" />
+      </div>
+
+      {/* ─── Honorarium info ──────────────────────────────────────
+          Dedicated, lowkey "is there money?" answer placed mid-page
+          so curious visitors find it without having to dig through
+          the FAQ, but it doesn't lead the hero (which is and should
+          stay seva-framed, not gig-economy-framed). Cream-soft card
+          on a single line of copy: the ₹50 number is named once,
+          the framing wraps it as a thank-you, not a wage. */}
+      <section className="mx-auto max-w-3xl px-4 sm:px-6 mt-4">
+        <div className="rounded-2xl border border-gold-500/40 bg-cream-50/70 px-5 py-4 sm:px-6 sm:py-5 text-center">
+          <p className="text-xs uppercase tracking-[0.18em] text-saffron-600 font-medium">
+            सेवा-राशि · About the honorarium
+          </p>
+          <p className="mt-2 text-sm sm:text-base text-ink-900">
+            प्रत्येक approved submission पर{" "}
+            <strong>₹50 की सेवा-राशि</strong> आपकी UPI पर हर रविवार
+            भेजी जाती है। (अधूरे submission पर ₹25)
+          </p>
+          <p className="mt-1.5 text-xs text-ink-600 italic">
+            यह आपके समय और श्रम के प्रति एक छोटी कृतज्ञता है, वेतन
+            नहीं। Think of it as a thank-you for your time, not a wage.
+          </p>
         </div>
       </section>
 
