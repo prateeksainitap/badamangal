@@ -1,16 +1,19 @@
 /**
  * /volunteer — public marketing + recruitment page for the volunteer
  * programme. Server-rendered shell with hero, "how it works",
- * pay structure, FAQ, and a big signup CTA.
+ * what each submission needs, audience cards, FAQ, and a CTA.
  *
- * The actual signup form lives at /volunteer/signup. We keep this
- * page intentionally read-only so it can ISR-cache aggressively;
- * the form has its own client component with React state.
+ * IMPORTANT — Bada Mangal 2026 season is running as PURE SEVA. The
+ * honorarium / payout feature is parked (the DB still tracks
+ * payoutAmount + the admin payout-CSV export still works for when
+ * we bring it back, but the public-facing copy has zero monetary
+ * references). Keep this page free of ₹ symbols and "earn/paid"
+ * language so the framing stays consistent with the WhatsApp
+ * recruitment messages going out.
  *
- * Audience: students, delivery boys, porters, existing devotees who
- * want to earn ₹50 per documented bhandara during Bada Mangal +
- * Bade Shanivar days. Copy is Hindi-leaning (the audience) with
- * English for the gig-economy / college layer.
+ * Audience: students, devotees, anyone with a phone who wants to
+ * contribute to the city's bhandara directory. Bilingual copy with
+ * clean Hindi-then-English separation (no inline code-switching).
  */
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -22,12 +25,12 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "Volunteer with BadaMangal · Lucknow",
   description:
-    "Help us list every Bada Mangal bhandara in Lucknow. Spend 10 minutes per bhandara taking 10 photos plus 2 videos plus a live spot photo, fill the listing. A small honorarium per documented bhandara, paid via UPI every Sunday.",
+    "Help us list every Bada Mangal bhandara in Lucknow. Spend 10 minutes per bhandara taking photos and videos, then fill the listing. A purely volunteer-led seva — contribute to the city's bhandara directory this Jyeshtha season.",
   alternates: { canonical: `${SITE_URL}/volunteer` },
   openGraph: {
     title: "Volunteer with BadaMangal",
     description:
-      "Document a bhandara during the Bada Mangal season. 10 photos plus 2 videos plus 1 live spot photo, plus the listing fields. Small honorarium per submission, paid via UPI every Sunday.",
+      "Document a bhandara during the Bada Mangal season. 10 photos plus 2 videos plus 1 live spot photo, plus the listing fields. Pure seva — help fellow devotees find every bhandara in Lucknow.",
     url: `${SITE_URL}/volunteer`,
     type: "website",
   },
@@ -100,7 +103,7 @@ export default function VolunteerLandingPage() {
             num="1"
             title="Apply"
             titleHi="आवेदन करें"
-            body="Fill 1 short form: name, WhatsApp, UPI ID, your areas. Our team manually reviews each application within 24 hours and sends your volunteer code to your WhatsApp."
+            body="Fill 1 short form: name, WhatsApp, your areas. Our team manually reviews each application within 24 hours and sends your volunteer code to your WhatsApp."
           />
           <Step
             num="2"
@@ -116,9 +119,9 @@ export default function VolunteerLandingPage() {
           />
           <Step
             num="4"
-            title="Honorarium"
-            titleHi="सेवा-राशि"
-            body="Approved submissions are acknowledged with a small honorarium via UPI every Sunday. Think of it as a thank-you for the time you spent, not a wage."
+            title="Goes live"
+            titleHi="लाइव हो जाता है"
+            body="Our team reviews each submission, then publishes the bhandara on the public directory and the live city map. Your contribution helps thousands of devotees find the right bhandara to attend."
           />
         </div>
       </section>
@@ -160,52 +163,23 @@ export default function VolunteerLandingPage() {
             />
           </ul>
 
+          {/* Quality-criteria reminder — replaces what used to be the
+              ₹50/₹25 acknowledgement panel. This season is pure seva
+              (no honorarium UI for now), so the panel speaks only to
+              what makes a submission usable for the directory: real
+              photos taken on-site, not stock or stale shots. */}
           <div className="mt-6 rounded-2xl border border-saffron-600/40 bg-saffron-50/60 p-4">
             <p className="text-sm text-ink-900">
-              <strong>Acknowledgement (honorarium):</strong>{" "}
-              full submission ₹50 · partial submission ₹25 · fake / incomplete: nothing.
+              <strong>Quality reminder:</strong> GPS is auto-checked
+              at submit time, so the photos must be taken from the
+              actual bhandara location. Stock images or photos from a
+              previous Tuesday won't be accepted.
             </p>
-            <p className="mt-1 text-xs text-ink-600">
-              GPS is auto-checked at submit time, so the photos must be taken from the actual bhandara location. Stock images or photos from a previous Tuesday are rejected. The honorarium exists to thank volunteers for their time, not to incentivise volume.
+            <p className="mt-1.5 text-xs text-ink-600">
+              हर भण्डारे की तस्वीर मौके पर ही लेनी होती है — पुरानी
+              या इंटरनेट से उठाई तस्वीरें स्वीकार नहीं होतीं।
             </p>
           </div>
-        </div>
-      </section>
-
-      <div className="my-10 flex justify-center">
-        <MarigoldDivider size={320} className="text-gold-500" />
-      </div>
-
-      {/* ─── Honorarium info ──────────────────────────────────────
-          Dedicated, lowkey "is there money?" answer placed mid-page
-          so curious visitors find it without having to dig through
-          the FAQ, but it doesn't lead the hero (which is and should
-          stay seva-framed, not gig-economy-framed). Cream-soft card
-          on a single line of copy: the ₹50 number is named once,
-          the framing wraps it as a thank-you, not a wage. */}
-      <section className="mx-auto max-w-3xl px-4 sm:px-6 mt-4">
-        <div className="rounded-2xl border border-gold-500/40 bg-cream-50/70 px-5 py-5 sm:px-6 sm:py-6 text-center">
-          <p className="text-xs uppercase tracking-[0.18em] text-saffron-600 font-medium">
-            सेवा-राशि · About the honorarium
-          </p>
-          {/* Hindi sentence */}
-          <p className="mt-3 text-sm sm:text-base text-ink-900 leading-relaxed">
-            प्रत्येक स्वीकृत प्रविष्टि पर{" "}
-            <strong>₹50 की सेवा-राशि</strong> हर रविवार आपके UPI पर
-            भेजी जाती है। (अधूरी प्रविष्टि पर ₹25)
-          </p>
-          {/* English sentence, separate line */}
-          <p className="mt-2 text-sm sm:text-base text-ink-900 leading-relaxed">
-            <strong>₹50</strong> honorarium per approved submission,
-            paid to your UPI every Sunday. (₹25 for partial submissions.)
-          </p>
-          {/* Bilingual closing note, each line one language */}
-          <p className="mt-3 text-xs text-ink-600 italic leading-relaxed">
-            यह आपके समय और श्रम के प्रति एक छोटी कृतज्ञता है, वेतन नहीं।
-          </p>
-          <p className="mt-1 text-xs text-ink-600 italic leading-relaxed">
-            Think of it as a thank-you for your time, not a wage.
-          </p>
         </div>
       </section>
 
@@ -219,7 +193,8 @@ export default function VolunteerLandingPage() {
           कौन जुड़ सकता है · Who can join
         </h2>
         <p className="mt-2 text-center text-sm text-ink-600">
-          You need a smartphone + WhatsApp + UPI. That's it.
+          You need a smartphone with WhatsApp. That's it. Pure seva,
+          purely volunteer-led.
         </p>
 
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -236,7 +211,7 @@ export default function VolunteerLandingPage() {
           <AudienceCard
             emoji="🙏"
             title="Devotees"
-            body="If you're going to a bhandara anyway, document it. Sewa + a small honorarium for the effort."
+            body="If you're going to a bhandara anyway, document it. Pure sewa — your photos help thousands of other devotees find the right bhandara."
           />
           <AudienceCard
             emoji="🚖"
@@ -258,21 +233,21 @@ export default function VolunteerLandingPage() {
 
         <div className="mt-6 grid gap-3">
           <Faq
-            qHi="कब और कितनी सेवा-राशि मिलेगी?"
-            qEn="When + how much honorarium do I receive?"
-            aHi="हर स्वीकृत प्रविष्टि पर ₹50, हर रविवार आपके UPI पर। आप जितने भण्डारे कर सकें, उतने करें। कोई न्यूनतम सीमा नहीं, कोई अधिकतम सीमा नहीं।"
-            aEn="₹50 per approved submission, paid to your UPI every Sunday. You decide how many bhandaras to document. No minimum, no cap."
+            qHi="यह कार्यक्रम कैसे चलता है? क्या यह कोई नौकरी है?"
+            qEn="How does this programme work? Is it a job?"
+            aHi="यह पूर्णतः स्वयंसेवक-आधारित निःशुल्क सेवा है, कोई नौकरी या वेतन नहीं। आप अपनी इच्छानुसार बड़े मंगल या बड़े शनिवार के दिन अपने क्षेत्र के भण्डारों की जानकारी हमें भेजते हैं। हम उसे directory पर live कर देते हैं ताकि बाकी श्रद्धालु पहुँच सकें।"
+            aEn="It's a purely volunteer-led free seva, not a job. On Bada Mangal Tuesdays or Bade Shanivar days, you visit a bhandara in your area, document it, and we publish it on the public directory so other devotees can find it."
           />
           <Faq
             qHi="अगर मेरी प्रविष्टि अस्वीकृत हो जाए तो?"
             qEn="What if my submission is rejected?"
-            aHi="हम WhatsApp पर कारण बताएँगे — आमतौर पर तस्वीरें धुँधली होने, बैनर न होने, GPS मेल न खाने, या किसी और ने पहले वही भण्डारा भेज देने पर। आप दूसरा भण्डारा कर सकते हैं, कोई दंड नहीं।"
-            aEn="We'll WhatsApp you the reason — usually blurry photos, missing banner, GPS mismatch, or duplicate (someone else submitted it first). You can submit another bhandara, no penalty."
+            aHi="हम WhatsApp पर कारण बताएँगे — आमतौर पर तस्वीरें धुँधली होने, बैनर न होने, GPS मेल न खाने, या किसी और ने पहले वही भण्डारा भेज देने पर। आप दूसरा भण्डारा कर सकते हैं।"
+            aEn="We'll WhatsApp you the reason — usually blurry photos, missing banner, GPS mismatch, or duplicate (someone else submitted it first). You can simply submit another bhandara."
           />
           <Faq
             qHi="क्या मुझे रोज़ काम करना होगा?"
             qEn="Do I have to work every day?"
-            aHi="नहीं। सिर्फ बड़े मंगल (मंगलवार) और बड़े शनिवार के दिन। बीच के दिनों में कोई काम नहीं। पूरे ऋतु में कुल मिलाकर 10 दिन।"
+            aHi="नहीं। सिर्फ बड़े मंगल (मंगलवार) और बड़े शनिवार के दिन। बीच के दिनों में कोई काम नहीं। पूरे ऋतु में कुल मिलाकर लगभग 10 दिन।"
             aEn="No. Only on Bada Mangal (Tuesday) and Bade Shanivar (Saturday) days. Nothing in between. About 10 days across the whole season."
           />
           <Faq
@@ -284,8 +259,8 @@ export default function VolunteerLandingPage() {
           <Faq
             qHi="दो लोगों ने एक ही भण्डारा भेजा तो?"
             qEn="If two volunteers submit the same bhandara?"
-            aHi="पहले जिसने पूरी प्रविष्टि भेजी, उसे सेवा-राशि मिलेगी। दूसरे को 'DUPLICATE' संदेश मिल जाएगा, कोई सेवा-राशि नहीं। इसलिए जल्दी प्रविष्टि भेजना ज़रूरी है।"
-            aEn="Whoever submitted the complete entry first receives the honorarium. The other gets a 'DUPLICATE' notice, no honorarium. So submitting quickly matters."
+            aHi="पहले जिसने पूरी जानकारी भेजी, उसकी प्रविष्टि directory पर live होगी। दूसरे को 'DUPLICATE' संदेश मिल जाएगा। इसलिए जल्दी प्रविष्टि भेजना ज़रूरी है।"
+            aEn="Whoever submits the complete entry first gets published on the directory. The other receives a 'DUPLICATE' notice. So submitting quickly matters."
           />
         </div>
       </section>

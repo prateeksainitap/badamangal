@@ -22,9 +22,9 @@
  *
  * Validation philosophy: minimal client-side gates beyond required
  * fields. The server is the source of truth — we let the user
- * submit even if photos < 10 (their choice + admin's ₹25 PARTIAL
- * option) but we surface a yellow warning so they know what's
- * coming.
+ * submit even if photos < 10 (their choice + admin discretion on
+ * what counts as a complete bundle) but we surface a yellow
+ * warning so they know what's coming.
  */
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -664,11 +664,11 @@ export default function VolunteerSubmitForm({
       <div className="mt-2 grid gap-3">
         {!fullBundle ? (
           <div className="rounded-xl border border-saffron-600/40 bg-saffron-50 px-3 py-2 text-sm text-ink-900">
-            ⚠️ <strong>Bundle incomplete.</strong> Full bundle (10 photos + 2 videos + 1 spot) = ₹50. Partial = ₹25 at admin's discretion.
+            ⚠️ <strong>Bundle incomplete.</strong> Full bundle is 10 photos + 2 videos + 1 spot photo. Partial submissions may or may not be accepted at admin's discretion.
           </div>
         ) : (
           <div className="rounded-xl border border-leaf-600/40 bg-leaf-600/5 px-3 py-2 text-sm text-ink-900">
-            ✅ Full ₹50 bundle ready to submit.
+            ✅ Full bundle ready to submit. 🙏
           </div>
         )}
         <button
@@ -901,7 +901,9 @@ function SuccessCard({
           Submitted! 🙏
         </h2>
         <p className="mt-2 text-sm text-ink-600">
-          We'll review within 24 hours. ₹50 paid to your UPI next Sunday if approved.
+          We'll review within 24 hours. Once approved, your bhandara
+          goes live on the public directory + city map. Thank you
+          for your seva 🙏
         </p>
         <p className="mt-1 text-xs text-ink-600 font-mono">
           ID: {submissionId.slice(0, 12)}…

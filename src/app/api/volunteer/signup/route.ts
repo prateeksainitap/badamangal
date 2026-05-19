@@ -66,7 +66,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     fields.phone = "Please enter a valid 10-digit mobile number.";
   }
 
-  if (upi.length < 5) fields.upi = "Please enter your UPI ID.";
+  // UPI is optional for the Bada Mangal 2026 season (pure-seva mode,
+  // no honorarium payouts running). Volunteers may share it for
+  // future communications, but the form no longer requires it. We
+  // still validate format IF they provide one, so junk doesn't end
+  // up in the DB.
   if (upi.length > 60) fields.upi = "UPI ID is too long.";
   if (upi && (!/@/.test(upi) || upi.startsWith("@") || upi.endsWith("@"))) {
     fields.upi = "UPI ID should look like name@bank (e.g. 9876543210@upi).";

@@ -145,21 +145,23 @@ export default function VolunteerSignupForm() {
 
       <label className="grid gap-1.5">
         <span className="text-sm text-ink-600">
-          UPI ID for payments <span className="text-sindoor-700">*</span>
+          UPI ID <span className="text-ink-600/70">(optional)</span>
         </span>
         <input
           name="upi"
           type="text"
-          required
           maxLength={60}
-          placeholder="e.g. 9876543210@upi, name@paytm, name@okhdfcbank"
+          placeholder="e.g. 9876543210@upi, name@paytm — optional"
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
           className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
         />
         <span className="text-xs text-ink-600">
-          Open your UPI app → tap profile → copy your UPI ID. We pay every Sunday to this ID.
+          Optional. This season runs as pure seva, so no payment is
+          being set up. We may add small acknowledgements in future
+          seasons — share your UPI now if you'd like to be reachable
+          for those.
         </span>
         {fieldErrors.upi ? (
           <span className="text-xs text-alert-500">{fieldErrors.upi}</span>
