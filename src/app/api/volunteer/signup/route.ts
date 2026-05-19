@@ -36,7 +36,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 5;
 
-const MAX_SIGNUPS_PER_IP_PER_DAY = 3;
+// Per-IP signup cap is parked for the Bada Mangal 2026 launch
+// period. Original value was 3 signups per IP per 24h. The cap was
+// hitting legitimate use cases — admin testing, family members
+// signing up from the same WiFi, multiple volunteers from a college
+// hostel or apartment on a shared NAT, etc. Re-enable by uncommenting
+// the constant + the gate in the POST handler below if abuse becomes
+// a real problem.
+// const MAX_SIGNUPS_PER_IP_PER_DAY = 3;
 
 function jsonError(status: number, error: string, fields?: Record<string, string>) {
   return NextResponse.json({ ok: false, error, fields }, { status });
@@ -80,17 +87,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return jsonError(400, "validation", fields);
   }
 
-  // ── 3. Rate limit by IP ──────────────────────────────────────
+  // ── 3. IP capture (no rate-limit gate, parked for launch) ─────
+  // We still hash + persist the IP so the admin can do retroactive
+  // forensics if a fraud wave shows up (group all volunteers
+  // sharing one ipHash, etc.). The throttling itself is off — see
+  // the parked MAX_SIGNUPS_PER_IP_PER_DAY constant above for the
+  // re-enable hook.
   const ip = ipHash(readClientIp(req.headers));
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const recent = await prisma.volunteer.count({
-    where: { ipHash: ip, createdAt: { gte: oneDayAgo } },
-  });
-  if (recent >= MAX_SIGNUPS_PER_IP_PER_DAY) {
-    return jsonError(429, "rate_limited", {
-      _form: "Too many signups from this connection today. Try again tomorrow or contact the team.",
-    });
-  }
 
   // ── 4. Generate a unique code + persist as PROBATIONARY ────────
   //
