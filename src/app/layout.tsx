@@ -101,17 +101,28 @@ export const metadata: Metadata = {
   },
   // Favicon stack:
   //   • SVG first, modern browsers prefer it (scales perfectly at any DPR)
-  //   • 32 / 16 PNG fallbacks for older browsers + Android Chrome's
-  //     limited SVG support
+  //   • 192 / 48 / 32 / 16 PNG fallbacks. The 192 and 48 are critical
+  //     for Google Search results — Google's docs (see
+  //     developers.google.com/search/docs/appearance/favicon-in-search)
+  //     require a favicon that is a multiple of 48 px square (48, 96,
+  //     144, 192…) for the SERP icon to display. Below 48 → Google
+  //     falls back to its generic "house" icon. We list both 192 (best
+  //     quality if Google supports it) and 48 (the minimum Google
+  //     accepts) so the indexer has a definitive choice.
   //   • Apple touch icon (180×180) for iOS home-screen installs
   //   • Manifest link supplies the 192/512 PNGs to Android PWA installs
+  //   • /favicon.ico at root is also regenerated to a multi-size
+  //     16/32/48/64/96 file so legacy + Google paths both get a
+  //     ≥48 px variant.
   icons: {
     icon: [
       { url: "/brand/favicon.svg", type: "image/svg+xml" },
+      { url: "/brand/favicon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/brand/favicon-48.png", sizes: "48x48", type: "image/png" },
       { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
       { url: "/brand/favicon-16.png", sizes: "16x16", type: "image/png" },
     ],
-    shortcut: "/brand/favicon-32.png",
+    shortcut: "/brand/favicon-192.png",
     apple: [
       { url: "/brand/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
