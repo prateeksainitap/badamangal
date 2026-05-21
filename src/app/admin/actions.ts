@@ -204,6 +204,11 @@ export async function editAndPublishAction(
   // ("puri, sabzi, prasad") in practice. Future work: optionally
   // re-translate menu items via Gemini on save.
   const verify = formData.get("isVerified") === "on";
+  // Admin "feature on homepage" toggle. Lands the bhandara in the
+  // highest-priority bucket of FeaturedBhandaras' pickFeatured (see
+  // src/components/FeaturedBhandaras.tsx), beating today's-bhandara
+  // + verified-with-photo etc.
+  const featured = formData.get("isFeatured") === "on";
 
   await prisma.bhandara.update({
     where: { id },
@@ -232,6 +237,7 @@ export async function editAndPublishAction(
       status: "APPROVED",
       approvedAt: new Date(),
       isVerified: verify,
+      isFeatured: featured,
     },
   });
 

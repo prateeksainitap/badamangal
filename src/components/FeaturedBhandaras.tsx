@@ -63,6 +63,11 @@ function pickFeatured(listings: Bhandara[], today: string, max = 4): Bhandara[] 
   };
 
   const buckets = {
+    // Admin-flipped isFeatured ALWAYS wins. Use case: a story we
+    // want to lead with right now (e.g. the bhandara that just
+    // landed press coverage, the host bhandara for the next Tuesday).
+    // Manually featured bhandaras skip every other check.
+    manualFeatured: [] as Bhandara[],
     today: [] as Bhandara[],
     weekVerifiedWithPhoto: [] as Bhandara[],
     verifiedWithPhoto: [] as Bhandara[],
@@ -71,6 +76,10 @@ function pickFeatured(listings: Bhandara[], today: string, max = 4): Bhandara[] 
   };
 
   for (const b of listings) {
+    if (b.isFeatured) {
+      buckets.manualFeatured.push(b);
+      continue;
+    }
     const dates = b.tuesdayDates ?? [];
     if (dates.includes(today)) {
       buckets.today.push(b);
@@ -98,6 +107,7 @@ function pickFeatured(listings: Bhandara[], today: string, max = 4): Bhandara[] 
     list.slice().sort((a, b) => soonest(a).localeCompare(soonest(b)));
 
   return [
+    ...sortBySoonest(buckets.manualFeatured),
     ...sortBySoonest(buckets.today),
     ...sortBySoonest(buckets.weekVerifiedWithPhoto),
     ...sortBySoonest(buckets.verifiedWithPhoto),

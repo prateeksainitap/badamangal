@@ -165,6 +165,7 @@ export function toBhandara(record: DbBhandara): Bhandara {
     photoUrl: record.photoUrl ?? undefined,
     isSponsored: record.isSponsored,
     isVerified: record.isVerified,
+    isFeatured: record.isFeatured,
     geoNeighborhood: record.geoNeighborhood ?? undefined,
     geoDistrict: record.geoDistrict ?? undefined,
     geoState: record.geoState ?? undefined,

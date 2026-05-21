@@ -25,6 +25,10 @@ export type Bhandara = {
   photoUrl?: string;
   isSponsored?: boolean;
   isVerified?: boolean;
+  /** Admin-flipped "feature this on the homepage" flag. When true,
+   *  pickFeatured() pushes it to the very top of the homepage's
+   *  4-card featured row regardless of date / photo / verification. */
+  isFeatured?: boolean;
   // geocoder-derived
   geoNeighborhood?: string;
   geoDistrict?: string;

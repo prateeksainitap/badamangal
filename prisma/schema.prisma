@@ -57,6 +57,13 @@ model Bhandara {
   status            String    @default("APPROVED") // APPROVED | REJECTED | ARCHIVED
   isVerified        Boolean   @default(false)
   isSponsored       Boolean   @default(false)
+  // Admin-controlled "feature this bhandara" flag. When true, the
+  // bhandara jumps to the top of the FeaturedBhandaras (homepage)
+  // priority order, regardless of date / photo / verification.
+  // Toggled via the admin edit page (see editAndPublishAction).
+  // Distinct from isSponsored (which connotes "paid us") and
+  // isVerified (which connotes "we've confirmed the details").
+  isFeatured        Boolean   @default(false)
   sponsorTier       String?
   // metrics
   viewCount         Int       @default(0)

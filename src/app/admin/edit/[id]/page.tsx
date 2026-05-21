@@ -250,6 +250,22 @@ export default async function AdminEditPage({ params }: PageProps) {
           Mark as <strong>Verified</strong> (called &amp; confirmed by phone)
         </label>
 
+        {/* Admin-controlled "feature on homepage" toggle. When on,
+            this bhandara jumps to the very top of the homepage's
+            FeaturedBhandaras row, ahead of today's-bhandara +
+            verified-with-photo + everything else. Use for the lead
+            story of the week (e.g. host bhandara for the next
+            Tuesday, a venue that just landed press coverage). */}
+        <label className="flex items-center gap-2 text-sm text-ink-900 mt-2">
+          <input
+            type="checkbox"
+            name="isFeatured"
+            defaultChecked={b.isFeatured}
+            className="h-4 w-4 accent-saffron-600"
+          />
+          Mark as <strong>Featured on homepage</strong> (lands at the very top of the featured row)
+        </label>
+
         {/* SubmitButton (shared across /admin) wraps the same saffron
             primary styling as the inline button it replaced, plus a
             useFormStatus()-driven pending state: button disables and
