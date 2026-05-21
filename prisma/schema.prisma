@@ -363,3 +363,45 @@ model VolunteerSubmission {
   @@index([status, createdAt])
   @@index([volunteerCode, createdAt])
 }
+
+
+/// Auto-fetched news items related to Bada Mangal in Lucknow, populated
+/// from Google News RSS + select direct publisher RSS feeds by
+/// `src/lib/news-aggregator.ts` on a periodic trigger (admin-triggerable
+/// + cron). One row per unique source URL.
+/// Auto-publish from a strict source whitelist (see aggregator's
+/// SOURCE_WHITELIST); admin can flip status to "HIDDEN" via the admin
+/// queue to suppress an individual item without losing the dedup
+/// fingerprint (we never re-fetch a hidden URL).
+model NewsItem {
+  id          String   @id @default(cuid())
+  // Resolved article URL (Google News redirects get resolved before
+  // insert when possible; otherwise the raw redirect URL is stored
+  // — browsers follow it fine and the unique constraint still works).
+  url         String   @unique
+  title       String
+  // Source name as it appears in the Google News feed (e.g. "Dainik
+  // Jagran", "The Times of India"). Used for the source-pill on the
+  // card + for whitelist matching when re-fetching.
+  source      String
+  // BCP-47ish: "en" or "hi". The two RSS queries are run separately
+  // so we always know the language at insert time without needing
+  // language detection.
+  language    String   @default("en")
+  // Article publish timestamp parsed from the RSS <pubDate>.
+  publishedAt DateTime
+  // Optional OG image URL scraped from the article page. May be
+  // null for v1; the page falls back to a per-source brand colour
+  // when absent so cards never look broken.
+  imageUrl    String?
+  // APPROVED  — auto-published, visible on the news page
+  // HIDDEN    — admin manually hid this item (kept as a tombstone
+  //             so the URL never re-publishes)
+  // The aggregator inserts as APPROVED for whitelisted sources; the
+  // admin flips to HIDDEN via /admin/news (queue UI), never deletes.
+  status      String   @default("APPROVED")
+  createdAt   DateTime @default(now())
+
+  @@index([status, publishedAt])
+  @@index([language, status, publishedAt])
+}
