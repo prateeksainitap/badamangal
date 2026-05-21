@@ -14,6 +14,7 @@ import GAScripts from "@/components/GAScripts";
 import GAClickDelegate from "@/components/GAClickDelegate";
 import SpotFloatingCta from "@/components/SpotFloatingCta";
 import FirstVisitGreeting from "@/components/FirstVisitGreeting";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 import LiveActivityTicker from "@/components/LiveActivityTicker";
 import { ToastProvider } from "@/components/Toast";
 import { LocaleProvider } from "@/lib/locale-context";
@@ -220,6 +221,7 @@ export default function RootLayout({
             {children}
           </main>
           <SpotFloatingCta />
+          <ScrollToTopButton />
           <LiveActivityTicker />
           <Footer />
         </ToastProvider>
