@@ -4,6 +4,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { getSupabaseAdmin, PHOTO_BUCKET } from "@/lib/supabase";
+import { uploadToR2 } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,12 +23,16 @@ export const dynamic = "force-dynamic";
 // meaningful re-pass would need a heavy library (pdf-lib ≈ 1.5 MB) for
 // modest savings, not worth it for the contact-form's expected volume.
 //
-// Two storage modes:
-//   1. Production: Supabase Storage `bhandara-photos` bucket → public URL.
-//   2. Local dev (no Supabase env): writes to `/public/uploads/`.
-// Both caps held at 5 MB, Netlify Functions reject request bodies
-// larger than 6 MB at the platform level, so 8 MB+ images would fail
-// with a generic 413 before reaching this handler.
+// Storage chain (first match wins, see end of handler):
+//   1. Cloudflare R2 if R2_* env vars are set (Phase 2 onwards;
+//      photos served from cdn.badamangal.com).
+//   2. Supabase Storage `bhandara-photos` bucket → public URL
+//      (legacy primary, now fallback; kept so the route still works
+//      on any environment that doesn't have R2 creds yet).
+//   3. Local dev (no Supabase env either): writes to `/public/uploads/`.
+// Both caps held at 5 MB, Vercel + Netlify Functions reject request
+// bodies larger than ~6 MB at the platform level, so 8 MB+ images
+// would fail with a generic 413 before reaching this handler.
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const MAX_PDF_BYTES = 5 * 1024 * 1024;
 const MAX_DIMENSION = 1600;              // px on the long edge after resize
@@ -127,7 +132,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     kind = "image";
   }
 
-  // ── 1. Supabase Storage path (production) ──────────────────────────
+  // ── 1. Cloudflare R2 (Phase 2+ primary path) ───────────────────────
+  // uploadToR2 returns null if R2_* env vars aren't set, so the
+  // fall-through to Supabase below keeps working on any environment
+  // that hasn't been wired up to R2 yet.
+  try {
+    const r2Url = await uploadToR2({
+      filename,
+      buffer: outputBuffer,
+      contentType,
+    });
+    if (r2Url) {
+      return NextResponse.json(
+        { url: r2Url, bytes: outputBuffer.length, kind },
+        { status: 201 },
+      );
+    }
+  } catch (err) {
+    console.error("R2 upload failed, falling back to Supabase", err);
+    // Don't return: fall through to Supabase as a safety net so a
+    // transient R2 issue doesn't drop the user's upload.
+  }
+
+  // ── 2. Supabase Storage path (legacy primary, now fallback) ────────
   const supabase = getSupabaseAdmin();
   if (supabase) {
     const { error } = await supabase.storage
@@ -153,7 +180,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // ── 2. Local-dev fallback: write to /public/uploads ────────────────
+  // ── 3. Local-dev fallback: write to /public/uploads ────────────────
   const dir = path.join(process.cwd(), "public", "uploads");
   try {
     await mkdir(dir, { recursive: true });

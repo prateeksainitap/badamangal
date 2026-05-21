@@ -27,6 +27,7 @@ import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { prisma } from "@/lib/db";
 import { getSupabaseAdmin, PHOTO_BUCKET } from "@/lib/supabase";
+import { uploadToR2 } from "@/lib/r2";
 import {
   isValidVolunteerCodeShape,
   normaliseVolunteerCode,
@@ -136,6 +137,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── 4. Upload ────────────────────────────────────────────────
   const filename = `vol-${randomUUID()}.${extension}`;
   let publicUrl: string;
+
+  // Cloudflare R2 first (Phase 2+ primary). Returns null when R2 env
+  // vars are unset, falls through to Supabase below. See src/lib/r2.ts.
+  try {
+    const r2Url = await uploadToR2({
+      filename,
+      buffer: outputBuffer,
+      contentType,
+    });
+    if (r2Url) {
+      return NextResponse.json({
+        ok: true,
+        url: r2Url,
+        filename,
+        sizeBytes: outputBuffer.length,
+        kind: isImage ? "image" : "video",
+      });
+    }
+  } catch (err) {
+    console.error("R2 upload failed (volunteer), falling back to Supabase", err);
+  }
+
   const supabase = getSupabaseAdmin();
   if (supabase) {
     const { error } = await supabase.storage

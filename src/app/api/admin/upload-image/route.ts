@@ -23,6 +23,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { getSupabaseAdmin, PHOTO_BUCKET } from "@/lib/supabase";
+import { uploadToR2 } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,6 +98,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const filename = `${randomUUID()}.webp`;
   let photoUrl: string;
+
+  // Cloudflare R2 first (Phase 2+ primary). Falls through silently
+  // to Supabase if R2_* env vars are unset, so the route still works
+  // on any environment without R2 creds. See src/lib/r2.ts.
+  try {
+    const r2Url = await uploadToR2({
+      filename,
+      buffer: webp,
+      contentType: "image/webp",
+    });
+    if (r2Url) {
+      return NextResponse.json({
+        ok: true,
+        photoUrl: r2Url,
+        filename,
+        sizeBytes: webp.length,
+      });
+    }
+  } catch (err) {
+    console.error("R2 upload failed (admin upload-image), falling back to Supabase", err);
+  }
+
   const supabase = getSupabaseAdmin();
   if (supabase) {
     const { error } = await supabase.storage
