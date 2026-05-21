@@ -355,7 +355,7 @@ export function faqSchema() {
         name: "What is Bada Mangal?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Bada Mangal is the Tuesday community-meal tradition of Lucknow, observed every Tuesday of the Hindu month of Jyeshtha (May–June). Free bhandaras open across the city to feed everyone who comes through Hanuman Ji's blessing. The tradition is around 400 years old, dating to Nawab Saadat Ali Khan's vow.",
+          text: "Bada Mangal is the Tuesday community-meal tradition of Lucknow, observed every Tuesday of the Hindu month of Jyeshtha (May to June). Free bhandaras open across the city to feed everyone who comes through Hanuman Ji's blessing. The tradition is around 400 years old, dating to Nawab Saadat Ali Khan's vow.",
         },
       },
       {
@@ -363,7 +363,7 @@ export function faqSchema() {
         name: "Why are there 8 Bada Mangals in 2026?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Adhik Maas, the leap month that occurs roughly once every 19 years, adds an extra Tuesday to Jyeshtha in 2026. So instead of the usual 4–5 Tuesdays, Lucknow gets 8 Bada Mangals. The last time this happened was 2007; the next will be 2045.",
+          text: "Adhik Maas, the leap month that occurs roughly once every 19 years, adds an extra Tuesday to Jyeshtha in 2026. So instead of the usual 4 to 5 Tuesdays, Lucknow gets 8 Bada Mangals. The last time this happened was 2007; the next will be 2045.",
         },
       },
       {

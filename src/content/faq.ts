@@ -25,18 +25,18 @@ export const FAQ_ITEMS: ReadonlyArray<FaqItem> = [
     questionEn: "What is Bada Mangal?",
     questionHi: "बड़ा मंगल क्या है?",
     answerEn:
-      "Bada Mangal is the Tuesday community-meal tradition of Lucknow, observed every Tuesday of the Hindu month of Jyeshtha (May–June). Free bhandaras open across the city to feed everyone who comes through Hanuman Ji's blessing. The tradition is around 400 years old, dating back to Nawab Saadat Ali Khan's vow.",
+      "Bada Mangal is the Tuesday community-meal tradition of Lucknow, observed every Tuesday of the Hindu month of Jyeshtha (May to June). Free bhandaras open across the city to feed everyone who comes through Hanuman Ji's blessing. The tradition is around 400 years old, dating back to Nawab Saadat Ali Khan's vow.",
     answerHi:
-      "बड़ा मंगल लखनऊ की मंगलवार-सामुदायिक-भोज परंपरा है, जो हिंदू ज्येष्ठ माह (मई–जून) के हर मंगलवार को मनाई जाती है। हनुमान जी की कृपा से शहर भर में मुफ़्त भंडारे लगते हैं और हर आगंतुक को प्रसाद मिलता है। यह परंपरा लगभग 400 वर्ष पुरानी है, जो नवाब सआदत अली ख़ान की मनौती से जुड़ी हुई है।",
+      "बड़ा मंगल लखनऊ की मंगलवार-सामुदायिक-भोज परंपरा है, जो हिंदू ज्येष्ठ माह (मई से जून) के हर मंगलवार को मनाई जाती है। हनुमान जी की कृपा से शहर भर में मुफ़्त भंडारे लगते हैं और हर आगंतुक को प्रसाद मिलता है। यह परंपरा लगभग 400 वर्ष पुरानी है, जो नवाब सआदत अली ख़ान की मनौती से जुड़ी हुई है।",
   },
   {
     id: "why-eight-in-2026",
     questionEn: "Why are there 8 Bada Mangals in 2026?",
     questionHi: "2026 में 8 बड़े मंगल क्यों हैं?",
     answerEn:
-      "Adhik Maas, the leap month that occurs roughly once every 19 years, adds an extra Tuesday to Jyeshtha in 2026. So instead of the usual 4–5 Tuesdays, Lucknow gets 8 Bada Mangals. The last time this happened was 2007; the next will be 2045.",
+      "Adhik Maas, the leap month that occurs roughly once every 19 years, adds an extra Tuesday to Jyeshtha in 2026. So instead of the usual 4 to 5 Tuesdays, Lucknow gets 8 Bada Mangals. The last time this happened was 2007; the next will be 2045.",
     answerHi:
-      "अधिक मास, हर लगभग 19 वर्ष में एक बार आने वाला लीप-मास, 2026 में ज्येष्ठ माह में अतिरिक्त मंगलवार जोड़ देता है। तो सामान्य 4–5 मंगलवारों के बजाय लखनऊ को इस बार 8 बड़े मंगल मिल रहे हैं। पिछली बार यह 2007 में हुआ था; अगली बार 2045 में होगा।",
+      "अधिक मास, हर लगभग 19 वर्ष में एक बार आने वाला लीप-मास, 2026 में ज्येष्ठ माह में अतिरिक्त मंगलवार जोड़ देता है। तो सामान्य 4 से 5 मंगलवारों के बजाय लखनऊ को इस बार 8 बड़े मंगल मिल रहे हैं। पिछली बार यह 2007 में हुआ था; अगली बार 2045 में होगा।",
   },
   {
     id: "next-bada-mangal",
