@@ -94,6 +94,8 @@ type Dict = {
     visitorPrefix: string;
     visitorSuffix: string;
     visitorAria: string;
+    bhandarasTotal: string;
+    bhandarasTotalAria: string;
     bhandarasListed: string;
     bhandarasSpotted: string;
     platesPledged: string;
@@ -305,6 +307,8 @@ const en: Dict = {
     visitorPrefix: "Total visitors till now",
     visitorSuffix: "",
     visitorAria: "Total visitors till now",
+    bhandarasTotal: "Total bhandaras tracked so far",
+    bhandarasTotalAria: "Total bhandaras tracked so far (listed + spotted)",
     bhandarasListed: "Bhandaras listed so far",
     bhandarasSpotted: "Bhandaras spotted so far",
     platesPledged: "Plates pledged",
@@ -603,6 +607,8 @@ const hi: Dict = {
     sectionBody:
       "बीस हज़ार रसोइयों का शांत सामूहिक चमत्कार, एक-एक थाली से गिना हुआ।",
     visitorPrefix: "अब तक कुल आगंतुक",
+    bhandarasTotal: "अब तक दर्ज कुल भंडारे",
+    bhandarasTotalAria: "अब तक दर्ज कुल भंडारे (सूचीबद्ध + स्पॉट किए)",
     visitorSuffix: "",
     visitorAria: "अब तक कुल आगंतुक",
     bhandarasListed: "अब तक सूचीबद्ध भंडारे",

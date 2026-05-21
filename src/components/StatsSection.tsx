@@ -56,29 +56,60 @@ export default function StatsSection({ stats }: Props) {
           <p className="mt-2 text-sm text-ink-600 leading-relaxed">{t.stats.sectionBody}</p>
         </header>
 
-        {/* Visitor pill, tightened to a single inline row so it reads
-            as a quiet headline number rather than a hero billboard. */}
-        <div
-          role="region"
-          aria-label={t.stats.visitorAria}
-          className="relative mt-6 mx-auto max-w-md overflow-hidden rounded-full border border-saffron-500/40 bg-cream-50 shadow-warm"
-        >
-          <JaliCorner position="tl" className="absolute top-1 left-1.5 w-5 h-5 text-saffron-600/50" />
-          <JaliCorner position="tr" className="absolute top-1 right-1.5 w-5 h-5 text-saffron-600/50" />
-          <JaliCorner position="bl" className="absolute bottom-1 left-1.5 w-5 h-5 text-saffron-600/50" />
-          <JaliCorner position="br" className="absolute bottom-1 right-1.5 w-5 h-5 text-saffron-600/50" />
-          {/* No "Live" pill, the number is a cumulative running total
-              of all visits, not a count of users currently on the site,
-              and labelling it "live" misleads readers. */}
-          <div className="px-5 sm:px-8 py-3 flex flex-col items-center justify-center gap-1 text-center">
-            <ScrollNumber
-              value={stats.visitorNumber}
-              className="font-numerals font-extrabold text-saffron-600 text-3xl sm:text-4xl leading-none"
-              locale={locale === "hi" ? "en-IN" : "en-IN"}
-            />
-            <p className="text-ink-600 text-[0.6rem] sm:text-[0.65rem] font-mukta uppercase tracking-[0.18em] font-semibold">
-              {t.stats.visitorPrefix}
-            </p>
+        {/* Hero pill row: two summary numbers side-by-side on tablet+,
+            stacked on mobile. The visitor pill stays on the left (its
+            original treatment, untouched), the new "Total bhandaras"
+            pill mirrors it exactly so the row reads as a matched
+            pair, then the per-source breakdown tiles below act as
+            the supporting detail. Adding a tile to the breakdown
+            grid for the total instead would have buried it as a
+            peer of "Listed" and "Spotted" rather than as their sum. */}
+        <div className="mt-6 mx-auto max-w-3xl flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch">
+          <div
+            role="region"
+            aria-label={t.stats.visitorAria}
+            className="relative flex-1 overflow-hidden rounded-full border border-saffron-500/40 bg-cream-50 shadow-warm"
+          >
+            <JaliCorner position="tl" className="absolute top-1 left-1.5 w-5 h-5 text-saffron-600/50" />
+            <JaliCorner position="tr" className="absolute top-1 right-1.5 w-5 h-5 text-saffron-600/50" />
+            <JaliCorner position="bl" className="absolute bottom-1 left-1.5 w-5 h-5 text-saffron-600/50" />
+            <JaliCorner position="br" className="absolute bottom-1 right-1.5 w-5 h-5 text-saffron-600/50" />
+            {/* No "Live" pill, the number is a cumulative running total
+                of all visits, not a count of users currently on the site,
+                and labelling it "live" misleads readers. */}
+            <div className="px-5 sm:px-8 py-3 flex flex-col items-center justify-center gap-1 text-center">
+              <ScrollNumber
+                value={stats.visitorNumber}
+                className="font-numerals font-extrabold text-saffron-600 text-3xl sm:text-4xl leading-none"
+                locale={locale === "hi" ? "en-IN" : "en-IN"}
+              />
+              <p className="text-ink-600 text-[0.6rem] sm:text-[0.65rem] font-mukta uppercase tracking-[0.18em] font-semibold">
+                {t.stats.visitorPrefix}
+              </p>
+            </div>
+          </div>
+
+          {/* Total bhandaras pill, identical jaali / scroll / chrome
+              to the visitor pill so the two read as one matched pair. */}
+          <div
+            role="region"
+            aria-label={t.stats.bhandarasTotalAria}
+            className="relative flex-1 overflow-hidden rounded-full border border-saffron-500/40 bg-cream-50 shadow-warm"
+          >
+            <JaliCorner position="tl" className="absolute top-1 left-1.5 w-5 h-5 text-saffron-600/50" />
+            <JaliCorner position="tr" className="absolute top-1 right-1.5 w-5 h-5 text-saffron-600/50" />
+            <JaliCorner position="bl" className="absolute bottom-1 left-1.5 w-5 h-5 text-saffron-600/50" />
+            <JaliCorner position="br" className="absolute bottom-1 right-1.5 w-5 h-5 text-saffron-600/50" />
+            <div className="px-5 sm:px-8 py-3 flex flex-col items-center justify-center gap-1 text-center">
+              <ScrollNumber
+                value={stats.bhandarasTotal}
+                className="font-numerals font-extrabold text-saffron-600 text-3xl sm:text-4xl leading-none"
+                locale={locale === "hi" ? "en-IN" : "en-IN"}
+              />
+              <p className="text-ink-600 text-[0.6rem] sm:text-[0.65rem] font-mukta uppercase tracking-[0.18em] font-semibold">
+                {t.stats.bhandarasTotal}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -107,11 +138,15 @@ export default function StatsSection({ stats }: Props) {
             <StatCard
               icon={<IconNeighborhood />}
               value={format(stats.areasCovered, locale)}
-              // Mirrors the Tuesdays-served tile's "X of 8" denominator
-              // so the panel reads consistently. Total comes from
-              // AREAS.length on the server, so adding a neighbourhood
-              // to lib/lucknow.ts automatically bumps the "of N" here.
-              suffix={isHi ? `/ ${stats.areasTotal}` : `of ${stats.areasTotal}`}
+              // No "/ 36" denominator. Earlier we mirrored the
+              // Tuesdays-served "X of 8" pattern here, but the
+              // total-areas number (curated list in lib/lucknow.ts)
+              // isn't a meaningful ceiling for visitors — they care
+              // how many neighbourhoods are *covered*, not how
+              // close we are to filling out a curated dictionary.
+              // The bare count reads cleaner. Tuesdays still keeps
+              // its denominator because "X of 8 Bada Mangals" is a
+              // real, finite season-progress number.
               label={t.stats.areasCovered}
             />
           ) : null}

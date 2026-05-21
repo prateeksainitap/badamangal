@@ -5,6 +5,11 @@ import { AREAS } from "@/lib/lucknow";
 export type SiteStats = {
   /** Total visits to the homepage so far (across all visitors). */
   visitorNumber: number;
+  /** All bhandaras the site has on record this season, listed + spotted.
+   *  Exposed as a separate hero number alongside the visitor pill so the
+   *  homepage opens on two summary counts (visitors + bhandaras) and the
+   *  per-source tiles below act as the breakdown. */
+  bhandarasTotal: number;
   /** Total APPROVED listings. */
   bhandarasListed: number;
   /** Cumulative count of all APPROVED spotted-bhandara reports submitted
@@ -78,6 +83,7 @@ export async function getHomepageStats(): Promise<SiteStats> {
 
   return {
     visitorNumber: counter?.count ?? 0,
+    bhandarasTotal: records.length + spottedCount,
     bhandarasListed: records.length,
     bhandarasSpotted: spottedCount,
     areasCovered: areas.size,
