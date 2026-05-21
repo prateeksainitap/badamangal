@@ -11,6 +11,7 @@ import {
   extendSpotAction,
   logoutAction,
   publishVerifiedAction,
+  refreshNewsAction,
   rejectAction,
   verifyAction,
   unverifyAction,
@@ -31,6 +32,11 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+// Server actions on this page run as serverless functions and inherit
+// the page's maxDuration. refreshNewsAction in particular fetches 4
+// RSS feeds + OG image scrapes + DB writes, can take 20-40s on a
+// cold start. Bumping to 60 (Vercel Hobby max) leaves headroom.
+export const maxDuration = 60;
 
 const COOKIE = "admin";
 
@@ -269,6 +275,17 @@ export default async function AdminPage({
                 pinged at least once. Green pulsing dot when fresh,
                 gold when stale, red when offline. */}
             <BotHeartbeat />
+            {/* Manual news refresh. Same aggregator as the daily
+                Vercel Cron (06:00 IST), use this when you want
+                fresh items NOW instead of waiting for the cron
+                tick. Takes 5-30s while it fetches 4 RSS feeds +
+                OG image scrapes. Look for ?news=refreshed in the
+                URL after the redirect to confirm success. */}
+            <form action={refreshNewsAction}>
+              <SubmitButton variant="outline-ink" pendingLabel="Refreshing news…">
+                Refresh news
+              </SubmitButton>
+            </form>
             <form action={logoutAction}>
               <SubmitButton variant="outline-ink" pendingLabel="Signing out…">
                 Sign out

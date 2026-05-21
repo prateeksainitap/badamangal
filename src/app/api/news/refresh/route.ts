@@ -34,7 +34,7 @@ import { refreshNews } from "@/lib/news-aggregator";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30; // network calls + DB writes, 30s headroom
+export const maxDuration = 60; // network calls + DB writes; bumped to Vercel Hobby max
 
 const ADMIN_COOKIE = "admin";
 

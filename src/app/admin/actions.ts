@@ -44,6 +44,42 @@ export async function logoutAction(): Promise<void> {
   redirect("/admin");
 }
 
+/**
+ * Admin-triggered manual news refresh.
+ *
+ * Same underlying aggregator as:
+ *   • the daily Vercel Cron at 06:00 IST (see vercel.json)
+ *   • the legacy X-News-Refresh-Token external cron
+ * Just behind an admin cookie instead of a Bearer token. Use the
+ * "Refresh news" button on /admin when you want fresh items NOW
+ * instead of waiting for the next scheduled tick.
+ *
+ * Why dynamic import: news-aggregator pulls in an inline RSS parser
+ * + four feed fetchers + an OG-image scraper. Importing it at the
+ * top of actions.ts would bundle that weight into every chunk that
+ * uses any admin action (approval, rejection, verification, etc).
+ * The import-inside-action pattern keeps the aggregator code out
+ * of those chunks and only loads it when refresh is actually run.
+ *
+ * Redirect happens AFTER the try/catch so we never accidentally
+ * catch redirect()'s thrown control-flow error. Query param tells
+ * the admin page which banner to show on the next render.
+ */
+export async function refreshNewsAction(_formData?: FormData): Promise<void> {
+  await requireAdmin();
+  let success = true;
+  try {
+    const { refreshNews } = await import("@/lib/news-aggregator");
+    await refreshNews();
+    revalidatePath("/resources/news");
+    revalidatePath("/resources");
+  } catch (err) {
+    success = false;
+    console.error("admin news refresh failed", err);
+  }
+  redirect(success ? "/admin?news=refreshed" : "/admin?news=failed");
+}
+
 export async function approveAction(id: string, _formData?: FormData): Promise<void> {
   await requireAdmin();
   await prisma.bhandara.update({
