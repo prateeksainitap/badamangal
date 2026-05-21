@@ -87,6 +87,7 @@ function FooterInner() {
         { href: "/resources/ram-stuti", label: t.resources.cards.ramStuti.title },
         { href: "/resources/rituals", label: t.resources.cards.rituals.title },
         { href: "/resources/temples", label: t.resources.cards.temples.title },
+        { href: "/resources/news", label: t.resources.cards.news.title },
         { href: "/faq", label: isHi ? "पूछे जाने वाले प्रश्न" : "FAQ" },
       ],
     },
