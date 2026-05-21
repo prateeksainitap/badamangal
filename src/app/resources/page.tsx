@@ -7,9 +7,9 @@ export const revalidate = 300;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
 export const metadata: Metadata = {
-  title: "Resources · Hanuman Chalisa, Aarti, news, temples · BadaMangal",
+  title: "Resources · Hanuman Chalisa, Aarti, FAQ, temples · BadaMangal",
   description:
-    "The Hanuman Chalisa, Hanuman Aarti, Tuesday vrat guide, the city's biggest temples, and this week's Lucknow news, one place to keep coming back to.",
+    "The Hanuman Chalisa, Hanuman Aarti, Tuesday vrat guide, the city's biggest temples, and frequently-asked questions about Bada Mangal — one place to keep coming back to.",
   alternates: {
     canonical: "/resources",
     languages: {
@@ -45,7 +45,7 @@ export default function ResourcesHubPage() {
       url: SITE_URL,
     },
     hasPart: [
-      { "@type": "WebPage", name: t.resources.cards.news.title, url: `${SITE_URL}/resources/news` },
+      { "@type": "WebPage", name: "FAQ", url: `${SITE_URL}/faq` },
       { "@type": "WebPage", name: t.resources.cards.chalisa.title, url: `${SITE_URL}/resources/chalisa` },
       { "@type": "WebPage", name: t.resources.cards.aarti.title, url: `${SITE_URL}/resources/aarti` },
       { "@type": "WebPage", name: t.resources.cards.ashtak.title, url: `${SITE_URL}/resources/ashtak` },

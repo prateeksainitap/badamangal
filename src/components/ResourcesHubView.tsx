@@ -8,7 +8,7 @@ import {
   SunburstSpark,
 } from "@/components/ornaments";
 import AnimatedHeading from "@/components/AnimatedHeading";
-import { NEWS, type NewsEntry } from "@/content/news";
+import { FAQ_ITEMS } from "@/content/faq";
 import { useLocaleFromContext } from "@/lib/locale-context";
 
 /**
@@ -78,8 +78,11 @@ export default function ResourcesHubView() {
       accent: "saffron",
       hasAudio: true,
     },
-    // News intentionally omitted from the canonical-text card grid,
-    // it gets its own section below with real article previews.
+    // News intentionally omitted from the canonical-text card grid;
+    // the dedicated news section that used to live further down was
+    // removed (sources unreliable enough to keep on a primary nav).
+    // The /resources/news page still exists for direct-URL access
+    // but is no longer linked from the hub or the footer.
     {
       href: `/resources/rituals${langSuffix}`,
       title: t.resources.cards.rituals.title,
@@ -90,16 +93,10 @@ export default function ResourcesHubView() {
     },
   ];
 
-  // Pick the featured story (or fall back to the most recent) plus the
-  // next three for the "This week in Lucknow" preview band.
-  const sortedNews = [...NEWS].sort((a, b) =>
-    a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
-  );
-  const featuredNews: NewsEntry =
-    sortedNews.find((n) => n.featured) ?? sortedNews[0];
-  const secondaryNews = sortedNews
-    .filter((n) => n.id !== featuredNews?.id)
-    .slice(0, 3);
+  // Top 3 FAQ items used as a teaser band that links out to the
+  // full /faq page. Read from the shared bilingual source so the
+  // hub teaser and the dedicated FAQ surface stay in sync.
+  const teaserFaqs = FAQ_ITEMS.slice(0, 3);
 
   return (
     <article className="pb-24">
@@ -208,129 +205,68 @@ export default function ResourcesHubView() {
         <MarigoldDivider size={300} className="text-gold-500" />
       </div>
 
-      {/* THIS WEEK IN LUCKNOW, dedicated news band with article
-          previews. The featured story sits as a wide hero card on
-          the left, the next three secondary stories stack on the
-          right (or below on narrow viewports). Each card links out
-          to its source publication. */}
-      {featuredNews ? (
-        <section className="mx-auto max-w-6xl px-4 sm:px-6">
-          <header className="flex items-end justify-between gap-3 flex-wrap mb-6">
-            <div>
-              {/* Kicker reframed so it doesn't echo the headline ("This
-                  week / This week in Lucknow"). "Editor's pick" reads
-                  as the source of the curation, not a redundant date. */}
-              <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
-                {isHi ? "संपादक चयन" : "Editor's pick"}
-              </p>
-              <h2
-                className={`mt-2 ${
-                  isHi ? "font-tiro text-sindoor-700" : "font-fraunces text-sindoor-700"
-                } text-2xl sm:text-3xl`}
-              >
-                {t.resources.cards.news.title}
-              </h2>
-            </div>
-            <Link
-              href={`/resources/news${langSuffix}`}
-              data-ga="resource_news_view_all"
-              className="inline-flex items-center gap-1.5 text-sm text-saffron-600 hover:underline font-semibold"
+      {/* FAQ TEASER — the dedicated news band that used to live here
+          was removed; this band replaces it with a 3-question preview
+          of the FAQ page (full bilingual accordion + JSON-LD live
+          at /faq). Same editorial registration as the news header
+          before it. */}
+      <section className="mx-auto max-w-4xl px-4 sm:px-6">
+        <header className="flex items-end justify-between gap-3 flex-wrap mb-6">
+          <div>
+            <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
+              {isHi ? "पूछे जाने वाले प्रश्न" : "Frequently asked"}
+            </p>
+            <h2
+              className={`mt-2 ${
+                isHi ? "font-tiro text-sindoor-700" : "font-fraunces text-sindoor-700"
+              } text-2xl sm:text-3xl`}
             >
-              {isHi ? "सभी ख़बरें देखें" : "View all news"}
-              <span aria-hidden>→</span>
-            </Link>
-          </header>
-
-          {/* `items-stretch` (grid default) + `h-full` on each child
-              makes the featured column grow to match the total
-              height of the secondary stack on the right. */}
-          <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr] items-stretch">
-            {/* Featured story, hero card with image + headline + excerpt */}
-            <a
-              href={featuredNews.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              data-ga="resource_news_open"
-              data-ga-id={featuredNews.id}
-              data-ga-source={featuredNews.source}
-              data-ga-featured="1"
-              className="group flex h-full flex-col rounded-3xl bg-white border border-saffron-500/40 hover:border-saffron-500 shadow-warm overflow-hidden transition-colors"
-            >
-              {/* Image grows to fill the gap between the bottom of
-                  the secondary stack and the natural height of the
-                  headline + excerpt block. min-h-0 keeps the flex
-                  item shrinkable on narrow viewports. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={proxiedNewsImage(featuredNews.image, 1200)}
-                alt={featuredNews.imageAlt ?? ""}
-                loading="lazy"
-                className="w-full flex-1 min-h-[200px] object-cover bg-saffron-50"
-              />
-              <div className="px-6 py-5">
-                <p className="font-mukta uppercase tracking-[0.22em] text-[0.62rem] text-saffron-600 font-semibold inline-flex items-center gap-2">
-                  <span className="block w-1.5 h-1.5 rounded-full bg-saffron-600 motion-safe:animate-pulse" />
-                  {isHi ? "प्रमुख ख़बर" : "Featured"}
-                  <span aria-hidden className="text-gold-500/55">·</span>
-                  <span className="text-ink-600 font-medium normal-case tracking-normal">
-                    {featuredNews.source}
-                  </span>
-                </p>
-                <h3 className="mt-2 font-fraunces font-semibold text-xl sm:text-2xl text-sindoor-700 leading-tight [text-wrap:balance]">
-                  {isHi
-                    ? (featuredNews.headlineHi ?? featuredNews.headline)
-                    : featuredNews.headline}
-                </h3>
-                <p className="mt-2 text-sm text-ink-600 leading-relaxed line-clamp-3">
-                  {isHi
-                    ? (featuredNews.excerptHi ?? featuredNews.excerpt)
-                    : featuredNews.excerpt}
-                </p>
-                <p className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-saffron-600 group-hover:gap-2 transition-all">
-                  {isHi ? "स्रोत पर पढ़ें" : "Read on source"}
-                  <span aria-hidden>→</span>
-                </p>
-              </div>
-            </a>
-
-            {/* Three secondary stories, vertical stack. `h-full`
-                lets the column stretch alongside the featured card
-                in the grid; the equal `1fr` row split keeps each
-                thumbnail card the same height. */}
-            <ol className="grid gap-3 h-full grid-rows-3">
-              {secondaryNews.map((n) => (
-                <li key={n.id} className="min-h-0">
-                  <a
-                    href={n.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-ga="resource_news_open"
-                    data-ga-id={n.id}
-                    data-ga-source={n.source}
-                    className="group flex h-full gap-3 rounded-2xl bg-white border border-gold-500/40 hover:border-saffron-500 shadow-warm overflow-hidden transition-colors"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={proxiedNewsImage(n.image, 320)}
-                      alt={n.imageAlt ?? ""}
-                      loading="lazy"
-                      className="shrink-0 w-24 sm:w-28 h-full min-h-[96px] object-cover bg-saffron-50"
-                    />
-                    <div className="min-w-0 flex-1 py-3 pr-3">
-                      <p className="font-mukta uppercase tracking-[0.18em] text-[0.55rem] text-gold-500 font-semibold truncate">
-                        {n.source}
-                      </p>
-                      <h3 className="mt-1 font-fraunces font-semibold text-sm sm:text-[15px] text-sindoor-700 leading-snug line-clamp-3 group-hover:underline decoration-saffron-500/70 underline-offset-2">
-                        {isHi ? (n.headlineHi ?? n.headline) : n.headline}
-                      </h3>
-                    </div>
-                  </a>
-                </li>
-              ))}
-            </ol>
+              {isHi
+                ? "बड़े मंगल के बारे में आम सवाल"
+                : "Common questions about Bada Mangal"}
+            </h2>
           </div>
-        </section>
-      ) : null}
+          <Link
+            href={langSuffix === "" ? "/faq" : `/faq${langSuffix}`}
+            className="inline-flex items-center gap-1.5 text-sm text-saffron-600 hover:underline font-semibold"
+          >
+            {isHi ? "सभी FAQ देखें" : "View all FAQs"}
+            <span aria-hidden>→</span>
+          </Link>
+        </header>
+
+        <ul className="grid gap-3">
+          {teaserFaqs.map((item, i) => (
+            <li key={item.id}>
+              <details
+                className="group rounded-2xl border border-gold-500/40 bg-white hover:border-saffron-500/60 overflow-hidden transition-colors"
+                {...(i === 0 ? { open: true } : {})}
+              >
+                <summary className="cursor-pointer list-none flex items-start justify-between gap-3 px-5 py-4 text-left">
+                  <span
+                    className={`flex-1 ${
+                      isHi
+                        ? "font-deva font-semibold text-base sm:text-lg"
+                        : "font-fraunces font-semibold text-base sm:text-lg"
+                    } text-sindoor-700 leading-snug`}
+                  >
+                    {isHi ? item.questionHi : item.questionEn}
+                  </span>
+                  <span
+                    aria-hidden
+                    className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-saffron-50 border border-saffron-500/45 text-saffron-600 text-sm font-bold mt-0.5 group-open:rotate-45 transition-transform"
+                  >
+                    +
+                  </span>
+                </summary>
+                <div className="px-5 pb-5 pt-1 text-ink-900/85 text-sm sm:text-base leading-relaxed [text-wrap:pretty]">
+                  {isHi ? item.answerHi : item.answerEn}
+                </div>
+              </details>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       {/* MARIGOLD DIVIDER */}
       <div className="flex justify-center my-12">
@@ -406,18 +342,6 @@ export default function ResourcesHubView() {
       </section>
     </article>
   );
-}
-
-/**
- * Route every news thumbnail through the weserv.nl image proxy. Avoids
- * publisher hot-link blocks + Referer-policy CORS errors that would
- * otherwise leave broken-image icons on the hub. `weserv` expects the
- * URL without protocol, and `&we&output=webp` re-encodes for size.
- */
-function proxiedNewsImage(src: string, width: number): string {
-  if (!src) return "";
-  const target = src.replace(/^https?:\/\//, "");
-  return `https://images.weserv.nl/?url=${encodeURIComponent(target)}&w=${width}&we&output=webp`;
 }
 
 /* ── Card icons (audio chip + inline play glyph) ───────────────────── */

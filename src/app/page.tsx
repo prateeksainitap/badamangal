@@ -14,6 +14,7 @@ import BhandaraCardsSection from "@/components/BhandaraCardsSection";
 import FeaturedBhandaras from "@/components/FeaturedBhandaras";
 import OrganisePromo from "@/components/OrganisePromo";
 import VolunteerPromo from "@/components/VolunteerPromo";
+import HomeFAQ from "@/components/HomeFAQ";
 import HappeningNow from "@/components/HappeningNow";
 import HomeCardsEmpty from "@/components/HomeCardsEmpty";
 import MediaCoverage from "@/components/MediaCoverage";
@@ -548,6 +549,14 @@ export default async function HomePage() {
 
       {/* HISTORY TEASER, client component, locale from context. */}
       <HomeHistoryTeaser />
+
+      {/* FAQ — bilingual accordion of the highest-intent questions
+          about the tradition, the rare 8-Tuesday 2026 cycle, finding
+          a bhandara, and listing one. Native <details>/<summary>, no
+          JS. Anchored at #faq so footer + /resources can deep-link.
+          Sits above VolunteerPromo so a curious long-scroll visitor
+          has their questions answered before the volunteer ask. */}
+      <HomeFAQ />
 
       {/* Quiet volunteer-programme nudge — slim strip near the bottom
           of the page rather than a banner near the top. Reaches the
