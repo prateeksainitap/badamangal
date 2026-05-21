@@ -68,3 +68,6 @@ prisma/migrations/dev.db*
 
 # Claude Code launch config (per-developer, not project code)
 .claude/
+
+# Phase 2b photo migration logs — keep local as rollback insurance
+migration-log-*.json
