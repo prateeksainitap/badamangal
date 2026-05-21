@@ -138,7 +138,32 @@ export function eventSchemaForTuesday(opts: {
       },
     },
     isAccessibleForFree: true,
+    // Offers is recommended on Event JSON-LD even when the event
+    // is free; Google's structured-data parser emits a non-critical
+    // warning ('Missing field offers') if it's absent. Price '0' +
+    // availability InStock satisfies the schema while staying
+    // honest about the seva model (no ticket, walk-up only).
+    // `validFrom` mirrors the event date so the offer's validity
+    // window matches the event's.
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "INR",
+      availability: "https://schema.org/InStock",
+      url: SITE_URL,
+      validFrom: `${isoDate}T00:00:00+05:30`,
+    },
     organizer: { "@id": `${SITE_URL}/#organization` },
+    // `performer` is recommended on Event ('who's making this
+    // happen'). For the city-wide Tuesday Event, the performer is
+    // the loose collective of community organisers across Lucknow.
+    // Modelled here as a named Organization; silences Google's
+    // 'Missing field performer' warning without overstating who
+    // any one party is.
+    performer: {
+      "@type": "Organization",
+      name: "Lucknow community organisers",
+    },
     image: `${SITE_URL}/illustrations/hanuman-sitting.webp`,
   };
 }
@@ -218,7 +243,33 @@ export function bhandaraEventSchema(opts: {
       },
     },
     isAccessibleForFree: true,
+    // Offers, see eventSchemaForTuesday for the rationale. Walk-up
+    // free bhandara, price '0' + InStock + the bhandara detail
+    // URL as the offer's landing page. validFrom mirrors the
+    // event's startDate so the offer window matches the event
+    // window.
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "INR",
+      availability: "https://schema.org/InStock",
+      url,
+      validFrom: `${iso}T00:00:00+05:30`,
+    },
     organizer: {
+      "@type": "Organization",
+      name: opts.organizerName,
+      // `url` on organizer is recommended by Google. We point at
+      // the bhandara detail page since that's where a visitor can
+      // reach the organiser (UPI, phone, WhatsApp all live there).
+      url,
+    },
+    // `performer` for a community seva bhandara is the same team
+    // that organises it (they cook, serve, hand out prasad).
+    // Reusing the organiser name as performer is semantically
+    // accurate AND silences Google's 'Missing field performer'
+    // warning.
+    performer: {
       "@type": "Organization",
       name: opts.organizerName,
     },
