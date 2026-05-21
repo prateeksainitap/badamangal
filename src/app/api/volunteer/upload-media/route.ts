@@ -126,9 +126,25 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   } else {
     // Videos: store as-is. No transcoding (would require ffmpeg
-    // server-side, way out of scope for v1). Keep the original
-    // extension where possible so the player can pick the right
-    // decoder.
+    // server-side, way out of scope for v1).
+    //
+    // Magic-byte check (H4): the MIME gate above is purely
+    // browser-asserted Content-Type which a hostile uploader can
+    // trivially spoof. Read the first 32 bytes and verify a
+    // recognised video container signature (MP4/MOV ftyp box, WebM
+    // EBML header). Without this, a volunteer code holder could
+    // upload arbitrary binary as fake-mp4 and we'd serve it from
+    // cdn.badamangal.com as video/mp4 with a 1-year cache. Direct
+    // execution is impossible (R2 honours the declared
+    // Content-Type), but having attacker-controlled binaries
+    // hosted on our CDN is a phishing-link + brand-trust risk.
+    if (!hasVideoMagicBytes(inputBuffer)) {
+      return jsonError(
+        415,
+        "not_a_video",
+        "File doesn't have a recognised video container header. Try a standard MP4 / MOV / WebM file.",
+      );
+    }
     outputBuffer = inputBuffer;
     extension = extractExt(value.name, value.type) ?? "mp4";
     contentType = value.type || "video/mp4";
@@ -194,6 +210,37 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     sizeBytes: outputBuffer.length,
     kind: isImage ? "image" : "video",
   });
+}
+
+/**
+ * Magic-byte sniffer for video files. Returns true when the buffer
+ * starts with a recognised video container signature:
+ *   - MP4 / MOV: "ftyp" box at byte offset 4 (any brand)
+ *   - WebM: EBML header bytes 1A 45 DF A3 at offset 0
+ *   - 3GPP (mobile): also "ftyp" at offset 4
+ * False for everything else (PE/ELF executables, ZIPs, PDFs, etc).
+ *
+ * Defensive: returns false on any read error rather than throwing,
+ * so a too-short or pathological buffer just fails the gate.
+ */
+function hasVideoMagicBytes(buf: Buffer): boolean {
+  try {
+    if (buf.length < 12) return false;
+    // ftyp at offset 4-7 covers MP4, MOV, M4V, 3GP, etc.
+    if (buf.slice(4, 8).toString("ascii") === "ftyp") return true;
+    // EBML header for WebM/Matroska: 1A 45 DF A3
+    if (
+      buf[0] === 0x1a &&
+      buf[1] === 0x45 &&
+      buf[2] === 0xdf &&
+      buf[3] === 0xa3
+    ) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 /** Best-effort extension extraction from filename or mime. */

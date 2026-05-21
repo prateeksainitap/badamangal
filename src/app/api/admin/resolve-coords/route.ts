@@ -28,6 +28,8 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { isAdmin } from "@/lib/admin-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { ipHash, readClientIp } from "@/lib/crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,6 +95,42 @@ function extractFromUrl(input: string): { lat: number; lng: number } | null {
 }
 
 /**
+ * Map-domain SSRF allowlist (H1).
+ *
+ * Both resolveShortUrl and resolvePlusCode below issue server-side
+ * fetches against URLs that started life as admin input. Without
+ * an allowlist, a malicious / mistakenly-pasted URL could be used
+ * to probe internal endpoints (Vercel metadata, internal services
+ * on the function's network). Admin auth gates blast radius, but
+ * even a compromised admin session shouldn't be able to pivot to
+ * arbitrary outbound hosts.
+ *
+ * Both helpers below check this list before fetching. Subdomains of
+ * an allowed apex are accepted. HTTPS-only.
+ */
+const MAP_ALLOWED_HOSTS: ReadonlyArray<string> = [
+  "maps.app.goo.gl",
+  "goo.gl",
+  "g.co",
+  "plus.codes",
+  "maps.google.com",
+  "www.google.com",
+];
+
+function isAllowedMapHost(rawUrl: string): boolean {
+  try {
+    const u = new URL(rawUrl);
+    if (u.protocol !== "https:") return false;
+    const host = u.hostname.toLowerCase();
+    return MAP_ALLOWED_HOSTS.some(
+      (h) => host === h || host.endsWith(`.${h}`),
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Follow a short URL one hop (HEAD-style, but Google's short-link
  * service responds 302 to both GET and HEAD). Returns the resolved
  * `Location:` header URL, or null if the input wasn't a known short
@@ -103,6 +141,10 @@ async function resolveShortUrl(input: string): Promise<string | null> {
   const isShort =
     /^https?:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs)\//i.test(s);
   if (!isShort) return null;
+  // Belt-and-braces: even after the regex passes, run through the
+  // allowlist so a future regex tweak can't accidentally open this
+  // up to non-map hosts.
+  if (!isAllowedMapHost(s)) return null;
   try {
     const res = await fetch(s, {
       method: "GET",
@@ -148,6 +190,10 @@ async function resolvePlusCode(input: string): Promise<{ lat: number; lng: numbe
     // anchor city, e.g. "VXR6+QP Lucknow". URL-encode the entire
     // input as the path segment.
     const url = `https://plus.codes/${encodeURIComponent(s)}`;
+    // Allowlist check: even though we construct the URL ourselves,
+    // a future change to the URL template should NOT bypass the
+    // SSRF allowlist guard. Defensive.
+    if (!isAllowedMapHost(url)) return null;
     const res = await fetch(url, {
       headers: {
         "user-agent":
@@ -177,6 +223,24 @@ export async function POST(req: NextRequest) {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Cost-amplification rate limit (M3). Each call may issue an
+  // Ola Maps geocode plus outbound fetches to short-link / Plus
+  // Code resolvers. A compromised admin session shouldn't be able
+  // to burn the Ola free-tier quota in seconds.
+  const limit = checkRateLimit({
+    key: ipHash(readClientIp(req.headers)),
+    max: 60,
+    windowMs: 10 * 60 * 1000,
+    bucket: "admin-resolve-coords",
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "rate_limited", retryAfterSec: limit.retryAfterSec },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSec) } },
+    );
+  }
+
   let body: { input?: string };
   try {
     body = (await req.json()) as { input?: string };

@@ -24,6 +24,8 @@ import sharp from "sharp";
 import { getSupabaseAdmin, PHOTO_BUCKET } from "@/lib/supabase";
 import { uploadToR2 } from "@/lib/r2";
 import { isAdmin } from "@/lib/admin-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { ipHash, readClientIp } from "@/lib/crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,6 +42,22 @@ const WEBP_QUALITY = 85;
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Cost-amplification rate limit (M3). Each call writes to R2;
+  // a compromised admin session shouldn't be able to fill the
+  // bucket in seconds.
+  const limit = checkRateLimit({
+    key: ipHash(readClientIp(req.headers)),
+    max: 60,
+    windowMs: 10 * 60 * 1000,
+    bucket: "admin-upload-image",
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "rate_limited", retryAfterSec: limit.retryAfterSec },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSec) } },
+    );
   }
 
   let form: FormData;

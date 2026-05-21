@@ -114,7 +114,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       // JPEGs straight from a phone; the resize alone usually
       // 8-15× the file size down.
       const original = Buffer.from(await value.arrayBuffer());
-      const webp = await sharp(original)
+      // `failOn: "error"` matches the other Sharp pipelines in this
+      // codebase (admin/scan, public/scan-bhandara, volunteer/
+      // upload-media, /api/uploads). Without it Sharp tolerates
+      // partial decoding, opening the door to crafted malformed
+      // images that blow up RAM on the Vercel function (1 GB cap).
+      // limitInputPixels caps a decompression-bomb attempt before
+      // libvips even allocates the pixel buffer.
+      const webp = await sharp(original, {
+        failOn: "error",
+        limitInputPixels: 50_000_000,
+      })
         .rotate() // honour EXIF orientation
         .resize({
           width: MAX_DIMENSION,
@@ -152,11 +162,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: true, data });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
-    // Translate the GEMINI_API_KEY failure into something readable
-    // for the form UI; the underlying message is operator-only.
+    // PUBLIC endpoint: never echo SDK internals (model IDs, internal
+    // request IDs, sometimes upstream URLs) to the visitor. The two
+    // generic strings below are all the form UI ever sees. Operator
+    // detail goes to the server log only (L1 fix).
     const friendly = /GEMINI_API_KEY/i.test(msg)
       ? "AI is temporarily unavailable. Please type the details below manually."
-      : `Couldn't parse: ${msg.slice(0, 200)}`;
+      : "Couldn't read the pamphlet automatically. Please type the details below.";
     console.error("[pamphlet/ai-fill] failed:", msg);
     return NextResponse.json({ ok: false, error: friendly }, { status: 500 });
   }

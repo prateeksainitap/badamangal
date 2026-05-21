@@ -36,6 +36,8 @@ import { geocodeLucknow, type ServerGeocodeHit } from "@/lib/geocodeServer";
 import { getSupabaseAdmin, PHOTO_BUCKET } from "@/lib/supabase";
 import { uploadToR2 } from "@/lib/r2";
 import { isAdmin } from "@/lib/admin-auth";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { ipHash, readClientIp } from "@/lib/crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,6 +53,24 @@ const WEBP_QUALITY = 85;
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Cost-amplification rate limit (M3). Each call costs ~$0.002
+  // Gemini quota + an Ola Maps geocode + an R2 PUT. A compromised
+  // admin session (or a stuck-loop browser bulk-paste accident)
+  // could drain quota in seconds without this. 60 / 10 min is
+  // generous for legitimate admin throughput; abusive at 1Hz.
+  const limit = checkRateLimit({
+    key: ipHash(readClientIp(req.headers)),
+    max: 60,
+    windowMs: 10 * 60 * 1000,
+    bucket: "admin-scan",
+  });
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "rate_limited", retryAfterSec: limit.retryAfterSec },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfterSec) } },
+    );
   }
 
   const url = new URL(req.url);

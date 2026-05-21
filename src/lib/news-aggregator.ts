@@ -297,10 +297,58 @@ function matchesKeyword(title: string): boolean {
  * batch. The 100 KB read cap protects us against unbounded HTML
  * (the OG meta is always in the first few KB of <head>).
  */
+/**
+ * Publisher host allowlist for OG-image scraping (SSRF mitigation).
+ *
+ * Without an allowlist, a poisoned RSS item (compromised publisher
+ * feed, MITM on the un-pinned HTTPS fetch) could push an article
+ * link pointing at e.g. http://169.254.169.254/... (Vercel's metadata
+ * endpoint, internal services). The cron would happily fetch it
+ * server-side and the response could leak sensitive headers via the
+ * caught-error console.error path.
+ *
+ * Keep this list tight to ONLY the publishers we trust to host
+ * articles about Bada Mangal: any new direct-feed publisher added
+ * to PUBLISHER_FEEDS in this file must also be added here.
+ *
+ * Subdomains of allowed hosts are accepted (e.g. www.hindustantimes.com
+ * matches "hindustantimes.com").
+ */
+const OG_IMAGE_ALLOWED_HOSTS: ReadonlyArray<string> = [
+  "hindustantimes.com",
+  "amarujala.com",
+  "timesofindia.indiatimes.com",
+  "indiatimes.com",
+  "navbharattimes.indiatimes.com",
+  "jagran.com",
+  "bhaskar.com",
+  "knocksense.com",
+];
+
+function isAllowedOgHost(rawUrl: string): boolean {
+  try {
+    const u = new URL(rawUrl);
+    // Reject anything that isn't HTTPS — http://internal-host attempts
+    // wouldn't pass the suffix check anyway, but we belt-and-brace.
+    if (u.protocol !== "https:") return false;
+    const host = u.hostname.toLowerCase();
+    return OG_IMAGE_ALLOWED_HOSTS.some(
+      (allowed) => host === allowed || host.endsWith(`.${allowed}`),
+    );
+  } catch {
+    return false;
+  }
+}
+
 async function fetchOgImage(
   url: string,
   timeoutMs = 5000,
 ): Promise<string | null> {
+  // SSRF gate: refuse to fetch any URL not on the publisher allowlist.
+  if (!isAllowedOgHost(url)) {
+    console.warn(`[news-aggregator] OG scrape blocked, host not allowlisted: ${url}`);
+    return null;
+  }
   try {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), timeoutMs);
