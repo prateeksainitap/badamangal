@@ -60,9 +60,23 @@ export default function NewsPageView({ liveHi, liveEn }: Props) {
     .filter((n) => n.id !== staticFeatured?.id)
     .sort((a, b) => (a.date < b.date ? 1 : -1));
 
-  // Locale-matched live feed (up to 24 items, sorted newest-first by
-  // the server query).
-  const liveItems = isHi ? liveHi : liveEn;
+  // Merged feed: show ALL news on BOTH locales, sorted newest-first
+  // by publishedAt. Previously this was `isHi ? liveHi : liveEn` —
+  // which served entirely different article sets on the language
+  // toggle (English locale → ToI / HT only, Hindi locale → Dainik
+  // Jagran / Amar Ujala only). That artificially halved coverage on
+  // each side; a Hindi reader saw ZERO ToI coverage and an English
+  // reader saw ZERO Amar Ujala coverage, even though BOTH article
+  // sets are about Bada Mangal in Lucknow.
+  //
+  // The source label (Hindustan Times vs Amar Ujala vs Dainik Jagran
+  // vs Times of India) implicitly hints which language an article
+  // is in, so visitors self-select what to click. A merged date-sort
+  // is the natural news-feed UX and shows the full breadth of press
+  // coverage to every visitor.
+  const liveItems = [...liveHi, ...liveEn].sort(
+    (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
+  );
 
   // Promote-with-image: if any live item carries an OG image, the
   // most-recent of those takes the LEFT featured slot. When no live

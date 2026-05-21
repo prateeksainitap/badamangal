@@ -392,16 +392,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* PRESS / MEDIA COVERAGE band. Sits immediately after the
-          hero so the first social-proof beat lands before any
-          engagement section (featured bhandaras, countdown, map).
-          Re-mounted 22 May once Dainik Jagran covered the project.
-          The component reads which outlets to show from its own
-          OUTLETS array, see src/components/MediaCoverage.tsx for
-          how to add Times of India / Navbharat Times when those
-          stories land. */}
-      <MediaCoverage />
-
       {/* FEATURED BHANDARAS, concrete answer to "where can I go to a
           bhandara today?" up high, before the countdown/map. GA4
           data showed 20× more hero-CTA clicks than bhandara-card
@@ -537,6 +527,17 @@ export default async function HomePage() {
           live content that follows. Tiles with value 0 are hidden so
           the panel doesn't read as empty on a quiet day. */}
       <StatsSection stats={stats} />
+
+      {/* PRESS / MEDIA COVERAGE band. Sits AFTER the "Lucknow, this
+          season" stats block (was previously right after the hero,
+          moved here 22 May so the stats-then-press flow lets the
+          numbers do the trust-build first and the press logos
+          reinforce as social proof). Re-mounted earlier the same day
+          when Dainik Jagran covered the project. The component reads
+          which outlets to show from its own OUTLETS array, see
+          src/components/MediaCoverage.tsx for how to add Times of
+          India / Navbharat Times when those stories land. */}
+      <MediaCoverage />
 
       {/* RESOURCES TEASER, extracted into a client component so the
           card titles + bodies localise from the LocaleProvider context

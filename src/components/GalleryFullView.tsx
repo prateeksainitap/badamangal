@@ -105,7 +105,12 @@ export default function GalleryFullView({ items }: Props) {
           >
             {isHi ? "← मुख्य पृष्ठ पर जाएँ" : "← Back to home"}
           </Link>
-          <p className="mt-4 font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold inline-flex items-center gap-2">
+          {/* Eyebrow needs `flex w-fit` (not `inline-flex`) so the
+              <p> is block-level and drops to its own line beneath
+              the back link. Previously was `inline-flex`, the link
+              + eyebrow rendered on the same line and the eyebrow
+              bullet visually clashed into the "← Back to home" text. */}
+          <p className="mt-4 font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold flex w-fit items-center gap-2">
             <span aria-hidden className="block w-1.5 h-1.5 rounded-full bg-saffron-600" />
             {isHi ? "गैलरी" : "Gallery"}
           </p>
