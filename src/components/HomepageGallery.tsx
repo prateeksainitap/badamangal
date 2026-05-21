@@ -25,7 +25,7 @@ export type { GalleryItem };
  *   2. Items are distributed round-robin into a fixed number of
  *      COLUMNS (each column a vertical flex stack of 3 photos).
  *      Columns sit side-by-side in a flex row, each one a tall
- *      sliver — same visual rhythm as a CSS-columns masonry but
+ *      sliver, same visual rhythm as a CSS-columns masonry but
  *      laid out horizontally so the marquee can carry the row
  *      sideways without breaking the column grid.
  *
@@ -76,7 +76,7 @@ const SLOT_ASPECTS: readonly string[] = [
 type ColumnSlot = { item: GalleryItem; flatIndex: number };
 
 /** Round-robin distribute items into N columns. Returns a 2D array
- *  of slots ready to render. No more decorative gradient tiles —
+ *  of slots ready to render. No more decorative gradient tiles ,
  *  blank space at the bottom of short columns is now masked by the
  *  page-level saffron fade overlay (see the marquee JSX). */
 function buildColumns(items: GalleryItem[], cols: number): ColumnSlot[][] {
@@ -102,7 +102,7 @@ export default function HomepageGallery({ items }: Props) {
     return () => window.clearInterval(id);
   }, []);
 
-  // Preview cap — full set lives on /gallery. Trim to an
+  // Preview cap, full set lives on /gallery. Trim to an
   // evenly-divisible item count so every column gets the same
   // number of slots (and therefore the same total height, which
   // is what kills the ragged-bottom-edge look).
@@ -194,7 +194,7 @@ export default function HomepageGallery({ items }: Props) {
                 captionOf={captionOf}
               />
             ))}
-            {/* Cloned second set — identical, so the -50% translate
+            {/* Cloned second set, identical, so the -50% translate
                 lines up pixel-perfectly with the first set's start
                 and the loop is invisible. aria-hidden so screen
                 readers don't repeat every photo's alt text. */}
@@ -241,11 +241,11 @@ export default function HomepageGallery({ items }: Props) {
   );
 }
 
-/** One vertical column of the marquee — flex column of photo tiles.
+/** One vertical column of the marquee, flex column of photo tiles.
  *  Fixed width AND fixed aspect-ratio per slot, so every column ends
  *  at the same baseline (the marquee never shows a ragged bottom
  *  edge). Photos use `object-cover` to fill their cells, which trades
- *  full-image visibility for tight grid alignment — acceptable in a
+ *  full-image visibility for tight grid alignment, acceptable in a
  *  scrolling preview where visitors are scanning, not studying. The
  *  full-frame view lives in the lightbox + on /gallery. */
 function MarqueeColumn({

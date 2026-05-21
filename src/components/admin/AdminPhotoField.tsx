@@ -8,7 +8,7 @@
  *   • /admin/edit-spot/[id]  (spot edit & approve)
  *
  * Both edit pages are plain server-rendered <form action={...}> with no
- * client state of their own — the inputs are read straight off
+ * client state of their own, the inputs are read straight off
  * FormData in the server action. To keep that shape, this component
  * exposes a hidden <input name={...}> whose value is updated in React
  * state. So when the admin submits, the form action reads the latest
@@ -42,7 +42,7 @@ type UploadResponse = {
 };
 
 type Props = {
-  /** Form field name — read by the server action via FormData. */
+  /** Form field name, read by the server action via FormData. */
   name: string;
   /** Existing photo URL from the DB row (empty string if none). */
   defaultValue?: string;
@@ -147,7 +147,7 @@ export default function AdminPhotoField({
         ) : null}
       </div>
 
-      {/* Hidden field — this is what the server action reads. We keep
+      {/* Hidden field, this is what the server action reads. We keep
           it as a real <input name={name}> rather than building the
           FormData by hand so the page stays no-JS-friendly: if the
           admin never touches the photo, the original defaultValue
@@ -226,7 +226,7 @@ export default function AdminPhotoField({
       {/* The two hidden file inputs. Kept off-screen rather than
           display:none so iOS Safari reliably forwards the camera
           intent. Reset value="" via the onChange-then-clear pattern
-          would normally go here, but we don't need it — re-picking
+          would normally go here, but we don't need it, re-picking
           the same filename still fires onChange because we never
           assign back to the input. */}
       <input

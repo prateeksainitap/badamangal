@@ -334,7 +334,7 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
           required
           error={errors.phone}
         >
-          {/* Shared PhoneInput — locks +91 prefix, caps at 10 digits.
+          {/* Shared PhoneInput, locks +91 prefix, caps at 10 digits.
               Same control admin + organise + bhandara forms use. */}
           <PhoneInput
             id="contact-phone"
@@ -502,7 +502,7 @@ export default function ContactForm({ locale: _localeProp }: { locale?: Locale }
         </p>
       </div>
 
-      {/* Honeypot DOM removed — see comment near state declaration. */}
+      {/* Honeypot DOM removed, see comment near state declaration. */}
 
       <div className="pt-2">
         <button

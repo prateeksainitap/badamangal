@@ -3,7 +3,7 @@ import { NEWS } from "@/content/news";
 import NewsPageView, { type LiveNewsItem } from "@/components/NewsPageView";
 import { prisma } from "@/lib/db";
 
-// Keep the page cacheable but short — auto-fetched news flows in via the
+// Keep the page cacheable but short, auto-fetched news flows in via the
 // /api/news/refresh cron, and 5 min ISR is fresh enough for the editorial
 // "this week" framing (we're not racing breaking news).
 export const revalidate = 300;
@@ -36,14 +36,14 @@ export default async function NewsPage() {
   //     and hand-picked imagery) drives the FEATURED card + the
   //     TERTIARY grid below the fold.
   //   • Auto-fetched NewsItem rows from the DB drive the SIDEBAR +
-  //     the live tertiary band — always-live, pulled every couple of
+  //     the live tertiary band, always-live, pulled every couple of
   //     hours from Google News RSS + direct publisher feeds.
   //
   // ONE display filter at the query level (no DB-level cleanup; we
   // keep all ingested rows for forensic reasons, just hide off-year
   // items from the UI):
   //
-  //   publishedAt >= Jan 1 of the current year — last year's
+  //   publishedAt >= Jan 1 of the current year, last year's
   //   coverage shouldn't pollute "this week in Lucknow".
   //
   // The image filter is applied IN THE CLIENT VIEW per-section, not
@@ -53,7 +53,7 @@ export default async function NewsPage() {
   //     so requiring images there would starve the column on slow
   //     news days.
   //   • tertiary → only image-bearing items. The grid below uses
-  //     LiveTertiaryCard which is image-led — a no-image card there
+  //     LiveTertiaryCard which is image-led, a no-image card there
   //     would have a visual hole.
   //   • featured left slot → newest image-bearing item if any;
   //     falls back to the static editorial featured otherwise.

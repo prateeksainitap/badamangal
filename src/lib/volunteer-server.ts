@@ -30,7 +30,7 @@ const SAFE_CHARS = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 
 /**
  * Generate a single volunteer code. Caller MUST check uniqueness
- * against the DB and retry on collision — we don't do the DB read
+ * against the DB and retry on collision, we don't do the DB read
  * here to keep this function pure (testable, no Prisma import).
  */
 export function generateVolunteerCode(prefix = "BM-LKO"): string {

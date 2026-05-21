@@ -17,7 +17,13 @@ import VolunteerPromo from "@/components/VolunteerPromo";
 import HomeFAQ from "@/components/HomeFAQ";
 import HappeningNow from "@/components/HappeningNow";
 import HomeCardsEmpty from "@/components/HomeCardsEmpty";
-import MediaCoverage from "@/components/MediaCoverage";
+// MediaCoverage was mounted between the hero and FeaturedBhandaras as
+// a "Featured in / India's leading dailies" press band. Removed from
+// the live homepage on 21 May, the component file
+// (src/components/MediaCoverage.tsx) + the four newspaper logos in
+// public/media/press/ remain parked in the repo, ready to re-mount
+// the day an actual story runs.
+// import MediaCoverage from "@/components/MediaCoverage";
 import HomeClosingBenediction from "@/components/HomeClosingBenediction";
 import HomeHero from "@/components/HomeHero";
 import HomeHistoryTeaser from "@/components/HomeHistoryTeaser";
@@ -141,10 +147,10 @@ export default async function HomePage() {
     // `take: 24` was originally sized for the HappeningNow feed (which
     // only renders 15 cards from this array), but the SAME array is
     // fed into MapBoard for two things that need the full set:
-    //   • the map pins (1 pin per spot) — under the cap, ≥25th spot
+    //   • the map pins (1 pin per spot), under the cap, ≥25th spot
     //     never rendered on the map at all
     //   • the heading counter `listings.length + liveSpots.length`
-    //     — under the cap, the headline froze at "Spotted 24" even
+    //    , under the cap, the headline froze at "Spotted 24" even
     //     when the DB had 60+ live spots, which is exactly the bug
     //     the user is staring at on the live homepage.
     // Spot rows auto-expire after 8h and the table only keeps APPROVED,
@@ -162,7 +168,7 @@ export default async function HomePage() {
     // Admin-curated gallery photos (visible only). Newest pinned-
     // first via displayOrder, then by createdAt desc. Capped at 60
     // since the gallery section is meant to be browsable, not
-    // exhaustive — admin can prune older items by flipping their
+    // exhaustive, admin can prune older items by flipping their
     // status to HIDDEN if the section grows unwieldy.
     prisma.galleryPhoto.findMany({
       where: { status: "VISIBLE" },
@@ -179,7 +185,7 @@ export default async function HomePage() {
     }),
     // Spot photos for the gallery: take the most recent 60 APPROVED
     // spots that have a primary photo. Includes both photoUrl AND
-    // extraPhotoUrls (the multi-photo array we added in Item 1) —
+    // extraPhotoUrls (the multi-photo array we added in Item 1) ,
     // each extra photo gets its own gallery tile. We don't filter
     // for "currently live" (expiresAt > now) here because the
     // gallery's value is in the visual record of the season, not
@@ -255,7 +261,7 @@ export default async function HomePage() {
 
   // Homepage gallery items: combine admin-curated GalleryPhoto rows
   // with spot photos (primary + extras). Admin items first so the
-  // curated band leads, then spots — capped at 60 visible at most.
+  // curated band leads, then spots, capped at 60 visible at most.
   // Each extra spot photo becomes its own tile so a multi-photo
   // spot upload doesn't get squashed into one thumb.
   const galleryItems: GalleryItem[] = [
@@ -387,13 +393,12 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* PRESS / MEDIA COVERAGE band. Sits immediately after the hero
-          so the first social-proof beat lands before any of the
-          deeper engagement sections (featured bhandaras, countdown,
-          map). The coloured-on-white card treatment is intentionally
-          bolder than a subdued footer-style strip because the
-          post-hero slot is where trust signals need to land hardest. */}
-      <MediaCoverage />
+      {/* PRESS / MEDIA COVERAGE band removed 21 May. Was a
+          "Featured in / India's leading dailies" press wall sitting
+          right after the hero; pulled because no actual story has
+          run yet and the section was overpromising. To re-mount,
+          uncomment the import above + restore <MediaCoverage />
+          here. */}
 
       {/* FEATURED BHANDARAS, concrete answer to "where can I go to a
           bhandara today?" up high, before the countdown/map. GA4
@@ -550,7 +555,7 @@ export default async function HomePage() {
       {/* HISTORY TEASER, client component, locale from context. */}
       <HomeHistoryTeaser />
 
-      {/* FAQ — bilingual accordion of the highest-intent questions
+      {/* FAQ, bilingual accordion of the highest-intent questions
           about the tradition, the rare 8-Tuesday 2026 cycle, finding
           a bhandara, and listing one. Native <details>/<summary>, no
           JS. Anchored at #faq so footer + /resources can deep-link.
@@ -558,7 +563,7 @@ export default async function HomePage() {
           has their questions answered before the volunteer ask. */}
       <HomeFAQ />
 
-      {/* Quiet volunteer-programme nudge — slim strip near the bottom
+      {/* Quiet volunteer-programme nudge, slim strip near the bottom
           of the page rather than a banner near the top. Reaches the
           long-scroll user who's already invested in the site without
           competing with discovery (map / listings) or the primary

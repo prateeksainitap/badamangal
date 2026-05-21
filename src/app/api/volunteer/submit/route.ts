@@ -17,7 +17,7 @@
  *     can't review a row that's missing identifying info.
  *
  * Note: this endpoint just persists the submission. Bhandara + Spot
- * rows are NOT created here — those come from the admin's APPROVE
+ * rows are NOT created here, those come from the admin's APPROVE
  * action in /admin/volunteer-submissions which can also reject /
  * mark partial. Keeps moderation in admin's hands and avoids
  * polluting the public site with un-reviewed listings.
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (address.length > 400) fields.address = "Address too long.";
   if (organizerName.length > 120) fields.organizerName = "Organizer name too long.";
 
-  // Phone is optional — if provided, must be valid 10 digits.
+  // Phone is optional, if provided, must be valid 10 digits.
   let organizerPhone: string | null = null;
   if (organizerPhoneRaw) {
     organizerPhone = toIndianMobileDigits(organizerPhoneRaw);
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return jsonError(400, "validation", fields);
   }
 
-  // GPS — both must be present + look like real numbers in
+  // GPS, both must be present + look like real numbers in
   // Lucknow's broad bounding box. We're not strict about exact
   // bounds (volunteers might be at the edge of the metro) but we
   // reject obvious 0,0 or huge wrong values.

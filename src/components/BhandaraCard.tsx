@@ -167,7 +167,7 @@ export default function BhandaraCard({ bhandara, locale, pinnedDate }: Props) {
           // No-photo fallback: branded 4:3 share graphic served from
           // /public/illustrations/card-fallback.webp
           // (Share-Graphics/Final-4_3-Default-2.png, resized to
-          // 1136×852 and re-encoded — ~215 KB on the wire instead
+          // 1136×852 and re-encoded, ~215 KB on the wire instead
           // of the source 8.9 MB). Aspect matches .bm-card-photo's
           // own 4/3 ratio, so `object-cover` fills the well edge-to-
           // edge with no letterbox, no blurred backdrop scaffolding

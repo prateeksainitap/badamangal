@@ -15,7 +15,7 @@ import { useId, useState } from "react";
  *   • `value` is ALWAYS the 10-digit canonical form (no +91, no
  *     spaces). If a legacy value comes in with a +91/91/0 prefix or
  *     formatting, the component derives the trailing 10 digits for
- *     display via `displayDigits` — the parent state doesn't change.
+ *     display via `displayDigits`, the parent state doesn't change.
  *   • `onChange` always emits 10 digits (or "" while still typing).
  *   • Server-side validation lives in `isValidIndianMobile` (which
  *     already strips prefixes), so the canonical 10-digit form
@@ -63,12 +63,12 @@ type Props = {
  *   • "+919876543210"  → 13 chars, has `+` → strip "+91" → "9876543210"
  *   • "919876543210"   → 12 digits, starts "91" → strip "91" → "9876543210"
  *   • "09876543210"    → 11 digits, starts "0"  → strip "0"  → "9876543210"
- *   • "9151019102"     → 10 digits, starts "91" → DO NOT STRIP — it IS the number
+ *   • "9151019102"     → 10 digits, starts "91" → DO NOT STRIP, it IS the number
  *
  * Previous logic was `replace(/^(\+?91|0)/, "")` which unconditionally
  * stripped any leading "91", silently eating the first two digits of
  * any valid Indian mobile beginning with 91 (e.g. 9151xxxxxx). Bug
- * surfaced in the admin organiser-phone field — typing "9151019102"
+ * surfaced in the admin organiser-phone field, typing "9151019102"
  * showed "51019102" on screen.
  *
  * New rule: only strip a "91" / "+91" / "0" prefix when the resulting
@@ -82,18 +82,18 @@ function toDigits(raw: string): string {
   // Explicit "+" makes the country code unambiguous regardless of
   // the digit count behind it.
   const hasPlusPrefix = trimmed.startsWith("+");
-  // Pure digits only — drops spaces, dashes, parens, "+", any letters.
+  // Pure digits only, drops spaces, dashes, parens, "+", any letters.
   let digits = trimmed.replace(/\D/g, "");
 
   if (hasPlusPrefix && digits.startsWith("91")) {
     // "+91 98765 43210" → strip the "91" we just normalised the "+" off
     digits = digits.slice(2);
   } else if (digits.length === 12 && digits.startsWith("91")) {
-    // Bare "919876543210" — 12 digits beginning with "91" can only
+    // Bare "919876543210", 12 digits beginning with "91" can only
     // be country-code + 10-digit mobile. Strip.
     digits = digits.slice(2);
   } else if (digits.length === 11 && digits.startsWith("0")) {
-    // "09876543210" — old-style leading-zero national format. Strip.
+    // "09876543210", old-style leading-zero national format. Strip.
     digits = digits.slice(1);
   }
   // Else: leave it as the user typed it. A 10-digit number that
@@ -119,7 +119,7 @@ export default function PhoneInput({
   const inputId = id ?? `phone-${autoId}`;
   // Controlled vs uncontrolled. If the caller passes `value` they own
   // state. Otherwise we manage internal state seeded from defaultValue
-  // — this is what server-rendered <form action={...}> usages need
+  //, this is what server-rendered <form action={...}> usages need
   // (the admin edit page renders this inside a plain HTML form whose
   // server action reads FormData, no React state involved).
   const isControlled = value !== undefined;
@@ -169,7 +169,7 @@ export default function PhoneInput({
           placeholder={placeholder}
           onChange={(e) => handleChange(toDigits(e.target.value))}
           // Prevent paste of long international numbers from landing
-          // junk in state — same normalize on paste as on typing.
+          // junk in state, same normalize on paste as on typing.
           onPaste={(e) => {
             const pasted = e.clipboardData.getData("text");
             if (!pasted) return;

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Volunteer bhandara submission form — the "fill it on your phone
+ * Volunteer bhandara submission form, the "fill it on your phone
  * at the bhandara" experience.
  *
  * Flow:
@@ -12,7 +12,7 @@
  *      one-shot). Volunteer can see captured coords + a re-capture
  *      button below the location field.
  *   3. Bhandara fields: name, area, address, organizer, time, menu.
- *      All inline in the same form — no multi-step wizard in Tier A.
+ *      All inline in the same form, no multi-step wizard in Tier A.
  *   4. Media uploads: three buckets (10 photos / 2 videos / 1 spot
  *      photo). Each file uploads independently via fetch to
  *      /api/volunteer/upload-media; we track per-file state so the
@@ -21,7 +21,7 @@
  *      success screen with "submit another" + "back to BadaMangal".
  *
  * Validation philosophy: minimal client-side gates beyond required
- * fields. The server is the source of truth — we let the user
+ * fields. The server is the source of truth, we let the user
  * submit even if photos < 10 (their choice + admin discretion on
  * what counts as a complete bundle) but we surface a yellow
  * warning so they know what's coming.
@@ -70,7 +70,7 @@ export default function VolunteerSubmitForm({
   const [codeLocked, setCodeLocked] = useState<boolean>(false);
   const [gps, setGps] = useState<GpsState>({ kind: "pending" });
   const [photos, setPhotos] = useState<UploadedMedia[]>([]);
-  // Videos are not uploaded through this form anymore — they go to
+  // Videos are not uploaded through this form anymore, they go to
   // the shared Google Drive folder (see VOLUNTEER_VIDEO_DRIVE_URL).
   // The bundle check uses a self-attested checkbox; admin verifies
   // the Drive folder during moderation.
@@ -78,7 +78,7 @@ export default function VolunteerSubmitForm({
   const [spotPhoto, setSpotPhoto] = useState<UploadedMedia | null>(null);
   // Area + address are controlled inputs so the reverse-geocoder
   // can pre-fill them from the captured GPS coords. We track
-  // user-touched flags via refs (not state — flag flips never need
+  // user-touched flags via refs (not state, flag flips never need
   // to trigger a re-render) so the auto-fill effect knows to skip
   // any field the volunteer has already typed in.
   const [areaValue, setAreaValue] = useState<string>("");
@@ -111,7 +111,7 @@ export default function VolunteerSubmitForm({
           setCodeLocked(true);
         }
       } catch {
-        /* private browsing / storage disabled — fine */
+        /* private browsing / storage disabled, fine */
       }
     } else if (isValidVolunteerCodeShape(code)) {
       // URL-provided code: cache to localStorage for next time
@@ -293,10 +293,10 @@ export default function VolunteerSubmitForm({
     const userNotes = String(fd.get("volunteerNotes") ?? "").trim();
     // Auto-prepend a Drive marker to volunteerNotes so the admin
     // moderation queue surfaces "this volunteer says they uploaded
-    // videos to Drive — go check folder X" at a glance. Volunteer's
+    // videos to Drive, go check folder X" at a glance. Volunteer's
     // own note text follows after a blank line.
     const drivePrefix = videosUploadedToDrive
-      ? "[Videos in Drive folder — prefixed with volunteer code]\n\n"
+      ? "[Videos in Drive folder, prefixed with volunteer code]\n\n"
       : "[Videos NOT marked as uploaded to Drive]\n\n";
     const composedNotes = `${drivePrefix}${userNotes}`.trim();
 
@@ -313,7 +313,7 @@ export default function VolunteerSubmitForm({
       volunteerNotes: composedNotes,
       photoUrls: photos.map((p) => p.url),
       // videoUrls stays in the payload shape (server expects the
-      // key) but is always empty now — videos live in Google Drive.
+      // key) but is always empty now, videos live in Google Drive.
       videoUrls: [] as string[],
       spotPhotoUrl: spotPhoto?.url ?? "",
       gpsLat: gps.kind === "captured" ? gps.lat : null,
@@ -357,7 +357,7 @@ export default function VolunteerSubmitForm({
   // ─── FORM STATE ───────────────────────────────────────────────
   const submitting = phase.kind === "submitting";
   const photoBundleOk = photos.length >= 10;
-  // Videos go to Google Drive now (see VOLUNTEER_VIDEO_DRIVE_URL) —
+  // Videos go to Google Drive now (see VOLUNTEER_VIDEO_DRIVE_URL) ,
   // the bundle check is a self-attested checkbox the volunteer
   // ticks after uploading there. We can't programmatically verify
   // the Drive upload happened, but the admin reviews the folder
@@ -388,7 +388,7 @@ export default function VolunteerSubmitForm({
         }}
       />
 
-      {/* GPS banner — silently captures on mount. Shows status + re-capture. */}
+      {/* GPS banner, silently captures on mount. Shows status + re-capture. */}
       <GpsBanner gps={gps} onRecapture={recaptureGps} />
 
       {/* Errors */}
@@ -661,7 +661,7 @@ export default function VolunteerSubmitForm({
               {code || "BM-LKO-XXXXXX"}_bhandara-name.mp4
             </p>
             <p className="mt-1.5 text-xs text-ink-600">
-              आपका volunteer code <strong>{code || "—"}</strong> file
+              आपका volunteer code <strong>{code || ","}</strong> file
               के नाम के शुरू में लगाएं ताकि हम आपकी video पहचान सकें।
             </p>
             <p className="text-xs text-ink-600">
@@ -670,7 +670,7 @@ export default function VolunteerSubmitForm({
             </p>
           </div>
 
-          {/* Step C: confirmation checkbox — gates the bundle */}
+          {/* Step C: confirmation checkbox, gates the bundle */}
           <label className="flex items-start gap-2.5 mt-2 cursor-pointer select-none">
             <input
               type="checkbox"

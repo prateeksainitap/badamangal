@@ -1147,7 +1147,7 @@ function Step5({ state, errors, setField }: StepProps) {
               : undefined)
           }
         >
-          {/* Shared PhoneInput — same +91 chip + 10-digit cap that the
+          {/* Shared PhoneInput, same +91 chip + 10-digit cap that the
               admin / contact / organise forms now use. State still
               stores the canonical 10-digit form, downstream
               isValidIndianMobile() check is unchanged. */}
@@ -1375,7 +1375,7 @@ function ThankYou(_props: { slug: string }) {
       {/* Full-service-organising upsell. The organiser just finished
           a free DIY listing, that's the highest-intent moment to
           tell them we can also handle the rest (tent, catering,
-          logistics) if they'd rather not DIY. Soft tone — phrased
+          logistics) if they'd rather not DIY. Soft tone, phrased
           as "if you need help" not "buy this", so it doesn't
           undermine the celebratory step-1-done feel. ?from=upsell
           attributes the lead's inbound channel on the email. */}

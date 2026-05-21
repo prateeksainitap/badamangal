@@ -614,7 +614,7 @@
 /* Homepage-gallery horizontal marquee. The track renders the column
    set twice; this keyframe slides translateX from 0 → -50%, so when
    the second (cloned) set lines up where the first one began, the
-   animation snaps back to 0 — invisible because the two halves are
+   animation snaps back to 0, invisible because the two halves are
    pixel-identical. Duration is set per-instance via inline style;
    typical: 90–180s for a calm, devotional pace. */
 @keyframes bm-marquee-left {

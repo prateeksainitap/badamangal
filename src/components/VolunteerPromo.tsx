@@ -6,7 +6,7 @@ import { useLocaleFromContext } from "@/lib/locale-context";
 /**
  * Homepage volunteer-programme nudge.
  *
- * Quiet horizontal strip rather than a banner — sits near the bottom
+ * Quiet horizontal strip rather than a banner, sits near the bottom
  * of the homepage (just before the closing benediction), deliberately
  * de-emphasised so:
  *   1. It doesn't compete with the primary OrganisePromo banner up top
@@ -29,7 +29,7 @@ export default function VolunteerPromo() {
     >
       <div className="rounded-2xl border border-gold-500/35 bg-cream-50/70 px-5 py-4 sm:px-6 sm:py-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
-          {/* Subtle icon block — small saffron disc, just enough to anchor
+          {/* Subtle icon block, small saffron disc, just enough to anchor
               the row visually without screaming "banner". */}
           <span
             aria-hidden

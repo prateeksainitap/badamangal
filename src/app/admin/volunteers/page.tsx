@@ -1,9 +1,9 @@
 /**
- * /admin/volunteers — registry of every volunteer + per-volunteer
+ * /admin/volunteers, registry of every volunteer + per-volunteer
  * totals + the weekly UPI payout CSV + the PENDING approval queue.
  *
  * Three main jobs (in order of urgency):
- *   1. Approve PENDING signups — issue a code via WhatsApp by
+ *   1. Approve PENDING signups, issue a code via WhatsApp by
  *      clicking "Approve & send code" on each fresh row.
  *   2. Generate the Sunday-evening payout list (CSV export for bulk
  *      UPI in your banking app).
@@ -56,7 +56,7 @@ export default async function VolunteersRegistryPage() {
 
   // Per-volunteer totals: total submitted, total approved+partial,
   // total earned (₹ across approved+partial), and unpaid (subset
-  // where paidAt is null — needs a separate query because groupBy
+  // where paidAt is null, needs a separate query because groupBy
   // can't filter on a third condition cleanly).
   const totalsByVol = new Map<
     string,
@@ -127,7 +127,7 @@ export default async function VolunteersRegistryPage() {
         </div>
       </header>
 
-      {/* Pending applications — surfaced above the fold because they
+      {/* Pending applications, surfaced above the fold because they
           block the volunteer from doing any work. Yellow card signals
           "needs your attention now". */}
       {pendingVolunteers.length > 0 ? (
@@ -148,7 +148,7 @@ export default async function VolunteersRegistryPage() {
         </section>
       ) : null}
 
-      {/* Weekly payout panel — only renders when there's actually
+      {/* Weekly payout panel, only renders when there's actually
           unpaid money. PENDING rows have no code + no submissions
           so they're naturally excluded from the payout calc. */}
       {totalUnpaid > 0 ? (
@@ -166,7 +166,7 @@ export default async function VolunteersRegistryPage() {
         />
       ) : null}
 
-      {/* Active volunteers — everyone who's been approved (has a
+      {/* Active volunteers, everyone who's been approved (has a
           code), plus suspended rows for auditability. PENDING rows
           are rendered above instead. */}
       <ul className="mt-6 grid gap-3">

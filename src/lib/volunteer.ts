@@ -1,9 +1,9 @@
 /**
- * Volunteer programme helpers — validation, parsing, formatting.
+ * Volunteer programme helpers, validation, parsing, formatting.
  *
  * IMPORTANT: this file is imported by BOTH server code (server
  * actions, route handlers) and CLIENT components (VolunteerSubmitForm,
- * VolunteerSignupForm). It MUST stay free of Node-only imports —
+ * VolunteerSignupForm). It MUST stay free of Node-only imports ,
  * `node:crypto` etc. belongs in src/lib/volunteer-server.ts, which
  * is the server-only sibling. Webpack errors with
  *   UnhandledSchemeError: Reading from "node:crypto" is not handled
@@ -15,7 +15,7 @@
  * Tier A (no OTP / no session): the volunteer code IS the auth.
  * Anyone with a valid code can submit. So the code MUST be:
  *   • Unguessable (~2 billion combinations from a 6-char alphanumeric
- *     suffix — brute-forcing the submit endpoint is impractical)
+ *     suffix, brute-forcing the submit endpoint is impractical)
  *   • Human-readable (volunteer reads it off WhatsApp and types
  *     into a URL field on phone; ambiguous chars are excluded)
  *   • Brandable (BM-LKO-XXXX prefix anchors it as ours and signals
@@ -42,14 +42,14 @@
  *   when reviewing.
  *
  * If this URL changes (folder migrated, etc.), update the constant
- * here — it's referenced from VolunteerSubmitForm + any admin docs.
+ * here, it's referenced from VolunteerSubmitForm + any admin docs.
  */
 export const VOLUNTEER_VIDEO_DRIVE_URL =
   "https://drive.google.com/drive/folders/19-99gSo8HagMEz_L6NoyfC6t3aXKBTNu?usp=sharing";
 
 /**
  * Validate the shape of an incoming volunteer code. Rejects obvious
- * garbage before we hit the DB. Does NOT confirm the code exists —
+ * garbage before we hit the DB. Does NOT confirm the code exists ,
  * that's the caller's job (look it up in the Volunteer table).
  */
 export function isValidVolunteerCodeShape(s: unknown): s is string {
@@ -112,7 +112,7 @@ export function parseAreas(jsonString: string | null | undefined): string[] {
 }
 
 /**
- * Inverse of parseAreas — used by the signup endpoint to canonicalise
+ * Inverse of parseAreas, used by the signup endpoint to canonicalise
  * the areas list before write. Caps each entry at 60 chars and the
  * whole array at 12 entries so a malicious form can't write 10 MB of
  * JSON into a TEXT column.

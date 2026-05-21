@@ -34,7 +34,7 @@ export function isFreshSpot(item: GalleryItem): boolean {
  * backdrop, caption + source pill underneath, prev/next arrows,
  * close button, keyboard navigation (Esc / ← / →), body-scroll lock.
  *
- * The backdrop is `bg-black/95 backdrop-blur-md` — dark enough that
+ * The backdrop is `bg-black/95 backdrop-blur-md`, dark enough that
  * the underlying gallery doesn't bleed through (the earlier
  * `bg-ink-900/92` was a warm dark that let the saffron tiles show
  * up). Click on the backdrop (or the close button, or Esc) closes;
@@ -91,7 +91,7 @@ export default function GalleryLightbox({
       className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-md flex items-center justify-center overflow-hidden"
     >
       {/* Image container. Stop click propagation so taps on the
-          image itself don't close the modal — only backdrop / close
+          image itself don't close the modal, only backdrop / close
           button / Esc do. */}
       <div
         onClick={(e) => e.stopPropagation()}

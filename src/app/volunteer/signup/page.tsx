@@ -1,5 +1,5 @@
 /**
- * /volunteer/signup — public signup form for the volunteer programme.
+ * /volunteer/signup, public signup form for the volunteer programme.
  *
  * Server-rendered shell with metadata; the actual form is the
  * client component <VolunteerSignupForm /> so React state can

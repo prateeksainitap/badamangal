@@ -36,7 +36,7 @@ type Outlet = {
   name: string;
   /** Path under /public, served as a static asset. */
   src: string;
-  /** Natural width — preserves aspect ratio when scaled by max-height. */
+  /** Natural width, preserves aspect ratio when scaled by max-height. */
   width: number;
   /** Natural height. */
   height: number;
@@ -140,7 +140,7 @@ export default function MediaCoverage() {
             white card so the native brand colours stay clean and
             don't fight the cream paper. Uniform card height tames
             the wildly different logo aspect ratios. 3-col at every
-            width since we currently feature three outlets — a
+            width since we currently feature three outlets, a
             three-up row reads as one tight unit at all viewports
             (cards are still ~110 px wide on the smallest phone,
             comfortable for these simple wordmarks). */}

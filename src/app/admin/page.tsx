@@ -66,7 +66,7 @@ function format12h(time: string): string {
  * The relative buckets help the admin triage today's burst (Bada
  * Mangal mornings = lots of incoming spots); the absolute form
  * surfaces stale rows ("why is this still PENDING from 3 days
- * ago?"). The DB stores UTC, the admin team works in IST — explicit
+ * ago?"). The DB stores UTC, the admin team works in IST, explicit
  * timeZone: "Asia/Kolkata" pins the absolute output regardless of
  * which machine renders the page.
  *
@@ -86,7 +86,7 @@ function formatSubmissionTime(d: Date): string {
   return formatAbsoluteIst(date);
 }
 
-/** Helper for the absolute branch — "19 May · 9:15 PM" IST. */
+/** Helper for the absolute branch, "19 May · 9:15 PM" IST. */
 function formatAbsoluteIst(d: Date): string {
   const date = d.toLocaleString("en-IN", {
     day: "numeric",
@@ -279,7 +279,7 @@ export default async function AdminPage({
 
         {/* ── Header row 2: current view (left) · actions + queues (right)
             ModeToggle anchors the "where you ARE" position. The right
-            cluster has primary CTA (Scan & publish — saffron filled,
+            cluster has primary CTA (Scan & publish, saffron filled,
             most visual weight) followed by cross-queue navigation
             pills (Organise / Volunteer subs / Volunteer registry).
             All wrap onto multiple lines on narrow viewports. */}
@@ -686,15 +686,15 @@ export default async function AdminPage({
  * OrganiseRequestsLink can both call this without firing the
  * underlying COUNT queries twice. 4 quick parallel reads.
  *
- *   bhandaraPending — rows awaiting admin moderation (status=PENDING)
- *   spotLive        — APPROVED spots currently visible (not yet
+ *   bhandaraPending, rows awaiting admin moderation (status=PENDING)
+ *   spotLive       , APPROVED spots currently visible (not yet
  *                     past expiresAt); the actionable Spotted view
- *   whatsappBot     — bot-ingested PENDING bhandaras specifically
+ *   whatsappBot    , bot-ingested PENDING bhandaras specifically
  *                     (`[bot:` prefix in description). Doesn't
  *                     include spotted-via-bot rows since those auto-
  *                     approve on ingest; admin only revisits if a
  *                     spot needs delisting.
- *   organiseNew     — fresh leads in /admin/organise (status=NEW)
+ *   organiseNew    , fresh leads in /admin/organise (status=NEW)
  */
 const getAdminTabCounts = cache(async () => {
   const now = new Date();
@@ -718,7 +718,7 @@ const getAdminTabCounts = cache(async () => {
     }),
     prisma.organiseRequest.count({ where: { status: "NEW" } }),
     prisma.volunteerSubmission.count({ where: { status: "NEW" } }),
-    // PENDING signups in the volunteer programme — admin must
+    // PENDING signups in the volunteer programme, admin must
     // approve each before a code can be issued. Surfaced as a
     // count badge on the "👥 Volunteers" pill so the admin sees
     // unactioned applications without having to click in.
@@ -853,7 +853,7 @@ async function OrganiseRequestsLink() {
 /**
  * Header link to the volunteer-programme moderation queue. Same
  * gold-outline pill style as OrganiseRequestsLink. NEW count comes
- * from the shared getAdminTabCounts cache — single DB roundtrip
+ * from the shared getAdminTabCounts cache, single DB roundtrip
  * even though it's the 5th caller. The 🧑‍🤝‍🧑 emoji signals "this is
  * people-managed" vs the OrganiseRequest's 📋 (which is paperwork).
  */
@@ -874,7 +874,7 @@ async function VolunteerSubmissionsLink() {
  * Header link to the Volunteer registry (the directory of all
  * signed-up volunteers + per-volunteer earnings + the weekly
  * payout CSV + the PENDING approval queue). Companion to
- * VolunteerSubmissionsLink — that one shows work submitted by
+ * VolunteerSubmissionsLink, that one shows work submitted by
  * approved volunteers, this one shows the people behind it.
  *
  * NEW-count badge surfaces PENDING applications waiting for
@@ -990,7 +990,7 @@ async function SpotsView({
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6 pb-10">
       <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 pt-8 pb-3 bg-cream-50/92 backdrop-blur-md border-b border-gold-500/30">
-        {/* Mirrors BhandarasView's 2-row header — same hierarchy so the
+        {/* Mirrors BhandarasView's 2-row header, same hierarchy so the
             admin's eye lands on the right thing regardless of which
             mode tab they're on. */}
         <header className="flex flex-wrap items-start justify-between gap-3 pb-3">

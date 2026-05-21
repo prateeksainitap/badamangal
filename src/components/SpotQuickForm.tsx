@@ -75,7 +75,7 @@ export default function SpotQuickForm({
 
   const [photoUrl, setPhotoUrl] = useState("");
   // Extra photos beyond the primary. Up to 5 (the API caps at 5 too).
-  // Uploaded via a multi-file input below the primary PhotoPicker —
+  // Uploaded via a multi-file input below the primary PhotoPicker ,
   // see the ExtraPhotosUploader sub-component below.
   const [extraPhotoUrls, setExtraPhotoUrls] = useState<string[]>([]);
   const [reporterName, setReporterName] = useState("");
@@ -449,7 +449,7 @@ export default function SpotQuickForm({
               photo is set (no point in offering "more" before "one"
               exists). Multi-select, up to 5 extras, with thumbnails
               and per-item remove. Uploads each file in parallel to
-              /api/uploads — same endpoint PhotoPicker uses, so the
+              /api/uploads, same endpoint PhotoPicker uses, so the
               5 MB cap + WebP re-encoding apply uniformly. */}
           {photoUrl ? (
             <ExtraPhotosUploader
@@ -999,13 +999,13 @@ function IconBroadcast() {
  * Multi-file uploader for extra spot photos.
  *
  * Stays deliberately small (~50 lines) and reuses the same
- * /api/uploads endpoint PhotoPicker hits — so the 5 MB cap, the
+ * /api/uploads endpoint PhotoPicker hits, so the 5 MB cap, the
  * WebP re-encoding, and the upload-success GA event apply uniformly
  * regardless of which path the user uploaded through.
  *
  * Design notes:
  *   • Renders only when the primary photoUrl is set (parent handles
- *     this) — keeps the form linear: pick one, then offer more.
+ *     this), keeps the form linear: pick one, then offer more.
  *   • Caps at `max` (defaults to 5). When the cap is hit, the input
  *     disables itself and the hint copy updates to "max reached".
  *   • Parallel upload (Promise.all) so adding 4 photos is one
@@ -1069,8 +1069,8 @@ function ExtraPhotosUploader({
       <p className="text-[0.7rem] text-ink-600 mt-0.5">
         {atCap
           ? isHi
-            ? `अधिकतम ${max} फ़ोटो — बस इतनी।`
-            : `Max ${max} photos — you're at the cap.`
+            ? `अधिकतम ${max} फ़ोटो, बस इतनी।`
+            : `Max ${max} photos, you're at the cap.`
           : isHi
             ? `${remaining} और जोड़ सकते हैं।`
             : `You can add ${remaining} more.`}

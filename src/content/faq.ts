@@ -4,7 +4,7 @@
  * Drives the visible <HomeFAQ /> accordion on the homepage + the
  * dedicated /faq page, plus the FAQPage JSON-LD (which lives in
  * src/lib/seo.ts and currently still hand-lists English copies of
- * the same questions — kept in sync manually, refactor target).
+ * the same questions, kept in sync manually, refactor target).
  *
  * Keep each answer under ~300 chars so Google SERPs don't truncate
  * the rich-snippet preview. Keep the visible answer the same as the
@@ -36,7 +36,7 @@ export const FAQ_ITEMS: ReadonlyArray<FaqItem> = [
     answerEn:
       "Adhik Maas, the leap month that occurs roughly once every 19 years, adds an extra Tuesday to Jyeshtha in 2026. So instead of the usual 4–5 Tuesdays, Lucknow gets 8 Bada Mangals. The last time this happened was 2007; the next will be 2045.",
     answerHi:
-      "अधिक मास — हर लगभग 19 वर्ष में एक बार आने वाला लीप-मास — 2026 में ज्येष्ठ माह में अतिरिक्त मंगलवार जोड़ देता है। तो सामान्य 4–5 मंगलवारों के बजाय लखनऊ को इस बार 8 बड़े मंगल मिल रहे हैं। पिछली बार यह 2007 में हुआ था; अगली बार 2045 में होगा।",
+      "अधिक मास, हर लगभग 19 वर्ष में एक बार आने वाला लीप-मास, 2026 में ज्येष्ठ माह में अतिरिक्त मंगलवार जोड़ देता है। तो सामान्य 4–5 मंगलवारों के बजाय लखनऊ को इस बार 8 बड़े मंगल मिल रहे हैं। पिछली बार यह 2007 में हुआ था; अगली बार 2045 में होगा।",
   },
   {
     id: "next-bada-mangal",
@@ -52,9 +52,9 @@ export const FAQ_ITEMS: ReadonlyArray<FaqItem> = [
     questionEn: "How do I find a Bada Mangal bhandara near me?",
     questionHi: "मेरे पास का बड़ा मंगल भंडारा कैसे ढूँढूँ?",
     answerEn:
-      "Open the city map on BadaMangal.com — every listed bhandara appears as a pin with the menu, time window, and organiser details. Use the 'Bhandaras near me' button to filter to a 3 km radius around you, or tap any pin to get directions in one tap.",
+      "Open the city map on BadaMangal.com, every listed bhandara appears as a pin with the menu, time window, and organiser details. Use the 'Bhandaras near me' button to filter to a 3 km radius around you, or tap any pin to get directions in one tap.",
     answerHi:
-      "BadaMangal.com पर शहर का map खोलिए — हर सूचीबद्ध भंडारा एक पिन के रूप में दिखता है, उसके साथ मेन्यू, समय और आयोजक की जानकारी भी। 'पास के भंडारे' बटन से 3 कि.मी. के दायरे में filter कीजिए, या किसी भी पिन पर tap करके एक ही क्लिक में रास्ता पाइए।",
+      "BadaMangal.com पर शहर का map खोलिए, हर सूचीबद्ध भंडारा एक पिन के रूप में दिखता है, उसके साथ मेन्यू, समय और आयोजक की जानकारी भी। 'पास के भंडारे' बटन से 3 कि.मी. के दायरे में filter कीजिए, या किसी भी पिन पर tap करके एक ही क्लिक में रास्ता पाइए।",
   },
   {
     id: "food-served",
@@ -70,9 +70,9 @@ export const FAQ_ITEMS: ReadonlyArray<FaqItem> = [
     questionEn: "Is participating in a Bada Mangal bhandara free?",
     questionHi: "क्या बड़े मंगल भंडारे में हिस्सा लेना मुफ़्त है?",
     answerEn:
-      "Yes — every bhandara is free, open to anyone, and serves as long as the prasad lasts. The tradition is rooted in seva (selfless service); organisers cover all costs from their own resources or community donations.",
+      "Yes, every bhandara is free, open to anyone, and serves as long as the prasad lasts. The tradition is rooted in seva (selfless service); organisers cover all costs from their own resources or community donations.",
     answerHi:
-      "हाँ — हर भंडारा बिल्कुल मुफ़्त है, सबके लिए खुला है, और जब तक प्रसाद रहता है तब तक चलता है। यह परंपरा सेवा-भाव पर आधारित है; आयोजक सारा ख़र्च अपने संसाधनों से या सामुदायिक सहयोग से उठाते हैं।",
+      "हाँ, हर भंडारा बिल्कुल मुफ़्त है, सबके लिए खुला है, और जब तक प्रसाद रहता है तब तक चलता है। यह परंपरा सेवा-भाव पर आधारित है; आयोजक सारा ख़र्च अपने संसाधनों से या सामुदायिक सहयोग से उठाते हैं।",
   },
   {
     id: "list-own-bhandara",

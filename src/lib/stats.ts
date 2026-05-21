@@ -72,7 +72,7 @@ export async function getHomepageStats(): Promise<SiteStats> {
   // APPROVED spot toward `bhandarasSpotted`, and the area set spans
   // all-time. This is intentionally a different lens from the main
   // list / map / area chips, which filter to upcoming-only via
-  // `hasUpcomingDate` (a past-only bhandara still happened — it
+  // `hasUpcomingDate` (a past-only bhandara still happened, it
   // should count toward "the city did this" stats even though it's
   // no longer on the active map). The "so far" word in the labels
   // tells visitors the number is cumulative.

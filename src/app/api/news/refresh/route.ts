@@ -6,15 +6,15 @@
  *
  *   • the admin "Refresh news" button on /admin (manual trigger
  *     when you want fresh items NOW)
- *   • a scheduled cron — either Netlify Scheduled Functions or an
+ *   • a scheduled cron, either Netlify Scheduled Functions or an
  *     external cron-job.org hitting this endpoint every 2-3 hours
  *     with the X-News-Refresh-Token header set to NEWS_REFRESH_TOKEN
  *
  * Auth: two independent paths so both callers can authenticate.
- *   1. Admin cookie (already used everywhere else in /admin) —
+ *   1. Admin cookie (already used everywhere else in /admin) ,
  *      lets the admin click "Refresh news" in the UI without any
  *      extra token plumbing.
- *   2. X-News-Refresh-Token header matching env NEWS_REFRESH_TOKEN —
+ *   2. X-News-Refresh-Token header matching env NEWS_REFRESH_TOKEN ,
  *      lets a cron service trigger this without admin cookies. If
  *      the env var is unset, this auth path is disabled (so we
  *      never accidentally open the endpoint world-wide).

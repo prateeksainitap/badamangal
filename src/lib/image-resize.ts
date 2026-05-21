@@ -5,7 +5,7 @@
  *   A typical Indian-phone photo is 5-12 MB at the sensor's native
  *   resolution (often 4032×3024 or larger). Server-side sharp on
  *   /api/volunteer/upload-media resizes everything to 2000px WebP @
- *   quality 85 before storing — but only AFTER receiving the full
+ *   quality 85 before storing, but only AFTER receiving the full
  *   raw upload. On 4G in Lucknow that's ~30-60 seconds per photo
  *   before sharp even sees the bytes. 10 photos = a 5-minute
  *   upload spinner, plenty of time for the volunteer to give up.
@@ -17,7 +17,7 @@
  *   serialise-into-RAM step makes the whole submission feel
  *   instant.
  *
- * Failure modes (all fail-open — return the original file):
+ * Failure modes (all fail-open, return the original file):
  *   • Non-image file types (videos, PDFs, etc.) → server handles
  *   • HEIC / HEIF (iPhone default) → Chrome can't decode via
  *     <img>; Safari can. Conservative: skip and let the server's
@@ -36,7 +36,7 @@ export async function resizeImageForUpload(
   maxDim: number = DEFAULT_MAX_DIMENSION,
   quality: number = DEFAULT_JPEG_QUALITY,
 ): Promise<File> {
-  // Type gates — only re-encode actual web-decodable images.
+  // Type gates, only re-encode actual web-decodable images.
   if (!file.type.startsWith("image/")) return file;
   if (/heic|heif/i.test(file.type)) return file;
 
@@ -73,7 +73,7 @@ export async function resizeImageForUpload(
       lastModified: file.lastModified,
     });
   } catch {
-    // Any failure — return original. Server-side sharp will still
+    // Any failure, return original. Server-side sharp will still
     // do the heavy lifting; we just lose the bandwidth win.
     return file;
   }

@@ -784,7 +784,7 @@ function BhandaraReviewForm({
             onChange={setOrganizerName}
             required
           />
-          {/* Shared PhoneInput — locked +91 prefix + 10-digit cap.
+          {/* Shared PhoneInput, locked +91 prefix + 10-digit cap.
               Same control used on public + admin/edit forms so admins
               and organisers share one mental model. */}
           <label className="block">
@@ -926,11 +926,11 @@ function BhandaraReviewForm({
         ) : null}
 
         {/* Two publish CTAs mirror the row-level cluster on /admin:
-              • "Publish bhandara" — ship what we have, no badge claim.
+              • "Publish bhandara", ship what we have, no badge claim.
                 The right default for scans where the admin hasn't
                 actually spoken to the organiser yet, the listing
                 still goes live, just without the green check.
-              • "Called & confirmed, publish" — same publish action +
+              • "Called & confirmed, publish", same publish action +
                 the ✓ Verified badge stamps in the same write. Mirrors
                 publishVerifiedAction's role in the row-level pattern.
             Both buttons share the same big payload, built once via

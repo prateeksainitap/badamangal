@@ -1,5 +1,5 @@
 /**
- * /admin/volunteer-submissions — moderation queue for the volunteer
+ * /admin/volunteer-submissions, moderation queue for the volunteer
  * programme.
  *
  * One row per VolunteerSubmission. Shows: volunteer code + name,
@@ -14,7 +14,7 @@
  * Tabs: NEW (default) · APPROVED · PARTIAL · REJECTED · DUPLICATE · ALL
  *
  * Server-rendered with `dynamic = "force-dynamic"` so admins always
- * see the latest queue (no ISR staleness — submissions are bursty
+ * see the latest queue (no ISR staleness, submissions are bursty
  * around Bada Mangal mornings).
  */
 import { notFound, redirect } from "next/navigation";

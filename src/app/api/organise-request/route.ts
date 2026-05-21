@@ -8,7 +8,7 @@
  *
  * Wire format (JSON POST):
  *   name           string  (required, 2–80)
- *   phone          string  (required, 6–20 — callbacks are the main
+ *   phone          string  (required, 6–20, callbacks are the main
  *                           reply channel for this flow)
  *   email          string? optional
  *   area           string? Lucknow neighbourhood, free-form
@@ -101,7 +101,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       "[organise-request] honeypot filled (likely browser autofill, not bot):",
       { honeypotLen: honeypot.length, name: name.slice(0, 40) },
     );
-    // No early return — let the submission flow through.
+    // No early return, let the submission flow through.
   }
 
   const errors: Record<string, string> = {};
@@ -144,7 +144,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   const ip = ipHash(readClientIp(req.headers));
 
   // Per-IP rate limit, last 60 min. Tighter than /contact's 5/hour
-  // because this is a higher-touch ask — three full inquiries from
+  // because this is a higher-touch ask, three full inquiries from
   // the same IP in an hour is already enough; more is almost
   // certainly probing or abuse.
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);

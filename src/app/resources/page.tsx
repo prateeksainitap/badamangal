@@ -9,7 +9,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 export const metadata: Metadata = {
   title: "Resources · Hanuman Chalisa, Aarti, FAQ, temples · BadaMangal",
   description:
-    "The Hanuman Chalisa, Hanuman Aarti, Tuesday vrat guide, the city's biggest temples, and frequently-asked questions about Bada Mangal — one place to keep coming back to.",
+    "The Hanuman Chalisa, Hanuman Aarti, Tuesday vrat guide, the city's biggest temples, and frequently-asked questions about Bada Mangal, one place to keep coming back to.",
   alternates: {
     canonical: "/resources",
     languages: {

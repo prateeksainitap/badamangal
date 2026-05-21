@@ -1,5 +1,5 @@
 /**
- * /organise-bhandara — full-service organising landing page.
+ * /organise-bhandara, full-service organising landing page.
  *
  * Lead-capture surface for organisers who don't want to DIY a bhandara
  * and would rather have the BadaMangal team arrange logistics for

@@ -36,7 +36,7 @@ function safeJsonArray(input: string): string[] {
        Export encountered an error on /area/[slug]/page: /area/gomti-nagar
      Next.js generates 36 area pages in parallel during build, and each
      page made 2 separate Prisma calls (generateMetadata count +
-     page-body findMany) — 72 concurrent queries against a Supabase
+     page-body findMany), 72 concurrent queries against a Supabase
      pooler configured with connection_limit=1. The queue overflowed
      and the build crashed at page 56/112.
 
@@ -55,12 +55,12 @@ function safeJsonArray(input: string): string[] {
      - During `next build`: 1 query for all 36 area pages.
      - In production ISR (revalidate=300): the cache survives across
        page regenerations inside a WARM Netlify Function (the
-       previous comment claimed otherwise — that was the bug). The
+       previous comment claimed otherwise, that was the bug). The
        Promise lives at module scope, the module is evaluated once
        per JS realm, and warm Functions reuse the realm. So a
        revalidatePath() that re-renders /bhandara/[slug] will hit
        this same stale Promise and re-render with stale photoUrl /
-       fields — fixed waves later but seen first when an admin
+       fields, fixed waves later but seen first when an admin
        photo-replace didn't propagate to the public detail page.
      - In dev: persists for the dev process lifetime; restart to clear.
 
@@ -98,7 +98,7 @@ export function getAllApprovedBhandaras(opts?: {
 
 /** Same data shape as `getAllApprovedBhandaras` but mapped through
  *  `toBhandara` so callers don't have to remember the conversion.
- *  Cheap to call repeatedly — the underlying query is deduped. */
+ *  Cheap to call repeatedly, the underlying query is deduped. */
 export async function getAllApprovedBhandarasMapped(opts?: {
   fresh?: boolean;
 }): Promise<Bhandara[]> {
@@ -116,7 +116,7 @@ export async function getAllApprovedBhandarasMapped(opts?: {
  *   `getAllApprovedBhandaras` memoizes a Promise at module scope to
  *   collapse 72 build-time queries into one (see the big comment
  *   above). That Promise survives across page regenerations in a
- *   warm Netlify Function — so an admin photo-replace would write
+ *   warm Netlify Function, so an admin photo-replace would write
  *   the new URL to the DB, revalidatePath would mark the page
  *   stale, the page would regenerate, but the regeneration call
  *   would receive the SAME cached Promise and render the OLD

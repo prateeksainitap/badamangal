@@ -141,7 +141,7 @@ export default function StatsSection({ stats }: Props) {
               // No "/ 36" denominator. Earlier we mirrored the
               // Tuesdays-served "X of 8" pattern here, but the
               // total-areas number (curated list in lib/lucknow.ts)
-              // isn't a meaningful ceiling for visitors — they care
+              // isn't a meaningful ceiling for visitors, they care
               // how many neighbourhoods are *covered*, not how
               // close we are to filling out a curated dictionary.
               // The bare count reads cleaner. Tuesdays still keeps

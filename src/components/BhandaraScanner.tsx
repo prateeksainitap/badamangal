@@ -200,7 +200,7 @@ export default function BhandaraScanner() {
   function reset() {
     // Tag resets fired from the post-scan banner separately from
     // resets fired from the idle-state "Remove" link (the latter
-    // never reaches this function — pickFile(null) handles it
+    // never reaches this function, pickFile(null) handles it
     // without a phase transition). `from_phase` lets GA distinguish
     // "scanned but didn't like the extraction" from quieter resets.
     trackEvent("scan_reset", { from_phase: phase });

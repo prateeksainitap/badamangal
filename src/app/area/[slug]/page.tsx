@@ -61,7 +61,7 @@ export async function generateMetadata({
   // Build-time note: every area page hits this function during
   // `next build`. We MUST use the deduped getAllApprovedBhandaras()
   // (one query shared across all 36 pages) instead of per-page
-  // prisma.count() calls — otherwise we exhaust Supabase's
+  // prisma.count() calls, otherwise we exhaust Supabase's
   // connection_limit=1 pooler and the build crashes with P2024.
   const all = await getAllApprovedBhandaras();
   const count = all.filter((b) => b.area === area).length;
@@ -119,7 +119,7 @@ export default async function AreaPage({ params }: { params: RouteParams }) {
   // the filtered slice keeps that ordering for free.
   const all = await getAllApprovedBhandaras();
   const records = all.filter((b) => b.area === area);
-  // Upcoming-only contract — match the homepage main list. Past-only
+  // Upcoming-only contract, match the homepage main list. Past-only
   // bhandaras live exclusively on /archive; if you land here from an
   // area chip the page shows only what you can actually visit.
   const bhandaras = records.map(toBhandara).filter((b) => hasUpcomingDate(b));

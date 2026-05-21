@@ -334,7 +334,7 @@ function SpotCard({
     locale,
   );
 
-  // Distance / ETA chip — pulled out so we can render it inside both
+  // Distance / ETA chip, pulled out so we can render it inside both
   // the photo and the no-photo branches without duplicating the JSX.
   const distanceChip = distanceLabel ? (
     <span className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-cream-50/95 backdrop-blur border border-saffron-500/45 px-2 py-0.5 text-[10px] font-semibold text-sindoor-700 shadow-warm">
@@ -346,7 +346,7 @@ function SpotCard({
     </span>
   ) : null;
 
-  // LIVE pulse — same treatment, lifted into a const so both photo
+  // LIVE pulse, same treatment, lifted into a const so both photo
   // and no-photo branches use it identically.
   const liveBadge = (
     <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-saffron-600 text-cream-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] font-bold shadow-warm">
@@ -363,7 +363,7 @@ function SpotCard({
           : "border-saffron-500/40 hover:border-saffron-500"
       }`}
     >
-      {/* Chat-style sender header. Always renders — reinforces "real
+      {/* Chat-style sender header. Always renders, reinforces "real
           photo from a real person right now" instead of the old card
           which read more like a generic listing. The avatar is a
           one-letter initial chip (no real avatars for privacy /
@@ -437,7 +437,7 @@ function SpotCard({
         </div>
       )}
 
-      {/* Info — bhandara name (if linked) + caption + area pill.
+      {/* Info, bhandara name (if linked) + caption + area pill.
           Time-ago moved to the chat header above, so this block is
           just "what + where" now. */}
       <div className="px-3 py-2 flex-1 flex flex-col gap-1">
@@ -460,7 +460,7 @@ function SpotCard({
           </p>
         ) : null}
 
-        {/* Action bar: three same-size circular icon-only chips —
+        {/* Action bar: three same-size circular icon-only chips ,
             Directions (saffron-filled, primary CTA), Share (green
             outline), Copy (saffron outline). Earlier iterations had
             Directions as a wide text pill which broke the visual
@@ -635,7 +635,7 @@ function IconCopy() {
 
 function IconPin() {
   // Slightly bolder + larger than IconPinMini because this is the
-  // glyph for the icon-only Directions chip — needs to read at a
+  // glyph for the icon-only Directions chip, needs to read at a
   // glance against the saffron fill. 13px matches IconWhatsapp's
   // optical weight inside the same w-9 h-9 chip pattern.
   return (

@@ -221,7 +221,7 @@ export default function NewsPageView({ liveHi, liveEn }: Props) {
           ) : null}
 
           {/* DIVIDER + LIVE TERTIARY GRID
-              The bottom band now flows from the live feed too — same
+              The bottom band now flows from the live feed too, same
               "latest from the press" content as the sidebar, just
               continuing in a 3-col grid format. Cards with images
               show the image; cards without fall back to a saffron
@@ -351,7 +351,7 @@ function FeaturedCard({ entry, t, isHi }: CardProps) {
 
 /**
  * Auto-fetched live news as the LEFT featured story. Used when any
- * live item carries an OG image — the most-recent of those gets
+ * live item carries an OG image, the most-recent of those gets
  * promoted here instead of the static editorial featured. Same
  * visual rhythm as FeaturedCard (large image + headline + source +
  * date + read-on-source CTA), without the editorial excerpt block

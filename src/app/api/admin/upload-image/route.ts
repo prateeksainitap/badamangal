@@ -2,7 +2,7 @@
  * Admin-only "replace photo" upload endpoint.
  *
  * Sister to /api/admin/scan but with NO Gemini extraction and NO
- * geocoding — just takes an image, resizes via sharp, drops it in
+ * geocoding, just takes an image, resizes via sharp, drops it in
  * Supabase Storage (or /public/uploads in dev), and returns the
  * public URL. The admin edit forms (/admin/edit/[id],
  * /admin/edit-spot/[id]) use this to let admins replace a bhandara
@@ -12,7 +12,7 @@
  *   The scan endpoint runs Gemini + Ola Maps on EVERY upload, which
  *   is wasted work + cost when the admin is just swapping a photo on
  *   an already-extracted row. This endpoint skips that path entirely
- *   — ~50ms vs ~6-15s, and zero Gemini quota burn.
+ *  , ~50ms vs ~6-15s, and zero Gemini quota burn.
  *
  * Auth: same admin cookie gate as the rest of /admin.
  */
@@ -26,7 +26,7 @@ import { getSupabaseAdmin, PHOTO_BUCKET } from "@/lib/supabase";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Pure resize + upload — should never need more than a few seconds.
+// Pure resize + upload, should never need more than a few seconds.
 // Keep a generous timeout just in case of large source files + slow
 // Supabase round-trips on cold pool.
 export const maxDuration = 15;

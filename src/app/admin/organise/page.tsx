@@ -1,5 +1,5 @@
 /**
- * /admin/organise — moderation queue for OrganiseRequest leads.
+ * /admin/organise, moderation queue for OrganiseRequest leads.
  *
  * Pulls every row from the OrganiseRequest table (a) sorted with
  * NEW + CONTACTED first so the team's actionable queue is at the
@@ -12,7 +12,7 @@
  *                          REJECTED      (terminal)
  *
  * Status changes fire revalidatePath("/admin/organise"), so the
- * queue is always live. No optimistic UI / no JS state — same
+ * queue is always live. No optimistic UI / no JS state, same
  * server-component + form-action pattern the bhandara moderation
  * surface uses.
  */
@@ -326,7 +326,7 @@ function OrganiseCard({ row }: { row: OrgRow }) {
         ) : null}
       </div>
 
-      {/* Action buttons cluster — workflow varies by current status */}
+      {/* Action buttons cluster, workflow varies by current status */}
       <div className="mt-5 pt-4 border-t border-gold-500/30 flex flex-wrap gap-2 items-center">
         {row.status === "NEW" || row.status === "REJECTED" ? (
           <form action={markOrganiseRequestContactedAction.bind(null, row.id)}>

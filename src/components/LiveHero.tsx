@@ -27,7 +27,7 @@ export default function LiveHero({ liveCount }: Props) {
     <section className="mx-auto max-w-5xl px-4 sm:px-6 pt-10 pb-6 sm:pt-14 sm:pb-8 text-center">
       {/* LIVE eyebrow + live-spot count chip. Two pills side by side
           so the static "Live" badge keeps its pulsing-dot identity
-          while the count carries the actual activity signal — the
+          while the count carries the actual activity signal, the
           number IS the news here, not the word "Live". */}
       <div className="inline-flex items-center gap-2 flex-wrap justify-center">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-saffron-50 border border-saffron-500/40 px-3 py-1 text-[0.65rem] font-mukta uppercase tracking-[0.28em] text-saffron-600 font-semibold">

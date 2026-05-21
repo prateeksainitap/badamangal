@@ -21,7 +21,7 @@ import { useState } from "react";
  * Next server action.
  */
 type Props = {
-  /** Server action — typed loosely because Next's typing for
+  /** Server action, typed loosely because Next's typing for
    *  bound server actions is awkward to express. */
   action: (formData: FormData) => Promise<void>;
 };

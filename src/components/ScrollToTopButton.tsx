@@ -19,7 +19,7 @@ import { useEffect, useState } from "react";
  * so the two FABs read as a vertical stack rather than a clutter.
  *
  * Show / hide is tied to a scroll listener with passive: true (cheap)
- * and a small threshold (800 px) — below the fold of any reasonable
+ * and a small threshold (800 px), below the fold of any reasonable
  * mobile viewport, so the button doesn't appear immediately on first
  * paint.
  */

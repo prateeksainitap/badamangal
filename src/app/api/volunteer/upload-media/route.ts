@@ -9,7 +9,7 @@
  * Auth:
  *   Volunteer code in the `x-volunteer-code` header (or `?code=`
  *   query). We validate the code exists + is NOT SUSPENDED. No
- *   session / cookie — the code is the auth (Tier A trade-off).
+ *   session / cookie, the code is the auth (Tier A trade-off).
  *
  * Differences vs /api/admin/upload-image:
  *   • Public-facing (no admin cookie required)
@@ -17,7 +17,7 @@
  *   • Photos pass through sharp like the admin endpoint; videos are
  *     stored as-is (sharp can't process videos and we don't need
  *     transcoding for our use case)
- *   • Same Supabase bucket (PHOTO_BUCKET) — admin can see both
+ *   • Same Supabase bucket (PHOTO_BUCKET), admin can see both
  *     photo and video uploads alongside scan submissions
  */
 import { NextResponse, type NextRequest } from "next/server";
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   const code = normaliseVolunteerCode(rawCode);
 
-  // Lookup volunteer — cheap (indexed unique) and we need to know
+  // Lookup volunteer, cheap (indexed unique) and we need to know
   // SUSPENDED status to gate uploads at the door rather than letting
   // a banned volunteer keep filling Supabase Storage.
   const volunteer = await prisma.volunteer.findUnique({
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     publicUrl = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(filename).data
       .publicUrl;
   } else {
-    // Dev fallback — same pattern as /api/admin/upload-image.
+    // Dev fallback, same pattern as /api/admin/upload-image.
     const dir = path.join(process.cwd(), "public", "uploads");
     try {
       await mkdir(dir, { recursive: true });
@@ -175,7 +175,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 /** Best-effort extension extraction from filename or mime. */
 function extractExt(name: string, mime: string): string | null {
-  // Prefer the original filename's extension when available — preserves
+  // Prefer the original filename's extension when available, preserves
   // user intent (e.g. .mov vs .mp4) for browsers that care.
   const fromName = /\.([a-z0-9]{2,5})$/i.exec(name);
   if (fromName) return fromName[1].toLowerCase();

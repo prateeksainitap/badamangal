@@ -1,14 +1,14 @@
 "use client";
 
 /**
- * Volunteer signup form — single screen, two states (form / success).
+ * Volunteer signup form, single screen, two states (form / success).
  *
  * Approval flow: signup creates a PENDING Volunteer row with NO
  * code. Admin reviews + approves via /admin/volunteers, which
  * generates the code + delivers it to the volunteer's WhatsApp.
  *
  * So the success screen here does NOT show a code (there isn't one
- * yet) — it shows an "application under review, we'll WhatsApp you
+ * yet), it shows an "application under review, we'll WhatsApp you
  * within 24h" message instead. This is intentional: leaves no
  * unfiltered path for fakes to start submitting before admin OK.
  */
@@ -88,12 +88,12 @@ export default function VolunteerSignupForm() {
       // submit form can auto-pick it up on first use AND on every
       // return visit (until the volunteer clears their browser
       // storage). Wrapped in try/catch because private-browsing
-      // mode disables setItem — fine, the success card still works
+      // mode disables setItem, fine, the success card still works
       // and they can copy/share the code manually.
       try {
         window.localStorage.setItem(STORAGE_KEY, json.code);
       } catch {
-        /* private mode or quota exceeded — fine */
+        /* private mode or quota exceeded, fine */
       }
       setPhase({
         kind: "success",
@@ -173,7 +173,7 @@ export default function VolunteerSignupForm() {
           name="upi"
           type="text"
           maxLength={60}
-          placeholder="e.g. 9876543210@upi, name@paytm — optional"
+          placeholder="e.g. 9876543210@upi, name@paytm, optional"
           autoCapitalize="off"
           autoCorrect="off"
           spellCheck={false}
@@ -182,7 +182,7 @@ export default function VolunteerSignupForm() {
         <span className="text-xs text-ink-600">
           Optional. This season runs as pure seva, so no payment is
           being set up. We may add small acknowledgements in future
-          seasons — share your UPI now if you'd like to be reachable
+          seasons, share your UPI now if you'd like to be reachable
           for those.
         </span>
         {fieldErrors.upi ? (
@@ -190,7 +190,7 @@ export default function VolunteerSignupForm() {
         ) : null}
       </label>
 
-      {/* Areas — multiselect. Optional but encouraged. */}
+      {/* Areas, multiselect. Optional but encouraged. */}
       <div className="grid gap-2">
         <span className="text-sm text-ink-600">
           आप कौन से areas cover कर सकते हैं? (कई चुन सकते हैं)
@@ -280,7 +280,7 @@ function CodeIssuedCard({
         setTimeout(() => setCopied(false), 1800);
       },
       () => {
-        /* clipboard blocked — fine, the code is also rendered on screen */
+        /* clipboard blocked, fine, the code is also rendered on screen */
       },
     );
   }
@@ -306,7 +306,7 @@ function CodeIssuedCard({
         </p>
       </div>
 
-      {/* Big bold code block — the focal point of the card. */}
+      {/* Big bold code block, the focal point of the card. */}
       <div className="rounded-2xl border-2 border-saffron-600 bg-saffron-50 p-5">
         <p className="text-xs uppercase tracking-[0.18em] text-saffron-600 font-medium">
           आपका volunteer code · Your volunteer code
@@ -321,7 +321,7 @@ function CodeIssuedCard({
           यह code save कर लीजिए। हर submission में इसकी ज़रूरत होगी।
         </p>
         <p className="mt-1 text-xs text-ink-600">
-          Save this code — you'll need it for every submission.
+          Save this code, you'll need it for every submission.
         </p>
 
         {/* Two save options + visual confirmation */}
@@ -345,7 +345,7 @@ function CodeIssuedCard({
         </div>
       </div>
 
-      {/* What happens next — short, encouraging, no admin-wait copy. */}
+      {/* What happens next, short, encouraging, no admin-wait copy. */}
       <div className="rounded-xl border border-gold-500/40 bg-cream-50 px-4 py-3 text-sm text-ink-900 text-left">
         <p className="font-medium">
           ✅ आप अभी से शुरू कर सकते हैं · You can start right now
@@ -392,9 +392,9 @@ function CodeIssuedCard({
           📸 अपना पहला भण्डारा भेजें · Submit your first bhandara →
         </Link>
         <p className="text-xs text-ink-600">
-          आपका code इस browser में save हो गया है — अगली बार खुद से fill हो जाएगा।
+          आपका code इस browser में save हो गया है, अगली बार खुद से fill हो जाएगा।
           <br />
-          Your code is saved in this browser — it'll auto-fill next time.
+          Your code is saved in this browser, it'll auto-fill next time.
         </p>
       </div>
 

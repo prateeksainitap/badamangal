@@ -167,7 +167,7 @@ export default async function BhandaraDetailPage({
   if (!record || record.status !== "APPROVED") notFound();
 
   const b = toBhandara(record);
-  // "Other bhandaras in <area>" — only surface rows that still have
+  // "Other bhandaras in <area>", only surface rows that still have
   // an upcoming service day. Past-only bhandaras live on /archive,
   // not in the discovery flow; showing "12 May" rows on May 19 sends
   // visitors to dead listings and undermines the "every bhandara,

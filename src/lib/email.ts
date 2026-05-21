@@ -253,7 +253,7 @@ export async function sendOrganiseRequestEmail(
   const subject = `Organise-bhandara request: ${input.name}, ${qtyLabel} (${tierLabel})`;
 
   const text = [
-    `New /organise-bhandara request — ${tierLabel}`,
+    `New /organise-bhandara request, ${tierLabel}`,
     "",
     `From: ${input.name}`,
     `Phone: ${input.phone}`,

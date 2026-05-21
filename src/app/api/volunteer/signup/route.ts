@@ -38,7 +38,7 @@ export const maxDuration = 5;
 
 // Per-IP signup cap is parked for the Bada Mangal 2026 launch
 // period. Original value was 3 signups per IP per 24h. The cap was
-// hitting legitimate use cases — admin testing, family members
+// hitting legitimate use cases, admin testing, family members
 // signing up from the same WiFi, multiple volunteers from a college
 // hostel or apartment on a shared NAT, etc. Re-enable by uncommenting
 // the constant + the gate in the POST handler below if abuse becomes
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── 3. IP capture (no rate-limit gate, parked for launch) ─────
   // We still hash + persist the IP so the admin can do retroactive
   // forensics if a fraud wave shows up (group all volunteers
-  // sharing one ipHash, etc.). The throttling itself is off — see
+  // sharing one ipHash, etc.). The throttling itself is off, see
   // the parked MAX_SIGNUPS_PER_IP_PER_DAY constant above for the
   // re-enable hook.
   const ip = ipHash(readClientIp(req.headers));
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   //
   // Code collision retry: theoretical ~1-in-729M from a 6-char
   // alphabet, but the @@unique constraint still needs handling. 5
-  // attempts is plenty — has never tripped in practice but the
+  // attempts is plenty, has never tripped in practice but the
   // loop costs nothing to write.
   const ua = req.headers.get("user-agent")?.slice(0, 240) ?? null;
   let createdId: string | null = null;

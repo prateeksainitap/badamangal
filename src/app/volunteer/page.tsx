@@ -1,9 +1,9 @@
 /**
- * /volunteer — public marketing + recruitment page for the volunteer
+ * /volunteer, public marketing + recruitment page for the volunteer
  * programme. Server-rendered shell with hero, "how it works",
  * what each submission needs, audience cards, FAQ, and a CTA.
  *
- * IMPORTANT — Bada Mangal 2026 season is running as PURE SEVA. The
+ * IMPORTANT, Bada Mangal 2026 season is running as PURE SEVA. The
  * honorarium / payout feature is parked (the DB still tracks
  * payoutAmount + the admin payout-CSV export still works for when
  * we bring it back, but the public-facing copy has zero monetary
@@ -25,12 +25,12 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "Volunteer with BadaMangal · Lucknow",
   description:
-    "Help us list every Bada Mangal bhandara in Lucknow. Spend 10 minutes per bhandara taking photos and videos, then fill the listing. A purely volunteer-led seva — contribute to the city's bhandara directory this Jyeshtha season.",
+    "Help us list every Bada Mangal bhandara in Lucknow. Spend 10 minutes per bhandara taking photos and videos, then fill the listing. A purely volunteer-led seva, contribute to the city's bhandara directory this Jyeshtha season.",
   alternates: { canonical: `${SITE_URL}/volunteer` },
   openGraph: {
     title: "Volunteer with BadaMangal",
     description:
-      "Document a bhandara during the Bada Mangal season. 10 photos plus 2 videos plus 1 live spot photo, plus the listing fields. Pure seva — help fellow devotees find every bhandara in Lucknow.",
+      "Document a bhandara during the Bada Mangal season. 10 photos plus 2 videos plus 1 live spot photo, plus the listing fields. Pure seva, help fellow devotees find every bhandara in Lucknow.",
     url: `${SITE_URL}/volunteer`,
     type: "website",
   },
@@ -62,7 +62,7 @@ export default function VolunteerLandingPage() {
           Help fellow devotees find every bhandara in Lucknow. Spend about 10 minutes
           at a bhandara, document it, and your work goes live on the public directory.
         </p>
-        {/* Hero stays seva-only — the honorarium info lives in its
+        {/* Hero stays seva-only, the honorarium info lives in its
             own dedicated section lower on the page so it's discoverable
             without colouring the lead message as a gig opportunity. */}
 
@@ -103,7 +103,7 @@ export default function VolunteerLandingPage() {
             num="1"
             title="Sign up"
             titleHi="जुड़ें"
-            body="Fill 1 short form: name, WhatsApp, your areas. Get a personal volunteer code instantly — save it once, use it for every submission."
+            body="Fill 1 short form: name, WhatsApp, your areas. Get a personal volunteer code instantly, save it once, use it for every submission."
           />
           <Step
             num="2"
@@ -163,7 +163,7 @@ export default function VolunteerLandingPage() {
             />
           </ul>
 
-          {/* Quality-criteria reminder — replaces what used to be the
+          {/* Quality-criteria reminder, replaces what used to be the
               ₹50/₹25 acknowledgement panel. This season is pure seva
               (no honorarium UI for now), so the panel speaks only to
               what makes a submission usable for the directory: real
@@ -176,7 +176,7 @@ export default function VolunteerLandingPage() {
               previous Tuesday won't be accepted.
             </p>
             <p className="mt-1.5 text-xs text-ink-600">
-              हर भण्डारे की तस्वीर मौके पर ही लेनी होती है — पुरानी
+              हर भण्डारे की तस्वीर मौके पर ही लेनी होती है, पुरानी
               या इंटरनेट से उठाई तस्वीरें स्वीकार नहीं होतीं।
             </p>
           </div>
@@ -211,7 +211,7 @@ export default function VolunteerLandingPage() {
           <AudienceCard
             emoji="🙏"
             title="Devotees"
-            body="If you're going to a bhandara anyway, document it. Pure sewa — your photos help thousands of other devotees find the right bhandara."
+            body="If you're going to a bhandara anyway, document it. Pure sewa, your photos help thousands of other devotees find the right bhandara."
           />
           <AudienceCard
             emoji="🚖"
@@ -241,8 +241,8 @@ export default function VolunteerLandingPage() {
           <Faq
             qHi="अगर मेरी प्रविष्टि अस्वीकृत हो जाए तो?"
             qEn="What if my submission is rejected?"
-            aHi="हम WhatsApp पर कारण बताएँगे — आमतौर पर तस्वीरें धुँधली होने, बैनर न होने, GPS मेल न खाने, या किसी और ने पहले वही भण्डारा भेज देने पर। आप दूसरा भण्डारा कर सकते हैं।"
-            aEn="We'll WhatsApp you the reason — usually blurry photos, missing banner, GPS mismatch, or duplicate (someone else submitted it first). You can simply submit another bhandara."
+            aHi="हम WhatsApp पर कारण बताएँगे, आमतौर पर तस्वीरें धुँधली होने, बैनर न होने, GPS मेल न खाने, या किसी और ने पहले वही भण्डारा भेज देने पर। आप दूसरा भण्डारा कर सकते हैं।"
+            aEn="We'll WhatsApp you the reason, usually blurry photos, missing banner, GPS mismatch, or duplicate (someone else submitted it first). You can simply submit another bhandara."
           />
           <Faq
             qHi="क्या मुझे रोज़ काम करना होगा?"

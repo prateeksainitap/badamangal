@@ -56,7 +56,7 @@ function FooterInner() {
             ? "हमसे भंडारा का आयोजन करवाएँ"
             : "Organise a bhandara (full service)",
         },
-        // Volunteer programme entry — supply-side recruitment for
+        // Volunteer programme entry, supply-side recruitment for
         // documenting more bhandaras. Distinct from "Organise"
         // (which is service-sales for hosts). Sits next to the
         // organise link so both "get involved" CTAs cluster. Copy

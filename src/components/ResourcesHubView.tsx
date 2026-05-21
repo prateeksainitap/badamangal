@@ -205,7 +205,7 @@ export default function ResourcesHubView() {
         <MarigoldDivider size={300} className="text-gold-500" />
       </div>
 
-      {/* FAQ TEASER — the dedicated news band that used to live here
+      {/* FAQ TEASER, the dedicated news band that used to live here
           was removed; this band replaces it with a 3-question preview
           of the FAQ page (full bilingual accordion + JSON-LD live
           at /faq). Same editorial registration as the news header

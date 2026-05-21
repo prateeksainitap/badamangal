@@ -103,7 +103,7 @@ export const metadata: Metadata = {
   // Favicon stack:
   //   • SVG first, modern browsers prefer it (scales perfectly at any DPR)
   //   • 192 / 48 / 32 / 16 PNG fallbacks. The 192 and 48 are critical
-  //     for Google Search results — Google's docs (see
+  //     for Google Search results, Google's docs (see
   //     developers.google.com/search/docs/appearance/favicon-in-search)
   //     require a favicon that is a multiple of 48 px square (48, 96,
   //     144, 192…) for the SERP icon to display. Below 48 → Google

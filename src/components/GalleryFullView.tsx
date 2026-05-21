@@ -157,7 +157,7 @@ export default function GalleryFullView({ items }: Props) {
               </p>
             </header>
 
-            {/* Same dense masonry rhythm as HomepageGallery — 3 → 4 →
+            {/* Same dense masonry rhythm as HomepageGallery, 3 → 4 →
                 5 → 6 → 7 columns. Same tile size so the two surfaces
                 visually rhyme. */}
             <div className="columns-3 sm:columns-4 md:columns-5 lg:columns-6 xl:columns-7 gap-2 sm:gap-3 [column-fill:_balance]">

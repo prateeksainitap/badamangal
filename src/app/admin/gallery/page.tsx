@@ -40,7 +40,7 @@ export default async function AdminGalleryPage() {
   const photos = await prisma.galleryPhoto.findMany({
     orderBy: [
       // VISIBLE first, then by displayOrder asc, then newest
-      { status: "asc" }, // "HIDDEN" > "VISIBLE" alphabetically — flip below if needed
+      { status: "asc" }, // "HIDDEN" > "VISIBLE" alphabetically, flip below if needed
       { displayOrder: "asc" },
       { createdAt: "desc" },
     ],

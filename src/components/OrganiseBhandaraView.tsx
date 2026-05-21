@@ -20,13 +20,13 @@ import PhoneInput from "@/components/PhoneInput";
  * /organise-bhandara page body.
  *
  * Sections (top → bottom):
- *   1. Hero            — pitch + scroll-to-form CTA
- *   2. How it works    — 3-step explainer (pick, request, we arrange)
- *   3. Packages        — Small / Medium / Large cards; clicking one
+ *   1. Hero           , pitch + scroll-to-form CTA
+ *   2. How it works   , 3-step explainer (pick, request, we arrange)
+ *   3. Packages       , Small / Medium / Large cards; clicking one
  *                        pre-selects it in the form and scrolls down
- *   4. Form            — name, phone, email, area, date, time,
+ *   4. Form           , name, phone, email, area, date, time,
  *                        quantity (plates|kg), notes, hidden honeypot
- *   5. Thank-you       — replaces the form on successful submit
+ *   5. Thank-you      , replaces the form on successful submit
  *
  * The form is the only interactive piece; everything above it is
  * static markup that benefits from being in a client component only
@@ -218,7 +218,7 @@ export default function OrganiseBhandaraView() {
   // Area dropdown options for the shared FancySelect. Memoised so the
   // 38-item array isn't rebuilt on every keystroke; recomputes only
   // when locale flips. Last entry is the "Other (type your own)"
-  // sentinel — picking it flips customAreaMode on and the dropdown
+  // sentinel, picking it flips customAreaMode on and the dropdown
   // swaps to a free-text input.
   const areaOptions: FancySelectOption[] = useMemo(
     () => [
@@ -233,7 +233,7 @@ export default function OrganiseBhandaraView() {
     [isHi],
   );
 
-  // Date preset chips — Bada Mangal Tuesdays + Bade Shanivars from
+  // Date preset chips, Bada Mangal Tuesdays + Bade Shanivars from
   // the season list. We slice off dates already past (IST) so the
   // organiser never picks a chip that's invalid, plus the custom
   // picker below is bounded to today→season-end.
@@ -539,7 +539,7 @@ export default function OrganiseBhandaraView() {
           <JaliCorner position="bl" className="absolute bottom-3 left-3 w-8 h-8 text-gold-500/55" />
           <JaliCorner position="br" className="absolute bottom-3 right-3 w-8 h-8 text-gold-500/55" />
 
-          {/* Honeypot removed — modern password managers / autofill
+          {/* Honeypot removed, modern password managers / autofill
               extensions were filling the hidden `website` field on
               legitimate users, causing their submissions to silently
               200 without ever being saved. Rate-limit + ipHash +
@@ -755,7 +755,7 @@ export default function OrganiseBhandaraView() {
               </div>
             ) : null}
 
-            {/* Custom date — any day in the season window. */}
+            {/* Custom date, any day in the season window. */}
             <div className="rounded-2xl border border-gold-500/40 bg-cream-50 px-4 py-3">
               <p className="font-mukta uppercase tracking-[0.22em] text-[0.65rem] text-gold-500 font-semibold">
                 {t("Custom date", "कोई और दिन")}
@@ -936,7 +936,7 @@ function formatIsoForOption(iso: string, isHi: boolean): string {
   const months = isHi
     ? ["जन", "फ़र", "मार्च", "अप्रैल", "मई", "जून", "जुल", "अग", "सित", "अक्ट", "नव", "दिस"]
     : ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  // Lightweight weekday from JS Date — only used for the SELECT label
+  // Lightweight weekday from JS Date, only used for the SELECT label
   // so the timezone offset doesn't matter for "is this a Tuesday?"
   const dow = new Date(`${iso}T04:30:00Z`).getUTCDay();
   const dowLabel = dow === 2 ? (isHi ? "मंगल" : "Tue") : (isHi ? "शनि" : "Sat");

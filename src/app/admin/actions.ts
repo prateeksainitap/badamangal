@@ -244,7 +244,7 @@ export async function editAndPublishAction(
   // CRITICAL: invalidate the in-process Bhandara cache before
   // revalidating Next's HTML cache. Without this, the next
   // /bhandara/[slug] regeneration reads the cached stale Promise
-  // and re-renders the OLD photoUrl / fields — see lib/db.ts
+  // and re-renders the OLD photoUrl / fields, see lib/db.ts
   // MUTATION CONTRACT for the full story. This was the bug behind
   // "I uploaded a new photo but the detail page won't update."
   invalidateBhandaraQueryCache();
@@ -294,7 +294,7 @@ export async function editAndApproveSpotAction(
   // admin never replaced the image it round-trips as the original DB
   // value; if they uploaded a new one, the field carries the new
   // Supabase URL. We only overwrite the column when the field is
-  // non-empty — an empty string would blank out a previously-uploaded
+  // non-empty, an empty string would blank out a previously-uploaded
   // photo, which is never what the admin meant (they'd have hit the
   // explicit "Reject" workflow for that).
   const newPhotoUrl = str("photoUrl");
@@ -588,7 +588,7 @@ const VOLUNTEER_PAYOUT_PARTIAL = 25;
 /**
  * Shared write: flip a VolunteerSubmission to a new status +
  * payout amount, and optionally create the linked Bhandara + Spot
- * rows. Idempotent for the Bhandara/Spot creation — if the
+ * rows. Idempotent for the Bhandara/Spot creation, if the
  * submission already has resultingBhandaraId / resultingSpotId set,
  * we skip the create to avoid duplicate listings on a double-click.
  */
@@ -776,7 +776,7 @@ export async function markVolunteerSubmissionPaidAction(
 
 /**
  * Bulk mark every APPROVED/PARTIAL submission with paidAt=NULL as
- * paid. Use after running a weekly UPI batch — saves the admin from
+ * paid. Use after running a weekly UPI batch, saves the admin from
  * clicking through each row. Takes no formData (no per-row UPI ref).
  */
 export async function markAllVolunteerSubmissionsPaidAction(
@@ -825,7 +825,7 @@ export async function setVolunteerStatusAction(
  *
  * Idempotent: if the volunteer already has a code (admin clicked
  * twice, or already approved earlier), we reuse the existing code
- * and rebuild the wa.me URL — same message, same outcome, no
+ * and rebuild the wa.me URL, same message, same outcome, no
  * duplicate codes generated.
  *
  * Why it's a server action returning data (vs a redirect): a
@@ -905,7 +905,7 @@ export async function approveAndIssueVolunteerCodeAction(
 }
 
 /**
- * Mark a PENDING signup as SUSPENDED — for fake / spammy / clearly-
+ * Mark a PENDING signup as SUSPENDED, for fake / spammy / clearly-
  * not-a-volunteer applications. Keeps the row in the DB (audit
  * trail) but ensures no code can ever be issued for it. The admin
  * can flip back to PENDING via setVolunteerStatusAction if rejection
@@ -930,7 +930,7 @@ export async function rejectVolunteerSignupAction(
  * Plain text only, no emojis. WhatsApp Web's preview pane uses a
  * font without emoji support and renders them as `�` replacement
  * glyphs (the actual delivered message would be fine, but the
- * preview looks broken — better to ship text that's bulletproof
+ * preview looks broken, better to ship text that's bulletproof
  * across every WA client + version). Bilingual: Hindi block first,
  * English block second, separated by a simple text divider.
  *
@@ -976,7 +976,7 @@ function safeParseUrls(json: string | null | undefined): string[] {
  *
  * Required FormData fields:
  *   - imageUrl: a Supabase storage URL (typically just-uploaded via
- *     /api/uploads — the admin gallery page uploads first, then
+ *     /api/uploads, the admin gallery page uploads first, then
  *     submits this action with the resulting URL)
  *
  * Optional FormData fields:

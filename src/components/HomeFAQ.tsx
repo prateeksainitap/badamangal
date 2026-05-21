@@ -15,7 +15,7 @@ import { useLocaleFromContext } from "@/lib/locale-context";
  *      `variant="standalone"` removes the section chrome / kicker
  *      and adds a back-to-home link).
  *
- * Implementation uses native <details>/<summary>, no JS state — this
+ * Implementation uses native <details>/<summary>, no JS state, this
  * means the accordion works even if JS fails to hydrate, AND each
  * panel is independently expandable (one open doesn't close
  * another). Server-rendered HTML stays scannable for search
@@ -115,7 +115,7 @@ export default function HomeFAQ({ variant = "section" }: Props) {
         <p className="mt-2 text-sm text-ink-600 leading-relaxed">
           {isHi
             ? "परंपरा, तिथियाँ, भंडारे, और साइट के बारे में सब कुछ।"
-            : "The tradition, the dates, the bhandaras, and the site — all in one place."}
+            : "The tradition, the dates, the bhandaras, and the site, all in one place."}
         </p>
       </header>
 

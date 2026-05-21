@@ -25,7 +25,7 @@
  *     HEAD request per item, and the URL is only used for outbound
  *     clicks anyway)
  *   • Body / excerpt extraction (we render just the title + source +
- *     date, no body text — this avoids any reproduction-rights
+ *     date, no body text, this avoids any reproduction-rights
  *     question completely)
  *
  * Source whitelist:
@@ -79,7 +79,7 @@ const SOURCE_WHITELIST: ReadonlyArray<string> = [
 
 const WHITELIST_LOWER = new Set(SOURCE_WHITELIST.map((s) => s.toLowerCase()));
 
-/** Keyword check on the title — at least one of these must be present
+/** Keyword check on the title, at least one of these must be present
  *  for the item to be considered a Bada-Mangal-Lucknow story. Belt-
  *  and-suspenders alongside the source whitelist: a trusted source
  *  occasionally publishes off-topic content with the word "Lucknow"
@@ -95,7 +95,7 @@ const KEYWORD_PATTERNS: RegExp[] = [
  *
  * Two kinds:
  *   1. **Google News search feeds** (kind: "google-news"). Broad
- *      source coverage — every Indian daily that ranks for our query
+ *      source coverage, every Indian daily that ranks for our query
  *      lands here. But the URLs are JS-redirect stubs (Google News
  *      app shells), so we can't OG-scrape them for article images.
  *      Useful for headline discovery + source diversity.
@@ -116,7 +116,7 @@ type Feed = {
 };
 
 const FEEDS: ReadonlyArray<Feed> = [
-  // Google News search — broad coverage, no images
+  // Google News search, broad coverage, no images
   {
     language: "en",
     kind: "google-news",
@@ -127,7 +127,7 @@ const FEEDS: ReadonlyArray<Feed> = [
     kind: "google-news",
     url: "https://news.google.com/rss/search?q=%22%E0%A4%AC%E0%A4%A1%E0%A4%BC%E0%A4%BE+%E0%A4%AE%E0%A4%82%E0%A4%97%E0%A4%B2%22+%E0%A4%B2%E0%A4%96%E0%A4%A8%E0%A4%8A&hl=hi-IN&gl=IN&ceid=IN:hi",
   },
-  // Direct publisher feeds — real URLs. HT supplies inline images
+  // Direct publisher feeds, real URLs. HT supplies inline images
   // via media:content; Amar Ujala doesn't, but its URLs are direct
   // so OG-image scraping kicks in as the fallback.
   {
@@ -154,7 +154,7 @@ type RssItem = {
   inlineImage?: string;
 };
 
-/** Minimal XML extractor — we never trust untrusted XML so we avoid
+/** Minimal XML extractor, we never trust untrusted XML so we avoid
  *  pulling in a full XML parser dependency. Both Google News and
  *  direct publisher feeds use stable enough formats that simple
  *  regex extraction is the right call (parse failures fall through
@@ -227,7 +227,7 @@ function extractChannelSource(xml: string, feed: Feed): string {
       const raw = decodeXmlEntities(
         t[1].replace(/^<!\[CDATA\[([\s\S]*?)\]\]>$/, "$1").trim(),
       );
-      // Channel titles like "Lucknow News, ... | Hindustan Times" —
+      // Channel titles like "Lucknow News, ... | Hindustan Times" ,
       // pull the part after the pipe, that's the cleanest source name.
       const pipe = raw.lastIndexOf("|");
       if (pipe >= 0) return raw.slice(pipe + 1).trim();
@@ -286,12 +286,12 @@ function matchesKeyword(title: string): boolean {
  * the actual publisher article, fetches the HTML, regexes out the
  * `<meta property="og:image">` tag, and returns the resolved absolute
  * URL. Returns null on any failure (network error, no OG tag, parse
- * failure, redirect loop, timeout) — callers should treat this as
+ * failure, redirect loop, timeout), callers should treat this as
  * "no image" and fall through to the source-tile placeholder.
  *
  * We pretend to be a normal browser via the User-Agent header because
  * a fair number of Indian news sites serve a blank page or a 403 to
- * unidentified user-agents. The 5s timeout is deliberately generous —
+ * unidentified user-agents. The 5s timeout is deliberately generous ,
  * this only runs from the aggregator cron, not in any user-facing
  * request path, so a slow article shouldn't break the rest of the
  * batch. The 100 KB read cap protects us against unbounded HTML
@@ -363,7 +363,7 @@ export type AggregatorReport = {
 };
 
 /**
- * Run one full aggregation cycle. Idempotent — duplicates (by URL) are
+ * Run one full aggregation cycle. Idempotent, duplicates (by URL) are
  * skipped, so re-running back-to-back is a no-op after the first
  * successful run.
  *
@@ -382,7 +382,7 @@ export async function refreshNews(): Promise<AggregatorReport> {
     let xml: string;
     try {
       const res = await fetch(feed.url, {
-        // No `next: { revalidate: ... }` — we always want fresh RSS
+        // No `next: { revalidate: ... }`, we always want fresh RSS
         // when this function runs. Caller controls the cadence.
         cache: "no-store",
         // A friendly UA reduces the chance of Google News

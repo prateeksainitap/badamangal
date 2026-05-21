@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
 
   const spots = records.map((s) => {
     // Parse the extraPhotoUrls JSON-string column defensively. We
-    // never trust this round-trips correctly without a guard — older
+    // never trust this round-trips correctly without a guard, older
     // rows may have it null, brand-new ones may have malformed JSON
     // from a (very unlikely) write race.
     let extraPhotoUrls: string[] = [];
@@ -144,7 +144,7 @@ export async function GET(req: NextRequest) {
         // ("N bhandaras spotted live") randomly dropped to 24
         // every poll, depending on which cache entry the CDN
         // happened to serve. Public-facing damage from skipping
-        // the 10 s edge cache is tiny — the route is a single
+        // the 10 s edge cache is tiny, the route is a single
         // Prisma query over an 8h-bounded table (~60-100 rows
         // peak), runs ~150 ms warm, polled every 15 s by each
         // homepage tab.
