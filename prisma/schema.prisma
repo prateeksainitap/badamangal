@@ -99,7 +99,12 @@ model Spot {
   area              String? // optional curated tag (Aliganj, Gomti Nagar, …)
   address           String? // free-text or reverse-geocoded
   // content
-  photoUrl          String? // optional — bhandaras can be reported without a photo
+  photoUrl          String? // primary photo (back-compat: existing rows + Card thumbnail)
+  // JSON-encoded array of extra photo URLs (up to 5). Same string-of-JSON
+  // pattern VolunteerSubmission uses, so the Supabase pooler doesn't have
+  // to do prepared statements against a Postgres text[] column. Read on
+  // the client via JSON.parse(extraPhotoUrls || "[]").
+  extraPhotoUrls    String    @default("[]")
   caption           String? // 0–200 chars
   language          String    @default("en") // "hi" | "en" | "mixed"
   // optional reporter (we don't require it but record if given)

@@ -27,6 +27,17 @@ const bodySchema = z
       .max(500)
       .optional()
       .or(z.literal("").transform(() => undefined)),
+    // Optional extra photo URLs beyond the primary `photoUrl`. The
+    // client (SpotQuickForm) uploads multi-selected images one by
+    // one and passes the resulting URLs here. Capped at 5 because
+    // the live-spot detail view only needs a thumbnail strip, not
+    // an album; more than 5 starts to feel like a different feature
+    // (a gallery, which we ARE building separately).
+    extraPhotoUrls: z
+      .array(z.string().trim().min(1).max(500))
+      .max(5)
+      .optional()
+      .default([]),
     caption: z
       .string()
       .trim()
@@ -81,13 +92,30 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  const spots = records.map((s) => ({
+  const spots = records.map((s) => {
+    // Parse the extraPhotoUrls JSON-string column defensively. We
+    // never trust this round-trips correctly without a guard — older
+    // rows may have it null, brand-new ones may have malformed JSON
+    // from a (very unlikely) write race.
+    let extraPhotoUrls: string[] = [];
+    try {
+      const parsed = JSON.parse(s.extraPhotoUrls || "[]");
+      if (Array.isArray(parsed)) {
+        extraPhotoUrls = parsed.filter(
+          (x): x is string => typeof x === "string" && x.length > 0,
+        );
+      }
+    } catch {
+      /* leave as [] */
+    }
+    return {
     id: s.id,
     lat: s.lat,
     lng: s.lng,
     area: s.area,
     address: s.address,
     photoUrl: s.photoUrl,
+    extraPhotoUrls,
     // Strip [bot:whatsapp …] from public JSON, see lib/sanitize.ts.
     caption: stripBotProvenance(s.caption) || null,
     language: s.language,
@@ -97,7 +125,8 @@ export async function GET(req: NextRequest) {
     bhandaraSlug: s.bhandara?.slug ?? null,
     bhandaraName: s.bhandara?.name ?? null,
     bhandaraNameHi: s.bhandara?.nameHi ?? null,
-  }));
+    };
+  });
 
   return NextResponse.json(
     { count: spots.length, spots },
@@ -189,6 +218,9 @@ export async function POST(req: NextRequest) {
       area: data.area ?? null,
       address: data.address ?? null,
       photoUrl: data.photoUrl ?? null,
+      // JSON-stringified per the schema's TEXT column choice (see
+      // schema.prisma comment on Spot.extraPhotoUrls for why).
+      extraPhotoUrls: JSON.stringify(data.extraPhotoUrls ?? []),
       caption: data.caption ?? null,
       language: data.language,
       reporterName: data.reporterName ?? null,

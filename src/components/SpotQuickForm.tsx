@@ -74,6 +74,10 @@ export default function SpotQuickForm({
   const isHi = locale === "hi";
 
   const [photoUrl, setPhotoUrl] = useState("");
+  // Extra photos beyond the primary. Up to 5 (the API caps at 5 too).
+  // Uploaded via a multi-file input below the primary PhotoPicker —
+  // see the ExtraPhotosUploader sub-component below.
+  const [extraPhotoUrls, setExtraPhotoUrls] = useState<string[]>([]);
   const [reporterName, setReporterName] = useState("");
   const [caption, setCaption] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -316,6 +320,7 @@ export default function SpotQuickForm({
           lat: coords.lat,
           lng: coords.lng,
           photoUrl,
+          extraPhotoUrls: extraPhotoUrls.length > 0 ? extraPhotoUrls : undefined,
           caption: caption.trim() || undefined,
           area: areaKey ?? undefined,
           reporterName: reporterName.trim() || undefined,
@@ -440,6 +445,20 @@ export default function SpotQuickForm({
             locale={locale}
             layout="stacked"
           />
+          {/* Extra photos uploader. Appears only after the primary
+              photo is set (no point in offering "more" before "one"
+              exists). Multi-select, up to 5 extras, with thumbnails
+              and per-item remove. Uploads each file in parallel to
+              /api/uploads — same endpoint PhotoPicker uses, so the
+              5 MB cap + WebP re-encoding apply uniformly. */}
+          {photoUrl ? (
+            <ExtraPhotosUploader
+              urls={extraPhotoUrls}
+              onChange={setExtraPhotoUrls}
+              isHi={isHi}
+              max={5}
+            />
+          ) : null}
         </section>
 
         {/* LOCATION, auto-fetched, friendly chip */}
@@ -973,5 +992,141 @@ function IconBroadcast() {
       <path d="M3 12a9 9 0 0 1 18 0" />
       <circle cx="12" cy="12" r="2" fill="currentColor" />
     </svg>
+  );
+}
+
+/**
+ * Multi-file uploader for extra spot photos.
+ *
+ * Stays deliberately small (~50 lines) and reuses the same
+ * /api/uploads endpoint PhotoPicker hits — so the 5 MB cap, the
+ * WebP re-encoding, and the upload-success GA event apply uniformly
+ * regardless of which path the user uploaded through.
+ *
+ * Design notes:
+ *   • Renders only when the primary photoUrl is set (parent handles
+ *     this) — keeps the form linear: pick one, then offer more.
+ *   • Caps at `max` (defaults to 5). When the cap is hit, the input
+ *     disables itself and the hint copy updates to "max reached".
+ *   • Parallel upload (Promise.all) so adding 4 photos is one
+ *     network round-trip of latency, not four.
+ *   • Each uploaded photo gets a remove button (×) so a fat-finger
+ *     pick is easy to undo without re-uploading the lot.
+ */
+function ExtraPhotosUploader({
+  urls,
+  onChange,
+  isHi,
+  max,
+}: {
+  urls: string[];
+  onChange: (next: string[]) => void;
+  isHi: boolean;
+  max: number;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const remaining = Math.max(0, max - urls.length);
+  const atCap = remaining === 0;
+
+  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []).slice(0, remaining);
+    if (files.length === 0) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const uploaded = await Promise.all(
+        files.map(async (f) => {
+          const fd = new FormData();
+          fd.append("file", f);
+          const res = await fetch("/api/uploads", { method: "POST", body: fd });
+          if (!res.ok) throw new Error("upload_failed");
+          const data = (await res.json()) as { url?: string };
+          if (!data.url) throw new Error("upload_failed");
+          return data.url;
+        }),
+      );
+      onChange([...urls, ...uploaded]);
+    } catch {
+      setError(
+        isHi
+          ? "एक या एक से अधिक फ़ोटो अपलोड नहीं हुईं।"
+          : "One or more photos failed to upload.",
+      );
+    } finally {
+      setUploading(false);
+      // reset input so picking the same file again re-fires onChange
+      e.target.value = "";
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-2xl border border-gold-500/35 bg-cream-50 p-3">
+      <p className="text-xs font-medium text-ink-900">
+        {isHi ? "और फ़ोटो जोड़ें (वैकल्पिक)" : "Add more photos (optional)"}
+      </p>
+      <p className="text-[0.7rem] text-ink-600 mt-0.5">
+        {atCap
+          ? isHi
+            ? `अधिकतम ${max} फ़ोटो — बस इतनी।`
+            : `Max ${max} photos — you're at the cap.`
+          : isHi
+            ? `${remaining} और जोड़ सकते हैं।`
+            : `You can add ${remaining} more.`}
+      </p>
+      {urls.length > 0 ? (
+        <ul className="mt-2 flex flex-wrap gap-2">
+          {urls.map((u, i) => (
+            <li
+              key={u + i}
+              className="relative w-16 h-16 rounded-lg overflow-hidden border border-gold-500/40 bg-saffron-50"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={u}
+                alt=""
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+              <button
+                type="button"
+                onClick={() => onChange(urls.filter((_, j) => j !== i))}
+                aria-label={isHi ? "हटाएँ" : "Remove"}
+                className="absolute top-0.5 right-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-sindoor-700 text-cream-50 text-[10px] font-bold leading-none shadow-sm hover:bg-sindoor-700/90"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <label
+        className={`mt-2 inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${
+          atCap || uploading
+            ? "bg-cream-50 text-ink-600 border border-gold-500/40 cursor-not-allowed opacity-60"
+            : "bg-saffron-600 text-cream-50 hover:bg-saffron-500 shadow-warm"
+        }`}
+      >
+        {uploading
+          ? isHi
+            ? "अपलोड हो रहा है…"
+            : "Uploading…"
+          : isHi
+            ? "+ फ़ोटो चुनें"
+            : "+ Pick photos"}
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          disabled={atCap || uploading}
+          onChange={onPick}
+          className="sr-only"
+        />
+      </label>
+      {error ? (
+        <p className="mt-2 text-xs text-alert-500">{error}</p>
+      ) : null}
+    </div>
   );
 }
