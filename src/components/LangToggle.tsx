@@ -31,26 +31,42 @@ export default function LangToggle() {
       trackEvent("lang_change", { from: lang, to: next });
       setPending(true);
 
-      // ── Optimistic, client-first cookie write ────────────────────
-      // Previously we `await`-ed a server round-trip to `/api/lang`
-      // before updating the URL, that added ~200-500ms of latency
-      // (Netlify Function cold start) on every toggle, making the
-      // language switch feel laggy. Modern browsers commit
-      // `document.cookie` synchronously, so we can write client-side
-      // first (instant) and fire-and-forget the server sync in the
-      // background as a belt-and-suspenders backup. The next render
-      // sees the cookie immediately because it's the same document.
+      // ── Order matters: URL first, THEN cookie + event ───────────
+      // LocaleProvider's bm:locale-change handler calls
+      // readUrlLocale() (which reads window.location.href, NOT the
+      // captured useSearchParams snapshot) before readCookieLocale().
+      // If we set the cookie + dispatched the event BEFORE updating
+      // the URL, the handler would read the OLD URL, find the old
+      // ?lang= value, resolve to the OLD locale, and ignore the
+      // freshly-written cookie. That was the "Hindi toggle doesn't
+      // work on first click" bug: cookie + DOM cookie are correct
+      // but LocaleProvider's React state stays stale until the next
+      // focus/popstate cycle, so the visible swap only happened on
+      // the second click.
+      //
+      // router.replace() updates window.location synchronously via
+      // the History API, so by the time we fire bm:locale-change in
+      // the next statement, both the URL AND the cookie reflect the
+      // user's choice.
+      const updated = new URLSearchParams(params.toString());
+      if (next === "hi") updated.delete("lang");
+      else updated.set("lang", "en");
+      const qs = updated.toString();
+      const url = qs ? `${pathname}?${qs}` : pathname;
+      router.replace(url, { scroll: false });
+
+      // Now set the cookie and nudge LocaleProvider to re-resolve.
+      // Modern browsers commit document.cookie synchronously, so the
+      // event handler that fires immediately after sees the new value.
+      // Background fetch to /api/lang is fire-and-forget belt+braces.
       try {
         const secure =
           window.location.protocol === "https:" ? "; secure" : "";
         document.cookie = `${LANG_COOKIE}=${next}; max-age=${LANG_COOKIE_MAX_AGE}; path=/; samesite=lax${secure}`;
-        // Tell <LocaleProvider /> to re-resolve immediately; otherwise
-        // the UI would only swap on the next focus / popstate event.
         window.dispatchEvent(new Event("bm:locale-change"));
       } catch {
         /* private mode, server sync below covers it */
       }
-      // Background sync; we don't wait for it.
       void fetch(`/api/lang?to=${next}`, {
         method: "POST",
         credentials: "same-origin",
@@ -59,33 +75,11 @@ export default function LangToggle() {
         /* network blip, client-side cookie above is enough */
       });
 
-      // Update the URL (soft, no scroll, no full reload). Then
-      // refresh the server tree via startTransition so server-
-      // rendered text (page-level headings, FeaturedBhandaras
-      // section, etc.) eventually swaps to the new locale.
-      //
-      // Why startTransition: router.refresh() in App Router waits
-      // on the new server tree before committing the React update.
-      // On a Netlify Function cold start with Prisma queries the
-      // refresh can take 10-15s. Wrapping in startTransition tells
-      // React this is a non-urgent update, the UI stays
-      // interactive, the cookie + URL + LocaleProvider swap
-      // happens IMMEDIATELY, and the server-tree swap commits
-      // when it lands. User sees instant text swap for the 99% of
-      // text routed through useLocaleFromContext(), and the few
-      // server-prop'd headings catch up when the refresh
-      // completes.
-      //
-      // Without router.refresh() at all (the previous version),
-      // server-rendered text NEVER swapped until the next manual
-      // navigation. That was the "Hindi toggle isn't working on
-      // headings" bug.
-      const updated = new URLSearchParams(params.toString());
-      if (next === "hi") updated.delete("lang");
-      else updated.set("lang", "en");
-      const qs = updated.toString();
-      const url = qs ? `${pathname}?${qs}` : pathname;
-      router.replace(url, { scroll: false });
+      // Refresh the server tree so server-rendered text (page-level
+      // headings, FeaturedBhandaras section, etc.) eventually swaps.
+      // startTransition keeps the UI interactive while router.refresh
+      // waits on the new server tree, otherwise a cold-start Prisma
+      // query could block the click handler for 10-15s.
       startTransition(() => {
         router.refresh();
       });

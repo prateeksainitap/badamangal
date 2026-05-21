@@ -1372,30 +1372,11 @@ function ThankYou(_props: { slug: string }) {
         </Link>
       </div>
 
-      {/* Full-service-organising upsell. The organiser just finished
-          a free DIY listing, that's the highest-intent moment to
-          tell them we can also handle the rest (tent, catering,
-          logistics) if they'd rather not DIY. Soft tone, phrased
-          as "if you need help" not "buy this", so it doesn't
-          undermine the celebratory step-1-done feel. ?from=upsell
-          attributes the lead's inbound channel on the email. */}
-      <div className="mt-8 mx-auto max-w-md rounded-2xl border border-gold-500/45 bg-cream-50 p-5">
-        <p className="font-mukta uppercase tracking-[0.22em] text-[0.65rem] text-saffron-600 font-semibold">
-          Need help arranging?
-        </p>
-        <p className="mt-1 text-sm text-ink-900 leading-relaxed">
-          Tent, catering, plates, prasad and the rest, our team can
-          handle every piece end-to-end so you focus on the seva.
-        </p>
-        <Link
-          href="/organise-bhandara?from=upsell"
-          className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-saffron-600 hover:text-sindoor-700"
-          data-ga="thankyou_organise_upsell"
-        >
-          Get a free quote
-          <span aria-hidden>→</span>
-        </Link>
-      </div>
+      {/* Full-service-organising upsell removed for now (was sitting
+          here as a "Need help arranging? / Get a free quote" card
+          linking to /organise-bhandara?from=upsell). Bring back when
+          the organise-bhandara flow is ready to handle the inbound
+          quote volume; until then the card was over-promising. */}
     </div>
   );
 }

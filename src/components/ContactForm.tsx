@@ -531,7 +531,7 @@ function formatBytes(bytes: number): string {
 
 function inputCls(hasError: boolean): string {
   return [
-    "w-full rounded-xl border bg-cream-50 px-3 py-2.5 text-sm text-ink-900",
+    "w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-ink-900",
     "placeholder:text-ink-600/55 focus:outline-none focus:ring-2 focus:ring-saffron-500/45",
     hasError
       ? "border-alert-500/60 focus:border-alert-500"
