@@ -405,3 +405,33 @@ model NewsItem {
   @@index([status, publishedAt])
   @@index([language, status, publishedAt])
 }
+
+
+/// Admin-curated photos for the homepage gallery section. Sits
+/// alongside auto-pulled photos from Spot rows (which the gallery
+/// query unions in for visual density). Use cases:
+///   • Editorial moments the admin photographed themselves
+///   • Posters / pamphlets / community moments that don't fit the
+///     spot-flow shape (no GPS, not time-bounded)
+///   • Hand-uploaded crowd shots from past Tuesdays
+/// Display order: `displayOrder ASC` first (admin can pin), then
+/// `createdAt DESC`. Hidden items keep their row (admin can flip
+/// status to bring back) but never render publicly.
+model GalleryPhoto {
+  id           String   @id @default(cuid())
+  imageUrl     String   // Supabase storage URL
+  caption      String?  // optional 0–140 chars
+  captionHi    String?  // Hindi caption, optional
+  // Display order: lower = surfaces earlier in the gallery. Used
+  // for "pin this photo to the top of the gallery" admin action.
+  // Defaults to 100 so new uploads land in the middle and can be
+  // pulled up via the admin.
+  displayOrder Int      @default(100)
+  // VISIBLE  — renders publicly
+  // HIDDEN   — admin pulled it back without deleting
+  status       String   @default("VISIBLE")
+  createdAt    DateTime @default(now())
+  uploadedBy   String?  // free-form note like "Prateek", "Akanksha"
+
+  @@index([status, displayOrder, createdAt])
+}

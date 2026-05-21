@@ -611,6 +611,31 @@
   100% { opacity: 0; transform: translate(var(--mx, 0), -120px) scale(1.05) rotate(var(--mr, 18deg)); }
 }
 
+/* Homepage-gallery horizontal marquee. The track renders the column
+   set twice; this keyframe slides translateX from 0 → -50%, so when
+   the second (cloned) set lines up where the first one began, the
+   animation snaps back to 0 — invisible because the two halves are
+   pixel-identical. Duration is set per-instance via inline style;
+   typical: 90–180s for a calm, devotional pace. */
+@keyframes bm-marquee-left {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+.bm-marquee-track {
+  animation: bm-marquee-left var(--marquee-duration, 120s) linear infinite;
+  will-change: transform;
+}
+/* Pause on hover (desktop) so a curious visitor can read a tile
+   without it sliding away. Also pause when the track is focused
+   (keyboard users tabbing through). */
+.bm-marquee-track:hover,
+.bm-marquee-track:focus-within {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bm-marquee-track { animation: none; }
+}
+
 /* Legal page typography. Used by /terms, /privacy, /disclaimers via the
    shared LegalPage component; gives long-form prose comfortable rhythm
    without per-element class noise. */

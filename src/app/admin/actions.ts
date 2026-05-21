@@ -969,3 +969,57 @@ function safeParseUrls(json: string | null | undefined): string[] {
     return [];
   }
 }
+
+/**
+ * Admin-only: add a photo to the homepage GalleryPhoto table.
+ * Called from /admin/gallery's upload form.
+ *
+ * Required FormData fields:
+ *   - imageUrl: a Supabase storage URL (typically just-uploaded via
+ *     /api/uploads — the admin gallery page uploads first, then
+ *     submits this action with the resulting URL)
+ *
+ * Optional FormData fields:
+ *   - caption / captionHi: 0-140 chars
+ *   - uploadedBy: free-form (Prateek, Akanksha, etc.)
+ *   - displayOrder: lower = surfaces earlier. Defaults to 100.
+ */
+export async function addGalleryPhotoAction(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const imageUrl = String(formData.get("imageUrl") ?? "").trim();
+  if (!imageUrl) return;
+  const caption = String(formData.get("caption") ?? "").trim().slice(0, 140) || null;
+  const captionHi = String(formData.get("captionHi") ?? "").trim().slice(0, 140) || null;
+  const uploadedBy = String(formData.get("uploadedBy") ?? "").trim().slice(0, 60) || null;
+  const orderRaw = Number(formData.get("displayOrder") ?? "100");
+  const displayOrder = Number.isFinite(orderRaw) ? Math.max(0, Math.min(9999, orderRaw)) : 100;
+
+  await prisma.galleryPhoto.create({
+    data: { imageUrl, caption, captionHi, uploadedBy, displayOrder, status: "VISIBLE" },
+  });
+  revalidatePath("/admin/gallery");
+  revalidatePath("/");
+}
+
+/** Admin-only: flip a GalleryPhoto to HIDDEN (soft delete; row stays
+ *  for forensic / audit reasons but never renders publicly). */
+export async function hideGalleryPhotoAction(id: string): Promise<void> {
+  await requireAdmin();
+  await prisma.galleryPhoto.update({
+    where: { id },
+    data: { status: "HIDDEN" },
+  });
+  revalidatePath("/admin/gallery");
+  revalidatePath("/");
+}
+
+/** Admin-only: flip a HIDDEN GalleryPhoto back to VISIBLE. */
+export async function unhideGalleryPhotoAction(id: string): Promise<void> {
+  await requireAdmin();
+  await prisma.galleryPhoto.update({
+    where: { id },
+    data: { status: "VISIBLE" },
+  });
+  revalidatePath("/admin/gallery");
+  revalidatePath("/");
+}

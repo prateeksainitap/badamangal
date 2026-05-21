@@ -16,9 +16,11 @@ import OrganisePromo from "@/components/OrganisePromo";
 import VolunteerPromo from "@/components/VolunteerPromo";
 import HappeningNow from "@/components/HappeningNow";
 import HomeCardsEmpty from "@/components/HomeCardsEmpty";
+import MediaCoverage from "@/components/MediaCoverage";
 import HomeClosingBenediction from "@/components/HomeClosingBenediction";
 import HomeHero from "@/components/HomeHero";
 import HomeHistoryTeaser from "@/components/HomeHistoryTeaser";
+import HomepageGallery, { type GalleryItem } from "@/components/HomepageGallery";
 // PamphletPromo intentionally not imported, the homepage section
 // for it is commented out below during the soft-launch phase. See the
 // matching comment near the FAMOUS BHANDARAS block.
@@ -128,7 +130,7 @@ export default async function HomePage() {
   // round-trips through the Supabase pooler, ~600-900ms of pure wait
   // on cold-start cold-pool. Running them together cuts that to one
   // round-trip's worth of latency.
-  const [records, statsRaw, spotRecords] = await Promise.all([
+  const [records, statsRaw, spotRecords, galleryAdmin, gallerySpotPhotos] = await Promise.all([
     prisma.bhandara.findMany({
       where: { status: "APPROVED" },
       orderBy: [{ isSponsored: "desc" }, { createdAt: "asc" }],
@@ -154,6 +156,44 @@ export default async function HomePage() {
       take: 500,
       include: {
         bhandara: { select: { slug: true, name: true, nameHi: true } },
+      },
+    }),
+    // Admin-curated gallery photos (visible only). Newest pinned-
+    // first via displayOrder, then by createdAt desc. Capped at 60
+    // since the gallery section is meant to be browsable, not
+    // exhaustive — admin can prune older items by flipping their
+    // status to HIDDEN if the section grows unwieldy.
+    prisma.galleryPhoto.findMany({
+      where: { status: "VISIBLE" },
+      orderBy: [{ displayOrder: "asc" }, { createdAt: "desc" }],
+      take: 60,
+      select: {
+        id: true,
+        imageUrl: true,
+        caption: true,
+        captionHi: true,
+        uploadedBy: true,
+        createdAt: true,
+      },
+    }),
+    // Spot photos for the gallery: take the most recent 60 APPROVED
+    // spots that have a primary photo. Includes both photoUrl AND
+    // extraPhotoUrls (the multi-photo array we added in Item 1) —
+    // each extra photo gets its own gallery tile. We don't filter
+    // for "currently live" (expiresAt > now) here because the
+    // gallery's value is in the visual record of the season, not
+    // a live ops view.
+    prisma.spot.findMany({
+      where: { status: "APPROVED", photoUrl: { not: null } },
+      orderBy: { createdAt: "desc" },
+      take: 60,
+      select: {
+        id: true,
+        photoUrl: true,
+        extraPhotoUrls: true,
+        caption: true,
+        reporterName: true,
+        createdAt: true,
       },
     }),
   ]);
@@ -211,6 +251,56 @@ export default async function HomePage() {
     }))
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .slice(0, 18);
+
+  // Homepage gallery items: combine admin-curated GalleryPhoto rows
+  // with spot photos (primary + extras). Admin items first so the
+  // curated band leads, then spots — capped at 60 visible at most.
+  // Each extra spot photo becomes its own tile so a multi-photo
+  // spot upload doesn't get squashed into one thumb.
+  const galleryItems: GalleryItem[] = [
+    ...galleryAdmin.map((g) => ({
+      id: `admin:${g.id}`,
+      url: g.imageUrl,
+      source: "admin" as const,
+      caption: g.caption ?? undefined,
+      captionHi: g.captionHi ?? undefined,
+      credit: g.uploadedBy ?? undefined,
+      // createdAt drives the date grouping on the full /gallery
+      // page (and is harmless on the homepage since admin items
+      // never trigger the LIVE pill regardless of timestamp).
+      createdAt: g.createdAt.toISOString(),
+    })),
+    ...gallerySpotPhotos.flatMap((s) => {
+      let extras: string[] = [];
+      try {
+        const parsed = JSON.parse(s.extraPhotoUrls || "[]");
+        if (Array.isArray(parsed)) {
+          extras = parsed.filter(
+            (x): x is string => typeof x === "string" && x.length > 0,
+          );
+        }
+      } catch {
+        /* keep extras = [] */
+      }
+      const urls = [s.photoUrl, ...extras].filter(
+        (u): u is string => Boolean(u),
+      );
+      const cleanCaption = stripBotProvenance(s.caption) || undefined;
+      // createdAt flows through so the gallery can compute the
+      // 8h freshness window client-side and only render the LIVE
+      // pill on photos posted within the last 8 hours. Past that,
+      // the photo stays in the gallery (it's still a real record
+      // of the season) but loses the LIVE chrome.
+      const createdAtIso = s.createdAt.toISOString();
+      return urls.map((url, i) => ({
+        id: `spot:${s.id}:${i}`,
+        url,
+        source: "spot" as const,
+        caption: cleanCaption,
+        createdAt: createdAtIso,
+      }));
+    }),
+  ].slice(0, 60);
 
   // JSON-LD bundle for the homepage. WebSite + Organization anchor
   // the brand for Google's knowledge panel; the 8 Event entries seed
@@ -296,6 +386,14 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* PRESS / MEDIA COVERAGE band. Sits immediately after the hero
+          so the first social-proof beat lands before any of the
+          deeper engagement sections (featured bhandaras, countdown,
+          map). The coloured-on-white card treatment is intentionally
+          bolder than a subdued footer-style strip because the
+          post-hero slot is where trust signals need to land hardest. */}
+      <MediaCoverage />
+
       {/* FEATURED BHANDARAS, concrete answer to "where can I go to a
           bhandara today?" up high, before the countdown/map. GA4
           data showed 20× more hero-CTA clicks than bhandara-card
@@ -370,6 +468,13 @@ export default async function HomePage() {
       ) : (
         <HomeCardsEmpty />
       )}
+
+      {/* HOMEPAGE GALLERY, masonry of community photos. Mixes
+          admin-curated GalleryPhoto rows with spot photos (primary +
+          extras from each Spot's photoUrl / extraPhotoUrls). Hidden
+          entirely when there are no items so the homepage doesn't
+          show a ghost section. */}
+      <HomepageGallery items={galleryItems} />
 
       {/* AREA INDEX, 36 pill chips, one per Lucknow neighbourhood,
           each a direct Link to /area/[slug]. Two wins:
