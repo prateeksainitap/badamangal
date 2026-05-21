@@ -18,6 +18,13 @@ import ScrollToTopButton from "@/components/ScrollToTopButton";
 import LiveActivityTicker from "@/components/LiveActivityTicker";
 import { ToastProvider } from "@/components/Toast";
 import { LocaleProvider } from "@/lib/locale-context";
+// SITE_URL is the canonical site origin (https://badamangal.com).
+// Sourced from src/lib/seo.ts so this file and the rest of the
+// codebase share ONE constant with ONE safe fallback. metadataBase
+// below depends on it being a real https URL, not localhost (see
+// the long comment at the metadataBase assignment for the bug
+// history).
+import { SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
 const tiro = Tiro_Devanagari_Hindi({
@@ -67,9 +74,21 @@ const bricolage = Bricolage_Grotesque({
   display: "swap",
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
 export const metadata: Metadata = {
+  // metadataBase is what Next.js prepends to every relative URL in
+  // openGraph.images, twitter.images, alternates, etc. If it's
+  // wrong, EVERY link-preview crawler (WhatsApp, Slack, iMessage,
+  // Google, Twitter) gets a broken absolute URL and either renders
+  // a missing-image placeholder or falls back to scraping whatever
+  // decorative image happens to be in the page (commonly the
+  // closing-benediction mandala chakra, which reads as nonsense to
+  // a first-time viewer).
+  //
+  // SITE_URL imported from lib/seo.ts has a hardened fallback
+  // (https://badamangal.com, not http://localhost). This file
+  // previously had its own local const with a localhost fallback
+  // and an operator-set NEXT_PUBLIC_SITE_URL of "http://localhost:3030"
+  // on Vercel produced broken og:image URLs across the entire site.
   metadataBase: new URL(SITE_URL),
   title: {
     default: "BadaMangal · जहाँ भक्ति, वहाँ भंडारा",
@@ -91,27 +110,23 @@ export const metadata: Metadata = {
     locale: "en_IN",
     alternateLocale: "hi_IN",
     type: "website",
-    // Branded OG image, must be set site-wide otherwise Slack /
-    // WhatsApp / iMessage / Twitter previews fall back to scraping
-    // any prominent image on the page (e.g. the closing-benediction
-    // mandala chakra, which has zero context for a first-time
-    // viewer). Per-page metadata in bhandara/area pages override
-    // with the bhandara's own photo where available; this entry
-    // catches the homepage + every page that doesn't set its own.
-    images: [
-      {
-        url: `${SITE_URL}/illustrations/og-default.png`,
-        width: 1672,
-        height: 941,
-        alt: "BadaMangal, every Bada Mangal bhandara in Lucknow on one map",
-      },
-    ],
+    // No explicit `images` here. Next.js auto-resolves OG images
+    // from the file-based convention `src/app/opengraph-image.tsx`,
+    // which renders the dynamic 'Jahan Bhakti, Vahan Bhandara' card
+    // via Satori (1200x630, branded). Setting `images` here would
+    // shadow that for routes that don't have their own
+    // opengraph-image.tsx; we want the auto-generated card to be
+    // the unified default. Routes that DO have their own
+    // opengraph-image.tsx (every page in src/app/) already produce
+    // a per-page card.
   },
   twitter: {
     card: "summary_large_image",
     title: "BadaMangal · Lucknow's table is always set.",
     description: "Find every Bada Mangal Bhandara in Lucknow.",
-    images: [`${SITE_URL}/illustrations/og-default.png`],
+    // No explicit `images` either. Twitter falls back to og:image
+    // when twitter:image is unset, so the same auto-generated
+    // Jahan Bhakti card surfaces on Twitter / X shares.
   },
   formatDetection: {
     telephone: true,
