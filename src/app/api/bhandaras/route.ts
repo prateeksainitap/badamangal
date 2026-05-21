@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma, toBhandara } from "@/lib/db";
 import { hasUpcomingDate } from "@/lib/dates";
 import { menuHiFor } from "@/lib/menu";
-import { ensureUniqueSlug, slugify } from "@/lib/slugify";
+import { createBhandaraWithSlugRetry, slugify } from "@/lib/slugify";
 import { submitSchema } from "@/lib/validation";
 import { geocodeLucknow } from "@/lib/geocodeServer";
 
@@ -89,7 +89,6 @@ export async function POST(req: NextRequest) {
   }
 
   const baseSlug = slugify(data.name);
-  const slug = await ensureUniqueSlug(baseSlug);
   // Merge curated menu (English keys) with free-form items the organizer
   // typed; dedupe (case-insensitive) so a typed "puri" doesn't double up
   // with the chip "puri".
@@ -101,8 +100,12 @@ export async function POST(req: NextRequest) {
   const finalMenuHi = [...menuHiFor(menuArr), ...others];
   const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}&z=18`;
 
-  const created = await prisma.bhandara.create({
-    data: {
+  // createBhandaraWithSlugRetry wraps ensureUniqueSlug + create with
+  // a P2002 retry. Solves the TOCTOU race where two concurrent
+  // submitters with the same name both pass the uniqueness check
+  // then collide on insert; previously the second one would 500
+  // and the row would be silently lost.
+  const created = await createBhandaraWithSlugRetry(baseSlug, (slug) => ({
       slug,
       name: data.name,
       nameHi,
@@ -145,8 +148,8 @@ export async function POST(req: NextRequest) {
       status: lat === 0 || lng === 0 ? "PENDING" : "APPROVED",
       approvedAt: lat === 0 || lng === 0 ? null : new Date(),
       isVerified: false,
-    },
-  });
+    }),
+  );
 
   return NextResponse.json({ id: created.id, slug: created.slug }, { status: 201 });
 }

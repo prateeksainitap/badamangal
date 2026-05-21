@@ -23,6 +23,37 @@
  */
 import { Resend } from "resend";
 
+/** Cap Resend round-trip at 5s. The contact-form / organise-request
+ *  POST already persisted the row to the DB BEFORE we send the
+ *  email, so failing fast on a slow Resend doesn't lose any data;
+ *  it just means the team has to triage from /admin rather than
+ *  from the inbox notification. A hung email-send would otherwise
+ *  burn the full Vercel function timeout (10s default, 60s max)
+ *  and leave the visitor staring at a spinner. */
+const RESEND_TIMEOUT_MS = 5000;
+
+async function sendWithTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+    promise.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
 let cached: Resend | null | undefined;
 
 function client(): Resend | null {
@@ -144,17 +175,22 @@ export async function sendContactEmail(
 </div>`;
 
   try {
-    const { error } = await resend.emails.send({
-      from,
-      to,
-      // Magic: replyTo on the sender's email means hitting Reply in
-      // the inbox goes straight to the visitor, not back to our own
-      // sender address. Removes one annoying step from triage.
-      replyTo: input.email,
-      subject,
-      text,
-      html,
-    });
+    const { error } = await sendWithTimeout(
+      resend.emails.send({
+        from,
+        to,
+        // Magic: replyTo on the sender's email means hitting Reply
+        // in the inbox goes straight to the visitor, not back to
+        // our own sender address. Removes one annoying step from
+        // triage.
+        replyTo: input.email,
+        subject,
+        text,
+        html,
+      }),
+      RESEND_TIMEOUT_MS,
+      "Resend (contact)",
+    );
     if (error) {
       console.error("[email] resend send failed", error);
       return { ok: false, error: String(error.message ?? error) };
@@ -303,14 +339,18 @@ export async function sendOrganiseRequestEmail(
 </div>`;
 
   try {
-    const { error } = await resend.emails.send({
-      from,
-      to,
-      replyTo: input.email || undefined,
-      subject,
-      text,
-      html,
-    });
+    const { error } = await sendWithTimeout(
+      resend.emails.send({
+        from,
+        to,
+        replyTo: input.email || undefined,
+        subject,
+        text,
+        html,
+      }),
+      RESEND_TIMEOUT_MS,
+      "Resend (organise)",
+    );
     if (error) {
       console.error("[email] organise-request send failed", error);
       return { ok: false, error: String(error.message ?? error) };

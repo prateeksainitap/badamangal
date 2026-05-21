@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { prisma, invalidateBhandaraQueryCache } from "@/lib/db";
 import { slugify, ensureUniqueSlug } from "@/lib/slugify";
 import { generateVolunteerCode } from "@/lib/volunteer-server";
+import { deleteFromR2 } from "@/lib/r2";
 import {
   ADMIN_COOKIE,
   ADMIN_SESSION_MAX_AGE_SECONDS,
@@ -453,13 +454,46 @@ export async function extendSpotAction(
 }
 
 /** Hard-delete a spot row. Use for spam, for normal hides, prefer
- *  `delistSpotAction` (status flip) which is reversible. */
+ *  `delistSpotAction` (status flip) which is reversible.
+ *
+ *  Also drops the spot's primary photo + every extra photo from R2.
+ *  Best-effort, R2 delete failure doesn't fail the action (the DB
+ *  row is what visitors see; an orphan R2 object eats storage but
+ *  is invisible). Was previously silent orphan accumulation. */
 export async function deleteSpotAction(
   id: string,
   _formData?: FormData,
 ): Promise<void> {
   await requireAdmin();
+  // Fetch URLs BEFORE the delete so we know which keys to evict.
+  const row = await prisma.spot.findUnique({
+    where: { id },
+    select: { photoUrl: true, extraPhotoUrls: true },
+  });
   await prisma.spot.delete({ where: { id } });
+  // Now best-effort evict from R2 (only the URLs that actually
+  // point at our R2 public domain are touched; deleteFromR2 itself
+  // ignores Supabase-era URLs that legacy spots may still carry).
+  if (row?.photoUrl) {
+    await deleteFromR2(row.photoUrl).catch((err) =>
+      console.warn("[deleteSpotAction] R2 evict failed (photoUrl)", err),
+    );
+  }
+  if (row?.extraPhotoUrls && row.extraPhotoUrls !== "[]") {
+    try {
+      const arr = JSON.parse(row.extraPhotoUrls);
+      if (Array.isArray(arr)) {
+        for (const u of arr) {
+          if (typeof u !== "string") continue;
+          await deleteFromR2(u).catch((err) =>
+            console.warn("[deleteSpotAction] R2 evict failed (extra)", err),
+          );
+        }
+      }
+    } catch {
+      /* malformed JSON, nothing to evict */
+    }
+  }
   revalidatePath("/admin");
   revalidatePath("/");
 }
@@ -485,6 +519,11 @@ export async function deleteBhandaraAction(
   _formData?: FormData,
 ): Promise<void> {
   await requireAdmin();
+  // Capture photoUrl before delete so we can evict from R2 below.
+  const row = await prisma.bhandara.findUnique({
+    where: { id },
+    select: { photoUrl: true },
+  });
   // Best-effort: null out any spot links first so the FK constraint
   // can't bite even if a future migration changes the default.
   try {
@@ -497,6 +536,15 @@ export async function deleteBhandaraAction(
   }
   await prisma.bhandara.delete({ where: { id } });
   invalidateBhandaraQueryCache();
+  // Best-effort R2 evict so deleted bhandara photos don't pile up
+  // forever (R2 free tier is 10 GB; over a few seasons of bot
+  // ingest churn the orphan accumulation matters). deleteFromR2
+  // returns false silently for non-R2 URLs (Supabase-era photos).
+  if (row?.photoUrl) {
+    await deleteFromR2(row.photoUrl).catch((err) =>
+      console.warn("[deleteBhandaraAction] R2 evict failed", err),
+    );
+  }
   revalidatePath("/admin");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");

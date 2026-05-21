@@ -10,6 +10,23 @@
  *   - Server-side calls have no Referer, so the key gets rejected with
  *     "Domain is not allowed". We spoof the whitelisted localhost
  *     origin here so the same key works from the Netlify Function.
+ *
+ * TODO (Code-P1-12): stop spoofing the Referer header. The current
+ * `Referer: http://localhost:3030` lie may pass Ola's allowlist
+ * today but is fragile — Ola can detect spoofed origins and block
+ * the key on any deploy, with no notice. Right fix is operator-
+ * side, not code-side:
+ *
+ *   1. Ola Maps dashboard → API Keys → create a NEW key, label
+ *      "server-side", with NO HTTP-referrer restrictions.
+ *   2. Add env var OLA_MAPS_SERVER_KEY on Vercel + .env.local.
+ *   3. Update this module to use OLA_MAPS_SERVER_KEY in place of
+ *      NEXT_PUBLIC_OLA_MAPS_API_KEY; drop the REFERER_HEADERS
+ *      object below.
+ *
+ * Until step 1 happens, the spoof stays — the alternative (drop
+ * the spoof without a separate key) breaks geocoding the moment
+ * Ola's allowlist denies an origin-less call.
  */
 
 const REFERER_HEADERS = {

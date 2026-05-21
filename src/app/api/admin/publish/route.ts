@@ -17,7 +17,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { MENU_KEYS, menuHiFor } from "@/lib/menu";
-import { ensureUniqueSlug, slugify } from "@/lib/slugify";
+import { createBhandaraWithSlugRetry, slugify } from "@/lib/slugify";
 import { isAdmin } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
@@ -150,7 +150,6 @@ export async function POST(req: NextRequest) {
     }
     const d = parsed.data;
 
-    const slug = await ensureUniqueSlug(slugify(d.name));
     // Dedupe free-form menu items against the curated keys.
     const lowerCurated = new Set(d.menu.map((k) => k.toLowerCase()));
     const others = d.menuOther.filter(
@@ -159,8 +158,11 @@ export async function POST(req: NextRequest) {
     const finalMenu = [...d.menu, ...others];
     const finalMenuHi = [...menuHiFor(d.menu), ...others];
 
-    const created = await prisma.bhandara.create({
-      data: {
+    // P2002-race-safe slug + create. See createBhandaraWithSlugRetry
+    // in lib/slugify.ts for the TOCTOU rationale.
+    const created = await createBhandaraWithSlugRetry(
+      slugify(d.name),
+      (slug) => ({
         slug,
         name: d.name,
         nameHi: d.nameHi,
@@ -189,8 +191,8 @@ export async function POST(req: NextRequest) {
         status: "APPROVED",
         approvedAt: new Date(),
         isVerified: d.isVerified,
-      },
-    });
+      }),
+    );
 
     return NextResponse.json(
       { ok: true, id: created.id, slug: created.slug },
