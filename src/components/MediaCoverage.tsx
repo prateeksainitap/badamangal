@@ -44,28 +44,33 @@ type Outlet = {
   href?: string;
 };
 
-// Amar Ujala parked for now (file kept under /public/media/press/ for
-// quick re-add). Re-introduce by uncommenting the entry below and
-// flipping the grid back to `md:grid-cols-4`.
+// Only outlets that have ACTUALLY run a story go in this array.
+// Times of India, Navbharat Times, and Amar Ujala are parked
+// commented-out, uncomment the entry the moment their piece runs.
+// Logo files for all four stay under /public/media/press/ so re-add
+// is one-line work, no asset hunt.
+//
+// Layout below uses flex-wrap + justify-center, so the row stays
+// well-balanced regardless of whether there's 1 logo or 4.
 const OUTLETS: ReadonlyArray<Outlet> = [
-  {
-    name: "The Times of India",
-    src: "/media/press/times-of-india.svg",
-    width: 360,
-    height: 90,
-  },
-  {
-    name: "Navbharat Times",
-    src: "/media/press/navbharat-times.webp",
-    width: 817,
-    height: 308,
-  },
   {
     name: "Dainik Jagran",
     src: "/media/press/dainik-jagran.png",
     width: 300,
     height: 163,
   },
+  // {
+  //   name: "The Times of India",
+  //   src: "/media/press/times-of-india.svg",
+  //   width: 360,
+  //   height: 90,
+  // },
+  // {
+  //   name: "Navbharat Times",
+  //   src: "/media/press/navbharat-times.webp",
+  //   width: 817,
+  //   height: 308,
+  // },
   // {
   //   name: "Amar Ujala",
   //   src: "/media/press/amar-ujala.png",
@@ -126,27 +131,29 @@ export default function MediaCoverage() {
             } [text-wrap:balance]`}
           >
             {isHi
-              ? "भारत के प्रमुख समाचार-पत्र"
-              : "India's leading dailies"}
+              ? "देश के विश्वसनीय अख़बारों में"
+              : "Covered in India's most-trusted dailies"}
           </h2>
           <p className="mt-3 text-sm sm:text-base text-ink-600 max-w-2xl mx-auto leading-relaxed">
             {isHi
-              ? "लखनऊ की पहली live Bada Mangal directory, और देश के सबसे विश्वसनीय अख़बार इसे पहचान रहे हैं।"
-              : "Lucknow's first live Bada Mangal directory, and India's most-trusted papers are taking notice."}
+              ? "लखनऊ की पहली live Bada Mangal directory, सेवा-भाव और तकनीक एक साथ।"
+              : "Lucknow's first live Bada Mangal directory, where seva and tech come together."}
           </p>
         </div>
 
         {/* Coloured logo cards. Each masthead sits inside its own
             white card so the native brand colours stay clean and
             don't fight the cream paper. Uniform card height tames
-            the wildly different logo aspect ratios. 3-col at every
-            width since we currently feature three outlets, a
-            three-up row reads as one tight unit at all viewports
-            (cards are still ~110 px wide on the smallest phone,
-            comfortable for these simple wordmarks). */}
+            the wildly different logo aspect ratios.
+
+            Layout: flex-wrap + justify-center so the row stays
+            well-balanced from 1 logo (centered) up to 4 logos
+            (three-up or four-up depending on viewport). Each card
+            has a max-width so a lone logo doesn't stretch ugly
+            across a 6xl container, but still feels intentional. */}
         <ul
           role="list"
-          className="mt-8 sm:mt-10 grid grid-cols-3 gap-3 sm:gap-4"
+          className="mt-8 sm:mt-10 flex flex-wrap items-center justify-center gap-3 sm:gap-4"
         >
           {OUTLETS.map((outlet) => {
             const inner = (
@@ -164,7 +171,7 @@ export default function MediaCoverage() {
             return (
               <li
                 key={outlet.name}
-                className="group"
+                className="group w-full max-w-xs"
                 title={outlet.name}
               >
                 {outlet.href ? (

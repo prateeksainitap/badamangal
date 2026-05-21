@@ -17,13 +17,12 @@ import VolunteerPromo from "@/components/VolunteerPromo";
 import HomeFAQ from "@/components/HomeFAQ";
 import HappeningNow from "@/components/HappeningNow";
 import HomeCardsEmpty from "@/components/HomeCardsEmpty";
-// MediaCoverage was mounted between the hero and FeaturedBhandaras as
-// a "Featured in / India's leading dailies" press band. Removed from
-// the live homepage on 21 May, the component file
-// (src/components/MediaCoverage.tsx) + the four newspaper logos in
-// public/media/press/ remain parked in the repo, ready to re-mount
-// the day an actual story runs.
-// import MediaCoverage from "@/components/MediaCoverage";
+// MediaCoverage re-mounted 22 May once Dainik Jagran ran a story.
+// Currently displays only Dainik Jagran's logo, see OUTLETS array
+// in src/components/MediaCoverage.tsx. Times of India + Navbharat
+// Times entries are parked commented-out, uncomment them there as
+// each outlet's piece runs.
+import MediaCoverage from "@/components/MediaCoverage";
 import HomeClosingBenediction from "@/components/HomeClosingBenediction";
 import HomeHero from "@/components/HomeHero";
 import HomeHistoryTeaser from "@/components/HomeHistoryTeaser";
@@ -393,12 +392,15 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* PRESS / MEDIA COVERAGE band removed 21 May. Was a
-          "Featured in / India's leading dailies" press wall sitting
-          right after the hero; pulled because no actual story has
-          run yet and the section was overpromising. To re-mount,
-          uncomment the import above + restore <MediaCoverage />
-          here. */}
+      {/* PRESS / MEDIA COVERAGE band. Sits immediately after the
+          hero so the first social-proof beat lands before any
+          engagement section (featured bhandaras, countdown, map).
+          Re-mounted 22 May once Dainik Jagran covered the project.
+          The component reads which outlets to show from its own
+          OUTLETS array, see src/components/MediaCoverage.tsx for
+          how to add Times of India / Navbharat Times when those
+          stories land. */}
+      <MediaCoverage />
 
       {/* FEATURED BHANDARAS, concrete answer to "where can I go to a
           bhandara today?" up high, before the countdown/map. GA4

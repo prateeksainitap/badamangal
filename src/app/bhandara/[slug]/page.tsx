@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import BhandaraDetailView from "@/components/BhandaraDetailView";
+import ScrollToTopOnMount from "@/components/ScrollToTopOnMount";
 import { strings } from "@/content/strings";
 import {
   getAllApprovedBhandaras,
@@ -261,6 +262,11 @@ export default async function BhandaraDetailPage({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(block) }}
         />
       ))}
+      {/* Force scroll to top when this page mounts. Next.js's
+          App Router scroll restoration can otherwise land the visitor
+          near the footer when they back-and-forward between bhandara
+          pages within a session. See ScrollToTopOnMount for context. */}
+      <ScrollToTopOnMount />
       <BhandaraDetailView b={b} others={others} />
     </>
   );

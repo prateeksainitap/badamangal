@@ -91,11 +91,27 @@ export const metadata: Metadata = {
     locale: "en_IN",
     alternateLocale: "hi_IN",
     type: "website",
+    // Branded OG image, must be set site-wide otherwise Slack /
+    // WhatsApp / iMessage / Twitter previews fall back to scraping
+    // any prominent image on the page (e.g. the closing-benediction
+    // mandala chakra, which has zero context for a first-time
+    // viewer). Per-page metadata in bhandara/area pages override
+    // with the bhandara's own photo where available; this entry
+    // catches the homepage + every page that doesn't set its own.
+    images: [
+      {
+        url: `${SITE_URL}/illustrations/og-default.png`,
+        width: 1672,
+        height: 941,
+        alt: "BadaMangal, every Bada Mangal bhandara in Lucknow on one map",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "BadaMangal · Lucknow's table is always set.",
     description: "Find every Bada Mangal Bhandara in Lucknow.",
+    images: [`${SITE_URL}/illustrations/og-default.png`],
   },
   formatDetection: {
     telephone: true,
