@@ -29,12 +29,45 @@ export type SiteStats = {
   tuesdaysSoFar: number;
 };
 
+/* ────────────────────────────────────────────────────────────────────
+   Module-level homepage stats cache.
+
+   Why this exists:
+     Vercel's first deploy attempt failed during static page generation
+     with the SAME connection-pool exhaustion that bit us on Netlify
+     (see the big comment in lib/db.ts for the full story). Vercel
+     builds 150+ pages in parallel and every page that ends up calling
+     getHomepageStats fires 3 small queries that all queue through the
+     Supabase pooler with connection_limit=1. The queue overflows even
+     on small queries:
+       Error [PrismaClientKnownRequestError]:
+         Invalid `prisma.siteCounter.findUnique()` invocation:
+         Timed out fetching a new connection from the connection pool.
+
+   The fix:
+     Cache the Promise at module scope. Same pattern as
+     getAllApprovedBhandaras. 150 builders × 3 queries = 450 queries
+     collapses into 3 queries shared by every page in the same build
+     process.
+
+   MUTATION CONTRACT:
+     Any server action that mutates SiteCounter, Bhandara, or Spot
+     in a way the homepage counters care about MUST call
+     invalidateHomepageStatsCache() alongside its revalidatePath()
+     calls, otherwise the next homepage render hits the stale Promise.
+     /api/visit currently does NOT invalidate, the visitor-counter lag
+     (a few seconds to a few minutes) is intentional, see the long
+     comment on getHomepageStats below for why.
+   ──────────────────────────────────────────────────────────────── */
+
+let homepageStatsPromise: Promise<SiteStats> | null = null;
+
 /**
  * Read-only homepage stats, safe to call from a cacheable (ISR) page.
  *
  * We deliberately do NOT mutate the visitor counter here anymore. Bumping
  * inside the page render forced the route to be `force-dynamic` (every
- * request did a DB write), which meant Netlify had to cold-start a
+ * request did a DB write), which meant the host had to cold-start a
  * Function for every visitor and the homepage took 4-6s to TTFB.
  *
  * The counter is now bumped client-side via a small beacon after first
@@ -42,8 +75,26 @@ export type SiteStats = {
  * which keeps the page itself fully cacheable while still tracking real
  * traffic. The visible number lags by a few seconds for the first
  * visitor of a new revalidate window, fine for a homepage stat.
+ *
+ * Module-level cached, pass `{ fresh: true }` to skip the cache.
  */
-export async function getHomepageStats(): Promise<SiteStats> {
+export function getHomepageStats(opts?: { fresh?: boolean }): Promise<SiteStats> {
+  if (opts?.fresh || !homepageStatsPromise) {
+    homepageStatsPromise = computeHomepageStats();
+  }
+  return homepageStatsPromise;
+}
+
+/**
+ * Drop the module-level homepage stats cache so the next caller
+ * fetches fresh from the DB. Pair with revalidatePath() in any
+ * server action that meaningfully changes the homepage counters.
+ */
+export function invalidateHomepageStatsCache(): void {
+  homepageStatsPromise = null;
+}
+
+async function computeHomepageStats(): Promise<SiteStats> {
   // Pure read on the counter; if the row doesn't exist yet, treat as 0.
   const counter = await prisma.siteCounter.findUnique({
     where: { id: "home" },
