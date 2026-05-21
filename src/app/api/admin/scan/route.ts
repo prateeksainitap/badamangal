@@ -35,6 +35,7 @@ import {
 } from "@/lib/vision";
 import { geocodeLucknow, type ServerGeocodeHit } from "@/lib/geocodeServer";
 import { getSupabaseAdmin, PHOTO_BUCKET } from "@/lib/supabase";
+import { uploadToR2 } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -114,10 +115,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // ── 2. Persist ──────────────────────────────────────────────────────
+  // Storage chain: R2 first (Phase 2+ primary), Supabase fallback,
+  // local fs in dev. Mirrors the pattern in api/uploads/route.ts.
   const filename = `${randomUUID()}.webp`;
-  let photoUrl: string;
-  const supabase = getSupabaseAdmin();
-  if (supabase) {
+  let photoUrl: string | null = null;
+  try {
+    const r2Url = await uploadToR2({
+      filename,
+      buffer: webp,
+      contentType: "image/webp",
+    });
+    if (r2Url) photoUrl = r2Url;
+  } catch (err) {
+    console.error("R2 upload failed (admin scan), falling back to Supabase", err);
+  }
+
+  const supabase = !photoUrl ? getSupabaseAdmin() : null;
+  if (!photoUrl && supabase) {
     const { error } = await supabase.storage
       .from(PHOTO_BUCKET)
       .upload(filename, webp, {
@@ -134,7 +148,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
     photoUrl = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(filename)
       .data.publicUrl;
-  } else {
+  } else if (!photoUrl) {
     const dir = path.join(process.cwd(), "public", "uploads");
     try {
       await mkdir(dir, { recursive: true });
@@ -147,6 +161,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
     photoUrl = `/uploads/${filename}`;
+  }
+  // photoUrl is guaranteed string by this point: every branch above
+  // sets it or returns 500. This guard is unreachable but keeps the
+  // type checker happy and prevents a silent null in the DB if
+  // control flow ever changes.
+  if (!photoUrl) {
+    return NextResponse.json({ error: "Storage chain failed." }, { status: 500 });
   }
 
   // ── 3. Vision extract + geocode ─────────────────────────────────────

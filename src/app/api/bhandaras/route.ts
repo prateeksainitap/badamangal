@@ -134,8 +134,16 @@ export async function POST(req: NextRequest) {
       // still calls the submitted phone within 24 h to confirm the
       // details and flip `isVerified` → true, which is what surfaces
       // the green "Verified" badge on the listing.
-      status: "APPROVED",
-      approvedAt: new Date(),
+      //
+      // EXCEPTION: if the geocode failed (lat or lng is 0), we hold
+      // the row in PENDING. A bhandara at lat=0,lng=0 renders off
+      // the African coast on the public map — pollutes the
+      // homepage city map until admin notices. Holding it in
+      // PENDING surfaces the row in /admin's queue where
+      // MapLocationInput can rescue the coordinates manually
+      // before it ever goes public.
+      status: lat === 0 || lng === 0 ? "PENDING" : "APPROVED",
+      approvedAt: lat === 0 || lng === 0 ? null : new Date(),
       isVerified: false,
     },
   });

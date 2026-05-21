@@ -363,14 +363,18 @@ export default function BhandaraForm({
     setErrors({});
     setFormError(null);
 
+    // pin is OPTIONAL by design — step 1 lets the organiser skip
+    // pin-drop and just type an address; the server geocodes via
+    // Ola Maps (see /api/bhandaras POST). Previously this guard
+    // hard-failed any pin-less submission with an English-only
+    // error message scrolled away from step 1, which contradicted
+    // the entire 'pin optional' UX and silently killed real
+    // organiser submissions.
     const pin = state.pin;
-    if (!pin) {
-      setSubmitting(false);
-      setFormError("Please drop a pin first.");
-      return;
-    }
-
-    const finalAddress = state.addressOverride.trim() || pin.address || `${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}`;
+    const finalAddress =
+      state.addressOverride.trim() ||
+      pin?.address ||
+      (pin ? `${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}` : "");
 
     // Single name/description input → both columns get the same value, since
     // we don't ask for separate Hindi anymore. Server stores both so existing
@@ -397,8 +401,19 @@ export default function BhandaraForm({
       area: state.area,
       address: finalAddress,
       landmark: state.landmark || undefined,
-      lat: pin.lat,
-      lng: pin.lng,
+      // lat/lng are OMITTED when pin is null. The server will
+      // geocode the address via Ola Maps in /api/bhandaras POST
+      // (and gate the row to status=PENDING if geocode fails, so
+      // bad pins don't end up at lat=0/lng=0 on the public map).
+      ...(pin
+        ? {
+            lat: pin.lat,
+            lng: pin.lng,
+            geoNeighborhood: pin.geoNeighborhood,
+            geoDistrict: pin.geoDistrict,
+            geoState: pin.geoState,
+          }
+        : {}),
       tuesdayDates: state.tuesdayDates,
       timeStart: state.timeStart,
       timeEnd: state.timeEnd || undefined,
@@ -410,9 +425,6 @@ export default function BhandaraForm({
       ),
       menuOther: allOther,
       photoUrl: state.photoUrl || undefined,
-      geoNeighborhood: pin.geoNeighborhood,
-      geoDistrict: pin.geoDistrict,
-      geoState: pin.geoState,
     };
 
     try {

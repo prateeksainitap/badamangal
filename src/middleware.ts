@@ -28,13 +28,21 @@ export function middleware(req: NextRequest) {
   // position 0.
   if (search.indexOf("?", 1) === -1) return NextResponse.next();
 
-  // Found a stray `?`. Trim the URL after the first valid query
-  // segment that contains `lang=...`, keep at most one valid lang
-  // value, drop the rest. Falls back to the bare pathname if we
-  // can't extract a usable lang.
+  // Found a stray `?`. Preserve every NON-lang query parameter and
+  // rebuild the URL with a single cleaned `lang` value (if found).
+  //
+  // Previously we wiped `cleanedUrl.search = ""` and only re-added
+  // `lang`, which silently dropped marketing/share params like
+  // `?utm_source`, `?ref`, `?from=` on any indexed malformed URL.
+  // Indexed deep links from Twitter/WhatsApp/email campaigns lost
+  // their attribution on the redirect.
   const cleanedUrl = url.clone();
   const params = url.searchParams;
   let langValue: string | null = null;
+  // Collect every non-lang key first; deduplicate by last-wins to
+  // match standard URL behaviour. We can't mutate while iterating,
+  // so snapshot into an array.
+  const carryover: Array<[string, string]> = [];
   for (const [k, v] of params.entries()) {
     if (k === "lang") {
       // URLSearchParams will hand us the malformed value
@@ -43,11 +51,20 @@ export function middleware(req: NextRequest) {
       const cleaned = v.split("?")[0]?.trim();
       if (cleaned === "en" || cleaned === "hi") {
         langValue = cleaned;
-        break;
       }
+    } else {
+      // Same .split("?")[0] cleaning for non-lang params caught
+      // by the stray-`?` parse (e.g. ?utm_source=fb?lang=en would
+      // give us utm_source="fb?lang=en"; we want just "fb").
+      const cleaned = v.split("?")[0] ?? "";
+      carryover.push([k, cleaned]);
     }
   }
-  cleanedUrl.search = ""; // wipe the malformed query
+  cleanedUrl.search = ""; // wipe the malformed query, then rebuild
+  for (const [k, v] of carryover) {
+    cleanedUrl.searchParams.set(k, v);
+  }
+  // Hindi is the default; only add ?lang=en explicitly.
   if (langValue && langValue !== "hi") {
     cleanedUrl.searchParams.set("lang", langValue);
   }

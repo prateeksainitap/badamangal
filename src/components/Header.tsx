@@ -177,7 +177,7 @@ function HeaderInner() {
             <LangToggle />
           </div>
           <Link
-            href="/list-bhandara"
+            href={`/list-bhandara${locale === "en" ? "?lang=en" : ""}`}
             className="hidden sm:inline-flex btn btn-primary btn-sm"
             data-ga="cta_header_list_bhandara"
           >
