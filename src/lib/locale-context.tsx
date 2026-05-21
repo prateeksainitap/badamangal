@@ -74,10 +74,32 @@ export function LocaleProvider({
     };
 
     apply(resolve());
-    const onChange = () => apply(resolve());
-    // Listen for a custom event the <LangToggle /> dispatches the
-    // moment it writes the cookie, keeps the UI in lock-step with
-    // the toggle without waiting for a window blur/focus cycle.
+
+    // Event handler — branches on event type:
+    //
+    //   bm:locale-change → dispatched by <LangToggle /> immediately
+    //     after it rewrites the cookie. At this moment the COOKIE is
+    //     authoritative: the router.replace() that accompanied the
+    //     cookie write updates the browser URL bar, but the update
+    //     is not always reflected in window.location.href by the
+    //     time this synchronous handler runs (browser + React
+    //     scheduling timing). Reading the URL here used to return
+    //     the PREVIOUS lang param, so a toggle sequence like
+    //     EN -> HI -> EN -> HI failed on the second HI click: the
+    //     handler saw the stale "?lang=en" URL, resolved to "en",
+    //     and the visible swap didn't happen until the user clicked
+    //     a second time. Prefer cookie here to bypass that race.
+    //
+    //   focus / popstate → real navigation events. window.location
+    //     is definitely fresh by now, URL wins (the normal
+    //     resolution order: URL override → cookie → SSR default).
+    const onChange = (event?: Event) => {
+      if (event?.type === "bm:locale-change") {
+        apply(readCookieLocale() ?? readUrlLocale() ?? "en");
+      } else {
+        apply(resolve());
+      }
+    };
     window.addEventListener("bm:locale-change", onChange as EventListener);
     window.addEventListener("focus", onChange);
     window.addEventListener("popstate", onChange);
