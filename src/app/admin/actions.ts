@@ -6,41 +6,38 @@ import { revalidatePath } from "next/cache";
 import { prisma, invalidateBhandaraQueryCache } from "@/lib/db";
 import { slugify, ensureUniqueSlug } from "@/lib/slugify";
 import { generateVolunteerCode } from "@/lib/volunteer-server";
+import {
+  ADMIN_COOKIE,
+  ADMIN_SESSION_MAX_AGE_SECONDS,
+  isAdmin,
+  issueAdminCookie,
+  requireAdmin,
+  verifyAdminPassword,
+} from "@/lib/admin-auth";
 
-const COOKIE = "admin";
-
-async function isAdmin(): Promise<boolean> {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) return false;
-  const c = await cookies();
-  return c.get(COOKIE)?.value === expected;
-}
-
-async function requireAdmin(): Promise<void> {
-  if (!(await isAdmin())) {
-    throw new Error("Unauthorized");
-  }
-}
+// Re-export so existing imports from this module keep working
+// without churn (e.g. `import { isAdmin } from "@/app/admin/actions"`).
+export { isAdmin, requireAdmin };
 
 export async function loginAction(formData: FormData): Promise<void> {
   const password = String(formData.get("password") ?? "");
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected || password !== expected) {
+  if (!verifyAdminPassword(password)) {
     redirect("/admin?error=1");
   }
   const c = await cookies();
-  c.set(COOKIE, password, {
+  c.set(ADMIN_COOKIE, issueAdminCookie(), {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: ADMIN_SESSION_MAX_AGE_SECONDS,
   });
   redirect("/admin");
 }
 
 export async function logoutAction(): Promise<void> {
   const c = await cookies();
-  c.delete(COOKIE);
+  c.delete(ADMIN_COOKIE);
   redirect("/admin");
 }
 

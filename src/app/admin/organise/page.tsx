@@ -18,7 +18,6 @@
  */
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import {
   markOrganiseRequestContactedAction,
@@ -29,16 +28,13 @@ import {
   deleteOrganiseRequestAction,
 } from "@/app/admin/actions";
 import SubmitButton from "@/components/admin/SubmitButton";
+import { isAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
-const COOKIE = "admin";
-
-async function isAdmin(): Promise<boolean> {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) return false;
-  const c = await cookies();
-  return c.get(COOKIE)?.value === expected;
-}
+// Admin auth check moved to @/lib/admin-auth, see import above.
+// Was a local reimplementation (one of 12 in the codebase); the
+// single source means future auth changes (session expiry,
+// HMAC signing, IP allowlist) are a one-file edit.
 
 type OrgRow = {
   id: string;

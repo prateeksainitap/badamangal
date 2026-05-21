@@ -14,22 +14,19 @@
  * on the next request to the homepage (which is `force-dynamic`).
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { cookies } from "next/headers";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { MENU_KEYS, menuHiFor } from "@/lib/menu";
 import { ensureUniqueSlug, slugify } from "@/lib/slugify";
+import { isAdmin } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const COOKIE = "admin";
-async function isAdmin(): Promise<boolean> {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) return false;
-  const c = await cookies();
-  return c.get(COOKIE)?.value === expected;
-}
+// Admin auth check moved to @/lib/admin-auth, see import above.
+// Was a local reimplementation (one of 12 in the codebase); the
+// single source means future auth changes (session expiry,
+// HMAC signing, IP allowlist) are a one-file edit.
 
 const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
 

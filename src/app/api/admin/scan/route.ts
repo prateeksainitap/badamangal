@@ -22,7 +22,6 @@
  * Auth: admin cookie (same gate as /admin page actions).
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { cookies } from "next/headers";
 import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -36,6 +35,7 @@ import {
 import { geocodeLucknow, type ServerGeocodeHit } from "@/lib/geocodeServer";
 import { getSupabaseAdmin, PHOTO_BUCKET } from "@/lib/supabase";
 import { uploadToR2 } from "@/lib/r2";
+import { isAdmin } from "@/lib/admin-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,18 +43,11 @@ export const dynamic = "force-dynamic";
 // timeout above the default. Netlify caps at 26s, leaving us headroom.
 export const maxDuration = 25;
 
-const COOKIE = "admin";
 const MAX_INPUT_BYTES = 8 * 1024 * 1024; // 8 MB before sharp re-encode
 const MAX_DIMENSION = 2000;
 const WEBP_QUALITY = 85;
 
-async function isAdmin(): Promise<boolean> {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) return false;
-  const c = await cookies();
-  return c.get(COOKIE)?.value === expected;
-}
-
+// Admin auth check moved to @/lib/admin-auth.
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!(await isAdmin())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

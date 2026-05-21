@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { isAdmin } from "@/lib/admin-auth";
 import { cache } from "react";
 import { prisma, toBhandara } from "@/lib/db";
 import {
@@ -38,7 +38,8 @@ export const dynamic = "force-dynamic";
 // cold start. Bumping to 60 (Vercel Hobby max) leaves headroom.
 export const maxDuration = 60;
 
-const COOKIE = "admin";
+// Admin auth check imported from @/lib/admin-auth (one source of
+// truth across the 12 places we used to reimplement it).
 
 type SearchParams = Promise<{
   error?: string;
@@ -114,11 +115,7 @@ export default async function AdminPage({
   searchParams: SearchParams;
 }) {
   const sp = await searchParams;
-  const c = await cookies();
-  const expected = process.env.ADMIN_PASSWORD;
-  const isAuthed = Boolean(expected) && c.get(COOKIE)?.value === expected;
-
-  if (!isAuthed) {
+  if (!(await isAdmin())) {
     return <LoginScreen error={Boolean(sp.error)} />;
   }
 

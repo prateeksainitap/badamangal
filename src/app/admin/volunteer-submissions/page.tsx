@@ -19,7 +19,6 @@
  */
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import {
   approveVolunteerSubmissionAction,
@@ -30,16 +29,13 @@ import {
   markAllVolunteerSubmissionsPaidAction,
 } from "@/app/admin/actions";
 import { submissionStatusLabel } from "@/lib/volunteer";
+import { isAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
-const COOKIE = "admin";
-
-async function isAdmin(): Promise<boolean> {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) return false;
-  const c = await cookies();
-  return c.get(COOKIE)?.value === expected;
-}
+// Admin auth check moved to @/lib/admin-auth, see import above.
+// Was a local reimplementation (one of 12 in the codebase); the
+// single source means future auth changes (session expiry,
+// HMAC signing, IP allowlist) are a one-file edit.
 
 type PageProps = {
   searchParams: Promise<{ status?: string; q?: string }>;

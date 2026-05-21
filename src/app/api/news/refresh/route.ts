@@ -29,22 +29,29 @@
  * can use either.
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { cookies } from "next/headers";
 import { refreshNews } from "@/lib/news-aggregator";
+import { isAdmin } from "@/lib/admin-auth";
+
+// If CRON_SECRET is unset, the Vercel-Cron auth path silently
+// fails — the daily cron at vercel.json:5 will 401 every day with
+// no visible alarm. Surface that in the build/runtime logs so the
+// operator catches the missing config in seconds rather than
+// noticing weeks later that news stopped refreshing.
+if (!process.env.CRON_SECRET && !process.env.NEWS_REFRESH_TOKEN) {
+  console.warn(
+    "[/api/news/refresh] Neither CRON_SECRET nor NEWS_REFRESH_TOKEN is set. " +
+      "Bearer-token auth path is disabled; Vercel Cron will receive 401.",
+  );
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // network calls + DB writes; bumped to Vercel Hobby max
 
-const ADMIN_COOKIE = "admin";
-
 async function isAuthorized(req: NextRequest): Promise<boolean> {
-  // Path 1: admin cookie
-  const expectedAdmin = process.env.ADMIN_PASSWORD;
-  if (expectedAdmin) {
-    const c = await cookies();
-    if (c.get(ADMIN_COOKIE)?.value === expectedAdmin) return true;
-  }
+  // Path 1: admin cookie (via @/lib/admin-auth — HMAC-signed, see
+  // src/lib/admin-auth.ts for the format)
+  if (await isAdmin()) return true;
   // Path 2: X-News-Refresh-Token header (legacy / external cron)
   const expectedToken = process.env.NEWS_REFRESH_TOKEN;
   if (expectedToken) {

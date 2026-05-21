@@ -12,7 +12,6 @@
  * which receives merged admin + spot-photo items from src/app/page.tsx.
  * This admin page only deals with the admin-uploaded subset.
  */
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
@@ -22,17 +21,12 @@ import {
   unhideGalleryPhotoAction,
 } from "@/app/admin/actions";
 import GalleryUploadForm from "@/components/admin/GalleryUploadForm";
+import { isAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
-const COOKIE = "admin";
-
-async function isAdmin(): Promise<boolean> {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) return false;
-  const c = await cookies();
-  return c.get(COOKIE)?.value === expected;
-}
+// Admin auth moved to @/lib/admin-auth (one source of truth instead
+// of the 12 reimplementations the audit found).
 
 export default async function AdminGalleryPage() {
   if (!(await isAdmin())) redirect("/admin");
