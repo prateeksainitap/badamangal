@@ -1035,30 +1035,39 @@ function ExtraPhotosUploader({
     if (files.length === 0) return;
     setUploading(true);
     setError(null);
-    try {
-      const uploaded = await Promise.all(
-        files.map(async (f) => {
-          const fd = new FormData();
-          fd.append("file", f);
-          const res = await fetch("/api/uploads", { method: "POST", body: fd });
-          if (!res.ok) throw new Error("upload_failed");
-          const data = (await res.json()) as { url?: string };
-          if (!data.url) throw new Error("upload_failed");
-          return data.url;
-        }),
-      );
+    // Promise.allSettled (NOT .all) so a single failed upload doesn't
+    // throw away every other successful upload's URL. Previously the
+    // entire batch was abandoned on the first failure, even if 3 of
+    // 4 photos had landed fine. Now successful uploads stick; only
+    // the failed ones are reported.
+    const results = await Promise.allSettled(
+      files.map(async (f) => {
+        const fd = new FormData();
+        fd.append("file", f);
+        const res = await fetch("/api/uploads", { method: "POST", body: fd });
+        if (!res.ok) throw new Error("upload_failed");
+        const data = (await res.json()) as { url?: string };
+        if (!data.url) throw new Error("upload_failed");
+        return data.url;
+      }),
+    );
+    const uploaded = results
+      .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled")
+      .map((r) => r.value);
+    const failedCount = results.length - uploaded.length;
+    if (uploaded.length > 0) {
       onChange([...urls, ...uploaded]);
-    } catch {
+    }
+    if (failedCount > 0) {
       setError(
         isHi
-          ? "एक या एक से अधिक फ़ोटो अपलोड नहीं हुईं।"
-          : "One or more photos failed to upload.",
+          ? `${failedCount} फ़ोटो अपलोड नहीं हुई${failedCount > 1 ? "ं" : ""}। बाकी ${uploaded.length} सुरक्षित।`
+          : `${failedCount} photo${failedCount > 1 ? "s" : ""} failed to upload. ${uploaded.length} saved.`,
       );
-    } finally {
-      setUploading(false);
-      // reset input so picking the same file again re-fires onChange
-      e.target.value = "";
     }
+    setUploading(false);
+    // reset input so picking the same file again re-fires onChange
+    e.target.value = "";
   }
 
   return (

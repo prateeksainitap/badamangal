@@ -30,6 +30,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isAdmin } from "@/lib/admin-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ipHash, readClientIp } from "@/lib/crypto";
+import { OpenLocationCode } from "open-location-code";
+
+// Lucknow centroid; used as the reference point when recovering a
+// short Plus Code (e.g. "VXR6+QP") to a full one. We're in a
+// Lucknow-only admin context.
+const LKO_CENTROID = { lat: 26.85, lng: 80.95 } as const;
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -166,54 +172,43 @@ async function resolveShortUrl(input: string): Promise<string | null> {
 /**
  * Resolve a Plus Code (Open Location Code) to {lat, lng}.
  *
- * We don't ship the open-location-code npm package, to keep the
- * deploy small and avoid a new dependency, we route the lookup
- * through Google's public Plus Codes resolver. The endpoint at
- * https://plus.codes/<code> returns an HTML page with the
- * coordinates in a `<meta name="geo.position">` tag and in a
- * canonical place URL. We grab whichever appears first.
+ * Switched from scraping plus.codes HTML to the open-location-code
+ * npm package (P1-13). The HTML approach was fragile: any change
+ * to plus.codes' rendered markup would break the resolver
+ * silently, with no alert. The library decodes locally, ~12 KB
+ * runtime cost, no network call, no plus.codes dependency.
  *
- * If you want offline / no-network decoding, swap this for the
- * `open-location-code` package, it's ~12KB and supports both full
- * and short codes (the latter needs a reference lat/lng, which we
- * have from Lucknow's centroid).
+ * Supports both:
+ *   • Full codes (10+ chars before `+`, e.g. `7JGM3CV9+QG`)
+ *   • Short codes with a city anchor (e.g. `VXR6+QP Lucknow`) —
+ *     recovered relative to LKO_CENTROID since the resolver only
+ *     gets called from /admin in a Lucknow context.
  */
-async function resolvePlusCode(input: string): Promise<{ lat: number; lng: number } | null> {
+async function resolvePlusCode(
+  input: string,
+): Promise<{ lat: number; lng: number } | null> {
   const s = input.trim();
-  // Plus Code grammar: 4-8 chars before `+`, optional `+XX` after,
-  // optional " <City>" anchor (which plus.codes accepts in the URL).
-  if (!/^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{0,5}/i.test(s.split(" ")[0])) {
+  // Grab the code portion (drops a " Lucknow" anchor suffix if any).
+  const codePart = s.split(" ")[0] ?? "";
+  // Plus Code grammar: 4-8 chars before `+`, optional 0-5 chars after.
+  if (
+    !/^[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{0,5}$/i.test(codePart)
+  ) {
     return null;
   }
   try {
-    // The plus.codes web app understands the full text including the
-    // anchor city, e.g. "VXR6+QP Lucknow". URL-encode the entire
-    // input as the path segment.
-    const url = `https://plus.codes/${encodeURIComponent(s)}`;
-    // Allowlist check: even though we construct the URL ourselves,
-    // a future change to the URL template should NOT bypass the
-    // SSRF allowlist guard. Defensive.
-    if (!isAllowedMapHost(url)) return null;
-    const res = await fetch(url, {
-      headers: {
-        "user-agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-      },
-    });
-    if (!res.ok) return null;
-    const html = await res.text();
-    // Try geo.position meta first (most reliable).
-    const geo = html.match(/geo\.position"\s*content="(-?\d+(?:\.\d+)?);(-?\d+(?:\.\d+)?)"/i);
-    if (geo) {
-      return { lat: Number(geo[1]), lng: Number(geo[2]) };
-    }
-    // Fallback: any "@LAT,LNG" pattern in the rendered HTML
-    // (plus.codes embeds a Google Maps link with the resolved coords).
-    const at = html.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-    if (at) {
-      return { lat: Number(at[1]), lng: Number(at[2]) };
-    }
-    return null;
+    const olc = new OpenLocationCode();
+    // A "full" code is 10+ chars including the `+`. Short codes
+    // are anything else; recover them against the Lucknow centroid.
+    const isFull = codePart.length >= 10 && codePart.indexOf("+") >= 8;
+    const fullCode = isFull
+      ? codePart
+      : olc.recoverNearest(codePart, LKO_CENTROID.lat, LKO_CENTROID.lng);
+    const r = olc.decode(fullCode);
+    const lat = r.latitudeCenter;
+    const lng = r.longitudeCenter;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng };
   } catch {
     return null;
   }

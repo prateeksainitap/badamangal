@@ -164,7 +164,7 @@ function HeaderInner() {
               data-ga="nav_link"
               data-ga-href={l.href}
               data-ga-label={l.label}
-              className="inline-flex items-center min-h-[40px] text-sm text-ink-900 hover:text-saffron-600 font-medium px-3 py-2 transition-colors"
+              className="inline-flex items-center min-h-[44px] text-sm text-ink-900 hover:text-saffron-600 font-medium px-3 py-2 transition-colors"
             >
               {l.label}
             </Link>
