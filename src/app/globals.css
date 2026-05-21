@@ -636,6 +636,50 @@
   .bm-marquee-track { animation: none; }
 }
 
+/* ── FAQ accordion open/close animation ─────────────────────────────
+   Used by <HomeFAQ /> (and the dedicated /faq page).
+
+   Native <details>/<summary> normally snaps content in and out via
+   display:none from the UA stylesheet, which feels abrupt on a
+   marketing surface. We override that on the body wrapper by
+   setting display:grid + animating grid-template-rows from 0fr
+   (collapsed) to 1fr (expanded), with overflow:hidden on the
+   inner wrapper so the collapsing content doesn't bleed out of
+   its slot.
+
+   Both directions animate (open AND close) because
+   grid-template-rows is interpolatable in every modern browser,
+   no JS, no transitionend listeners, no height-measurement hacks.
+   The inner wrapper also fades + slides 4px so the content feels
+   like it's slipping into view rather than just stretching open.
+
+   Duration matches the chevron rotation (duration-300 in
+   HomeFAQ.tsx) so the icon flip + body slide finish in sync. */
+.bm-faq-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 300ms ease-out;
+}
+details[open] > .bm-faq-body {
+  grid-template-rows: 1fr;
+}
+.bm-faq-body-inner {
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 240ms ease-out, transform 240ms ease-out;
+}
+details[open] > .bm-faq-body > .bm-faq-body-inner {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bm-faq-body,
+  .bm-faq-body-inner {
+    transition: none;
+  }
+}
+
 /* Legal page typography. Used by /terms, /privacy, /disclaimers via the
    shared LegalPage component; gives long-form prose comfortable rhythm
    without per-element class noise. */

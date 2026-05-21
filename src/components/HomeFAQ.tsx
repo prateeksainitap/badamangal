@@ -64,16 +64,29 @@ export default function HomeFAQ({ variant = "section" }: Props) {
                   {q}
                 </span>
                 {/* Plus / minus indicator via CSS state. group-open
-                    swaps the icon without JavaScript. */}
+                    swaps the icon without JavaScript. duration-300
+                    matches the body grid-template-rows animation
+                    below so the icon flip + body slide finish in
+                    sync. */}
                 <span
                   aria-hidden
-                  className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-saffron-50 border border-saffron-500/45 text-saffron-600 text-sm font-bold mt-0.5 group-open:rotate-45 transition-transform"
+                  className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-saffron-50 border border-saffron-500/45 text-saffron-600 text-sm font-bold mt-0.5 group-open:rotate-45 transition-transform duration-300 ease-out"
                 >
                   +
                 </span>
               </summary>
-              <div className="px-5 pb-5 pt-1 text-ink-900/85 text-sm sm:text-base leading-relaxed [text-wrap:pretty]">
-                {a}
+              {/* Subtle open/close animation, see .bm-faq-body in
+                  globals.css. Outer wrapper animates grid rows
+                  0fr->1fr for height; inner wrapper fades + slides
+                  in 4px. Both directions animate (open AND close)
+                  because grid-template-rows is interpolatable in
+                  every modern browser, no JS required. */}
+              <div className="bm-faq-body">
+                <div className="bm-faq-body-inner">
+                  <div className="px-5 pb-5 pt-1 text-ink-900/85 text-sm sm:text-base leading-relaxed [text-wrap:pretty]">
+                    {a}
+                  </div>
+                </div>
               </div>
             </details>
           </li>
