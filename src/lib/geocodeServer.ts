@@ -1,38 +1,28 @@
 /**
- * Server-side Ola Maps geocoder. Same pattern as the one-off scripts in
- * /prisma/geocode-*.ts, geocode endpoint first, autocomplete fallback,
- * Lucknow bounding-box filter so we never return wrong-city hits.
+ * Server-side Ola Maps geocoder. Same pattern as the one-off scripts
+ * in /prisma/geocode-*.ts, geocode endpoint first, autocomplete
+ * fallback, Lucknow bounding-box filter so we never return
+ * wrong-city hits.
  *
- * Why it can't reuse the browser helper:
- *   - The browser-side `olaAutocomplete` uses the NEXT_PUBLIC key and
- *     leans on the browser's own Referer to authenticate against Ola's
- *     domain whitelist.
- *   - Server-side calls have no Referer, so the key gets rejected with
- *     "Domain is not allowed". We spoof the whitelisted localhost
- *     origin here so the same key works from the Netlify Function.
+ * Key separation (Code-P1-12 resolved 22 May):
+ *   The browser-side helper uses NEXT_PUBLIC_OLA_MAPS_API_KEY which
+ *   has an HTTP-referrer allowlist (badamangal.com, etc.). Browsers
+ *   send a Referer header so the allowlist check passes naturally.
  *
- * TODO (Code-P1-12): stop spoofing the Referer header. The current
- * `Referer: http://localhost:3030` lie may pass Ola's allowlist
- * today but is fragile — Ola can detect spoofed origins and block
- * the key on any deploy, with no notice. Right fix is operator-
- * side, not code-side:
+ *   This module uses a SEPARATE key, OLA_MAPS_SERVER_KEY, that has
+ *   NO referrer restrictions on the Ola dashboard. Vercel functions
+ *   don't have a real Referer to send, so any restricted key would
+ *   reject every server call. Previously we spoofed `Referer:
+ *   http://localhost:3030` on every server call — a fragile lie
+ *   that worked only as long as Ola's allowlist accepted spoofed
+ *   origins. With the separate-key model, the spoof is gone and
+ *   the public key's allowlist can be tightened to only the
+ *   production origin.
  *
- *   1. Ola Maps dashboard → API Keys → create a NEW key, label
- *      "server-side", with NO HTTP-referrer restrictions.
- *   2. Add env var OLA_MAPS_SERVER_KEY on Vercel + .env.local.
- *   3. Update this module to use OLA_MAPS_SERVER_KEY in place of
- *      NEXT_PUBLIC_OLA_MAPS_API_KEY; drop the REFERER_HEADERS
- *      object below.
- *
- * Until step 1 happens, the spoof stays — the alternative (drop
- * the spoof without a separate key) breaks geocoding the moment
- * Ola's allowlist denies an origin-less call.
+ *   OLA_MAPS_SERVER_KEY must be marked Sensitive on Vercel (server-
+ *   only, never NEXT_PUBLIC_). Keep the referrer allowlist EMPTY on
+ *   that key's dashboard settings.
  */
-
-const REFERER_HEADERS = {
-  Origin: "http://localhost:3030",
-  Referer: "http://localhost:3030/",
-} as const;
 
 const LKO_BBOX = {
   latMin: 26.6,
@@ -61,8 +51,25 @@ export type ServerGeocodeHit = {
 export async function geocodeLucknow(
   address: string,
 ): Promise<ServerGeocodeHit | null> {
-  const key = process.env.NEXT_PUBLIC_OLA_MAPS_API_KEY ?? "";
+  // Prefer the dedicated server key. Fall back to the public key
+  // (with the legacy spoof — which only works if `localhost:3030`
+  // is still on the public key's allowlist) so dev environments
+  // without OLA_MAPS_SERVER_KEY set continue to function. Once
+  // every environment has the server key set, the fallback path
+  // can be deleted and the public-key import dropped.
+  const serverKey = process.env.OLA_MAPS_SERVER_KEY ?? "";
+  const publicKey = process.env.NEXT_PUBLIC_OLA_MAPS_API_KEY ?? "";
+  const key = serverKey || publicKey;
   if (!key) return null;
+  // Only send the spoofed Referer when we're falling back to the
+  // public key (which requires the allowlist match). The dedicated
+  // server key works without any Referer.
+  const headers: Record<string, string> | undefined = serverKey
+    ? undefined
+    : {
+        Origin: "http://localhost:3030",
+        Referer: "http://localhost:3030/",
+      };
 
   // ── 1) Geocode API ───────────────────────────────────────────────
   try {
@@ -70,7 +77,7 @@ export async function geocodeLucknow(
     u.searchParams.set("address", address);
     u.searchParams.set("api_key", key);
     u.searchParams.set("language", "English");
-    const res = await fetch(u.toString(), { headers: REFERER_HEADERS });
+    const res = await fetch(u.toString(), headers ? { headers } : {});
     if (res.ok) {
       type Resp = {
         geocodingResults?: Array<{
@@ -107,7 +114,7 @@ export async function geocodeLucknow(
     u.searchParams.set("api_key", key);
     u.searchParams.set("location", `${LKO_CENTER.lat},${LKO_CENTER.lng}`);
     u.searchParams.set("radius", "15000");
-    const res = await fetch(u.toString(), { headers: REFERER_HEADERS });
+    const res = await fetch(u.toString(), headers ? { headers } : {});
     if (res.ok) {
       type Resp = {
         predictions?: Array<{
