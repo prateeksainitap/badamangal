@@ -342,7 +342,7 @@ function isAllowedOgHost(rawUrl: string): boolean {
 
 async function fetchOgImage(
   url: string,
-  timeoutMs = 5000,
+  timeoutMs = 3000,
 ): Promise<string | null> {
   // SSRF gate: refuse to fetch any URL not on the publisher allowlist.
   if (!isAllowedOgHost(url)) {
@@ -453,61 +453,92 @@ export async function refreshNews(): Promise<AggregatorReport> {
     const items = parseRss(xml, feed, defaultSource);
     report.fetched += items.length;
 
-    for (const item of items) {
-      // Source whitelist applies to Google News items (where many
-      // tangentially-related sources can appear). Direct feeds bypass
-      // this check because the source IS the publisher we explicitly
-      // opted into when we added the feed to FEEDS above.
-      const sourceOk =
-        feed.kind === "direct" || isWhitelistedSource(item.source);
-      const keywordOk = matchesKeyword(item.title);
-      if (!sourceOk || !keywordOk) {
-        report.filteredOut++;
-        continue;
-      }
-
-      const tidiedTitle = tidyTitle(item.title, item.source);
-
-      try {
-        // Upsert pattern by unique URL. If the row exists we leave it
-        // alone (admin may have flipped status to HIDDEN). If it
-        // doesn't exist, create as APPROVED.
-        const existing = await prisma.newsItem.findUnique({
-          where: { url: item.link },
-          select: { id: true },
-        });
-        if (existing) {
-          report.skippedDuplicate++;
-          continue;
-        }
-        // Image resolution priority:
-        //   1. inline image from <media:content>/<enclosure> (HT etc.)
-        //   2. OG-image scrape of the direct article URL (only useful
-        //      for direct-feed items; Google News URLs are JS-redirect
-        //      stubs that don't yield OG meta when HTTP-fetched)
-        let imageUrl: string | null = item.inlineImage ?? null;
-        if (!imageUrl && feed.kind === "direct") {
-          imageUrl = await fetchOgImage(item.link);
-        }
-        await prisma.newsItem.create({
-          data: {
-            url: item.link,
-            title: tidiedTitle,
-            source: item.source,
-            language: feed.language,
-            publishedAt: item.pubDate,
-            imageUrl,
-            status: "APPROVED",
-          },
-        });
-        report.inserted++;
-      } catch (err) {
-        report.errors.push(
-          `insert failed for ${item.link}: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
+    // Process items in parallel batches. The bottleneck inside an
+    // item is fetchOgImage (~5s timeout each), so sequential
+    // processing of 12 new items × 4 feeds easily blows past the
+    // Vercel 60s function ceiling and the admin "Refresh news"
+    // button comes back as a 504.
+    //
+    // Parallelism cap (BATCH_SIZE) is intentionally small to stay
+    // under the Supabase pooler's connection_limit (currently 5).
+    // Even with 4 concurrent prisma.findUnique + prisma.create per
+    // feed we never exceed the pool. Cross-feed loop remains
+    // sequential so we don't multiply concurrency across feeds.
+    const BATCH_SIZE = 4;
+    for (let i = 0; i < items.length; i += BATCH_SIZE) {
+      const batch = items.slice(i, i + BATCH_SIZE);
+      await Promise.allSettled(
+        batch.map((item) => processItem(feed, item, report)),
+      );
     }
   }
 
   return report;
+}
+
+/**
+ * Process a single RSS item. Extracted from the inner loop of
+ * refreshNews so we can chunk-parallelize via Promise.allSettled.
+ *
+ * Mutates `report` in place — caller batches these so the cross-
+ * item interleaving is benign; report-counter increments are
+ * commutative additions.
+ */
+async function processItem(
+  feed: Feed,
+  item: ReturnType<typeof parseRss>[number],
+  report: AggregatorReport,
+): Promise<void> {
+  // Source whitelist applies to Google News items (where many
+  // tangentially-related sources can appear). Direct feeds bypass
+  // this check because the source IS the publisher we explicitly
+  // opted into when we added the feed to FEEDS.
+  const sourceOk =
+    feed.kind === "direct" || isWhitelistedSource(item.source);
+  const keywordOk = matchesKeyword(item.title);
+  if (!sourceOk || !keywordOk) {
+    report.filteredOut++;
+    return;
+  }
+
+  const tidiedTitle = tidyTitle(item.title, item.source);
+
+  try {
+    // Upsert pattern by unique URL. If the row exists we leave it
+    // alone (admin may have flipped status to HIDDEN). If it
+    // doesn't exist, create as APPROVED.
+    const existing = await prisma.newsItem.findUnique({
+      where: { url: item.link },
+      select: { id: true },
+    });
+    if (existing) {
+      report.skippedDuplicate++;
+      return;
+    }
+    // Image resolution priority:
+    //   1. inline image from <media:content>/<enclosure> (HT etc.)
+    //   2. OG-image scrape of the direct article URL (only useful
+    //      for direct-feed items; Google News URLs are JS-redirect
+    //      stubs that don't yield OG meta when HTTP-fetched)
+    let imageUrl: string | null = item.inlineImage ?? null;
+    if (!imageUrl && feed.kind === "direct") {
+      imageUrl = await fetchOgImage(item.link);
+    }
+    await prisma.newsItem.create({
+      data: {
+        url: item.link,
+        title: tidiedTitle,
+        source: item.source,
+        language: feed.language,
+        publishedAt: item.pubDate,
+        imageUrl,
+        status: "APPROVED",
+      },
+    });
+    report.inserted++;
+  } catch (err) {
+    report.errors.push(
+      `insert failed for ${item.link}: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
