@@ -95,7 +95,9 @@ const bhandaraInput = z.object({
   menu: z.array(z.enum(MENU_VALUES)).optional().default([]),
   menuOther: z.array(z.string().trim().min(1).max(40)).max(20).optional().default([]),
   organizerName: z.string().trim().min(1),
-  organizerPhone: z.string().trim().min(1),
+  // Phone is optional on the admin publish path (matches the public
+  // submit path). Empty string accepted; no min(1) gate.
+  organizerPhone: z.string().trim(),
   // Optional sponsorship/contact extras carried through from the
   // admin form. Public submitSchema (lib/validation.ts) handles the
   // same fields with stricter validation for the organiser-self-

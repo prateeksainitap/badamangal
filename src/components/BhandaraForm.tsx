@@ -322,9 +322,14 @@ export default function BhandaraForm({
       // default carries plenty of information for the public listing.
       case 4: return true;
       case 5:
+        // Phone is optional. Only block advance if it's non-empty
+        // AND invalid — empty stays valid so organisers without a
+        // contact number (or who don't want to share one) can still
+        // submit. Team will follow up via WhatsApp / email instead.
         return (
           st.organizerName.trim().length >= 2 &&
-          isValidIndianMobile(st.organizerPhone)
+          (st.organizerPhone.trim() === "" ||
+            isValidIndianMobile(st.organizerPhone))
         );
       case 6: return true;
       default: return false;
@@ -1133,8 +1138,8 @@ function Step5({ state, errors, setField }: StepProps) {
             {locale === "hi" ? "कन्फ़र्मेशन" : "Confirmation"}:
           </span>{" "}
           {locale === "hi"
-            ? "हम इस नंबर पर कॉल करके जानकारी सत्यापित करेंगे, फिर भंडारा लाइव होगा। नंबर कहीं सार्वजनिक नहीं होगा।"
-            : "Our team will call you on this number to confirm the details, your bhandara goes live right after. Your number is never shown publicly."}
+            ? "अगर आप नंबर देंगे तो हम उस पर कॉल करके जानकारी सत्यापित करेंगे, फिर भंडारा लाइव होगा। नंबर कहीं सार्वजनिक नहीं होगा।"
+            : "If you share a number, our team will call to confirm the details and your bhandara goes live right after. Your number is never shown publicly."}
         </p>
       </div>
 
@@ -1150,8 +1155,7 @@ function Step5({ state, errors, setField }: StepProps) {
         </Field>
         <Field
           hi="मोबाइल"
-          en="Mobile"
-          required
+          en="Mobile (optional)"
           error={
             errors.organizerPhone?.[0] ??
             (state.organizerPhone.length > 0 && !phoneValid
@@ -1162,11 +1166,12 @@ function Step5({ state, errors, setField }: StepProps) {
           {/* Shared PhoneInput, same +91 chip + 10-digit cap that the
               admin / contact / organise forms now use. State still
               stores the canonical 10-digit form, downstream
-              isValidIndianMobile() check is unchanged. */}
+              isValidIndianMobile() check is unchanged.
+              Phone is OPTIONAL — left without `required` so visitors
+              can submit without giving a number. */}
           <PhoneInput
             value={state.organizerPhone}
             onChange={(digits) => setField("organizerPhone", digits)}
-            required
           />
         </Field>
 

@@ -82,7 +82,13 @@ export const submitSchema = z
     organizerPhone: z
       .string()
       .trim()
-      .refine(isValidIndianMobile, {
+      // Phone is optional. Empty string is accepted (organiser left
+      // it blank); any non-empty value must still parse as a valid
+      // Indian mobile so we don't persist garbage that the team
+      // can't dial back. Downstream code already tolerates an empty
+      // organizerPhone — the schema's `String` column accepts "" and
+      // every UI read-site falls back to "-" when it's blank.
+      .refine((v) => v === "" || isValidIndianMobile(v), {
         message: "Enter a valid 10-digit Indian mobile number",
       }),
     organizerWhatsapp: optionalWhatsapp,
