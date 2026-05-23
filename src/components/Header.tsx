@@ -123,7 +123,15 @@ function HeaderInner() {
     <>
     <header
       className={[
-        "sticky top-0 z-[1000] bg-cream-50/92 backdrop-blur-md transition-all duration-300",
+        // Solid cream background. The earlier bg-cream-50/92 +
+        // backdrop-blur-md looked glassy when scrolled over the
+        // page's own cream sections — but over the dark
+        // LiveChatterBoard band, the 8% bleed-through made the dark
+        // `text-ink-900` nav links unreadable (user-reported).
+        // The "glass" effect added zero visual win when the canvas
+        // behind it was cream anyway, so we lose nothing by going
+        // fully opaque and gain consistent contrast everywhere.
+        "sticky top-0 z-[1000] bg-cream-50 transition-all duration-300",
         "border-b",
         scrolled
           ? "border-gold-500/40 shadow-[0_1px_0_rgba(201,162,74,0.20)]"
@@ -474,7 +482,7 @@ export default function Header() {
   return (
     <Suspense
       fallback={
-        <header className="sticky top-0 z-[1000] bg-cream-50/95 border-b border-transparent">
+        <header className="sticky top-0 z-[1000] bg-cream-50 border-b border-transparent">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 py-3 h-[60px]" />
         </header>
       }
