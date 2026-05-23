@@ -761,10 +761,46 @@ export async function POST(req: NextRequest) {
   // hard so a malicious bot can't blow up a column with a huge
   // string. Empty strings normalise to null so the schema column
   // stays sparse.
-  const quotedTextSan =
+  let quotedTextSan: string | null =
     (body.quotedText ?? "").trim().slice(0, 300) || null;
-  const quotedSenderSan =
+  let quotedSenderSan: string | null =
     (body.quotedSender ?? "").trim().slice(0, 80) || null;
+
+  // When the sender DIDN'T use WhatsApp's reply gesture but the
+  // message is plainly a conversational reply ("Malhaur" right
+  // after someone asked "Amity konsa wala?"), Baileys gives us no
+  // contextInfo to attribute. We still want the chat panel to
+  // render the question above the answer — otherwise short
+  // location-only shares look like context-free shouts.
+  //
+  // Fallback: when no formal quote and the message is short +
+  // SHARING + we have recentContext, find the most-recent
+  // question-shaped message from a DIFFERENT sender and persist
+  // IT as the inferred quoted context. Same column, no special
+  // marker — the reader doesn't care whether the reply was
+  // tapped-and-quoted or just typed.
+  if (!quotedTextSan && intent === "SHARING") {
+    const shortReply =
+      finalCleanedText.trim().length > 0 &&
+      finalCleanedText.trim().length <= 40;
+    const ctx = Array.isArray(body.recentContext) ? body.recentContext : [];
+    if (shortReply && ctx.length > 0) {
+      const questionLike =
+        /\?$|kahan|kaha\b|kahaan|konsa|kaun|which|where|koi\b|bataa?o|btao|kya hai|kya h|kahin/i;
+      // Walk the recent window newest-first; bot sends oldest-first.
+      for (let i = ctx.length - 1; i >= 0; i--) {
+        const m = ctx[i];
+        const t = (m?.text ?? "").trim();
+        const s = (m?.senderName ?? "").trim();
+        if (!t || !s) continue;
+        if (s === (senderName || "").trim()) continue;
+        if (!questionLike.test(t)) continue;
+        quotedTextSan = t.slice(0, 300);
+        quotedSenderSan = s.slice(0, 80);
+        break;
+      }
+    }
+  }
   for (let i = 0; i < locations.length; i++) {
     const loc = locations[i];
     const row = await prisma.bhandaraMention.create({
