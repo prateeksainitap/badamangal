@@ -198,13 +198,13 @@ export async function GET(req: NextRequest) {
         // thumbnail. Spots without photoUrl belong in the existing
         // /api/feed marquee, not here.
         photoUrl: { not: null },
-        // Spot has lat + lng as required Float columns (not nullable),
-        // so withCoordsOnly is implicit. We still drop spots whose
-        // coords landed at the 0,0 "null island" — bot-ingested spots
-        // sometimes default to 0,0 before the admin fixes coords; we
-        // shouldn't surface those on the public heatmap.
-        lat: { not: 0 },
-        lng: { not: 0 },
+        // NOTE: we used to drop spots at the "null island" 0,0 here.
+        // That filtered out bot-ingested spots which auto-publish with
+        // lat=0/lng=0 (WhatsApp strips EXIF GPS, so the bot has no
+        // coords until an admin fills them in). The chat panel still
+        // wants the photo + caption — only the heatmap should refuse
+        // to pin 0,0. The MentionHeatmap consumer filters those out
+        // client-side; the feed itself stays generous.
         ...(sinceDate ? { createdAt: { gt: sinceDate } } : {}),
       },
       orderBy: { createdAt: "desc" },

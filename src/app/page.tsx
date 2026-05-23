@@ -355,10 +355,12 @@ export default async function HomePage() {
     ...spotRecords
       .filter(
         (s) =>
-          s.photoUrl &&
-          s.lat !== 0 &&
-          s.lng !== 0 &&
-          s.expiresAt > new Date(),
+          // Photo + non-expired only. We DO NOT drop lat=0/lng=0
+          // spots here — bot-ingested live photos auto-publish with
+          // 0,0 because WhatsApp strips EXIF GPS, and the chat panel
+          // should still show the photo. The heatmap filters 0,0
+          // separately so no ghost pin lands on null island.
+          s.photoUrl && s.expiresAt > new Date(),
       )
       .map((s): ChatterMention => {
         // Parse extra photo URLs (JSON-encoded string column) so the

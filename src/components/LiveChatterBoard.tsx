@@ -437,7 +437,14 @@ export default function LiveChatterBoard({
     () =>
       mentions.filter(
         (m): m is ChatterMention & { lat: number; lng: number } =>
-          m.intent !== "ASKING" && m.lat !== null && m.lng !== null,
+          // Heatmap is map-only — drop ASKING (questions, not
+          // sightings) AND drop 0,0 "null island" spots that the
+          // feed deliberately still includes for the chat panel.
+          m.intent !== "ASKING" &&
+          m.lat !== null &&
+          m.lng !== null &&
+          m.lat !== 0 &&
+          m.lng !== 0,
       ),
     [mentions],
   );

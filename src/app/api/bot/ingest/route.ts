@@ -44,6 +44,7 @@ import {
   type ExtractedSpot,
 } from "@/lib/vision";
 import { getSupabaseAdmin, PHOTO_BUCKET } from "@/lib/supabase";
+import { uploadToR2 } from "@/lib/r2";
 import { slugify, ensureUniqueSlug } from "@/lib/slugify";
 import { menuHiFor } from "@/lib/menu";
 import { geocodeLucknow } from "@/lib/geocodeServer";
@@ -199,23 +200,51 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const supabase = getSupabaseAdmin();
-  if (!supabase) {
-    return jsonError(500, "storage_unavailable", {
-      detail: "SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set on the server.",
-    });
-  }
   const filename = `bot-${kind}-${randomUUID()}.webp`;
-  const upload = await supabase.storage.from(PHOTO_BUCKET).upload(filename, webp, {
-    contentType: "image/webp",
-    cacheControl: "31536000",
-    upsert: false,
-  });
-  if (upload.error) {
-    console.error("[bot/ingest] supabase upload failed", upload.error);
-    return jsonError(500, "storage_upload_failed");
+  let photoUrl: string | null = null;
+
+  // R2-first (matches /api/uploads) so bot-ingested photos land on
+  // cdn.badamangal.com, identical to public /spot uploads. Returns
+  // null when R2 envs aren't configured; the Supabase fall-through
+  // below keeps an emergency path open.
+  try {
+    photoUrl = await uploadToR2({
+      filename,
+      buffer: webp,
+      contentType: "image/webp",
+    });
+  } catch (err) {
+    console.error("[bot/ingest] R2 upload failed, will try Supabase", err);
   }
-  const photoUrl = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(filename).data.publicUrl;
+
+  if (!photoUrl) {
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+      return jsonError(500, "storage_unavailable", {
+        detail:
+          "Neither R2 (R2_*) nor Supabase (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY) is configured on the server.",
+      });
+    }
+    const upload = await supabase.storage.from(PHOTO_BUCKET).upload(
+      filename,
+      webp,
+      {
+        contentType: "image/webp",
+        cacheControl: "31536000",
+        upsert: false,
+      },
+    );
+    if (upload.error) {
+      console.error(
+        "[bot/ingest] supabase fallback upload failed",
+        upload.error,
+      );
+      return jsonError(500, "storage_upload_failed");
+    }
+    photoUrl = supabase.storage
+      .from(PHOTO_BUCKET)
+      .getPublicUrl(filename).data.publicUrl;
+  }
 
   // ── 5. Run Gemini extraction (same path as /api/admin/scan) ────
   // Provenance tag embedded into description / caption.
