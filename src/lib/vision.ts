@@ -1077,14 +1077,14 @@ Be conservative: if you can't verify a bhandara from a real source, omit it. NEV
       tools: [{ googleSearch: {} }],
       generationConfig: {
         temperature: 0.2,
-        // Bumped from 4096 to 16384. With up to 12 candidates × ~14
-        // fields each + grounding citations, the smaller cap was
-        // truncating the JSON mid-array (Gemini returns finishReason
-        // = "MAX_TOKENS") and the endpoint bailed before any usable
-        // results reached the admin UI. 16384 leaves comfortable
-        // headroom and is well below Gemini Flash's per-response
-        // ceiling.
-        maxOutputTokens: 16384,
+        // 32768 — bumped from 4096 → 16384 → 32768 across a few
+        // iterations. Grounded responses interleave citation chunks
+        // and Gemini Flash counts those toward the output budget, so
+        // the JSON payload alone doesn't predict the real cost.
+        // 32 K leaves room for ~10 rich candidates + every Instagram
+        // / blog / news source we ask for in the prompt. Well below
+        // Gemini Flash's per-response ceiling.
+        maxOutputTokens: 32768,
       },
     }),
   });
@@ -1117,11 +1117,6 @@ Be conservative: if you can't verify a bhandara from a real source, omit it. NEV
   if (!text) {
     throw new Error("Gemini returned an empty discovery response");
   }
-  if (finishReason === "MAX_TOKENS") {
-    throw new Error(
-      "Gemini hit maxOutputTokens during discovery, raise the cap or narrow the query.",
-    );
-  }
 
   // Strip code fences if present, then parse + validate. Same dance
   // as callGeminiText, kept inline here because we needed the raw
@@ -1131,7 +1126,82 @@ Be conservative: if you can't verify a bhandara from a real source, omit it. NEV
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/i, "")
     .trim();
-  return parseOrThrow(cleaned, discoveryResultSchema);
+
+  // Happy path: clean parse.
+  try {
+    return parseOrThrow(cleaned, discoveryResultSchema);
+  } catch (parseErr) {
+    // MAX_TOKENS salvage path. When grounding burns through the
+    // budget mid-candidate, the JSON tail is truncated and the
+    // strict parse fails. Try to recover by finding the last
+    // complete `}` inside the `candidates` array, sealing the
+    // structure, and re-parsing. Worst-case we still throw — but
+    // it's cheap to attempt and a partial 6-candidate result is
+    // much more useful to an admin than a "discovery_failed" error.
+    if (finishReason === "MAX_TOKENS") {
+      const salvaged = salvageTruncatedDiscoveryJson(cleaned);
+      if (salvaged) {
+        try {
+          return parseOrThrow(salvaged, discoveryResultSchema);
+        } catch {
+          /* fall through to original error */
+        }
+      }
+      throw new Error(
+        "Gemini hit maxOutputTokens during discovery and the partial response could not be salvaged. Try a narrower query.",
+      );
+    }
+    throw parseErr;
+  }
+}
+
+/** Attempt to repair a discovery JSON payload that was cut off mid-
+ *  response by Gemini's maxOutputTokens. Strategy: locate the last
+ *  fully-closed `}` inside the `candidates` array, drop everything
+ *  after it, then close the array + the outer object. Returns null
+ *  if the input is too mangled to repair. */
+function salvageTruncatedDiscoveryJson(raw: string): string | null {
+  const candidatesStart = raw.indexOf('"candidates"');
+  if (candidatesStart === -1) return null;
+  const arrayStart = raw.indexOf("[", candidatesStart);
+  if (arrayStart === -1) return null;
+
+  // Walk forward tracking brace + bracket depth so we don't split
+  // mid-string. Record the index after every top-level `}` so we
+  // can later truncate at the LAST complete object.
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  let lastCompleteObjectEnd = -1;
+  for (let i = arrayStart + 1; i < raw.length; i++) {
+    const ch = raw[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escape = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{") depth++;
+    else if (ch === "}") {
+      depth--;
+      if (depth === 0) lastCompleteObjectEnd = i;
+    } else if (ch === "]" && depth === 0) {
+      // We somehow already have a complete array — nothing to fix.
+      return null;
+    }
+  }
+
+  if (lastCompleteObjectEnd === -1) return null;
+  // Build a well-formed payload: original up to the last complete
+  // candidate, close the array + object, drop any partial summary.
+  return `${raw.slice(0, lastCompleteObjectEnd + 1)}]}`;
 }
 
 // ────────────────────────────────────────────────────────────────────
