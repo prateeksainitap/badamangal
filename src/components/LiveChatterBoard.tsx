@@ -445,7 +445,7 @@ export default function LiveChatterBoard({
         <span className="chatter-ember chatter-ember-5" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 py-12 sm:py-16">
+      <div className="relative mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-16">
         {/* Section header */}
         <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="grid gap-1.5">
@@ -972,23 +972,23 @@ function WhatsappCard({
       data-ga-kind={cta.kind}
       data-ga-key={cta.counterKey}
       data-ga-source="homepage"
-      className="chatter-glass chatter-glass-hover relative block rounded-2xl p-4 h-full focus:outline-none focus:ring-2 focus:ring-saffron-500/60"
+      className="chatter-glass chatter-glass-hover relative block rounded-xl p-3 h-full focus:outline-none focus:ring-2 focus:ring-saffron-500/60"
     >
       {/* Top row: kind-specific tile (community=WA glyph, group=people
           glyph + WA badge, channel=megaphone + WA badge) + textual
           kind chip on the right. The composite tile makes the kind
           scannable without reading the chip text. */}
-      <div className="flex items-start justify-between gap-2 mb-2.5">
+      <div className="flex items-start justify-between gap-2 mb-2">
         <WhatsappKindTile kind={cta.kind} iconUrl={cta.iconUrl} label={cardLabel} />
-        <span className="text-[9px] font-bold uppercase tracking-wider rounded-full bg-black/50 backdrop-blur-sm text-cream-50/85 px-2 py-0.5">
+        <span className="text-[8px] font-bold uppercase tracking-wider rounded-full bg-black/50 backdrop-blur-sm text-cream-50/85 px-1.5 py-0.5">
           {kindLabel}
         </span>
       </div>
 
-      <h4 className="font-fraunces text-base sm:text-lg text-cream-50 leading-tight mb-1">
+      <h4 className="font-fraunces text-sm sm:text-base text-cream-50 leading-tight mb-0.5">
         {cardLabel}
       </h4>
-      <p className="text-xs text-cream-50/65 leading-snug mb-3">
+      <p className="text-[11px] text-cream-50/65 leading-snug mb-2.5">
         {cardBlurb}
       </p>
 
@@ -997,16 +997,16 @@ function WhatsappCard({
           per-card counts are supporting context (which circle is biggest)
           and should stay smaller than the total to keep the visual
           hierarchy. */}
-      <div className="flex items-end justify-between gap-3 mt-auto">
+      <div className="flex items-end justify-between gap-2 mt-auto">
         {count !== null && count > 0 ? (
           <span className="inline-flex flex-col items-start leading-none">
             <span
-              className="font-numerals font-extrabold tabular-nums leading-none text-white drop-shadow-[0_0_12px_rgba(74,222,128,0.45)]"
-              style={{ fontSize: "clamp(1.25rem, 2vw, 1.75rem)" }}
+              className="font-numerals font-extrabold tabular-nums leading-none text-white drop-shadow-[0_0_10px_rgba(74,222,128,0.4)]"
+              style={{ fontSize: "clamp(1.05rem, 1.6vw, 1.4rem)" }}
             >
               {count.toLocaleString(isHi ? "hi-IN" : "en-IN")}
             </span>
-            <span className="mt-1 text-[10px] uppercase tracking-[0.16em] font-semibold text-emerald-300/90">
+            <span className="mt-0.5 text-[9px] uppercase tracking-[0.14em] font-semibold text-emerald-300/90">
               {memberLabel}
             </span>
           </span>
@@ -1015,7 +1015,7 @@ function WhatsappCard({
             ·
           </span>
         )}
-        <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white px-3 py-1.5 text-xs font-semibold shadow-[0_4px_14px_-4px_rgba(16,185,129,0.7)] ring-1 ring-emerald-400/50 shrink-0 hover:from-emerald-400 hover:to-emerald-500 transition-colors">
+        <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white px-2.5 py-1 text-[11px] font-semibold shadow-[0_3px_10px_-3px_rgba(16,185,129,0.65)] ring-1 ring-emerald-400/50 shrink-0 hover:from-emerald-400 hover:to-emerald-500 transition-colors">
           {ctaVerb} →
         </span>
       </div>
@@ -1515,7 +1515,7 @@ function WhatsappKindTile({
           width={40}
           height={40}
           loading="lazy"
-          className="w-10 h-10 rounded-xl object-cover ring-1 ring-cream-50/15 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.6)]"
+          className="w-8 h-8 rounded-lg object-cover ring-1 ring-cream-50/15 shadow-[0_3px_10px_-3px_rgba(0,0,0,0.55)]"
         />
         {kind !== "community" ? <WhatsappBadge /> : null}
       </span>
@@ -1523,15 +1523,15 @@ function WhatsappKindTile({
   }
   return (
     <span
-      className="relative inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-leaf-600 to-leaf-600/80 text-cream-50 shadow-[0_4px_14px_-4px_rgba(63,122,63,0.7)] ring-1 ring-leaf-600/40"
+      className="relative inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-leaf-600 to-leaf-600/80 text-cream-50 shadow-[0_3px_10px_-3px_rgba(63,122,63,0.65)] ring-1 ring-leaf-600/40"
       aria-label={`${kind === "community" ? "Community" : kind === "group" ? "Group" : "Channel"}: ${label}`}
     >
       {kind === "community" ? (
-        <WhatsappGlyph size={20} />
+        <WhatsappGlyph size={16} />
       ) : kind === "group" ? (
-        <PeopleGroupGlyph size={22} />
+        <PeopleGroupGlyph size={18} />
       ) : (
-        <MegaphoneGlyph size={20} />
+        <MegaphoneGlyph size={16} />
       )}
       {kind !== "community" ? <WhatsappBadge /> : null}
     </span>
