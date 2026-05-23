@@ -609,17 +609,13 @@ export default function LiveChatterBoard({
               aria-label="Live WhatsApp chatter feed"
             >
               {mentions.length === 0 ? (
-                <li className="m-auto text-center text-sm text-cream-50/60 italic px-6 py-12 grid gap-2">
-                  <span aria-hidden className="text-3xl opacity-50">💬</span>
-                  <span>
-                    {isChatOpen
-                      ? isHi
-                        ? "अभी व्हाट्सऐप पर शांति है। नई चर्चाएँ और तस्वीरें यहाँ आती जाएँगी।"
-                        : "Quiet on WhatsApp right now. New mentions and photos will slide in here as they arrive."
-                      : isHi
-                        ? `लाइव चैट ${nextOpenLabel} को फिर शुरू होगी। उस दिन यहाँ नई चर्चाएँ दिखेंगी।`
-                        : `Live chat resumes on ${nextOpenLabel}. Recent mentions will appear here when activity restarts.`}
-                  </span>
+                <li className="h-full flex items-center justify-center px-4 py-8">
+                  <LiveChatEmpty
+                    isHi={isHi}
+                    isChatOpen={isChatOpen}
+                    nextOpenLabel={nextOpenLabel}
+                    communityTotal={communityMembers}
+                  />
                 </li>
               ) : (
                 mentions.map((m, idx) => {
@@ -726,6 +722,34 @@ export default function LiveChatterBoard({
           border-radius: 9999px;
           background: currentColor;
           animation: live-pulse 1.8s ease-out infinite;
+        }
+
+        /* ── Radar pulse for the empty-state. Three concentric rings
+           expand outward from the centre dot at staggered intervals
+           so a wave is always in flight; the centre dot pulses on a
+           slower clock for a "heartbeat" feel. Pure CSS, no JS. */
+        @keyframes chatter-radar-pulse {
+          0%   { transform: scale(0.35); opacity: 0.75; }
+          80%  { opacity: 0;   }
+          100% { transform: scale(2.2);  opacity: 0; }
+        }
+        @keyframes chatter-radar-core {
+          0%, 100% { transform: scale(1);    opacity: 1;   }
+          50%      { transform: scale(1.25); opacity: 0.85; }
+        }
+        :global(.chatter-radar) {
+          position: absolute;
+          inset: 0;
+          border-radius: 9999px;
+          border: 1px solid rgba(93, 174, 93, 0.55);
+          background: radial-gradient(circle, rgba(93,174,93,0.12) 0%, transparent 70%);
+          animation: chatter-radar-pulse 3s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+          will-change: transform, opacity;
+        }
+        :global(.chatter-radar-2) { animation-delay: 1s; }
+        :global(.chatter-radar-3) { animation-delay: 2s; }
+        :global(.chatter-radar-core) {
+          animation: chatter-radar-core 2.4s ease-in-out infinite;
         }
 
         /* ── Glossy / glass card treatment ───────────────────────────
@@ -1022,6 +1046,116 @@ function LivePulseBadge({ count, isHi }: { count: number; isHi: boolean }) {
  *  previously this pill sat next to the 9,652 community total; moved
  *  here so the live-state signal reads as section-wide rather than
  *  tied to that single number. */
+/** Empty-state for the Live chat panel — shown when the feed has
+ *  zero mentions, whether the chat is "open" today (Tue/Sat) or not.
+ *
+ *  Three jobs:
+ *    1. Visually prove the system is alive (radar-pulse animation) so
+ *       the user trusts it'll fill in when chatter starts.
+ *    2. Tell the user what to expect — the community size + the
+ *       Tuesday/Saturday rhythm.
+ *    3. Offer two ways to make this less quiet themselves: drop a
+ *       Spot, or hop into a WhatsApp circle.
+ *
+ *  Same skeleton serves both connected-but-empty and offline states;
+ *  only the headline copy + the dot colour change.
+ */
+function LiveChatEmpty({
+  isHi,
+  isChatOpen,
+  nextOpenLabel,
+  communityTotal,
+}: {
+  isHi: boolean;
+  isChatOpen: boolean;
+  nextOpenLabel: string;
+  communityTotal: number;
+}) {
+  const totalDisplay = communityTotal.toLocaleString(isHi ? "hi-IN" : "en-IN");
+  return (
+    <div className="grid gap-4 text-center max-w-sm">
+      {/* Radar pulse — concentric circles expanding out from a
+          breathing leaf-green centre. The three rings are offset so
+          there's always a wave in flight; the centre dot pulses on
+          a slower clock. Reads as "actively scanning" without any
+          audio cue. */}
+      <div className="relative w-20 h-20 mx-auto" aria-hidden>
+        <span className="chatter-radar chatter-radar-1" />
+        <span className="chatter-radar chatter-radar-2" />
+        <span className="chatter-radar chatter-radar-3" />
+        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 inline-flex items-center justify-center w-10 h-10 rounded-full bg-leaf-600/15 ring-1 ring-leaf-400/30">
+          <span className="inline-flex w-3 h-3 rounded-full bg-leaf-400 shadow-[0_0_18px_rgba(93,174,93,0.65)] chatter-radar-core" />
+        </span>
+      </div>
+
+      {/* Headline — community-size framing when chat is open today,
+          next-open-day framing when it's a quiet day. Either way the
+          tone is "we're listening" not "nothing happening". */}
+      <h4 className="font-fraunces text-cream-50 text-lg leading-snug">
+        {isChatOpen ? (
+          isHi ? (
+            <>
+              <span className="tabular-nums font-bold">{totalDisplay}</span> पड़ोसियों को सुन रहे हैं
+            </>
+          ) : (
+            <>
+              Listening to{" "}
+              <span className="tabular-nums font-bold">{totalDisplay}</span>{" "}
+              neighbours
+            </>
+          )
+        ) : isHi ? (
+          <>
+            अगली लाइव चैट{" "}
+            <span className="text-saffron-500">{nextOpenLabel}</span> को
+          </>
+        ) : (
+          <>
+            Next live chat:{" "}
+            <span className="text-saffron-500">{nextOpenLabel}</span>
+          </>
+        )}
+      </h4>
+
+      {/* Sub — sets expectations + the Tue/Sat rhythm so the absence
+          of activity right now reads as "between waves", not broken. */}
+      <p className="text-sm text-cream-50/70 leading-snug">
+        {isChatOpen
+          ? isHi
+            ? "जैसे ही कोई पड़ोसी भंडारा शेयर करे, तस्वीर या पिन भेजे — सब यहाँ पल भर में दिखेगा।"
+            : "The moment a neighbour shares a bhandara, drops a photo or a pin, it'll slide in here."
+          : isHi
+            ? "बड़ा मंगल समुदाय मंगलवार और शनिवार को सबसे ज़्यादा सक्रिय रहता है। तब तक नीचे की लिस्ट देखें।"
+            : "Our community is most active on Bada Mangal Tuesdays and Saturdays. Browse the listed bhandaras below in the meantime."}
+      </p>
+
+      {/* CTAs — both nudge the user toward making the panel less
+          empty: drop a Spot (creates content), or hop into a WhatsApp
+          circle (joins the source-of-truth chatter). #join-community-
+          heading is the WhatsApp section's <h3>; smooth-scroll handled
+          by the browser default. */}
+      <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+        <a
+          href="/spot"
+          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-saffron-500 to-saffron-600 hover:from-saffron-500 hover:to-saffron-500 text-cream-50 px-3.5 py-1.5 text-xs font-semibold shadow-[0_4px_14px_-4px_rgba(242,148,76,0.55)] transition-all"
+        >
+          <PinIcon />
+          {isHi ? "भंडारा स्पॉट करें" : "Spot a bhandara"}
+        </a>
+        <a
+          href="#join-community-heading"
+          className="inline-flex items-center gap-1.5 rounded-full bg-cream-50/10 hover:bg-cream-50/15 text-cream-50 px-3.5 py-1.5 text-xs font-semibold ring-1 ring-cream-50/15 transition-all"
+        >
+          <span aria-hidden className="text-leaf-400">
+            <WhatsappGlyph size={12} />
+          </span>
+          {isHi ? "व्हाट्सऐप पर जुड़ें" : "Join WhatsApp"}
+        </a>
+      </div>
+    </div>
+  );
+}
+
 function SectionLiveBadge({ isHi }: { isHi: boolean }) {
   return (
     <span className="inline-flex items-center gap-1 px-1.5 py-px rounded-full bg-emerald-400/15 text-emerald-300 text-[9px] font-semibold uppercase tracking-[0.16em] ring-1 ring-emerald-400/40 leading-none">
