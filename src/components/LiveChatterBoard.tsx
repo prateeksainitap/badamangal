@@ -60,6 +60,15 @@ export type ChatterMention = {
   language: string;
   intent: "ASKING" | "SHARING" | "MENTIONING";
   locationLabel: string | null;
+  /** When Gemini extracts MULTIPLE locations from one message ("Kamta,
+   *  Chinhat ya amity?"), the server inserts one mention row per
+   *  location so the heatmap can plant a pin for each. The chat panel
+   *  collapses those rows back into ONE bubble (same text + same sender
+   *  shouldn't read as three identical bubbles) and surfaces all
+   *  location chips here. Populated client-side by the groupedMentions
+   *  rollup below; the API still returns one mention per location.
+   *  Null/empty = single-location, fall back to `locationLabel`. */
+  locationLabels?: string[];
   lat: number | null;
   lng: number | null;
   locationSource: string;
@@ -436,6 +445,69 @@ export default function LiveChatterBoard({
     }
   }, [mentions]);
 
+  // Collapse multi-location splits into single chat bubbles.
+  //
+  // Gemini's classifier extracts each distinct location from a message
+  // ("Kamta, Chinhat ya amity?" → 3 locations) and the server inserts
+  // one BhandaraMention row per location so the heatmap can plant a
+  // pin for each. The chat panel rendering that data as 3 identical
+  // bubbles makes the panel look like the same message is being posted
+  // multiple times — confusing.
+  //
+  // Rollup rule: walk mentions newest-first; rows with the same
+  // sender + normalised text within 5 minutes of each other merge
+  // into the FIRST (newest) row, accumulating their locationLabels
+  // onto the merged entry's `locationLabels` array. The single chat
+  // bubble then renders one chip per location.
+  //
+  // 5-minute window keeps legitimately-repeated messages from the
+  // same sender (an hour-apart re-post for emphasis) as separate
+  // bubbles. Heatmap still consumes the raw `mentions` array so each
+  // location gets its own pin — only the chat panel collapses.
+  const groupedMentions = useMemo(() => {
+    const normaliseText = (s: string | null | undefined) =>
+      (s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+    const MERGE_WINDOW_MS = 5 * 60 * 1000;
+    const out: ChatterMention[] = [];
+    const keyToIndex = new Map<string, number>();
+    for (const m of mentions) {
+      const sender = (m.senderName ?? "").trim();
+      const text = normaliseText(m.text);
+      if (!sender || !text || m.kind === "spot") {
+        // Spots never collapse — every photo is its own event even
+        // if two spotters happen to caption the exact same string.
+        out.push(m);
+        continue;
+      }
+      const key = sender + "::" + text;
+      const existingIdx = keyToIndex.get(key);
+      if (existingIdx !== undefined) {
+        const existing = out[existingIdx];
+        const dt = Math.abs(
+          new Date(existing.createdAt).getTime() - new Date(m.createdAt).getTime(),
+        );
+        if (dt <= MERGE_WINDOW_MS) {
+          const labels = existing.locationLabels
+            ? [...existing.locationLabels]
+            : existing.locationLabel
+              ? [existing.locationLabel]
+              : [];
+          if (m.locationLabel && !labels.includes(m.locationLabel)) {
+            labels.push(m.locationLabel);
+          }
+          out[existingIdx] = { ...existing, locationLabels: labels };
+          continue;
+        }
+      }
+      out.push({
+        ...m,
+        locationLabels: m.locationLabel ? [m.locationLabel] : [],
+      });
+      keyToIndex.set(key, out.length - 1);
+    }
+    return out;
+  }, [mentions]);
+
   // Heatmap input — exclude ASKING messages.
   // An ASKING bubble's coords (e.g. "anyone know about a bhandara in
   // Hazratganj?") describe the place the SENDER is wondering about,
@@ -699,7 +771,7 @@ export default function LiveChatterBoard({
               aria-live="polite"
               aria-label="Live WhatsApp chatter feed"
             >
-              {mentions.length === 0 ? (
+              {groupedMentions.length === 0 ? (
                 <li className="h-full flex items-center justify-center px-4 py-8">
                   <LiveChatEmpty
                     isHi={isHi}
@@ -709,7 +781,7 @@ export default function LiveChatterBoard({
                   />
                 </li>
               ) : (
-                mentions.map((m, idx) => {
+                groupedMentions.map((m, idx) => {
                   const firstSeenAt = firstSeenRef.current.get(m.id);
                   // Suppress the new-glow when chat is offline — no
                   // genuinely "new" messages should be landing then.
@@ -722,7 +794,7 @@ export default function LiveChatterBoard({
                       key={m.id}
                       mention={m}
                       isNew={isNew}
-                      isLast={idx === mentions.length - 1}
+                      isLast={idx === groupedMentions.length - 1}
                       isHi={isHi}
                       onOpenLightbox={openLightbox}
                     />
@@ -1417,8 +1489,6 @@ function ChatBubble({
           isPrecisePin && validCoords ? "&z=17" : ""
         }`
       : null;
-  const showLocationPill = showLocationActions && !!mention.locationLabel;
-
   return (
     <li
       className={[
@@ -1620,11 +1690,26 @@ function ChatBubble({
           {mention.text}
         </p>
         <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-cream-50/55 mt-0">
-          {showLocationPill ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/50 backdrop-blur-sm text-cream-50/85">
-              <PinIcon />
-              {mention.locationLabel}
-            </span>
+          {showLocationActions ? (
+            // Multi-location messages ("Kamta, Chinhat ya amity?") get
+            // one chip per place — server-split rows are collapsed by
+            // the groupedMentions rollup in the parent. Single-location
+            // messages render just the one chip via the [locationLabel]
+            // singleton fallback.
+            (mention.locationLabels && mention.locationLabels.length > 0
+              ? mention.locationLabels
+              : mention.locationLabel
+                ? [mention.locationLabel]
+                : []
+            ).map((label) => (
+              <span
+                key={label}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/50 backdrop-blur-sm text-cream-50/85"
+              >
+                <PinIcon />
+                {label}
+              </span>
+            ))
           ) : null}
           <span>{relativeTime(new Date(mention.createdAt), isHi)}</span>
           {mention.bhandaraSlug ? (
