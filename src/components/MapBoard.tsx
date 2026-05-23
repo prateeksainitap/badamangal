@@ -62,6 +62,12 @@ type Props = {
   listBhandaraLabel?: string;
   listings: Bhandara[];
   liveSpots: LiveSpotInput[];
+  /** WhatsApp-community total, mirrored from the same counter the
+   *  LiveChatterBoard reads. Drives the "X,XXX in our WhatsApp
+   *  community" callout below the map heading that deep-links to
+   *  #live-chat. 0 hides the chip entirely so the section header
+   *  stays clean while we're bootstrapping the counter. */
+  communityMembers?: number;
 };
 
 /**
@@ -75,6 +81,7 @@ type Props = {
 export default function MapBoard({
   listings,
   liveSpots,
+  communityMembers = 0,
 }: Props) {
   // Locale + every locale-derived string comes from the client-side
   // context so SSR can render English and we still respect the
@@ -173,6 +180,49 @@ export default function MapBoard({
             {heading}
           </h2>
           <p className="text-ink-600 mt-1">{body}</p>
+          {/* Deep-link chip to the LiveChatterBoard section below.
+              Surfaces the WhatsApp community size + a pulsing LIVE
+              dot so the map visitor sees "the conversation behind
+              this map" without having to scroll-discover it. The
+              chip is borderless on purpose (legend below has the
+              same outline-cream-disc treatment, and stacking two
+              outlined chips next to each other read as competing
+              UI; the dark fill + saffron text on this chip is the
+              callout, not the chrome). */}
+          {communityMembers > 0 ? (
+            <a
+              href="#live-chat"
+              data-ga="map_to_live_chat"
+              className="inline-flex items-center gap-2 mt-3 rounded-full bg-ink-900 text-cream-50 pl-2 pr-3 py-1.5 text-xs hover:bg-ink-900/85 transition-colors group"
+              aria-label={
+                isHi
+                  ? `लाइव चैट देखें · WhatsApp समुदाय में ${communityMembers.toLocaleString("en-IN")} लोग`
+                  : `Open live chat · ${communityMembers.toLocaleString("en-IN")} in our WhatsApp community`
+              }
+            >
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full bg-sindoor-700 text-cream-50 px-2 py-0.5 font-semibold uppercase tracking-wide"
+              >
+                <span aria-hidden className="relative flex h-1.5 w-1.5">
+                  <span className="absolute inset-0 rounded-full bg-cream-50 opacity-60 motion-safe:animate-ping" />
+                  <span className="relative h-1.5 w-1.5 rounded-full bg-cream-50" />
+                </span>
+                LIVE
+              </span>
+              <span className="font-medium">
+                <span className="font-numerals tabular-nums text-saffron-500">
+                  {communityMembers.toLocaleString("en-IN")}
+                </span>{" "}
+                {isHi ? "लोग WhatsApp समुदाय में" : "in our WhatsApp community"}
+              </span>
+              <span
+                aria-hidden
+                className="text-saffron-500 group-hover:translate-x-0.5 transition-transform"
+              >
+                →
+              </span>
+            </a>
+          ) : null}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div

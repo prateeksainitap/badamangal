@@ -512,7 +512,7 @@ export default function LiveChatterBoard({
   }, []);
 
   return (
-    <section className="relative bg-ink-900 text-cream-50 overflow-hidden">
+    <section id="live-chat" className="relative bg-ink-900 text-cream-50 overflow-hidden">
       <div
         aria-hidden
         className="absolute inset-0 pointer-events-none chatter-bg-breathe"

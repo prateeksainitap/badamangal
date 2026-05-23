@@ -634,6 +634,9 @@ export default async function HomePage() {
           bhandaraName: s.bhandaraName,
           bhandaraNameHi: s.bhandaraNameHi,
         }))}
+        communityMembers={
+          communityCounterRows.find((r) => r.id === "community_total_members")?.count ?? 0
+        }
       />
 
       {/* HAPPENING NOW, crowd-sourced live spots, sits right under
