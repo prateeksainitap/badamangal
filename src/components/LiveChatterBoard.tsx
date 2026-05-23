@@ -1375,13 +1375,37 @@ function ChatBubble({
   // them out of the heatmap + active-areas chips. Locations stay on
   // the DB row for admin triage.
   const showLocationActions = mention.intent !== "ASKING";
+  // Google Maps destination: when we have a precise pin (a WhatsApp
+  // location share or a pasted Google Maps URL) we feed the raw
+  // lat,lng. Otherwise — Ola's text-to-coords geocode of "Aliganj
+  // Purania Chowk" routinely lands a kilometre off the real venue —
+  // we pass the textual locationLabel + ", Lucknow" and let Google's
+  // own (much richer Lucknow corpus) place finder resolve it. For
+  // 0,0 "null-island" spots (bot-ingest before admin sets coords)
+  // text-based search is the only sensible option.
+  const isPrecisePin =
+    mention.locationSource === "whatsapp_share" ||
+    mention.locationSource === "google_maps_url";
+  const validCoords =
+    hasCoords && mention.lat !== 0 && mention.lng !== 0;
+  const destText = mention.locationLabel?.trim() || null;
+  const mapsDestination =
+    isPrecisePin && validCoords
+      ? `${mention.lat},${mention.lng}`
+      : destText
+        ? encodeURIComponent(`${destText}, Lucknow, India`)
+        : validCoords
+          ? `${mention.lat},${mention.lng}`
+          : null;
   const directionsHref =
-    showLocationActions && hasCoords
-      ? `https://www.google.com/maps/dir/?api=1&destination=${mention.lat},${mention.lng}`
+    showLocationActions && mapsDestination
+      ? `https://www.google.com/maps/dir/?api=1&destination=${mapsDestination}`
       : null;
   const photoHref =
-    showLocationActions && hasCoords
-      ? `https://www.google.com/maps?q=${mention.lat},${mention.lng}&z=17`
+    showLocationActions && mapsDestination
+      ? `https://www.google.com/maps?q=${mapsDestination}${
+          isPrecisePin && validCoords ? "&z=17" : ""
+        }`
       : null;
   const showLocationPill = showLocationActions && !!mention.locationLabel;
 
