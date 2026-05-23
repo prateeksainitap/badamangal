@@ -441,7 +441,13 @@ export default async function HomePage() {
     .sort((a, b) =>
       a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0,
     )
-    .slice(0, 30);
+    // 200 matches LiveChatterBoard's MAX_CARDS so the SSR payload
+    // covers a full day's chatter. Previously .slice(0, 30) silently
+    // truncated mentionsInitial regardless of the take: 200 above,
+    // which made the chat panel land at exactly 30 mentions even
+    // when the DB had 60+. This was the actual bug behind the
+    // "messages getting cropped" report.
+    .slice(0, 200);
 
   // Homepage gallery items: combine admin-curated GalleryPhoto rows
   // with spot photos (primary + extras). Admin items first so the
