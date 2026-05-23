@@ -282,7 +282,14 @@ export default async function HomePage() {
   // Live "spots", crowd-sourced sightings of bhandaras happening right
   // now (auto-expire after 8 hours). Already fetched above in the
   // Promise.all batch, just shape into the wire format here.
-  const liveSpots = spotRecords.map((s) => ({
+  // 0,0 coord-less spots (bot-ingested with no EXIF until admin
+  // sets coords) are filtered out HERE because this array feeds
+  // MapBoard pins + HappeningNow's near-me distance math. The chat
+  // panel still gets them via mentionsInitial below, which doesn't
+  // join through liveSpots.
+  const liveSpots = spotRecords
+    .filter((s) => s.lat !== 0 && s.lng !== 0)
+    .map((s) => ({
     id: s.id,
     lat: s.lat,
     lng: s.lng,

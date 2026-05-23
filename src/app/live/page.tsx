@@ -51,6 +51,11 @@ export default async function LivePage() {
       where: {
         status: "APPROVED",
         expiresAt: { gt: now },
+        // /live anchors every card on a map pin. 0,0 (bot-ingested
+        // without coords yet) doesn't belong here — show those
+        // photos on the chat panel only until admin sets coords.
+        lat: { not: 0 },
+        lng: { not: 0 },
       },
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -64,6 +69,8 @@ export default async function LivePage() {
       where: {
         status: "APPROVED",
         expiresAt: { gt: now },
+        lat: { not: 0 },
+        lng: { not: 0 },
       },
     }),
   ]);
