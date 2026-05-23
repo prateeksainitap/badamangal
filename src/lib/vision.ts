@@ -926,6 +926,8 @@ A "bhandara" is a free community meal traditionally served on Bada Mangal Tuesda
   • MENTIONING: "puri-sabzi was amazing today, thanks Sharma ji", "बहुत अच्छा भंडारा था कल"
   • UNRELATED:  "good morning", "happy birthday", "next meeting on Sunday", anything off-topic. Bare acknowledgements ("ok", "ok brother", "thanks", "ji", "hn ji", "acha", "Bta rha", "👍"), one-word reaction replies, sticker reactions, and pure chitchat with no location/food cue stay UNRELATED even in a bhandara group. The give-away for UNRELATED is the absence of BOTH (a) any Lucknow place name AND (b) any bhandara/food/timing/contribution cue.
 
+                ALSO UNRELATED — news-article / press-clipping text. If the message reads like a newspaper headline or article paraphrase ("News article about X and his social organization Y", "Adarsh Dwivedi runs a social initiative", "Vasudhaiva Kutumbakam organisation distributed meals", anything that describes a person, NGO, politician, or campaign in third-person reporter voice rather than telling you where a bhandara is happening), it is UNRELATED. The same applies to recipe instructions, motivational quotes, religious wallpapers transcribed, election material, and corporate / NGO press releases — even when they mention food, Lucknow, or seva. Bhandara mentions are short, local, and actionable ("here", "today", "11 baje"); news-article descriptions are biographical or summary.
+
 Output ONE JSON object only, no markdown, no commentary, no code fence:
 {
   "intent":             "ASKING" | "SHARING" | "MENTIONING" | "UNRELATED",
