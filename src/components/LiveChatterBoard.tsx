@@ -415,6 +415,15 @@ export default function LiveChatterBoard({
   // Same rule for the "Active areas:" chip strip. An asking mention
   // about Hazratganj shouldn't add to Hazratganj's bhandara-activity
   // tally, "asking about" is a question, not a sighting.
+  //
+  // Active-areas chip text strips the landmark prefix down to the
+  // bare area name: "Kothari Bandhu Park, Rajajipuram" → "Rajajipuram",
+  // "2/36 Vibhav Khand, Gomti Nagar" → "Gomti Nagar", "Aashiyana" →
+  // "Aashiyana". Mentions across landmarks in the same area roll up
+  // to one chip with the combined count. The chat-bubble pill still
+  // renders the full precise locationLabel so the reader sees the
+  // actual venue inside the message; only the section-level summary
+  // collapses to the area.
   const areaCounts = useMemo(() => {
     const counts = new Map<
       string,
@@ -422,16 +431,21 @@ export default function LiveChatterBoard({
     >();
     for (const m of mentions) {
       if (m.intent === "ASKING") continue;
-      const label = m.locationLabel?.trim();
-      if (!label) continue;
-      const k = label.toLowerCase();
+      const full = m.locationLabel?.trim();
+      if (!full) continue;
+      // Right-most comma segment carries the area. When there's no
+      // comma (e.g. "Aashiyana") the whole string IS the area.
+      const segments = full.split(",").map((s) => s.trim()).filter(Boolean);
+      const area = segments.length > 0 ? segments[segments.length - 1] : full;
+      if (!area) continue;
+      const k = area.toLowerCase();
       const ts = new Date(m.createdAt).getTime();
       const existing = counts.get(k);
       if (existing) {
         existing.count += 1;
         if (ts > existing.mostRecent) existing.mostRecent = ts;
       } else {
-        counts.set(k, { display: label, count: 1, mostRecent: ts });
+        counts.set(k, { display: area, count: 1, mostRecent: ts });
       }
     }
     return Array.from(counts.values())
