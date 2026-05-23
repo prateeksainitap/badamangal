@@ -532,6 +532,51 @@ export async function POST(req: NextRequest) {
     Date.now() + MENTION_TTL_HOURS * 60 * 60 * 1000,
   );
 
+  // ── 9b. Cross-group forward dedup ─────────────────────────────────
+  // If the SAME sender already posted the EXACT same cleanedText
+  // anywhere (any group) within FORWARD_DEDUP_WINDOW_MS, treat the
+  // new arrival as a duplicate forward. Admins routinely broadcast
+  // a listing share into 10+ WhatsApp groups; without this check
+  // each forward produced its own BhandaraMention row and the live
+  // chat panel showed the same card N times in a row.
+  //
+  // We dedup on (senderName, cleanedText) NOT (senderName, msgId)
+  // because WhatsApp assigns a fresh msgId to every re-forwarded
+  // message, so the existing msgId dedup at step 4 can't catch
+  // these. cleanedText is the classifier's PII-redacted version, so
+  // a phone-number substitution doesn't bust the match.
+  //
+  // Same-group repeats with EVOLVING text (text → pin → follow-up)
+  // are handled by the merge logic immediately below — that's a
+  // shorter window and only fires when the rows would naturally
+  // fold together; this forward-dedup uses a wider window and
+  // requires an exact text match.
+  const FORWARD_DEDUP_WINDOW_MS = 30 * 60 * 1000;
+  if (senderName && finalCleanedText.length > 0) {
+    const cutoff = new Date(Date.now() - FORWARD_DEDUP_WINDOW_MS);
+    const dup = await prisma.bhandaraMention.findFirst({
+      where: {
+        senderName,
+        cleanedText: finalCleanedText,
+        status: "APPROVED",
+        createdAt: { gt: cutoff },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, groupName: true },
+    });
+    if (dup) {
+      return NextResponse.json({
+        ok: true,
+        kind: "duplicate",
+        duplicateOf: dup.id,
+        reason: "cross_group_forward",
+        message: `Same content from "${senderName}" already ingested${
+          dup.groupName ? ` (first seen in "${dup.groupName}")` : ""
+        }; suppressing this re-forward.`,
+      });
+    }
+  }
+
   // ── 10. Sequential-message merge (only on single-location path) ──
   // When the same sender, in the same group, posted a mention within
   // the last GROUP_MERGE_WINDOW_MS, we update THAT row instead of
