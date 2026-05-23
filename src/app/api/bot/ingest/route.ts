@@ -157,10 +157,28 @@ export async function POST(req: NextRequest) {
   // later extract from, slightly more accurate than classifying the
   // raw upload and then re-encoding.
   const base64Webp = webp.toString("base64");
-  const kind: "bhandara" | "spot" =
+  const classified =
     requestedKind === "auto"
       ? await classifyImage(base64Webp, "image/webp")
       : requestedKind;
+
+  // Off-topic guard: when Gemini decided the image isn't actually a
+  // bhandara poster OR a venue snapshot (newspaper clipping, recipe
+  // graphic, political poster, generic religious wallpaper, advert
+  // forwarded into the group, etc), DO NOT create a Bhandara or Spot
+  // row. The bot still gets a 200 + a "kind: ignored" hint so its
+  // notifier can log the rejection without an admin chase. The
+  // uploaded WebP is discarded — we don't even upload to R2.
+  if (classified === "other") {
+    return NextResponse.json({
+      ok: true,
+      kind: "ignored",
+      reason: "non_bhandara_image",
+      message:
+        "Gemini classified the image as off-topic (news clipping / recipe / generic poster / etc). No Bhandara or Spot row created.",
+    });
+  }
+  const kind: "bhandara" | "spot" = classified;
 
   // SHA-256 of the normalised WebP bytes. We embed the first 12 chars
   // into the provenance tag so a second forward of the EXACT same

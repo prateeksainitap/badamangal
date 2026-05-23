@@ -212,11 +212,12 @@ Be conservative: when in doubt, leave the field empty. Do not paste the model's 
 //
 // We ask for a one-word answer so the call is small and fast, most
 // images classify in well under a second of Gemini wall time.
-const CLASSIFY_PROMPT = `You are looking at a photo from a Bada Mangal bhandara group in Lucknow.
-Classify it as exactly ONE of these two categories, output a single lowercase word, nothing else, no punctuation:
-- "bhandara": a designed invite/poster with significant Hindi or English text announcing a bhandara event (date, address, organiser, menu, etc). Mostly graphic + text, often a decorated banner.
-- "spot": a live photograph of people, food, a serving pandal, a crowd, a sign at the venue, or any in-person scene that is NOT a designed invite poster.
-If unsure, pick the one with more weight: heavy text/graphics → bhandara, real-world photo → spot.`;
+const CLASSIFY_PROMPT = `You are looking at a photo forwarded into a Lucknow Bada Mangal bhandara WhatsApp group. Many forwards aren't actually about a bhandara at all — newspaper clippings, recipe screenshots, political posters, memes, generic festival graphics, religious wallpapers, ads — your FIRST job is to filter those out.
+Classify the image as exactly ONE of these three categories. Output a single lowercase word, no punctuation, no prose:
+- "bhandara": a designed invite/poster announcing a SPECIFIC bhandara event in Lucknow (date, address, organiser, menu, time). Mostly graphic + text, often a decorated banner. Must clearly announce a bhandara — not just any religious / festival poster.
+- "spot": a live photograph from the venue — people serving / eating, a saffron pandal, a queue of devotees, a banner / sign AT the venue, cooked food being plated. A real-world snapshot of a bhandara happening.
+- "other": ANYTHING ELSE. Newspaper clippings, recipe / cooking images, political party posters, advertisements, wedding cards, generic Hanuman / Ram wallpapers, religious greetings, memes, status images, food magazine shots, business banners, election material, social-cause infographics, "Vasudhaiva Kutumbakam" type articles, etc. When in doubt, pick "other" — the cost of a wrong "other" is one missed bhandara; the cost of a wrong "bhandara" / "spot" is junk on the public feed.
+Rule of thumb: a "bhandara" or "spot" image must SHOW a Lucknow bhandara — the event itself or its invitation poster. Anything that's just topically adjacent (devotional content, social-cause content, food in general) is "other".`;
 
 const SPOT_PROMPT = `You are reading a photo someone snapped of a live Bada Mangal bhandara in Lucknow. The photo may show a banner, a serving counter, a crowd, or just food. Extract a brief caption and any visible location hints.
 
@@ -399,17 +400,28 @@ function parseOrThrow<S extends z.ZodTypeAny>(
 export async function classifyImage(
   imageBase64: string,
   mediaType: "image/jpeg" | "image/png" | "image/webp",
-): Promise<"bhandara" | "spot"> {
+): Promise<"bhandara" | "spot" | "other"> {
   try {
     const raw = await callGeminiVision(imageBase64, mediaType, CLASSIFY_PROMPT);
     const cleaned = raw.toLowerCase().replace(/[^a-z]/g, "");
+    // Check "other" first — both other words ("bhandara", "spot")
+    // never appear as substrings of "other". Order matters because
+    // we want "other" to win cleanly even if Gemini hedges with
+    // "other (looks like a news article)".
+    if (cleaned.includes("other")) return "other";
     if (cleaned.includes("spot")) return "spot";
-    return "bhandara";
+    if (cleaned.includes("bhandara")) return "bhandara";
+    // Unknown response — treat as "other" so junk doesn't leak
+    // through. This is the conservative direction: a missed bhandara
+    // is recoverable (admin can re-add), a wrong public spot isn't.
+    return "other";
   } catch (err) {
     // Don't fail ingest on a classification hiccup, default to
-    // bhandara, which is what 90% of group forwards turn out to be.
-    console.error("[vision.classifyImage] failed, defaulting to bhandara:", err);
-    return "bhandara";
+    // "other" so the row never ships to a public surface — the
+    // bot's notify already pings the admin so genuine bhandaras
+    // can be re-classified manually if the cap fires.
+    console.error("[vision.classifyImage] failed, defaulting to other:", err);
+    return "other";
   }
 }
 
