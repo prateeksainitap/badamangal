@@ -51,12 +51,15 @@ import { geocodeLucknow } from "@/lib/geocodeServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Headroom for the two Gemini calls (classify + extract) each of which
-// now retries up to 3 times across transient 503 overloads. Worst-case
-// wall clock per call: 3 × 12s timeout + 1.5s + 4s backoff ≈ 41.5s; in
-// practice every call completes in under 3s. 50s leaves room for the
-// R2 upload + DB writes that bracket the Gemini calls.
-export const maxDuration = 50;
+// 25s matches the existing tier used by admin/scan, pamphlet, and
+// public/scan-bhandara so we don't spawn a new Vercel function group
+// (Hobby caps total functions per deployment, and each unique
+// maxDuration becomes a separate group). Realistic Gemini retry
+// budget: 3 fast-503 attempts return in ~7s; only a Gemini outright
+// hang on every attempt could exceed 25s, which is rare enough that
+// a truncated retry chain is an acceptable trade for keeping the
+// function count under the cap.
+export const maxDuration = 25;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB before normalisation
