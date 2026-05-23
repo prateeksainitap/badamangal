@@ -114,11 +114,13 @@ export default function StatsSection({ stats }: Props) {
         </div>
 
         {/* Stats grid. Tiles whose underlying number is 0 are hidden so
-            the panel never reads as "nothing is happening".
-            Wrapped in flex+justify-center so the surviving cards stay
-            centred horizontally regardless of how many made the cut. */}
+            the panel never reads as "nothing is happening". Five-tile
+            roster (Listed · Spotted · Areas · Tuesdays · Community)
+            uses a responsive grid: 2 cols on mobile, 3 on tablet,
+            5 across on desktop so the row never leaves an orphan tile
+            on its own line. Auto-rows so the cards align top-to-top. */}
         <ol
-          className="mt-6 flex flex-wrap justify-center gap-3 sm:gap-4"
+          className="mt-6 grid auto-rows-fr gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
         >
           {stats.bhandarasListed > 0 ? (
             <StatCard
@@ -158,6 +160,18 @@ export default function StatsSection({ stats }: Props) {
             suffix={t.stats.tuesdaysOf}
             label={t.stats.tuesdaysSoFar}
           />
+          {/* WhatsApp community member total. Bot pushes this via
+              /api/bot/community-stats; tile is hidden until the bot
+              has actually upserted a non-zero count so we don't
+              render an empty "0 members" placeholder before the first
+              push lands. */}
+          {stats.communityMembers > 0 ? (
+            <StatCard
+              icon={<IconCommunity />}
+              value={format(stats.communityMembers, locale)}
+              label={t.stats.communityMembers}
+            />
+          ) : null}
         </ol>
       </div>
     </section>
@@ -178,15 +192,18 @@ function StatCard({
   note?: string;
 }) {
   return (
-    <li className="group relative rounded-2xl border border-saffron-500/30 bg-cream-50 px-4 py-4 shadow-warm transition-transform duration-300 hover:-translate-y-0.5 w-[calc(50%-0.375rem)] sm:w-56">
+    <li className="group relative rounded-2xl border border-saffron-500/30 bg-cream-50 px-4 py-4 shadow-warm transition-transform duration-300 hover:-translate-y-0.5 h-full">
       {/* Icon badge, uniform saffron */}
       <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-saffron-50 text-saffron-600 border border-saffron-500/40">
         {icon}
       </div>
 
-      {/* Number */}
+      {/* Number — bumped a tier brighter + bolder. Was saffron-600 at
+          2xl/3xl, now sindoor-700 at 3xl/4xl with a warm drop-shadow.
+          On the cream tile this reads as a confident headline number
+          rather than a quiet caption. */}
       <p className="mt-3 flex items-baseline gap-1.5">
-        <span className="font-numerals font-extrabold text-saffron-600 text-2xl sm:text-3xl leading-none tabular-nums">
+        <span className="font-numerals font-extrabold text-sindoor-700 text-3xl sm:text-4xl leading-none tabular-nums drop-shadow-[0_1px_0_rgba(156,42,42,0.08)]">
           {value}
         </span>
         {suffix ? (
@@ -248,6 +265,28 @@ function IconCamera() {
       <circle cx="12" cy="13" r="4" />
       {/* tiny shutter glint dot */}
       <circle cx="17.5" cy="9" r="0.6" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** People-group glyph for the community-members tile. Three silhouettes
+ *  (a foreground head + shoulders + two background heads peeking) to
+ *  signal "many people", inheriting the same stroke + fill language
+ *  as the other tile icons so the row reads as one set. */
+function IconCommunity() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      {/* back-left head */}
+      <circle cx="6.5" cy="9" r="1.8" />
+      <path d="M2.5 16c0-1.7 1.5-3 4-3" />
+      {/* back-right head */}
+      <circle cx="17.5" cy="9" r="1.8" />
+      <path d="M21.5 16c0-1.7-1.5-3-4-3" />
+      {/* foreground head */}
+      <circle cx="12" cy="8" r="2.4" fill="currentColor" fillOpacity="0.15" />
+      <circle cx="12" cy="8" r="2.4" />
+      <path d="M6.5 20c0-2.8 2.5-5 5.5-5s5.5 2.2 5.5 5" />
     </svg>
   );
 }

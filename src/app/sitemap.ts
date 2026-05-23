@@ -86,6 +86,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // footer link). Direct-link access at /pamphlet still works for
     // localhost / internal sharing during the soft-launch phase.
     urlWithAlternates("/spot", { changeFrequency: "weekly", priority: 0.6 }),
+    urlWithAlternates("/volunteer", { changeFrequency: "weekly", priority: 0.6 }),
+    urlWithAlternates("/faq", { changeFrequency: "monthly", priority: 0.55 }),
+    urlWithAlternates("/gallery", { changeFrequency: "daily", priority: 0.6 }),
     urlWithAlternates("/contact", { changeFrequency: "monthly", priority: 0.5 }),
     urlWithAlternates("/resources", { changeFrequency: "weekly", priority: 0.8 }),
     urlWithAlternates("/resources/chalisa", { changeFrequency: "monthly", priority: 0.7 }),

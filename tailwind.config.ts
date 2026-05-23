@@ -21,7 +21,12 @@ const config: Config = {
         gold:    { 100: "#F5EAC9", 500: "#C9A24A" },
         ink:     { 600: "#5A4F46", 900: "#1A1410" },
         cream:   { 50: "#FBF7F0" },
-        leaf:    { 600: "#3F7A3F" },
+        // leaf-600 is brand-correct on cream backgrounds. leaf-400 is
+        // a brighter shade for dark backgrounds (ink-900 band on the
+        // homepage chatter section) where leaf-600 falls below WCAG
+        // AA 4.5:1 contrast — use leaf-400 for leaf-coloured text on
+        // ink-900/black, leaf-600 elsewhere.
+        leaf:    { 400: "#5DAE5D", 600: "#3F7A3F" },
         alert:   { 500: "#C44A2C" },
       },
       fontFamily: {

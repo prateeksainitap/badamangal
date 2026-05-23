@@ -719,6 +719,7 @@ const getAdminTabCounts = cache(async () => {
     organiseNew,
     volunteerNew,
     volunteerPending,
+    mentionsPending,
   ] = await Promise.all([
     prisma.bhandara.count({ where: { status: "PENDING" } }),
     prisma.spot.count({
@@ -737,6 +738,12 @@ const getAdminTabCounts = cache(async () => {
     // count badge on the "👥 Volunteers" pill so the admin sees
     // unactioned applications without having to click in.
     prisma.volunteer.count({ where: { status: "PENDING" } }),
+    // PENDING WhatsApp text-message mentions (fed by /api/bot/message).
+    // Surfaced as a count badge on the "💬 Mentions" link so the
+    // admin sees the chatter-moderation backlog without leaving the
+    // main /admin view. Routes to /admin/mentions (separate page,
+    // not a tab on /admin).
+    prisma.bhandaraMention.count({ where: { status: "PENDING" } }),
   ]);
   return {
     bhandaraPending,
@@ -745,6 +752,7 @@ const getAdminTabCounts = cache(async () => {
     organiseNew,
     volunteerNew,
     volunteerPending,
+    mentionsPending,
   };
 });
 
@@ -803,6 +811,26 @@ async function ModeToggle({
       label: "📱 WhatsApp bot",
       href: "/admin?type=whatsapp",
       count: counts.whatsappBot,
+    },
+    // Mentions is a separate page (/admin/mentions, not a ?type filter
+    // on /admin) so clicking this navigates AWAY from the tab bar. The
+    // tab can never appear active here, by design — it's a discovery
+    // link to the chatter-moderation queue, not part of the bhandara
+    // / spot / bot triage flow.
+    {
+      id: "mentions",
+      label: "💬 Mentions",
+      href: "/admin/mentions",
+      count: counts.mentionsPending,
+    },
+    // Discover-on-the-web tool (Gemini grounded search → PENDING
+    // bhandaras). Separate page like /admin/mentions; no count badge
+    // because it's a manual-run tool, not a queue.
+    {
+      id: "discover",
+      label: "🔎 Discover",
+      href: "/admin/discover",
+      count: 0,
     },
   ] as const;
   return (

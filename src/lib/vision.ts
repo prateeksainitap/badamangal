@@ -247,44 +247,82 @@ async function callGeminiVision(
     throw new Error("GEMINI_API_KEY is not set");
   }
 
-  const resp = await fetch(`${GEMINI_ENDPOINT}?key=${encodeURIComponent(key)}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { text: prompt },
-            // Gemini accepts the inline base64 image as a `inline_data`
-            // part. Same convention as the Anthropic call we replaced.
-            { inline_data: { mime_type: mediaType, data: imageBase64 } },
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        // 4096 not 1200: Gemini in JSON mode writes a touch more
-        // whitespace than Claude did, plus Devanagari description
-        // strings run ~2x the token count of their English glosses.
-        // The previous 1200 cap (carried over from the Claude config)
-        // truncated mid-string on banner-heavy invites, the parser
-        // then threw "Model returned non-JSON". 4096 covers every
-        // real-world invite we've tested. Cost diff is negligible
-        // (output tokens are paid only at $0.0003/1k anyway, and we
-        // rarely exceed ~800 even with the cap raised).
-        maxOutputTokens: 4096,
-        // Native JSON mode, Gemini will (almost always) return a clean
-        // JSON document without code fences or commentary. Still
-        // defensive-parsed below.
-        responseMimeType: "application/json",
-      },
-    }),
-  });
+  // Hard timeout + transient retry, matching the callGeminiText pattern
+  // below. Without these two safeguards admin "Scan & publish" + the
+  // /api/bot/ingest pipeline would 502 on every Gemini 503 overload,
+  // and a hung Gemini connection would burn the Vercel function to
+  // its full timeout before failing. Retries are capped at one extra
+  // attempt with 1.5s backoff to keep total wall-clock bounded;
+  // upstream callers (admin/scan, bot/ingest) have larger maxDuration
+  // budgets so this fits comfortably.
+  const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
+  const MAX_ATTEMPTS = 2;
+  const RETRY_DELAY_MS = 1500;
+  const VISION_TIMEOUT_MS = 12_000;
 
-  if (!resp.ok) {
-    const errText = await resp.text();
+  let resp: Response | null = null;
+  let lastErrText = "";
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      resp = await fetch(
+        `${GEMINI_ENDPOINT}?key=${encodeURIComponent(key)}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          signal: AbortSignal.timeout(VISION_TIMEOUT_MS),
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt },
+                  // Gemini accepts the inline base64 image as a
+                  // `inline_data` part. Same convention as the
+                  // Anthropic call we replaced.
+                  {
+                    inline_data: { mime_type: mediaType, data: imageBase64 },
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              // 4096 not 1200: Gemini in JSON mode writes more
+              // whitespace than Claude did, plus Devanagari runs ~2×
+              // the token count of English. The old 1200 cap truncated
+              // mid-string on banner-heavy invites → parser threw
+              // "Model returned non-JSON". 4096 covers every real-
+              // world invite we've tested.
+              maxOutputTokens: 4096,
+              // Native JSON mode, Gemini will (almost always) return a
+              // clean JSON document without code fences. Still
+              // defensive-parsed below.
+              responseMimeType: "application/json",
+            },
+          }),
+        },
+      );
+    } catch (err) {
+      // AbortError = timeout. Treat as retryable for the same reason
+      // we retry 5xx — Gemini occasionally just hangs.
+      lastErrText = err instanceof Error ? err.message : String(err);
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+        continue;
+      }
+      throw new Error(`Gemini vision fetch failed: ${lastErrText}`);
+    }
+    if (resp.ok) break;
+    lastErrText = await resp.text();
+    if (attempt < MAX_ATTEMPTS && TRANSIENT_STATUSES.has(resp.status)) {
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      continue;
+    }
+    break;
+  }
+
+  if (!resp || !resp.ok) {
     throw new Error(
-      `Gemini API error ${resp.status}: ${errText.slice(0, 300)}`,
+      `Gemini API error ${resp?.status ?? "no-response"}: ${lastErrText.slice(0, 300)}`,
     );
   }
 
@@ -406,23 +444,53 @@ async function callGeminiText(prompt: string): Promise<string> {
     throw new Error("GEMINI_API_KEY is not set");
   }
 
-  const resp = await fetch(`${GEMINI_ENDPOINT}?key=${encodeURIComponent(key)}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 4096,
-        responseMimeType: "application/json",
-      },
-    }),
-  });
+  // Retry once on transient Gemini errors (5xx, 429 "model overloaded").
+  // Permanent failures (400 bad request, 403 auth, 404 model gone) bail
+  // out immediately — retrying those would just waste tokens. Two
+  // attempts is the right cap: Gemini Flash's overload spikes typically
+  // clear within a second or two; longer outages should fail loudly so
+  // the bot's `lastError` path fires its DM-the-owner alert instead of
+  // swallowing the problem for minutes.
+  //
+  // Backoff is small (1.5s) because the bot's user-facing flow is "I
+  // sent a WhatsApp message and want to see it on the heatmap" — every
+  // second added on the server side is felt by the operator. The
+  // common case (no transient) costs zero extra latency.
+  const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
+  const MAX_ATTEMPTS = 2;
+  const RETRY_DELAY_MS = 1500;
 
-  if (!resp.ok) {
-    const errText = await resp.text();
+  let resp: Response | null = null;
+  let lastErrText = "";
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    resp = await fetch(`${GEMINI_ENDPOINT}?key=${encodeURIComponent(key)}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: 4096,
+          responseMimeType: "application/json",
+        },
+      }),
+    });
+    if (resp.ok) break;
+    lastErrText = await resp.text();
+    // Only retry transient errors. The 429 "spend cap exceeded" case
+    // would also retry — that's fine; one extra request to confirm
+    // the cap is a cheap diagnostic and the second 429 surfaces the
+    // same error to the caller.
+    if (attempt < MAX_ATTEMPTS && TRANSIENT_STATUSES.has(resp.status)) {
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      continue;
+    }
+    break;
+  }
+
+  if (!resp || !resp.ok) {
     throw new Error(
-      `Gemini API error ${resp.status}: ${errText.slice(0, 300)}`,
+      `Gemini API error ${resp?.status ?? "no-response"}: ${lastErrText.slice(0, 300)}`,
     );
   }
 
@@ -668,4 +736,456 @@ ${trimmed}
 
   const raw = await callGeminiText(prompt);
   return parseOrThrow(raw, extractedBhandaraSchema);
+}
+
+// ────────────────────────────────────────────────────────────────────
+// WhatsApp text-message classifier (powers /api/bot/message)
+// ────────────────────────────────────────────────────────────────────
+//
+// The image bot routes a forward through extractBhandaraFromImage /
+// extractSpotFromImage based on a coarse classifier; the text bot does
+// the same dance but for chat messages. Three things to figure out from
+// a one-line WhatsApp message:
+//
+//   1. Is this even ABOUT a bhandara? (most group chatter isn't.)
+//   2. If yes, is it ASKING (where/when), SHARING (here's one), or just
+//      MENTIONING (post-event thank-you, photo caption, etc)?
+//   3. Did the message embed a location hint we can extract? (Area name,
+//      landmark, pasted Google Maps URL.)
+//
+// The classifier returns a single JSON object the endpoint can route on
+// without a second Gemini round-trip.
+
+/** Output shape of the text classifier. Kept tight so the endpoint can
+ *  branch on `intent` + `confidence` and pull `extractedAddress` for
+ *  forward-geocoding without ever re-parsing the raw response. */
+export const classifiedTextSchema = z.object({
+  /** ASKING / SHARING / MENTIONING / UNRELATED. UNRELATED short-circuits
+   *  the endpoint, no DB row created. */
+  intent: z
+    .enum(["ASKING", "SHARING", "MENTIONING", "UNRELATED"])
+    .default("UNRELATED"),
+  /** Self-reported 0-1. Endpoint discards anything < 0.4 even when
+   *  the intent isn't UNRELATED — Gemini sometimes guesses ASKING on a
+   *  generic "kya ho raha hai" with no bhandara context. */
+  confidence: z.number().min(0).max(1).default(0),
+  /** Detected language of the original message; used to seed the
+   *  BhandaraMention.language column for downstream rendering. */
+  language: z.enum(["hi", "en", "mixed"]).default("mixed"),
+  /** Best-effort extraction of an address / landmark mentioned in the
+   *  text. Empty when the message has no location hint. Fed to
+   *  geocodeLucknow at the endpoint when no direct lat/lng is available
+   *  on the WhatsApp payload.
+   *
+   *  Kept alongside `extractedAddresses` for backward compatibility:
+   *  this is always the first entry of that array (or empty). New
+   *  callers should prefer `extractedAddresses` so multi-location
+   *  messages don't get truncated. */
+  extractedAddress: z.string().trim().max(200).default(""),
+  /** All distinct locations the message refers to, in order of
+   *  appearance. When a SHARING message lists multiple bhandaras
+   *  ("Bhandara at Aliganj sector E AND Hazratganj GPO"), the
+   *  endpoint geocodes each entry and creates one BhandaraMention
+   *  per location so the heatmap shows separate cells. Capped at
+   *  5 to keep the per-message fan-out bounded. */
+  extractedAddresses: z
+    .array(z.string().trim().min(1).max(200))
+    .max(5)
+    .default([]),
+  /** Human-friendly area label for the UI ("Hazratganj", "near GPO").
+   *  Paired with `extractedAddress`; for multi-location messages the
+   *  per-location labels live in `locationLabels` below. */
+  locationLabel: z.string().trim().max(80).default(""),
+  /** Per-location labels paired 1:1 with `extractedAddresses`. Empty
+   *  string at any index is allowed; the endpoint falls back to the
+   *  reverse-geocoded area name in that case. */
+  locationLabels: z
+    .array(z.string().trim().max(80))
+    .max(5)
+    .default([]),
+  /** Cleaned message: same content as input but with phone numbers,
+   *  email addresses, and obvious PII redacted to `<phone>` / `<email>`.
+   *  Public feed renders this version; admins see the original alongside
+   *  in the moderation queue. */
+  cleanedText: z.string().trim().max(2000).default(""),
+});
+export type ClassifiedText = z.infer<typeof classifiedTextSchema>;
+
+/**
+ * Classify + extract from a free-form WhatsApp message.
+ *
+ * Cost: one Gemini Flash text call (~free under quota). The endpoint
+ * gates each invocation behind BOT_INGEST_SECRET + a per-IP rate
+ * limit, so abuse of this function maps directly to those gates.
+ *
+ * Failure modes:
+ *   • GEMINI_API_KEY missing  → throws; endpoint returns 500.
+ *   • Gemini returns junk JSON → parseOrThrow throws; endpoint returns 502.
+ *   • Empty / >2k message     → throws synchronously; endpoint returns 400.
+ *
+ * The classifier is deliberately conservative on UNRELATED, the cost of
+ * a false ASKING is one extra row in the admin queue; the cost of a
+ * false UNRELATED is a missed live mention. We'd rather over-admit and
+ * let moderation filter.
+ */
+export async function classifyBhandaraMessage(
+  message: string,
+): Promise<ClassifiedText> {
+  const trimmed = message.trim();
+  if (!trimmed) throw new Error("message is empty");
+  if (trimmed.length > 2000) {
+    throw new Error("message is too long (max 2000 characters)");
+  }
+
+  const prompt = `You are reading a single WhatsApp chat message from a Lucknow community group during the Jyeshtha "Bada Mangal" season. The message may be in Hindi (Devanagari or Roman/Hinglish), English, or mixed. Many messages in the group are unrelated to bhandara at all — your first job is to filter those out.
+
+A "bhandara" is a free community meal traditionally served on Bada Mangal Tuesdays. Messages we care about include:
+  • ASKING:     "kahan ho raha hai bada mangal bhandara aaj?", "any bhandara near Hazratganj today?", "भंडारा कहाँ है?"
+  • SHARING:    "Aliganj sector E me bhandara ho raha hai 11 baje se", "bhandara at Ram Mandir, Indira Nagar — until 4pm", attaching a Google Maps URL
+  • MENTIONING: "puri-sabzi was amazing today, thanks Sharma ji", "बहुत अच्छा भंडारा था कल"
+  • UNRELATED:  "good morning", "happy birthday", "next meeting on Sunday", anything off-topic
+
+Output ONE JSON object only, no markdown, no commentary, no code fence:
+{
+  "intent":             "ASKING" | "SHARING" | "MENTIONING" | "UNRELATED",
+  "confidence":         0.0–1.0 (how sure you are about intent),
+  "language":           "hi" | "en" | "mixed",
+  "extractedAddress":   Best-effort address or landmark mentioned in the message. Empty string if none. Examples: "Sector E, Aliganj, Lucknow", "Ram Mandir, Indira Nagar", "near Civil Hospital". When the message lists multiple locations, put the FIRST here and the full list in extractedAddresses below.
+  "extractedAddresses": Array of distinct locations the message refers to, in order of appearance. For single-location messages this is a 1-element array matching extractedAddress. For SHARING messages that list multiple bhandaras ("Aliganj sector E AND Hazratganj GPO", "bhandara at Ram Mandir, also one at Civil Hospital"), include each as a separate entry. Maximum 5. Empty array if no location.
+  "locationLabel":      Short human-friendly area label for the public feed. ≤ 40 chars. Examples: "Aliganj", "near GPO", "Indira Nagar". Empty if no location. Pairs with extractedAddress.
+  "locationLabels":     Per-location labels paired 1:1 with extractedAddresses (same length, same order). Each ≤ 40 chars. Pass empty string at an index if you can't derive a clean label for that one.
+  "cleanedText":        The original message with phone numbers redacted to "<phone>" and email addresses redacted to "<email>". Otherwise verbatim. Preserve original language + script.
+}
+
+Be conservative with intent: when the message could go either way, prefer UNRELATED. Never invent locations: only extract what the message literally states. If multiple locations are mentioned but they're really the same place described two ways ("Ram Mandir Sector E" and "Aliganj Sector E"), keep ONE entry, not two.
+
+Message to classify:
+"""
+${trimmed}
+"""`;
+
+  const raw = await callGeminiText(prompt);
+  return parseOrThrow(raw, classifiedTextSchema);
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Bhandara discovery via Gemini + Google Search grounding
+// ────────────────────────────────────────────────────────────────────
+//
+// Powers /api/admin/discover-bhandaras (admin-only tool). Asks Gemini
+// Flash to use its googleSearch tool to scour the web for Bada Mangal
+// bhandaras happening in Lucknow for a given season, then return a
+// structured list of candidates the admin can one-click into the
+// PENDING queue.
+//
+// Why grounded search vs. Google Custom Search API directly:
+//   • One round-trip returns ranked + deduplicated + summarised
+//     candidates. CSE would return 10 blue links the admin has to
+//     manually open, read, and stitch together.
+//   • Gemini's grounding tool surfaces blog posts, organisation
+//     websites, and community pages CSE wouldn't necessarily rank
+//     for "bada mangal bhandara".
+//   • Free under the Gemini Flash quota for our volume (admin
+//     discovery runs maybe 10-20 times per season).
+//   • Source URLs are returned alongside each candidate so the admin
+//     can verify before approving (the grounding citations come back
+//     in `groundingMetadata.groundingChunks`).
+//
+// Failure modes:
+//   • GEMINI_API_KEY missing  → throws.
+//   • Gemini returns no JSON  → parseOrThrow throws.
+//   • Gemini returns empty `.candidates` → caller renders an empty
+//     state ("no bhandaras found, try a different query").
+
+export const discoveredBhandaraSchema = z.object({
+  /** English name of the bhandara as it appears on whatever source
+   *  Gemini found. ≤ 80 chars. Required (a candidate without a
+   *  name isn't actionable). */
+  name: z.string().trim().min(2).max(80),
+  /** Hindi (Devanagari) name when the source provides one or it's
+   *  easily transliterable. Empty string when unknown — empty signals
+   *  to the admin form that they should fill it. */
+  nameHi: z.string().trim().max(80).default(""),
+  /** Lucknow neighbourhood / locality. Should be one of the curated
+   *  areas when possible (AREA_LIST in this file), but free-form
+   *  values are accepted since web sources rarely match our taxonomy
+   *  exactly. ≤ 60 chars. */
+  area: z.string().trim().max(60).default(""),
+  /** Full street address as printed on the source. ≤ 300 chars.
+   *  Empty when no address could be extracted (still actionable —
+   *  the admin can geocode from area + name in the edit form). */
+  address: z.string().trim().max(300).default(""),
+  /** One landmark phrase if explicitly mentioned. ≤ 120 chars. */
+  landmark: z.string().trim().max(120).default(""),
+  /** Tuesday serving dates as YYYY-MM-DD. Empty array when the
+   *  source doesn't specify (admin fills in via the edit form). */
+  tuesdayDates: z.array(z.string()).default([]),
+  /** "HH:MM" 24h start time. Empty when unknown. */
+  timeStart: z.string().default(""),
+  /** "HH:MM" 24h end time. Empty when unknown. */
+  timeEnd: z.string().default(""),
+  /** Host / organiser name as it appears on the source. ≤ 80 chars. */
+  organizerName: z.string().trim().max(80).default(""),
+  /** Indian mobile number if mentioned on the source. ≤ 20 chars
+   *  (allows formatting like "+91 98xxx xxxxx"). */
+  organizerPhone: z.string().trim().max(20).default(""),
+  /** Free-form descriptive blurb from the source. ≤ 400 chars. */
+  description: z.string().trim().max(400).default(""),
+  /** Source URLs grounding this candidate, max 3, in confidence order.
+   *  Each is a https URL Gemini visited via the grounding tool. The
+   *  admin sees these as small "via …" links under each card so they
+   *  can verify the source before approving. */
+  sources: z
+    .array(
+      z.object({
+        url: z.string().url(),
+        title: z.string().trim().max(200).default(""),
+      }),
+    )
+    .max(3)
+    .default([]),
+  /** Self-reported 0-1. Below 0.5 the admin gets a "low confidence"
+   *  pill on the card; below 0.3 we hide the candidate entirely. */
+  confidence: z.number().min(0).max(1).default(0),
+});
+export type DiscoveredBhandara = z.infer<typeof discoveredBhandaraSchema>;
+
+export const discoveryResultSchema = z.object({
+  candidates: z.array(discoveredBhandaraSchema).default([]),
+  /** Free-form summary of what Gemini learned about the search.
+   *  Surfaces a single-sentence "found 4 bhandaras across 3 sources"
+   *  hint above the cards. */
+  summary: z.string().trim().max(300).default(""),
+});
+export type DiscoveryResult = z.infer<typeof discoveryResultSchema>;
+
+/**
+ * Run a bhandara-discovery search via Gemini with Google Search
+ * grounding. The query is templated against a Lucknow + Bada Mangal
+ * frame so admins can pass a plain area name ("Aliganj") or a year
+ * ("2026") and get back structured candidates.
+ *
+ * Costs: one Gemini Flash call per invocation (free tier). Grounding
+ * adds 1-2s of latency over an ungrounded text call because Gemini
+ * fans out to Google Search internally.
+ */
+export async function discoverBhandarasViaSearch(
+  rawQuery: string,
+  opts?: {
+    year?: number; // defaults to current calendar year
+  },
+): Promise<DiscoveryResult> {
+  const trimmed = rawQuery.trim();
+  if (!trimmed) throw new Error("query is empty");
+  if (trimmed.length > 200) {
+    throw new Error("query is too long (max 200 characters)");
+  }
+  const year = opts?.year ?? new Date().getFullYear();
+
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY is not set");
+
+  // Prompt anchors the search to Lucknow + Bada Mangal so a stray
+  // query like "bhandara" doesn't pull in cross-city results. Output
+  // is strict JSON matching DiscoveredBhandara — same shape as the
+  // existing ExtractedBhandara so the downstream form-fill code path
+  // could be unified later.
+  const prompt = `You are a research assistant helping moderate a directory of "Bada Mangal" bhandaras (free community meals) in Lucknow, India for the Jyeshtha ${year} season.
+
+Use the googleSearch tool to find specific bhandaras matching this query:
+
+QUERY: ${trimmed}
+
+Look at official websites, organisation pages, news articles, blog posts, Facebook events, and community pages. Compile a list of distinct bhandara events (NOT just news articles about the season in general — we want the actual events the public can attend).
+
+For each event, return:
+{
+  "name":           English name as it appears on the source (e.g. "Shrivastav Pariwar Bhandara")
+  "nameHi":         Hindi name in Devanagari if available, or transliterate the English name
+  "area":           Lucknow neighbourhood (Aliganj, Hazratganj, Indira Nagar, Gomti Nagar, etc.)
+  "address":        Full street address if printed on the source
+  "landmark":       One landmark phrase if mentioned ("Near Civil Hospital")
+  "tuesdayDates":   Array of YYYY-MM-DD strings for the Tuesdays this bhandara serves. The 2026 Bada Mangal Tuesdays are 2026-05-05, 2026-05-12, 2026-05-19, 2026-05-26, 2026-06-02, 2026-06-09, 2026-06-16, 2026-06-23.
+  "timeStart":      24h HH:MM start time if mentioned ("11:00")
+  "timeEnd":        24h HH:MM end time if mentioned
+  "organizerName":  Host name if mentioned
+  "organizerPhone": Indian mobile number if mentioned
+  "description":    Short description from the source (max 400 chars)
+  "sources":        Array of 1-3 {url, title} objects you actually used as evidence
+  "confidence":     0.0–1.0, how confident you are this bhandara actually exists at the stated location for ${year}
+}
+
+Output ONE JSON object only, no markdown, no commentary, no code fence:
+{
+  "candidates": [ ... up to 12 entries, sorted by confidence descending ... ],
+  "summary":    "One sentence summary of what you found"
+}
+
+Be conservative: if you can't verify a bhandara from a real source, omit it. NEVER invent addresses or phone numbers. Prefer fewer, well-grounded candidates over many speculative ones. Skip any "bhandara" mentions that are news articles about the season — we only want actual events someone can attend.`;
+
+  const endpoint = `${GEMINI_ENDPOINT}?key=${encodeURIComponent(key)}`;
+  // googleSearch tool turns this into a grounded call. Some
+  // gemini-2.5-flash builds require responseMimeType to be omitted
+  // when tools are present (the grounding interleaves citation
+  // chunks); we ask for plain text and parse the JSON out of the
+  // fenced output below.
+  const resp = await fetch(endpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      tools: [{ googleSearch: {} }],
+      generationConfig: {
+        temperature: 0.2,
+        maxOutputTokens: 4096,
+      },
+    }),
+  });
+
+  if (!resp.ok) {
+    const errText = await resp.text();
+    throw new Error(
+      `Gemini grounded search error ${resp.status}: ${errText.slice(0, 300)}`,
+    );
+  }
+
+  const data = (await resp.json()) as {
+    candidates?: {
+      content?: { parts?: { text?: string }[] };
+      finishReason?: string;
+    }[];
+    promptFeedback?: { blockReason?: string };
+  };
+
+  if (data.promptFeedback?.blockReason) {
+    throw new Error(
+      `Gemini blocked the discovery request: ${data.promptFeedback.blockReason}`,
+    );
+  }
+
+  const candidate = data.candidates?.[0];
+  const finishReason = candidate?.finishReason;
+  const text =
+    candidate?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+  if (!text) {
+    throw new Error("Gemini returned an empty discovery response");
+  }
+  if (finishReason === "MAX_TOKENS") {
+    throw new Error(
+      "Gemini hit maxOutputTokens during discovery, raise the cap or narrow the query.",
+    );
+  }
+
+  // Strip code fences if present, then parse + validate. Same dance
+  // as callGeminiText, kept inline here because we needed the raw
+  // response object to extract groundingMetadata (callGeminiText
+  // discards it).
+  const cleaned = text
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+  return parseOrThrow(cleaned, discoveryResultSchema);
+}
+
+// ────────────────────────────────────────────────────────────────────
+// WhatsApp screenshot extractor (testing path for /api/admin/ingest-screenshot)
+// ────────────────────────────────────────────────────────────────────
+//
+// Powers the admin's "upload a screenshot to test the mention pipeline"
+// flow. The user has WhatsApp chat screenshots they want to feed into
+// the BhandaraMention pipeline WITHOUT waiting for the OpenClaw agent
+// to be wired into live groups. This function reads a WhatsApp
+// conversation screenshot and returns the individual messages so the
+// endpoint can run each one through classifyBhandaraMessage and create
+// real BhandaraMention rows (which then populate the homepage
+// LiveChatterBoard + heatmap).
+//
+// WhatsApp UI conventions Gemini Vision needs to handle:
+//   • Multiple chat bubbles per screenshot, left-aligned (incoming) and
+//     right-aligned (outgoing)
+//   • Sender names above bubbles in group chats (incoming only —
+//     outgoing bubbles don't have a name)
+//   • Timestamps inside the bubble bottom-right ("11:32 AM")
+//   • Group header at top showing group name
+//   • "Location" share cards (map thumbnail + address text inside the
+//     bubble), distinguishable from plain text bubbles
+//   • Reply quotes inside bubbles (a small quoted block at the top
+//     of a reply)
+//   • Forwarded labels
+//
+// We ask Gemini to return the raw conversation text plus best-effort
+// structured per-message metadata. The endpoint then runs each
+// message through classifyBhandaraMessage separately so the existing
+// text-classification path is unchanged.
+
+export const extractedWhatsAppMessageSchema = z.object({
+  /** Display name of the sender as shown above the bubble. Empty
+   *  string for outgoing messages (no sender name shown) or when
+   *  Gemini can't read it. */
+  sender: z.string().trim().max(80).default(""),
+  /** The verbatim message text. PII NOT redacted here — the
+   *  downstream classifyBhandaraMessage redacts before insert. */
+  text: z.string().trim().max(2000).default(""),
+  /** Bubble timestamp as shown in the UI ("11:32 AM", "Yesterday",
+   *  "10/05/2026 16:08"). Free-form because WA's relative timestamps
+   *  defy parsing without the screenshot's capture timestamp. */
+  timestamp: z.string().trim().max(40).default(""),
+  /** True when the bubble was a WhatsApp Location share (map
+   *  thumbnail + address). The endpoint can then ask the admin
+   *  for explicit lat/lng for these (the screenshot itself doesn't
+   *  carry the coordinates — only the rendered map tile does). */
+  isLocationShare: z.boolean().default(false),
+});
+
+export const extractedWhatsAppConversationSchema = z.object({
+  /** Group name from the screenshot's chat header, if visible. */
+  groupName: z.string().trim().max(80).default(""),
+  /** Ordered list of messages as they appear top-to-bottom in the
+   *  screenshot. May span the user's own messages and others'. */
+  messages: z.array(extractedWhatsAppMessageSchema).default([]),
+});
+export type ExtractedWhatsAppConversation = z.infer<
+  typeof extractedWhatsAppConversationSchema
+>;
+
+/**
+ * Extract individual WhatsApp messages from a chat screenshot.
+ *
+ * Returns a structured list the screenshot-ingest endpoint can iterate
+ * over. Empty `messages` array is a valid result (e.g. screenshot of a
+ * call screen, contact list, settings page) — the endpoint surfaces it
+ * as "no messages found" rather than an error.
+ *
+ * Failure modes:
+ *   • GEMINI_API_KEY missing  → throws.
+ *   • Image too large / unreadable → throws (caller wraps in 422).
+ *   • Gemini returns junk JSON → parseOrThrow throws.
+ */
+export async function extractWhatsAppConversationFromImage(
+  imageBase64: string,
+  mediaType: "image/jpeg" | "image/png" | "image/webp",
+): Promise<ExtractedWhatsAppConversation> {
+  const prompt = `You are reading a screenshot of a WhatsApp chat — typically a Lucknow community group during the Bada Mangal season. Extract every visible chat message from the conversation.
+
+For each message bubble in the screenshot, capture:
+  - sender:          The display name shown above the bubble (incoming messages only — outgoing messages have no name; emit "" for those). ≤ 80 chars.
+  - text:            The verbatim message text. Preserve language (Hindi Devanagari, English, Roman/Hinglish — whatever's in the bubble). Skip emoji-only or status-update bubbles. Include reply-quoted parts only when they're the bubble's primary content. ≤ 2000 chars.
+  - timestamp:       The bubble's own timestamp as shown in the UI ("11:32 AM", "Yesterday", "10/05/2026"). ≤ 40 chars. Empty if not visible.
+  - isLocationShare: true ONLY when the bubble shows a WhatsApp Location share (map thumbnail + an address line inside the bubble). For those, put the visible address text in the "text" field.
+
+Also capture the group/chat name from the screen header in "groupName" if visible. ≤ 80 chars.
+
+Output ONE JSON object only, no markdown, no commentary, no code fence:
+{
+  "groupName": "…",
+  "messages": [
+    { "sender": "…", "text": "…", "timestamp": "…", "isLocationShare": false },
+    …
+  ]
+}
+
+Order messages top-to-bottom as they appear in the screenshot. Skip system messages ("Messages and calls are end-to-end encrypted", date dividers, "X joined", "X left", call notifications). Skip empty bubbles. If the screenshot contains no chat bubbles (settings page, contact list, call screen), return {"groupName": "", "messages": []}.`;
+
+  const raw = await callGeminiVision(imageBase64, mediaType, prompt);
+  return parseOrThrow(raw, extractedWhatsAppConversationSchema);
 }

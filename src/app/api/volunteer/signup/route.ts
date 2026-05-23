@@ -36,14 +36,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 5;
 
-// Per-IP signup cap is parked for the Bada Mangal 2026 launch
-// period. Original value was 3 signups per IP per 24h. The cap was
-// hitting legitimate use cases, admin testing, family members
-// signing up from the same WiFi, multiple volunteers from a college
-// hostel or apartment on a shared NAT, etc. Re-enable by uncommenting
-// the constant + the gate in the POST handler below if abuse becomes
-// a real problem.
-// const MAX_SIGNUPS_PER_IP_PER_DAY = 3;
+// Per-IP signup cap — RESTORED for the public soft-launch. Without
+// it, anyone can mint unlimited BM-LKO-XXXXXX codes and each code
+// unlocks the 30 submissions/day + 12 MB photo + 60 MB video upload
+// quota in /api/volunteer/upload-media — a free storage-cost DoS
+// straight into our R2 bucket. 5/day/IP is generous for the
+// "shared WiFi" cases (it'd take a whole family + admin testing on
+// one IP to exhaust 5) while capping worst-case abuse at 5 quotas.
+const MAX_SIGNUPS_PER_IP_PER_DAY = 5;
 
 function jsonError(status: number, error: string, fields?: Record<string, string>) {
   return NextResponse.json({ ok: false, error, fields }, { status });
@@ -87,13 +87,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return jsonError(400, "validation", fields);
   }
 
-  // ── 3. IP capture (no rate-limit gate, parked for launch) ─────
-  // We still hash + persist the IP so the admin can do retroactive
-  // forensics if a fraud wave shows up (group all volunteers
-  // sharing one ipHash, etc.). The throttling itself is off, see
-  // the parked MAX_SIGNUPS_PER_IP_PER_DAY constant above for the
-  // re-enable hook.
+  // ── 3. IP capture + per-IP signup cap ─────────────────────────
+  // The hash is persisted regardless (admin forensics: group all
+  // volunteers sharing one ipHash to spot a fraud wave). On TOP of
+  // that, we throttle to MAX_SIGNUPS_PER_IP_PER_DAY so a leaked /
+  // bot-driven flood can't mint unlimited volunteer codes (each of
+  // which would unlock the per-code submission + upload quotas
+  // downstream). A genuine collision against the cap returns 429
+  // with retryAfter so a real WiFi-shared family knows to retry
+  // tomorrow rather than thinking the form is broken.
   const ip = ipHash(readClientIp(req.headers));
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const recentSignups = await prisma.volunteer.count({
+    where: { ipHash: ip, createdAt: { gt: since } },
+  });
+  if (recentSignups >= MAX_SIGNUPS_PER_IP_PER_DAY) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "rate_limited",
+        detail: `Too many signups from this network in the last 24 hours. Try again tomorrow.`,
+        retryAfterSec: 24 * 60 * 60,
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(24 * 60 * 60) },
+      },
+    );
+  }
 
   // ── 4. Generate a unique code + persist as PROBATIONARY ────────
   //

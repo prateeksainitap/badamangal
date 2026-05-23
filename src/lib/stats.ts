@@ -27,6 +27,11 @@ export type SiteStats = {
   areasTotal: number;
   /** Tuesdays in the 2026 season that are already in the past (IST). */
   tuesdaysSoFar: number;
+  /** Total WhatsApp community + group + channel participants the bot
+   *  is in. Sourced from SiteCounter `community_total_members`, which
+   *  the Baileys bot upserts every 30 minutes via
+   *  /api/bot/community-stats. 0 when the bot hasn't pushed yet. */
+  communityMembers: number;
 };
 
 /* ────────────────────────────────────────────────────────────────────
@@ -95,22 +100,25 @@ export function invalidateHomepageStatsCache(): void {
 }
 
 async function computeHomepageStats(): Promise<SiteStats> {
-  // Pure read on the counter; if the row doesn't exist yet, treat as 0.
-  const counter = await prisma.siteCounter.findUnique({
-    where: { id: "home" },
-    select: { count: true },
-  });
-
   const now = new Date();
   const todayIso = new Date(now.getTime() + 5.5 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
   const pastTuesdays = ALL_TUESDAY_ISO.filter((iso) => iso < todayIso);
 
-  // Fan out the two reads in parallel, both go through the same
-  // Supabase pooler so serialising them would double the round-trip
-  // cost on a cold pool.
-  const [records, spottedCount] = await Promise.all([
+  // Fan out the four reads in parallel — same Supabase pooler, so
+  // serialising them would multiply the round-trip cost on a cold
+  // pool. visitorCounter + communityCounter are both 1-row lookups by
+  // primary key (cheap); bhandara.findMany + spot.count are the work.
+  const [counter, communityCounter, records, spottedCount] = await Promise.all([
+    prisma.siteCounter.findUnique({
+      where: { id: "home" },
+      select: { count: true },
+    }),
+    prisma.siteCounter.findUnique({
+      where: { id: "community_total_members" },
+      select: { count: true },
+    }),
     prisma.bhandara.findMany({
       where: { status: "APPROVED" },
       select: { area: true },
@@ -140,6 +148,7 @@ async function computeHomepageStats(): Promise<SiteStats> {
     areasCovered: areas.size,
     areasTotal: AREAS.length,
     tuesdaysSoFar: pastTuesdays.length,
+    communityMembers: communityCounter?.count ?? 0,
   };
 }
 

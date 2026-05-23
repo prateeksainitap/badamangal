@@ -29,6 +29,13 @@ import { useState } from "react";
 type Props = {
   initialLat: number;
   initialLng: number;
+  /** When true, the lat/lng inputs lose their `required` attribute
+   *  and the helper hint above swaps to "(optional)". Used on the
+   *  spot edit form where a spot without coords still has value
+   *  (caption + photo on the feed; just doesn't appear on the map).
+   *  Default false keeps the bhandara edit form's existing strict
+   *  behavior unchanged. */
+  optional?: boolean;
 };
 
 const LKO_BBOX = {
@@ -47,7 +54,7 @@ function inLucknow(lat: number, lng: number): boolean {
   );
 }
 
-export default function MapLocationInput({ initialLat, initialLng }: Props) {
+export default function MapLocationInput({ initialLat, initialLng, optional = false }: Props) {
   const [lat, setLat] = useState<string>(String(initialLat));
   const [lng, setLng] = useState<string>(String(initialLng));
   const [paste, setPaste] = useState<string>("");
@@ -174,13 +181,18 @@ export default function MapLocationInput({ initialLat, initialLng }: Props) {
       <div className="grid sm:grid-cols-2 gap-4">
         <label className="grid gap-1.5">
           <span className="text-sm text-ink-600">
-            Latitude <span className="text-sindoor-700">*</span>
+            Latitude{" "}
+            {optional ? (
+              <span className="text-ink-600/70">(optional)</span>
+            ) : (
+              <span className="text-sindoor-700">*</span>
+            )}
           </span>
           <input
             name="lat"
             type="number"
             step="any"
-            required
+            required={!optional}
             value={lat}
             onChange={(e) => setLat(e.target.value)}
             className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
@@ -189,13 +201,18 @@ export default function MapLocationInput({ initialLat, initialLng }: Props) {
         </label>
         <label className="grid gap-1.5">
           <span className="text-sm text-ink-600">
-            Longitude <span className="text-sindoor-700">*</span>
+            Longitude{" "}
+            {optional ? (
+              <span className="text-ink-600/70">(optional)</span>
+            ) : (
+              <span className="text-sindoor-700">*</span>
+            )}
           </span>
           <input
             name="lng"
             type="number"
             step="any"
-            required
+            required={!optional}
             value={lng}
             onChange={(e) => setLng(e.target.value)}
             className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"

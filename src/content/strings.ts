@@ -103,6 +103,9 @@ type Dict = {
     areasCovered: string;
     tuesdaysSoFar: string;
     tuesdaysOf: string;
+    /** Label for the community-members stat tile. Number comes from
+     *  SiteCounter `community_total_members` (bot push). */
+    communityMembers: string;
   };
   footer: {
     rights: string;
@@ -316,6 +319,7 @@ const en: Dict = {
     areasCovered: "Areas covered",
     tuesdaysSoFar: "Tuesdays served",
     tuesdaysOf: "of 8",
+    communityMembers: "WhatsApp community members",
   },
   footer: {
     rights: "Made with seva for Lucknow.",
@@ -618,6 +622,7 @@ const hi: Dict = {
     areasCovered: "क्षेत्र शामिल",
     tuesdaysSoFar: "मंगल पूरे हुए",
     tuesdaysOf: "/ 8",
+    communityMembers: "व्हाट्सऐप कम्युनिटी सदस्य",
   },
   footer: {
     rights: "लखनऊ के लिए, सेवा भाव से।",

@@ -149,7 +149,11 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
             because bot-ingested spots usually arrive at lat=lng=0
             (WhatsApp strips EXIF GPS) and the admin needs a 1-click
             way to drop a real pin from a pasted Maps share-link. */}
-        <MapLocationInput initialLat={s.lat} initialLng={s.lng} />
+        <MapLocationInput
+          initialLat={s.lat}
+          initialLng={s.lng}
+          optional
+        />
 
         <Pair
           label="Reporter / sender name"

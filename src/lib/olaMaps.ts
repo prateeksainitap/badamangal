@@ -40,6 +40,20 @@ export const OLA_DEFAULT_STYLE =
 export const OLA_HINDI_STYLE =
   "https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard-hi/style.json";
 
+/**
+ * Dark variant of the standard style. Used by the LiveChatterBoard's
+ * MentionHeatmap on the homepage's dark "What people are talking
+ * about?" band so the map matches the surrounding dark theme. Same
+ * vector tiles, dark cartography — keeps every place label readable
+ * against the cream-text content.
+ */
+export const OLA_DARK_STYLE =
+  "https://api.olamaps.io/tiles/vector/v1/styles/default-dark-standard/style.json";
+
+/** Dark style with Devanagari place names. */
+export const OLA_DARK_HINDI_STYLE =
+  "https://api.olamaps.io/tiles/vector/v1/styles/default-dark-standard-hi/style.json";
+
 let _client: OlaMaps | null = null;
 
 /**

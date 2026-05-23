@@ -31,10 +31,51 @@ export function ipHash(ip: string | null | undefined): string {
     .digest("hex");
 }
 
+/**
+ * Resolve the real client IP from request headers, picking the most
+ * platform-trustworthy source first.
+ *
+ * Why the order matters: a naive `X-Forwarded-For: ...split(",")[0]`
+ * lets an attacker spoof their per-IP rate-limit bucket by including
+ * `X-Forwarded-For: 1.2.3.4` in any request — every quota check then
+ * sees a fresh IP and the limiter is defeated. The platform-set
+ * headers below ARE trustworthy because the user request can't reach
+ * the application without going through the edge that sets them.
+ *
+ * Preference (best → worst):
+ *   1. `x-vercel-forwarded-for` (Vercel edge sets this from the
+ *      actual TCP source; clients can't override).
+ *   2. `cf-connecting-ip` (Cloudflare, same guarantee — only present
+ *      when fronted by CF, harmless otherwise).
+ *   3. `x-nf-client-connection-ip` (Netlify edge equivalent).
+ *   4. `x-real-ip` (nginx/typical reverse proxy header — usually set
+ *      by the LB, not the client, but spoofable on a misconfigured
+ *      setup; we accept it after the platform-specific headers since
+ *      most installs do not allow clients to set it).
+ *   5. `x-forwarded-for` LAST entry (right-most). The right-most
+ *      token is the IP the LAST proxy saw — which on Vercel/Netlify
+ *      IS the real client. The LEFT-most entry is whatever the
+ *      client claimed, which is exactly the spoof we want to avoid.
+ *   6. "unknown" — we never throw because abuse-detection only
+ *      needs a stable bucket per request, and a single bucket for
+ *      "unknown" still prevents the runaway-quota worst case.
+ */
 export function readClientIp(headers: Headers): string {
-  const xff = headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
+  const vercel = headers.get("x-vercel-forwarded-for");
+  if (vercel) return vercel.trim();
+  const cf = headers.get("cf-connecting-ip");
+  if (cf) return cf.trim();
+  const netlify = headers.get("x-nf-client-connection-ip");
+  if (netlify) return netlify.trim();
   const xri = headers.get("x-real-ip");
   if (xri) return xri.trim();
+  const xff = headers.get("x-forwarded-for");
+  if (xff) {
+    const parts = xff
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1];
+  }
   return "unknown";
 }

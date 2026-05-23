@@ -1104,3 +1104,199 @@ export async function unhideGalleryPhotoAction(id: string): Promise<void> {
   revalidatePath("/admin/gallery");
   revalidatePath("/");
 }
+
+// ────────────────────────────────────────────────────────────────────
+// BhandaraMention (WhatsApp text-message ingest) moderation actions
+// ────────────────────────────────────────────────────────────────────
+//
+// Mentions land in PENDING state from /api/bot/message. Admins flip
+// them to APPROVED (visible on public LiveChatterBoard + heatmap) or
+// REJECTED (hidden but kept for audit + classifier-tuning feedback).
+// All three actions revalidate both /admin and / so the homepage feed
+// + heatmap pick up the change on next render.
+
+/** Promote a PENDING mention to APPROVED so it surfaces on the public
+ *  homepage feed + heatmap until `expiresAt`. Idempotent — re-running
+ *  on an already-APPROVED mention is a no-op besides bumping
+ *  approvedAt. */
+export async function approveMentionAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await requireAdmin();
+  await prisma.bhandaraMention.update({
+    where: { id },
+    data: { status: "APPROVED", approvedAt: new Date() },
+  });
+  revalidatePath("/admin");
+  revalidatePath("/");
+}
+
+/** Hide a mention from the public surfaces. Reversible via
+ *  approveMentionAction. We keep the row (not delete) because the
+ *  classifier-feedback loop wants to see what got rejected and why. */
+export async function rejectMentionAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await requireAdmin();
+  await prisma.bhandaraMention.update({
+    where: { id },
+    data: { status: "REJECTED" },
+  });
+  revalidatePath("/admin");
+  revalidatePath("/");
+}
+
+/** Push a mention's `expiresAt` 24 hours into the future from *now*.
+ *  Useful when a particularly good location-share deserves a longer
+ *  lifespan on the heatmap (e.g. a multi-Tuesday recurring bhandara
+ *  that someone shared once on the first Tuesday). Resets the public
+ *  window without re-approving — the mention must already be APPROVED
+ *  for this to surface visibly. */
+export async function extendMentionAction(
+  id: string,
+  _formData?: FormData,
+): Promise<void> {
+  await requireAdmin();
+  await prisma.bhandaraMention.update({
+    where: { id },
+    data: { expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
+  });
+  revalidatePath("/admin");
+  revalidatePath("/");
+}
+
+/** One-shot maintenance action: hard-delete every PENDING mention older
+ *  than 7 days. Mirrors clearBotQueueAction's "wipe the queue" workflow
+ *  for the rare case where the classifier mis-tunes and the queue fills
+ *  with garbage before the admin can triage. APPROVED + REJECTED rows
+ *  are preserved (they're either live or part of the audit trail). */
+export async function purgeStaleMentionsAction(): Promise<void> {
+  await requireAdmin();
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  await prisma.bhandaraMention.deleteMany({
+    where: { status: "PENDING", createdAt: { lt: cutoff } },
+  });
+  revalidatePath("/admin");
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Bhandara discovery (admin /admin/discover → PENDING bhandara)
+// ────────────────────────────────────────────────────────────────────
+//
+// Adds a single discovered candidate (one card from the /admin/discover
+// results) as a PENDING Bhandara row. The admin lands on the edit page
+// immediately after, where MapLocationInput + the rest of the bhandara
+// form let them fill in the missing pieces (coords, menu, exact
+// timings) before clicking Save & publish.
+//
+// Status is PENDING — discovered rows MUST be reviewed before going
+// public, even when Gemini reports high confidence. The grounding
+// source could be a stale 2024 blog post or a misattributed event.
+// The same review gate as bot/ingest rows.
+
+/** Server-action variant: receives the discovered fields via FormData
+ *  (admin-discover client form serialises the candidate as hidden
+ *  inputs). Creates a PENDING Bhandara, embeds a provenance tag in
+ *  description so the admin can spot discovery-sourced rows in the
+ *  main queue, and redirects to /admin/edit/[id]. */
+export async function addDiscoveredBhandaraAction(
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+
+  const str = (k: string): string => String(formData.get(k) ?? "").trim();
+  const name = str("name");
+  if (!name) redirect("/admin/discover?error=missing_name");
+
+  const nameHi = str("nameHi") || null;
+  const area = str("area");
+  const address = str("address") || "Address pending admin review";
+  const addressHi = str("addressHi") || null;
+  const landmark = str("landmark") || null;
+  const organizerName = str("organizerName");
+  const organizerPhone = str("organizerPhone");
+  const description = str("description");
+  const timeStart = str("timeStart") || "11:00";
+  const timeEnd = str("timeEnd") || "";
+
+  // tuesdayDates + sources arrive as JSON-encoded strings from the
+  // hidden inputs (FormData can't carry arrays directly). Parse
+  // defensively; treat malformed JSON as empty arrays rather than
+  // erroring out (loses the dates but creates the row).
+  let tuesdayDates: string[] = [];
+  try {
+    const raw = str("tuesdayDates");
+    tuesdayDates = raw ? (JSON.parse(raw) as string[]) : [];
+    if (!Array.isArray(tuesdayDates)) tuesdayDates = [];
+  } catch {
+    tuesdayDates = [];
+  }
+
+  let sources: { url: string; title?: string }[] = [];
+  try {
+    const raw = str("sources");
+    sources = raw ? (JSON.parse(raw) as typeof sources) : [];
+    if (!Array.isArray(sources)) sources = [];
+  } catch {
+    sources = [];
+  }
+
+  // Provenance tag mirrors the [bot:whatsapp …] grammar so the same
+  // stripBotProvenance regex catches it on every public surface
+  // without any regex changes. The "src:discovery" prefix
+  // distinguishes admin-discovered rows from WhatsApp-ingested ones
+  // in the admin queue (parseBotTag in /admin/page.tsx can be
+  // extended to surface this differently).
+  const timestamp = new Date().toISOString().slice(0, 19) + "Z";
+  const sourceList = sources
+    .slice(0, 3)
+    .map((s) => s.url)
+    .join(", ");
+  const provenanceTag = `[bot:whatsapp · from:admin-discover · src:google-search · ${timestamp}${sourceList ? ` · sources:${sourceList.slice(0, 200)}` : ""}]`;
+  const fullDescription = [description, provenanceTag]
+    .filter(Boolean)
+    .join("\n\n");
+
+  // Slug generation mirrors the bhandara create path: slugify the
+  // name, ensure unique. Discovery flow can legitimately produce two
+  // candidates with the same name (e.g. one bhandara in two areas);
+  // ensureUniqueSlug appends a -2 / -3 suffix as needed.
+  const baseSlug = slugify(name);
+  const slug = await ensureUniqueSlug(baseSlug);
+
+  const row = await prisma.bhandara.create({
+    data: {
+      slug,
+      name,
+      nameHi,
+      description: fullDescription,
+      descriptionHi: null,
+      area: area || "",
+      address,
+      addressHi,
+      landmark,
+      // 0,0 forces the admin to set real coords on the edit page via
+      // MapLocationInput. Discovery results almost never include
+      // accurate lat/lng — extracting "26.876, 80.929" out of a blog
+      // post URL is fragile, so we don't try.
+      lat: 0,
+      lng: 0,
+      tuesdayDates: JSON.stringify(tuesdayDates),
+      timeStart,
+      timeEnd,
+      menu: JSON.stringify([]),
+      menuHi: JSON.stringify([]),
+      organizerName,
+      organizerPhone,
+      photoUrl: null,
+      status: "PENDING",
+    },
+  });
+
+  revalidatePath("/admin");
+  // Drop the admin straight onto the edit page so they can fix
+  // coords + menu + confirm the import landed correctly.
+  redirect(`/admin/edit/${row.id}`);
+}

@@ -34,6 +34,9 @@ import HomepageGallery, { type GalleryItem } from "@/components/HomepageGallery"
 import MapBoard from "@/components/MapBoard";
 import CountdownTimer from "@/components/CountdownTimer";
 import LiveFeedMarquee from "@/components/LiveFeedMarquee";
+import LiveChatterBoard, {
+  type ChatterMention,
+} from "@/components/LiveChatterBoard";
 import SeasonTimeline from "@/components/SeasonTimeline";
 import StatsSection from "@/components/StatsSection";
 import FamousBhandaras from "@/components/FamousBhandaras";
@@ -136,7 +139,7 @@ export default async function HomePage() {
   // round-trips through the Supabase pooler, ~600-900ms of pure wait
   // on cold-start cold-pool. Running them together cuts that to one
   // round-trip's worth of latency.
-  const [records, statsRaw, spotRecords, galleryAdmin, gallerySpotPhotos] = await Promise.all([
+  const [records, statsRaw, spotRecords, galleryAdmin, gallerySpotPhotos, mentionRows, communityCounterRows] = await Promise.all([
     prisma.bhandara.findMany({
       where: { status: "APPROVED" },
       orderBy: [{ isSponsored: "desc" }, { createdAt: "asc" }],
@@ -202,6 +205,62 @@ export default async function HomePage() {
         createdAt: true,
       },
     }),
+    // APPROVED, non-expired BhandaraMention rows for the new homepage
+    // LiveChatterBoard (WhatsApp text-message ingest, fed by
+    // /api/bot/message + classified by Gemini). Cap at 30, the same
+    // ceiling the section's client-side poll uses, so the initial
+    // render shows everything the polling loop would have anyway.
+    // `expiresAt: { gt: now }` mirrors the public /api/mentions/feed
+    // filter; keeps the 24h public-visibility window consistent
+    // between SSR and the live poll.
+    //
+    // Sort by `approvedAt` (NOT createdAt) so freshly-approved
+    // mentions of older PENDING rows show at the top — matches the
+    // semantic the polling loop uses, so SSR and post-hydration state
+    // converge to the same ordering.
+    prisma.bhandaraMention.findMany({
+      where: {
+        status: "APPROVED",
+        expiresAt: { gt: new Date() },
+        approvedAt: { not: null },
+      },
+      orderBy: { approvedAt: "desc" },
+      take: 30,
+      select: {
+        id: true,
+        cleanedText: true,
+        originalText: true,
+        language: true,
+        intent: true,
+        locationLabel: true,
+        lat: true,
+        lng: true,
+        locationSource: true,
+        senderName: true,
+        createdAt: true,
+      },
+    }),
+    // Community member counts for the LiveChatterBoard:
+    //   - `community_total_members` powers the header chip
+    //   - `community_count_<key>` powers each WhatsApp CTA card's
+    //     per-group count (4 rows, one per CTA)
+    // One findMany pulls them all in a single round-trip instead of
+    // five separate queries. The component receives a typed map and
+    // looks each up by stable id.
+    prisma.siteCounter.findMany({
+      where: {
+        id: {
+          in: [
+            "community_total_members",
+            "community_count_bada_mangal_community",
+            "community_count_balaji_bhandara_community",
+            "community_count_bhandara_group",
+            "community_count_bada_mangal_channel",
+          ],
+        },
+      },
+      select: { id: true, count: true },
+    }),
   ]);
 
   // Auto-delist bhandaras whose every service date has already passed
@@ -257,6 +316,70 @@ export default async function HomePage() {
     }))
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
     .slice(0, 18);
+
+  // Initial payload for the LiveChatterBoard. The feed merges two
+  // sources: BhandaraMention rows (WhatsApp text/location messages)
+  // and Spot rows with photos (image-with-coords from the same bot).
+  // Same shape contract as /api/mentions/feed so SSR + client-poll
+  // converge. `kind` discriminates rendering (photo thumbnail +
+  // "view bhandara" link for spots, text-only for mentions).
+  const mentionsInitial: ChatterMention[] = [
+    ...mentionRows.map((m): ChatterMention => ({
+      id: `mention:${m.id}`,
+      kind: "mention",
+      text:
+        m.cleanedText ??
+        m.originalText.split("\n\n[bot:")[0] ??
+        "",
+      language: m.language,
+      intent:
+        m.intent === "ASKING" || m.intent === "SHARING"
+          ? m.intent
+          : "MENTIONING",
+      locationLabel: m.locationLabel,
+      lat: m.lat,
+      lng: m.lng,
+      locationSource: m.locationSource,
+      photoUrl: null,
+      bhandaraSlug: null,
+      bhandaraName: null,
+      senderName: m.senderName,
+      createdAt: m.createdAt.toISOString(),
+    })),
+    // Spots-with-photos go through the same chat panel. We pull from
+    // the spotRecords already fetched above (so no extra DB hit) and
+    // filter to ones with a real photo + non-zero coords (the same
+    // filter the API endpoint applies — keeps SSR + poll responses
+    // identical in shape).
+    ...spotRecords
+      .filter(
+        (s) =>
+          s.photoUrl &&
+          s.lat !== 0 &&
+          s.lng !== 0 &&
+          s.expiresAt > new Date(),
+      )
+      .map((s): ChatterMention => ({
+        id: `spot:${s.id}`,
+        kind: "spot",
+        text: stripBotProvenance(s.caption) || "Bhandara spotted",
+        language: s.language,
+        intent: "SHARING",
+        locationLabel: s.area,
+        lat: s.lat,
+        lng: s.lng,
+        locationSource: "spot_photo",
+        photoUrl: s.photoUrl!,
+        bhandaraSlug: s.bhandara?.slug ?? null,
+        bhandaraName: s.bhandara?.name ?? null,
+        senderName: s.reporterName,
+        createdAt: s.createdAt.toISOString(),
+      })),
+  ]
+    .sort((a, b) =>
+      a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0,
+    )
+    .slice(0, 30);
 
   // Homepage gallery items: combine admin-curated GalleryPhoto rows
   // with spot photos (primary + extras). Admin items first so the
@@ -456,6 +579,26 @@ export default async function HomePage() {
           the discovery surface. Reads locale from context. */}
       <HappeningNow initial={liveSpots} />
 
+      {/* LIVE CHATTER BOARD — promoted ABOVE the listed-bhandaras
+          grid (was previously between LiveFeedMarquee and history
+          teaser, deep in the page). Visitors arriving from search
+          or social land on map + happening-now + LIVE chatter as a
+          single "what's happening right now" stretch, then drop
+          into the curated bhandara list. Per-user feedback this is
+          the most clickable surface; pulling it up here improves
+          discovery of the WhatsApp community CTAs too. */}
+      <LiveChatterBoard
+        initial={mentionsInitial}
+        communityMembers={
+          communityCounterRows.find((r) => r.id === "community_total_members")?.count ?? 0
+        }
+        communityCountsByKey={Object.fromEntries(
+          communityCounterRows
+            .filter((r) => r.id.startsWith("community_count_"))
+            .map((r) => [r.id.replace("community_count_", ""), r.count]),
+        )}
+      />
+
       {/* CARDS, equal-height grid with filters. Locale reads from
           context inside the component. The saffron headline number
           is `listings.length`, ie. the upcoming-only filtered total
@@ -546,8 +689,9 @@ export default async function HomePage() {
       <HomeResourcesTeaser />
 
       {/* LIVE FEED MARQUEE, sits between resources and the editorial
-          history teaser; renders an empty-state band when there are <3
-          entries instead of disappearing. */}
+          history teaser. Returns null and renders nothing when there
+          are < 3 entries (see LiveFeedMarquee.tsx), so on a quiet day
+          this band is invisible rather than a sparse half-empty rail. */}
       <LiveFeedMarquee initial={feedInitial} />
 
       {/* MARIGOLD DIVIDER */}

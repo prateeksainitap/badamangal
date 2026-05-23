@@ -18,19 +18,19 @@
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 export const MAX_PDF_BYTES = 5 * 1024 * 1024;
 
-// HEIC/HEIF were rejected for a while because the server's sharp
-// pipeline couldn't decode them, we now ship a sharp build with
-// libheif bundled (sharp ≥ 0.32 prebuilt for linux-x64 includes it),
-// so iPhone "Most Efficient" defaults work without forcing visitors
-// to flip Camera → Formats → Most Compatible. Client-side compression
-// (lib/imageCompress.ts) decodes HEIC natively on Safari and falls
-// through to the server-side conversion on Chrome / Firefox.
+// IMPORTANT: This list MUST stay aligned with the server allowlist in
+// src/app/api/uploads/route.ts. The aspirational HEIC/HEIF entries
+// here previously let iPhone "Most Efficient" uploads pass client
+// validation, then 415 at the API with a generic error — the user
+// never saw the helpful "switch to Most Compatible" nudge below.
+// Removed so the unsupported-type branch fires and surfaces the HEIC-
+// specific guidance. When the server actually ships a working
+// sharp+libheif pipeline, re-add them here in the same commit that
+// flips the server allowlist.
 const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
-  "image/heic",
-  "image/heif",
 ] as const;
 const PDF_TYPE = "application/pdf";
 

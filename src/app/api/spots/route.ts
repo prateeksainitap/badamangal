@@ -9,6 +9,49 @@ export const runtime = "nodejs";
 
 const SPOT_TTL_HOURS = 8;
 
+/**
+ * Allowlist of host suffixes the public `/api/spots` POST may accept
+ * for `photoUrl` / `extraPhotoUrls`. Without this, an attacker can
+ * submit a Spot pointing `photoUrl` at any tracker / IP-logger /
+ * NSFW image; the homepage's HappeningNow + LiveChatterBoard would
+ * then render `<img src="<attacker URL>">` until the row was caught
+ * in moderation.
+ *
+ * Allowed sources are exactly the hosts our upload pipeline writes
+ * to (R2 + Supabase Storage + our own /uploads path). Relative URLs
+ * starting with "/" are accepted as legacy local-uploaded files.
+ *
+ * Update carefully — adding a host here means we trust its content
+ * to render on the public homepage.
+ */
+const PHOTO_URL_ALLOWED_HOST_SUFFIXES = [
+  ".supabase.co",
+  ".r2.cloudflarestorage.com",
+  ".r2.dev",
+  ".badamangal.com",
+  "badamangal.com",
+];
+
+function isAllowedPhotoUrl(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  // Same-origin uploads (legacy /public/uploads/...).
+  if (trimmed.startsWith("/uploads/") || trimmed.startsWith("/_next/")) {
+    return true;
+  }
+  if (!/^https:\/\//i.test(trimmed)) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return false;
+  }
+  const host = parsed.hostname.toLowerCase();
+  return PHOTO_URL_ALLOWED_HOST_SUFFIXES.some(
+    (suffix) => host === suffix.replace(/^\./, "") || host.endsWith(suffix),
+  );
+}
+
 // Both `photoUrl` and `caption` are individually optional, but the
 // form (SpotQuickForm) requires AT LEAST one of them. The `.refine()`
 // below mirrors that gate on the server so a photo-only submission
@@ -25,6 +68,10 @@ const bodySchema = z
       .string()
       .trim()
       .max(500)
+      .refine(isAllowedPhotoUrl, {
+        message:
+          "Photo URL must point at an allowed host (Supabase / R2 / same-origin).",
+      })
       .optional()
       .or(z.literal("").transform(() => undefined)),
     // Optional extra photo URLs beyond the primary `photoUrl`. The
@@ -32,9 +79,21 @@ const bodySchema = z
     // one and passes the resulting URLs here. Capped at 5 because
     // the live-spot detail view only needs a thumbnail strip, not
     // an album; more than 5 starts to feel like a different feature
-    // (a gallery, which we ARE building separately).
+    // (a gallery, which we ARE building separately). Same host
+    // allowlist as the primary photoUrl so an attacker can't sneak
+    // a tracker URL in via the secondary array.
     extraPhotoUrls: z
-      .array(z.string().trim().min(1).max(500))
+      .array(
+        z
+          .string()
+          .trim()
+          .min(1)
+          .max(500)
+          .refine(isAllowedPhotoUrl, {
+            message:
+              "Extra photo URL must point at an allowed host.",
+          }),
+      )
       .max(5)
       .optional()
       .default([]),
