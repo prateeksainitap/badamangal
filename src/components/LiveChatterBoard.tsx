@@ -94,7 +94,12 @@ type FeedResp = {
 
 const POLL_MS = 12_000;
 const TIME_TICK_MS = 15_000;
-const MAX_CARDS = 24;
+// 200 covers a full Bada Mangal day's chatter (peak Tuesday tops out
+// around 150-250 mentions across 14 WhatsApp groups). The 24h TTL on
+// mention rows naturally bounds the upper end, so the panel never
+// grows past one day even on long-running tabs. Previously 24, which
+// truncated the panel to the last ~2 hours of activity on busy days.
+const MAX_CARDS = 200;
 const NEW_GLOW_MS = 6_000;
 const AUTOSCROLL_THRESHOLD_PX = 80;
 const COUNTUP_DURATION_MS = 1200;

@@ -207,9 +207,12 @@ export default async function HomePage() {
     }),
     // APPROVED, non-expired BhandaraMention rows for the new homepage
     // LiveChatterBoard (WhatsApp text-message ingest, fed by
-    // /api/bot/message + classified by Gemini). Cap at 30, the same
-    // ceiling the section's client-side poll uses, so the initial
-    // render shows everything the polling loop would have anyway.
+    // /api/bot/message + classified by Gemini). Cap at 200 to cover
+    // an entire Bada Mangal day's chatter — the 24h TTL on
+    // expiresAt naturally bounds the upper end and a peak Tuesday
+    // tops out around 150-250 mentions across all groups. Matches
+    // the section's client-side MAX_CARDS so SSR and the polling
+    // loop converge on the same ceiling.
     // `expiresAt: { gt: now }` mirrors the public /api/mentions/feed
     // filter; keeps the 24h public-visibility window consistent
     // between SSR and the live poll.
@@ -225,7 +228,7 @@ export default async function HomePage() {
         approvedAt: { not: null },
       },
       orderBy: { approvedAt: "desc" },
-      take: 30,
+      take: 200,
       select: {
         id: true,
         cleanedText: true,
