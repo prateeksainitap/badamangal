@@ -230,7 +230,16 @@ function avatarInitial(name: string | null | undefined): string {
 function displayName(name: string | null | undefined, isHi: boolean): string {
   const trimmed = (name ?? "").trim();
   if (!trimmed) return isHi ? "अज्ञात" : "Anonymous";
-  return trimmed.length > 22 ? trimmed.slice(0, 21) + "…" : trimmed;
+  // Privacy: only the first name lands on the public chat panel.
+  // WhatsApp push-names commonly arrive as `~ First Last`, `~First Last`,
+  // or even with emoji prefixes / suffixes, so we strip any leading
+  // non-letter-non-digit garbage, then take the first whitespace-
+  // separated word. Surnames never appear publicly even though the DB
+  // row keeps the full name for admin moderation.
+  const cleaned = trimmed.replace(/^[^\p{L}\p{N}]+/u, "");
+  const firstWord = cleaned.split(/\s+/)[0] ?? "";
+  if (!firstWord) return isHi ? "अज्ञात" : "Anonymous";
+  return firstWord.length > 22 ? firstWord.slice(0, 21) + "…" : firstWord;
 }
 
 /** IST day of week, 0–6 (Sun–Sat). Uses Intl rather than computing
