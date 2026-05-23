@@ -33,7 +33,9 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 10;
+// 10s matches Hobby's default, drop the explicit override so this
+// route folds into the default function group rather than creating
+// its own tier. See volunteer/signup for the same rationale.
 
 const MAX_PHOTOS = 10;
 const MAX_VIDEOS = 2;

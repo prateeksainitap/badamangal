@@ -29,10 +29,12 @@ import { ipHash, readClientIp } from "@/lib/crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Pure resize + upload, should never need more than a few seconds.
-// Keep a generous timeout just in case of large source files + slow
-// Supabase round-trips on cold pool.
-export const maxDuration = 15;
+// 25s matches the existing tier used by admin/scan + pamphlet etc.,
+// so this route folds into that function group instead of carving
+// out a new 15s tier (Hobby's 12-function cap counts each unique
+// maxDuration as a separate group). 25s also leaves comfortable
+// headroom for large source files + slow R2 round-trips on cold pool.
+export const maxDuration = 25;
 
 const MAX_INPUT_BYTES = 8 * 1024 * 1024; // 8 MB before sharp re-encode
 const MAX_DIMENSION = 2000;

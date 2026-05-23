@@ -34,7 +34,11 @@ import { generateVolunteerCode } from "@/lib/volunteer-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 5;
+// No maxDuration override — default 10s on Hobby is plenty for the
+// IP-cap check + single DB insert. Removing the explicit value folds
+// this route into Fluid Compute's default function group instead of
+// spawning its own tier (Hobby's 12-function cap counted each unique
+// maxDuration as a separate group, pushing the project over).
 
 // Per-IP signup cap — RESTORED for the public soft-launch. Without
 // it, anyone can mint unlimited BM-LKO-XXXXXX codes and each code

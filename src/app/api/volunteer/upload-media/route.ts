@@ -35,9 +35,12 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Videos can be 30s at decent bitrate → ~30 MB. Generous timeout for
-// the upload itself; sharp work is fast on photos.
-export const maxDuration = 30;
+// 60s matches the existing tier used by news/refresh + admin/page so
+// this route folds into that function group instead of carving out
+// its own 30s tier (Hobby's 12-function cap counts each unique
+// maxDuration as a separate group). Generous headroom for 60 MB
+// video uploads + sharp re-encode on slow networks.
+export const maxDuration = 60;
 
 const MAX_PHOTO_BYTES = 12 * 1024 * 1024;  // 12 MB before sharp re-encode
 const MAX_VIDEO_BYTES = 60 * 1024 * 1024;  // 60 MB before any processing

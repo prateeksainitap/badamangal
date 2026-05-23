@@ -78,12 +78,14 @@ import { invalidateHomepageStatsCache } from "@/lib/stats";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// 20s budget: a single classify+geocode+merge POST spends ~3-4s on
-// Gemini (10s soft cap with retry) + up to ~5s on reverse-geocode +
-// ~2s of DB writes. The default 10s would be cutting it close on
-// transient Gemini-503-retry paths. Caller (the Baileys bot) doesn't
-// care about latency, so a longer budget is the right tradeoff.
-export const maxDuration = 20;
+// 25s matches the existing tier used by bot/ingest + admin/scan +
+// pamphlet so this route folds into that function group instead of
+// carving out its own 20s tier (Hobby's 12-function cap counts each
+// unique maxDuration as a separate group). Budget covers classify
+// (~3-4s on Gemini + retries) + reverse-geocode (~5s) + DB writes
+// (~2s) with comfortable headroom; the Baileys bot caller doesn't
+// care about the extra 5s ceiling.
+export const maxDuration = 25;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 const MAX_TEXT_LEN = 2000;
