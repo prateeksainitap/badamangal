@@ -51,6 +51,12 @@ import { geocodeLucknow } from "@/lib/geocodeServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Headroom for the two Gemini calls (classify + extract) each of which
+// now retries up to 3 times across transient 503 overloads. Worst-case
+// wall clock per call: 3 × 12s timeout + 1.5s + 4s backoff ≈ 41.5s; in
+// practice every call completes in under 3s. 50s leaves room for the
+// R2 upload + DB writes that bracket the Gemini calls.
+export const maxDuration = 50;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB before normalisation

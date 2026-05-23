@@ -253,13 +253,19 @@ async function callGeminiVision(
   // below. Without these two safeguards admin "Scan & publish" + the
   // /api/bot/ingest pipeline would 502 on every Gemini 503 overload,
   // and a hung Gemini connection would burn the Vercel function to
-  // its full timeout before failing. Retries are capped at one extra
-  // attempt with 1.5s backoff to keep total wall-clock bounded;
-  // upstream callers (admin/scan, bot/ingest) have larger maxDuration
-  // budgets so this fits comfortably.
+  // its full timeout before failing.
+  //
+  // Why 3 attempts not 2: a single Gemini 503 overload spike commonly
+  // lasts 5–10 seconds. Two attempts 1.5s apart fall entirely inside
+  // that spike → photo lost (real incident: AMAN's "Virat chauraha"
+  // crowd photo dropped because both attempts hit the same 5s overload
+  // window). Three attempts with exponential-ish backoff (1.5s, 4s)
+  // covers spikes up to ~7s wall clock, which catches most real
+  // overloads while keeping total budget bounded under bot/ingest's
+  // 50s maxDuration.
   const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
-  const MAX_ATTEMPTS = 2;
-  const RETRY_DELAY_MS = 1500;
+  const MAX_ATTEMPTS = 3;
+  const RETRY_DELAYS_MS = [1500, 4000];
   const VISION_TIMEOUT_MS = 12_000;
 
   let resp: Response | null = null;
@@ -308,7 +314,7 @@ async function callGeminiVision(
       // we retry 5xx — Gemini occasionally just hangs.
       lastErrText = err instanceof Error ? err.message : String(err);
       if (attempt < MAX_ATTEMPTS) {
-        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+        await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt - 1] ?? 1500));
         continue;
       }
       throw new Error(`Gemini vision fetch failed: ${lastErrText}`);
@@ -316,7 +322,7 @@ async function callGeminiVision(
     if (resp.ok) break;
     lastErrText = await resp.text();
     if (attempt < MAX_ATTEMPTS && TRANSIENT_STATUSES.has(resp.status)) {
-      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt - 1] ?? 1500));
       continue;
     }
     break;
@@ -470,8 +476,8 @@ async function callGeminiText(prompt: string): Promise<string> {
   // second added on the server side is felt by the operator. The
   // common case (no transient) costs zero extra latency.
   const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
-  const MAX_ATTEMPTS = 2;
-  const RETRY_DELAY_MS = 1500;
+  const MAX_ATTEMPTS = 3;
+  const RETRY_DELAYS_MS = [1500, 4000];
 
   let resp: Response | null = null;
   let lastErrText = "";
@@ -495,7 +501,7 @@ async function callGeminiText(prompt: string): Promise<string> {
     // the cap is a cheap diagnostic and the second 429 surfaces the
     // same error to the caller.
     if (attempt < MAX_ATTEMPTS && TRANSIENT_STATUSES.has(resp.status)) {
-      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt - 1] ?? 1500));
       continue;
     }
     break;
