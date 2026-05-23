@@ -51,18 +51,43 @@ const CREAM_50 = "#FBF7F0";
 
 /**
  * Read a static asset from /public into a data URL Satori can render.
- * Returns null if the file is missing or the read fails so the
- * caller can fall back to an inline SVG fallback instead of crashing
- * the OG endpoint. Used here for the Hanuman PNG.
+ * Returns null if the asset can't be fetched so the caller can fall
+ * back to an inline SVG instead of crashing the OG endpoint.
+ *
+ * Two paths:
+ *   1. Local filesystem read (`process.cwd()/public/...`). Works in
+ *      `next dev` and during prerender. Returns the asset as a
+ *      data URL.
+ *   2. HTTP fetch from the live site. Used on Vercel serverless
+ *      functions where the `/public` directory is NOT bundled into
+ *      the function's filesystem — it's served by Vercel's edge
+ *      CDN at the public URL. The filesystem read silently ENOENT'd
+ *      in prod, dropping every OG render to the SVG fallback even
+ *      though the PNG is in the repo. Fetching the same asset from
+ *      our own domain works around it.
  */
 async function publicAssetDataUrl(
   relPath: string,
   mime: string,
 ): Promise<string | null> {
+  // Filesystem first — dev + build-time prerender succeed here.
   try {
     const abs = path.join(process.cwd(), "public", relPath);
     const buf = await readFile(abs);
     return `data:${mime};base64,${buf.toString("base64")}`;
+  } catch {
+    /* fall through to HTTP fetch */
+  }
+  // HTTP fallback — Vercel-serverless-safe path. Same asset, served
+  // by Vercel's edge CDN instead of the function's filesystem.
+  try {
+    const base =
+      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/+$/, "") ||
+      "https://badamangal.com";
+    const res = await fetch(`${base}/${relPath.replace(/^\/+/, "")}`);
+    if (!res.ok) return null;
+    const ab = await res.arrayBuffer();
+    return `data:${mime};base64,${Buffer.from(ab).toString("base64")}`;
   } catch {
     return null;
   }
