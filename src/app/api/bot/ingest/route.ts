@@ -33,7 +33,6 @@
  * The agent classifies via its prompt; we trust the kind it sends.
  */
 import { NextResponse, type NextRequest } from "next/server";
-import { revalidatePath } from "next/cache";
 import { randomUUID, createHash } from "node:crypto";
 import sharp from "sharp";
 import { prisma } from "@/lib/db";
