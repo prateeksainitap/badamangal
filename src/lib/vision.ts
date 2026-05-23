@@ -829,9 +829,33 @@ export type ClassifiedText = z.infer<typeof classifiedTextSchema>;
  * false UNRELATED is a missed live mention. We'd rather over-admit and
  * let moderation filter.
  */
+/** One prior message in the same group. Used to give the classifier
+ *  conversational context so it can read short replies the way a
+ *  human reader would. Phone numbers / long digit strings get
+ *  redacted before we ship the context to Gemini so we don't leak
+ *  contacts into the model. */
+export type ClassifierContextMessage = {
+  /** Sender display name (e.g. "~ Rohit"). May be truncated. */
+  senderName: string;
+  /** Plain text body. We strip > 9-digit runs to "<phone>" defensively. */
+  text: string;
+};
+
+const MAX_CONTEXT_MESSAGES = 5;
+const PHONE_REDACTION_RE = /\b\d{6,}\b/g;
+
+function sanitizeContextText(text: string): string {
+  return text
+    .replace(PHONE_REDACTION_RE, "<phone>")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+}
+
 export async function classifyBhandaraMessage(
   message: string,
   groupName?: string,
+  recentContext?: ReadonlyArray<ClassifierContextMessage>,
 ): Promise<ClassifiedText> {
   const trimmed = message.trim();
   if (!trimmed) throw new Error("message is empty");
@@ -852,8 +876,28 @@ export async function classifyBhandaraMessage(
     ? `\n\nGroup: "${groupName}"${isBhandaraGroup ? "  (this group is explicitly about Bada Mangal bhandaras — assume bhandara context for ambiguous messages)" : ""}\n`
     : "";
 
+  // Conversation context — last few messages from the SAME group
+  // (oldest first). Lets the classifier read short replies the way
+  // a human would: "Golf city" right after someone asked "polytechnic
+  // ke pass kuch h?" is the sender answering with a location, not a
+  // random place name. Phone numbers are redacted before we ship the
+  // context to Gemini so we don't leak group members' contacts.
+  const ctx = (recentContext ?? [])
+    .slice(-MAX_CONTEXT_MESSAGES)
+    .map((m) => ({
+      senderName: (m.senderName || "?").slice(0, 40),
+      text: sanitizeContextText(m.text || ""),
+    }))
+    .filter((m) => m.text.length > 0);
+  const contextBlock =
+    ctx.length > 0
+      ? `\n\nRecent conversation in this group (oldest first):\n${ctx
+          .map((m) => `  [${m.senderName}]: ${m.text}`)
+          .join("\n")}\n\nUse the conversation above to interpret short replies. A bare 1-3 word message ("Golf city", "udhar nahi", "bta rha") right after someone asked "where?" is almost always the reply to that question — classify as SHARING with the named location, or as ASKING/MENTIONING based on the answer's tone. A bare acknowledgement ("ok", "ji", "acha") even in a hot conversation stays UNRELATED. If the current message clearly STARTS a new topic, ignore the prior conversation.\n`
+      : "";
+
   const prompt = `You are reading a single WhatsApp chat message from a Lucknow community group during the Jyeshtha "Bada Mangal" season. The message may be in Hindi (Devanagari or Roman/Hinglish), English, or mixed. Many messages in the group are unrelated to bhandara at all — your first job is to filter those out.
-${groupBlock}
+${groupBlock}${contextBlock}
 A "bhandara" is a free community meal traditionally served on Bada Mangal Tuesdays. Messages we care about include:
   • ASKING:     "kahan ho raha hai bada mangal bhandara aaj?", "any bhandara near Hazratganj today?", "भंडारा कहाँ है?", and — when the group is bhandara-themed — short location-only queries that don't contain the word "bhandara" but clearly ask about one ("polytechnic ke aas pss ho toh batao", "Alambagh me kahi h kya?", "any in Aashiyana??", "GPO ke around?", "Kamta, Chinhat ya amity ke taraf koi bhandara ho toh batao"). Clarifying questions in a chain ("Amity konsa wala?", "kaunsa Aliganj sector?") are also ASKING. In a bhandara group, asking "X ke pass kuch h?" essentially always means "is there a bhandara near X?"
   • SHARING:    "Aliganj sector E me bhandara ho raha hai 11 baje se", "bhandara at Ram Mandir, Indira Nagar — until 4pm", attaching a Google Maps URL. Also short location-led sharing when the group is bhandara-themed and the message names a place + time ("Kothari Bandhu park, Rajajipuram, 11 baje se", "Civil Hospital ke samne aaj").

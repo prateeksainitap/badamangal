@@ -140,6 +140,13 @@ type IngestBody = {
   /** Optional, set when the WhatsApp message included a location share. */
   locationLat?: number;
   locationLng?: number;
+  /** Optional sliding window of the most recent messages the bot saw
+   *  in the SAME group (oldest first, excluding the current). Lets
+   *  the classifier read short replies in the context of the
+   *  conversation they're answering. The bot caps this at 5 entries
+   *  and 200 chars each; the classifier re-caps + sanitises before
+   *  shipping to Gemini. */
+  recentContext?: { senderName?: string; text?: string }[];
 };
 
 function jsonError(
@@ -351,12 +358,28 @@ export async function POST(req: NextRequest) {
   let classified: import("@/lib/vision").ClassifiedText | null = null;
   if (!hasLucknowShare) {
     try {
-      // Pass groupName so the classifier can charitably interpret
-      // short location-only queries ("polytechnic ke aas pss?") in
-      // bhandara-themed groups as ASKING/SHARING instead of
-      // defaulting to UNRELATED when the message body doesn't
-      // contain the word "bhandara".
-      classified = await classifyBhandaraMessage(text, groupName || undefined);
+      // Pass groupName + the bot's recent-message window so the
+      // classifier can charitably interpret short replies in the
+      // context of the conversation they're answering. "Golf city"
+      // right after someone asked "polytechnic ke pass?" reads as
+      // SHARING; "Acha" / "Ji" stays UNRELATED even if the chat
+      // around them is hot.
+      const recentContext = Array.isArray(body.recentContext)
+        ? body.recentContext
+            .filter(
+              (m): m is { senderName?: string; text: string } =>
+                !!m && typeof m.text === "string" && m.text.length > 0,
+            )
+            .map((m) => ({
+              senderName: (m.senderName || "").slice(0, 80),
+              text: m.text.slice(0, 200),
+            }))
+        : undefined;
+      classified = await classifyBhandaraMessage(
+        text,
+        groupName || undefined,
+        recentContext,
+      );
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       console.error("[bot/message] gemini classify failed", detail);
