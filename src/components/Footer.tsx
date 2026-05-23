@@ -215,6 +215,48 @@ function FooterInner() {
                 </a>
               </div>
             </div>
+
+            {/* WhatsApp communities. Simple text-link list, same visual
+                weight as the Discover/Resources columns. Small green
+                tile keeps the brand cue without making the rows feel
+                like prominent cards. */}
+            <div>
+              <p className="font-mukta uppercase tracking-[0.22em] text-[0.65rem] text-gold-500 font-semibold mb-2">
+                {isHi ? "व्हाट्सऐप पर जुड़ें" : "Join the chat on WhatsApp"}
+              </p>
+              <ul className="grid gap-1.5">
+                {FOOTER_WHATSAPP_LINKS.map((link) => {
+                  const label = isHi ? link.labelHi : link.label;
+                  const kindLabel =
+                    link.kind === "community"
+                      ? isHi ? "कम्युनिटी" : "Community"
+                      : link.kind === "group"
+                        ? isHi ? "ग्रुप" : "Group"
+                        : isHi ? "चैनल" : "Channel";
+                  return (
+                    <li key={link.href}>
+                      <a
+                        href={link.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-ga="footer_whatsapp"
+                        data-ga-kind={link.kind}
+                        data-ga-href={link.href}
+                        aria-label={`${label} on WhatsApp`}
+                        className="group inline-flex items-center gap-2 text-sm text-ink-900 hover:text-saffron-600 transition-colors"
+                        title={label}
+                      >
+                        <FooterKindTile kind={link.kind} />
+                        <span className="truncate">{label}</span>
+                        <span className="text-[10px] uppercase tracking-wider font-semibold text-ink-600/70">
+                          {kindLabel}
+                        </span>
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           </div>
 
           {/* Link columns. Resources gets a 2-cell allocation (because
@@ -271,79 +313,6 @@ function FooterInner() {
             })}
 
           </nav>
-        </div>
-
-        {/* WhatsApp band — full-width row of community tiles. Lifted
-            out of the brand block so it gets its own moment (mirrors
-            the homepage's "Join the chat on WhatsApp" section rhythm)
-            and the brand column doesn't tower over the nav columns.
-            Each tile reads as a small interactive card: kind glyph
-            with WA badge, label + kind chip, hover lift. */}
-        <div className="mt-12 pt-10 border-t border-gold-500/25">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-5">
-            <div>
-              <p className="font-mukta uppercase tracking-[0.22em] text-[0.65rem] text-gold-500 font-semibold">
-                {isHi ? "व्हाट्सऐप पर जुड़ें" : "Join the chat on WhatsApp"}
-              </p>
-              <p className="mt-1.5 font-fraunces font-bold text-lg sm:text-xl text-sindoor-700 leading-tight">
-                {isHi
-                  ? "लखनऊ का सबसे जीवंत बड़ा मंगल समुदाय"
-                  : "Lucknow's most active Bada Mangal circle"}
-              </p>
-            </div>
-            <p className="text-xs text-ink-600 max-w-sm leading-snug">
-              {isHi
-                ? "लाइव भंडारा अपडेट, फ़ोटो, और पिन सीधे आपके फ़ोन पर। अपना सर्किल चुनें।"
-                : "Live bhandara updates, photos and pins, straight to your phone. Pick your circle."}
-            </p>
-          </div>
-          <ul className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            {FOOTER_WHATSAPP_LINKS.map((link) => {
-              const label = isHi ? link.labelHi : link.label;
-              const kindLabel =
-                link.kind === "community"
-                  ? isHi ? "कम्युनिटी" : "Community"
-                  : link.kind === "group"
-                    ? isHi ? "ग्रुप" : "Group"
-                    : isHi ? "चैनल" : "Channel";
-              const ctaLabel =
-                link.kind === "channel"
-                  ? isHi ? "फ़ॉलो" : "Follow"
-                  : isHi ? "जॉइन" : "Join";
-              return (
-                <li key={link.href}>
-                  <a
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-ga="footer_whatsapp"
-                    data-ga-kind={link.kind}
-                    data-ga-href={link.href}
-                    aria-label={`${label} on WhatsApp`}
-                    className="footer-wa-tile group flex items-center gap-3 rounded-xl border border-gold-500/30 bg-cream-50 px-3 py-2.5 hover:border-leaf-600/55 hover:bg-saffron-50/60 hover:-translate-y-0.5 hover:shadow-[0_8px_22px_-12px_rgba(63,122,63,0.55)] transition-all duration-200"
-                    title={label}
-                  >
-                    <FooterKindTile kind={link.kind} />
-                    <span className="flex-1 min-w-0">
-                      <span className="block truncate text-sm font-semibold text-ink-900 group-hover:text-leaf-600 transition-colors leading-tight">
-                        {label}
-                      </span>
-                      <span className="block text-[10px] uppercase tracking-wider font-semibold text-ink-600/80 mt-0.5">
-                        {kindLabel}
-                      </span>
-                    </span>
-                    <span
-                      aria-hidden
-                      className="shrink-0 inline-flex items-center gap-1 rounded-full bg-leaf-600 text-cream-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider shadow-[0_2px_8px_-2px_rgba(63,122,63,0.55)] ring-1 ring-leaf-600/30 transition-shadow group-hover:shadow-[0_4px_12px_-2px_rgba(63,122,63,0.7)]"
-                    >
-                      {ctaLabel}
-                      <span className="translate-x-0 group-hover:translate-x-0.5 transition-transform">→</span>
-                    </span>
-                  </a>
-                </li>
-              );
-            })}
-          </ul>
         </div>
 
         {/* Marigold divider */}

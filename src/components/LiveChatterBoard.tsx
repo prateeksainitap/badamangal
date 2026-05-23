@@ -48,6 +48,7 @@ import {
   useState,
 } from "react";
 import MentionHeatmap from "@/components/MentionHeatmap";
+import { useT } from "@/lib/useT";
 
 export type ChatterMention = {
   id: string;
@@ -80,7 +81,7 @@ const COUNTUP_DURATION_MS = 1200;
  *  Bada Mangal is Tuesday-centric; Saturday added per operator note
  *  (Shani / Hanuman community activity). */
 const LIVE_CHAT_OPEN_DAYS = new Set<number>([2, 6]);
-const DAY_NAMES = [
+const DAY_NAMES_EN = [
   "Sunday",
   "Monday",
   "Tuesday",
@@ -89,6 +90,18 @@ const DAY_NAMES = [
   "Friday",
   "Saturday",
 ];
+const DAY_NAMES_HI = [
+  "रविवार",
+  "सोमवार",
+  "मंगलवार",
+  "बुधवार",
+  "गुरुवार",
+  "शुक्रवार",
+  "शनिवार",
+];
+function dayName(day: number, isHi: boolean): string {
+  return (isHi ? DAY_NAMES_HI : DAY_NAMES_EN)[day] ?? "";
+}
 
 /** Each WhatsApp CTA carries a stable counterKey that matches the
  *  SiteCounter row id (`community_count_<key>`) the bot writes via
@@ -104,7 +117,9 @@ const DAY_NAMES = [
 const WHATSAPP_CTAS: ReadonlyArray<{
   counterKey: string;
   label: string;
+  labelHi: string;
   blurb: string;
+  blurbHi: string;
   href: string;
   kind: "community" | "group" | "channel";
   iconUrl: string | null;
@@ -112,8 +127,11 @@ const WHATSAPP_CTAS: ReadonlyArray<{
   {
     counterKey: "bada_mangal_community",
     label: "Bada Mangal Community",
+    labelHi: "बड़ा मंगल कम्युनिटी",
     blurb:
       "The biggest Lucknow circle for Bada Mangal news and bhandara invites.",
+    blurbHi:
+      "बड़ा मंगल की ख़बरें और भंडारा निमंत्रण का सबसे बड़ा लखनऊ सर्किल।",
     href: "https://chat.whatsapp.com/H3HqNV4rOPi6xWU5O93fFv",
     kind: "community",
     iconUrl: null,
@@ -121,8 +139,11 @@ const WHATSAPP_CTAS: ReadonlyArray<{
   {
     counterKey: "balaji_bhandara_community",
     label: "Balaji ka Bhandara",
+    labelHi: "बालाजी का भंडारा",
     blurb:
       "Volunteer-run hub for Balaji bhandara coordination across the city.",
+    blurbHi:
+      "शहर भर में बालाजी भंडारा समन्वय का स्वयंसेवक केंद्र।",
     href: "https://chat.whatsapp.com/GACGY3qEiIHA5tCxV3FQzB",
     kind: "community",
     iconUrl: null,
@@ -130,8 +151,11 @@ const WHATSAPP_CTAS: ReadonlyArray<{
   {
     counterKey: "bhandara_group",
     label: "Bhandara Group",
+    labelHi: "भंडारा ग्रुप",
     blurb:
       "Standalone group with real-time location and photo drops from the field.",
+    blurbHi:
+      "मैदान से लाइव स्थान और तस्वीरें साझा करने वाला अलग ग्रुप।",
     href: "https://chat.whatsapp.com/FNtgNhFUmqaI6MMUt1M673",
     kind: "group",
     iconUrl: null,
@@ -139,8 +163,11 @@ const WHATSAPP_CTAS: ReadonlyArray<{
   {
     counterKey: "bada_mangal_channel",
     label: "Bada Mangal Channel",
+    labelHi: "बड़ा मंगल चैनल",
     blurb:
       "One-way broadcast for official updates, prep guides and prasad timings.",
+    blurbHi:
+      "आधिकारिक अपडेट, गाइड और प्रसाद के समय का ब्रॉडकास्ट चैनल।",
     href: "https://whatsapp.com/channel/0029Vb7wV4g9sBI6xxYsDw0C",
     kind: "channel",
     iconUrl: null,
@@ -168,19 +195,28 @@ function avatarSlot(seed: string): (typeof AVATAR_PALETTE)[number] {
   return AVATAR_PALETTE[Math.abs(h) % AVATAR_PALETTE.length];
 }
 
-function intentLabel(intent: ChatterMention["intent"]): {
-  text: string;
-  className: string;
-} {
+function intentLabel(
+  intent: ChatterMention["intent"],
+  isHi: boolean,
+): { text: string; className: string } {
   switch (intent) {
     case "ASKING":
-      return { text: "is asking", className: "text-saffron-500" };
+      return {
+        text: isHi ? "पूछ रहे हैं" : "is asking",
+        className: "text-saffron-500",
+      };
     case "SHARING":
       // leaf-400 (not -600) on the dark chatter band so the inline
       // intent label clears WCAG AA 4.5:1 contrast on ink-900.
-      return { text: "is sharing", className: "text-leaf-400" };
+      return {
+        text: isHi ? "बता रहे हैं" : "is sharing",
+        className: "text-leaf-400",
+      };
     default:
-      return { text: "mentioned", className: "text-gold-500" };
+      return {
+        text: isHi ? "ज़िक्र किया" : "mentioned",
+        className: "text-gold-500",
+      };
   }
 }
 
@@ -191,9 +227,9 @@ function avatarInitial(name: string | null | undefined): string {
   return first ? first.toUpperCase() : "?";
 }
 
-function displayName(name: string | null | undefined): string {
+function displayName(name: string | null | undefined, isHi: boolean): string {
   const trimmed = (name ?? "").trim();
-  if (!trimmed) return "Anonymous";
+  if (!trimmed) return isHi ? "अज्ञात" : "Anonymous";
   return trimmed.length > 22 ? trimmed.slice(0, 21) + "…" : trimmed;
 }
 
@@ -255,6 +291,9 @@ export default function LiveChatterBoard({
   const [newSinceScrollAway, setNewSinceScrollAway] = useState(0);
   const chatBodyRef = useRef<HTMLUListElement | null>(null);
 
+  const { locale } = useT();
+  const isHi = locale === "hi";
+
   // Compute the chat-open state ONCE per render. Re-renders happen
   // on every poll tick (12s) + the 15s time tick, so the state
   // refreshes naturally without needing a midnight-IST cron — it
@@ -262,7 +301,9 @@ export default function LiveChatterBoard({
   const today = todayDayIST();
   const isChatOpen = LIVE_CHAT_OPEN_DAYS.has(today);
   const nextOpenDay = nextOpenDayIST();
-  const nextOpenLabel = isChatOpen ? "today" : DAY_NAMES[nextOpenDay];
+  const nextOpenLabel = isChatOpen
+    ? isHi ? "आज" : "today"
+    : dayName(nextOpenDay, isHi);
 
   const tick = useCallback(async () => {
     if (typeof window === "undefined") return;
@@ -409,14 +450,29 @@ export default function LiveChatterBoard({
         <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="grid gap-1.5">
             <h2 className="font-fraunces font-bold text-2xl sm:text-3xl lg:text-4xl text-cream-50 inline-flex items-center flex-wrap gap-x-3 gap-y-1.5 leading-tight">
-              <span>What people are talking about?</span>
-              <SectionLiveBadge />
+              <span>
+                {isHi
+                  ? "लोग क्या बात कर रहे हैं?"
+                  : "What people are talking about?"}
+              </span>
+              <SectionLiveBadge isHi={isHi} />
             </h2>
             <p className="text-sm sm:text-base text-cream-50/75 leading-snug">
-              The pulse of Lucknow&apos;s Bada Mangal community.{" "}
-              <span className="text-saffron-500 font-medium">Every share</span>,{" "}
-              <span className="text-saffron-500 font-medium">every photo</span>,{" "}
-              the second it lands. Auto-curated, profanity-filtered, always on.
+              {isHi ? (
+                <>
+                  लखनऊ के बड़ा मंगल समुदाय की धड़कन।{" "}
+                  <span className="text-saffron-500 font-medium">हर शेयर</span>,{" "}
+                  <span className="text-saffron-500 font-medium">हर तस्वीर</span>
+                  , पल भर में यहाँ। ऑटो-क्यूरेटेड, फ़िल्टर्ड, हमेशा चालू।
+                </>
+              ) : (
+                <>
+                  The pulse of Lucknow&apos;s Bada Mangal community.{" "}
+                  <span className="text-saffron-500 font-medium">Every share</span>,{" "}
+                  <span className="text-saffron-500 font-medium">every photo</span>,{" "}
+                  the second it lands. Auto-curated, profanity-filtered, always on.
+                </>
+              )}
             </p>
           </div>
           {/* Section-header chips. LIVE pill moved into the chat
@@ -425,9 +481,9 @@ export default function LiveChatterBoard({
               These chips remain for at-a-glance photo + community
               totals across the whole section. */}
           <div className="flex items-center gap-2 flex-wrap">
-            {spotCount > 0 ? <PhotoCountChip count={spotCount} /> : null}
+            {spotCount > 0 ? <PhotoCountChip count={spotCount} isHi={isHi} /> : null}
             {communityMembers > 0 ? (
-              <CommunityCountChip count={communityMembers} />
+              <CommunityCountChip count={communityMembers} isHi={isHi} />
             ) : null}
           </div>
         </header>
@@ -437,7 +493,9 @@ export default function LiveChatterBoard({
             them from the surrounding chrome. */}
         {areaCounts.length > 0 ? (
           <div className="mb-6 flex flex-wrap items-center gap-1.5 text-xs">
-            <span className="text-cream-50/60 mr-1">Active areas:</span>
+            <span className="text-cream-50/60 mr-1">
+              {isHi ? "सक्रिय इलाक़े:" : "Active areas:"}
+            </span>
             {areaCounts.map((a) => (
               <span
                 key={a.display}
@@ -484,14 +542,14 @@ export default function LiveChatterBoard({
                   <ChatBubbleGlyph size={18} />
                 </span>
                 <span className="font-fraunces text-cream-50 text-base shrink-0">
-                  Live chat
+                  {isHi ? "लाइव चैट" : "Live chat"}
                 </span>
                 {/* Hide the LIVE pill on a cold-load with no chatter
                     yet — otherwise the header reads "LIVE · 0 mentions"
                     which looks broken. Reappears the instant a poll
                     lands a fresh row. */}
                 {totalToday > 0 ? (
-                  <LivePulseBadge count={totalToday} />
+                  <LivePulseBadge count={totalToday} isHi={isHi} />
                 ) : null}
               </div>
               {isChatOpen ? (
@@ -502,12 +560,14 @@ export default function LiveChatterBoard({
                       className="live-pulse-dot absolute inset-0 rounded-full bg-leaf-400"
                     />
                   </span>
-                  connected
+                  {isHi ? "कनेक्टेड" : "connected"}
                 </span>
               ) : (
                 <span className="text-[11px] text-cream-50/55 inline-flex items-center gap-1.5">
                   <span aria-hidden className="inline-block w-2 h-2 rounded-full bg-cream-50/40" />
-                  offline · resumes {nextOpenLabel}
+                  {isHi
+                    ? `ऑफ़लाइन · ${nextOpenLabel} को फिर शुरू`
+                    : `offline · resumes ${nextOpenLabel}`}
                 </span>
               )}
             </div>
@@ -515,12 +575,26 @@ export default function LiveChatterBoard({
             {/* Offline banner */}
             {!isChatOpen ? (
               <div className="px-4 py-3 border-b border-cream-50/10 bg-gradient-to-r from-cream-50/5 via-cream-50/[0.02] to-cream-50/5 text-xs text-cream-50/75">
-                <span className="font-semibold text-cream-50">
-                  Live chat is on Tuesdays and Saturdays.
-                </span>{" "}
-                Today is {DAY_NAMES[today]}. Recent mentions below stay visible.
-                Chat picks up again on{" "}
-                <span className="text-saffron-500">{nextOpenLabel}</span>.
+                {isHi ? (
+                  <>
+                    <span className="font-semibold text-cream-50">
+                      लाइव चैट मंगलवार और शनिवार को होती है।
+                    </span>{" "}
+                    आज {dayName(today, true)} है। नीचे हाल की चर्चाएँ दिखती रहेंगी।
+                    चैट{" "}
+                    <span className="text-saffron-500">{nextOpenLabel}</span>{" "}
+                    को फिर शुरू होगी।
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold text-cream-50">
+                      Live chat is on Tuesdays and Saturdays.
+                    </span>{" "}
+                    Today is {dayName(today, false)}. Recent mentions below stay visible.
+                    Chat picks up again on{" "}
+                    <span className="text-saffron-500">{nextOpenLabel}</span>.
+                  </>
+                )}
               </div>
             ) : null}
 
@@ -539,8 +613,12 @@ export default function LiveChatterBoard({
                   <span aria-hidden className="text-3xl opacity-50">💬</span>
                   <span>
                     {isChatOpen
-                      ? "Quiet on WhatsApp right now. New mentions and photos will slide in here as they arrive."
-                      : `Live chat resumes on ${nextOpenLabel}. Recent mentions will appear here when activity restarts.`}
+                      ? isHi
+                        ? "अभी व्हाट्सऐप पर शांति है। नई चर्चाएँ और तस्वीरें यहाँ आती जाएँगी।"
+                        : "Quiet on WhatsApp right now. New mentions and photos will slide in here as they arrive."
+                      : isHi
+                        ? `लाइव चैट ${nextOpenLabel} को फिर शुरू होगी। उस दिन यहाँ नई चर्चाएँ दिखेंगी।`
+                        : `Live chat resumes on ${nextOpenLabel}. Recent mentions will appear here when activity restarts.`}
                   </span>
                 </li>
               ) : (
@@ -558,6 +636,7 @@ export default function LiveChatterBoard({
                       mention={m}
                       isNew={isNew}
                       isLast={idx === mentions.length - 1}
+                      isHi={isHi}
                     />
                   );
                 })
@@ -570,15 +649,19 @@ export default function LiveChatterBoard({
                 onClick={scrollToTop}
                 className="absolute top-14 left-1/2 -translate-x-1/2 z-10 rounded-full bg-gradient-to-br from-saffron-500 to-saffron-600 text-cream-50 text-xs font-medium px-3 py-1.5 shadow-warm chatter-new-pill"
               >
-                ↑ {newSinceScrollAway} new{" "}
-                {newSinceScrollAway === 1 ? "message" : "messages"}
+                {isHi
+                  ? `↑ ${newSinceScrollAway} ${newSinceScrollAway === 1 ? "नई चर्चा" : "नई चर्चाएँ"}`
+                  : `↑ ${newSinceScrollAway} new ${newSinceScrollAway === 1 ? "message" : "messages"}`}
               </button>
             ) : null}
           </div>
         </div>
 
         {/* Full-width WhatsApp community section */}
-        <WhatsappCommunitySection countsByKey={communityCountsByKey} />
+        <WhatsappCommunitySection
+          countsByKey={communityCountsByKey}
+          isHi={isHi}
+        />
       </div>
 
       <style jsx>{`
@@ -746,8 +829,10 @@ export default function LiveChatterBoard({
  *  divergence between the two SiteCounter sources. */
 function WhatsappCommunitySection({
   countsByKey,
+  isHi,
 }: {
   countsByKey: Record<string, number>;
+  isHi: boolean;
 }) {
   const total = WHATSAPP_CTAS.reduce(
     (sum, cta) => sum + (countsByKey[cta.counterKey] ?? 0),
@@ -766,33 +851,45 @@ function WhatsappCommunitySection({
           <span className="text-leaf-400 inline-flex">
             <WhatsappGlyph size={22} />
           </span>
-          Join the chat on WhatsApp
+          {isHi ? "व्हाट्सऐप पर जुड़ें" : "Join the chat on WhatsApp"}
         </h3>
         {total > 0 ? (
           // Hero number block: enormous WHITE count with a brighter
-          // emerald glow underneath, plus a LIVE pulse pill. On the
-          // dark chatter band the leaf-green-on-dark we tried first
-          // read as muddy and low-contrast (user feedback). White
-          // + emerald-shadow keeps the brand colour relationship but
-          // delivers the contrast a hero number needs.
+          // emerald glow underneath. On the dark chatter band the
+          // leaf-green-on-dark we tried first read as muddy and
+          // low-contrast (user feedback). White + emerald-shadow
+          // keeps the brand colour relationship but delivers the
+          // contrast a hero number needs.
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span
               className="font-numerals font-extrabold tabular-nums leading-none text-white drop-shadow-[0_0_18px_rgba(74,222,128,0.5)]"
               style={{ fontSize: "clamp(1.75rem, 3vw, 2.5rem)" }}
             >
-              {total.toLocaleString("en-IN")}
+              {total.toLocaleString(isHi ? "hi-IN" : "en-IN")}
             </span>
             <p className="text-sm sm:text-base text-cream-50/85 leading-snug font-medium">
-              Lucknow neighbours already in the chat, sharing live bhandara drops, photos and pins.{" "}
-              <span className="text-cream-50">
-                Pick your circle and join in.
-              </span>
+              {isHi ? (
+                <>
+                  लखनऊ के पड़ोसी पहले से ही चैट में जुड़े हैं, लाइव भंडारा अपडेट, तस्वीरें और पिन साझा कर रहे हैं।{" "}
+                  <span className="text-cream-50">
+                    अपना सर्किल चुनकर जुड़ें।
+                  </span>
+                </>
+              ) : (
+                <>
+                  Lucknow neighbours already in the chat, sharing live bhandara drops, photos and pins.{" "}
+                  <span className="text-cream-50">
+                    Pick your circle and join in.
+                  </span>
+                </>
+              )}
             </p>
           </div>
         ) : (
           <p className="text-sm sm:text-base text-cream-50/80 leading-snug">
-            Hop into the community that fits. Ask where today&apos;s
-            bhandara is, share what you find, or just listen in.
+            {isHi
+              ? "जिस सर्किल में सहज लगें वहाँ जुड़ें। आज का भंडारा कहाँ है पूछें, जो दिखे शेयर करें, या बस सुनते रहें।"
+              : "Hop into the community that fits. Ask where today's bhandara is, share what you find, or just listen in."}
           </p>
         )}
       </div>
@@ -803,6 +900,7 @@ function WhatsappCommunitySection({
             <WhatsappCard
               cta={cta}
               count={countsByKey[cta.counterKey] ?? null}
+              isHi={isHi}
             />
           </li>
         ))}
@@ -814,17 +912,27 @@ function WhatsappCommunitySection({
 function WhatsappCard({
   cta,
   count,
+  isHi,
 }: {
   cta: (typeof WHATSAPP_CTAS)[number];
   count: number | null;
+  isHi: boolean;
 }) {
   const isChannel = cta.kind === "channel";
   const kindLabel =
     cta.kind === "community"
-      ? "Community"
+      ? isHi ? "कम्युनिटी" : "Community"
       : cta.kind === "group"
-        ? "Group"
-        : "Channel";
+        ? isHi ? "ग्रुप" : "Group"
+        : isHi ? "चैनल" : "Channel";
+  const cardLabel = isHi ? cta.labelHi : cta.label;
+  const cardBlurb = isHi ? cta.blurbHi : cta.blurb;
+  const ctaVerb = isChannel
+    ? isHi ? "फ़ॉलो" : "Follow"
+    : isHi ? "जॉइन" : "Join";
+  const memberLabel = isChannel
+    ? isHi ? "सब्सक्राइबर" : "subscribers"
+    : isHi ? "सदस्य" : "members";
   return (
     <a
       href={cta.href}
@@ -837,36 +945,35 @@ function WhatsappCard({
           kind chip on the right. The composite tile makes the kind
           scannable without reading the chip text. */}
       <div className="flex items-start justify-between gap-2 mb-2.5">
-        <WhatsappKindTile kind={cta.kind} iconUrl={cta.iconUrl} label={cta.label} />
+        <WhatsappKindTile kind={cta.kind} iconUrl={cta.iconUrl} label={cardLabel} />
         <span className="text-[9px] font-bold uppercase tracking-wider rounded-full bg-black/50 backdrop-blur-sm text-cream-50/85 px-2 py-0.5">
           {kindLabel}
         </span>
       </div>
 
       <h4 className="font-fraunces text-base sm:text-lg text-cream-50 leading-tight mb-1">
-        {cta.label}
+        {cardLabel}
       </h4>
       <p className="text-xs text-cream-50/65 leading-snug mb-3">
-        {cta.blurb}
+        {cardBlurb}
       </p>
 
-      {/* Bottom row: HERO member count + join CTA. The count is the
-          single most-actionable signal on this card ("3,975 people are
-          already here") so it gets the biggest, boldest typography on
-          the card. Gradient + drop-shadow give it visual lift over the
-          frosted glass; the subscribers/members label sits tucked
-          underneath so the number reads alone at a glance. */}
+      {/* Bottom row: per-card member count + join CTA. Number is sized
+          DOWN from hero, the section total above is the headline; these
+          per-card counts are supporting context (which circle is biggest)
+          and should stay smaller than the total to keep the visual
+          hierarchy. */}
       <div className="flex items-end justify-between gap-3 mt-auto">
         {count !== null && count > 0 ? (
           <span className="inline-flex flex-col items-start leading-none">
             <span
-              className="font-numerals font-extrabold tabular-nums leading-none text-white drop-shadow-[0_0_18px_rgba(74,222,128,0.55)]"
-              style={{ fontSize: "clamp(1.9rem, 3.4vw, 2.5rem)" }}
+              className="font-numerals font-extrabold tabular-nums leading-none text-white drop-shadow-[0_0_12px_rgba(74,222,128,0.45)]"
+              style={{ fontSize: "clamp(1.25rem, 2vw, 1.75rem)" }}
             >
-              {count.toLocaleString("en-IN")}
+              {count.toLocaleString(isHi ? "hi-IN" : "en-IN")}
             </span>
             <span className="mt-1 text-[10px] uppercase tracking-[0.16em] font-semibold text-emerald-300/90">
-              {isChannel ? "subscribers" : "members"}
+              {memberLabel}
             </span>
           </span>
         ) : (
@@ -875,7 +982,7 @@ function WhatsappCard({
           </span>
         )}
         <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-white px-3 py-1.5 text-xs font-semibold shadow-[0_4px_14px_-4px_rgba(16,185,129,0.7)] ring-1 ring-emerald-400/50 shrink-0 hover:from-emerald-400 hover:to-emerald-500 transition-colors">
-          {isChannel ? "Follow" : "Join"} →
+          {ctaVerb} →
         </span>
       </div>
     </a>
@@ -888,7 +995,7 @@ function WhatsappCard({
  *  competing visually with the saffron palette used everywhere else
  *  in the section. Border + shadow give it just enough lift to read
  *  as interactive on a busy backdrop. */
-function LivePulseBadge({ count }: { count: number }) {
+function LivePulseBadge({ count, isHi }: { count: number; isHi: boolean }) {
   return (
     <span className="inline-flex items-center gap-2 rounded-full bg-black text-cream-50 px-3 py-1.5 border border-cream-50/15 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.06)]">
       <span className="relative inline-block w-2 h-2 text-leaf-600">
@@ -898,11 +1005,13 @@ function LivePulseBadge({ count }: { count: number }) {
         />
       </span>
       <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cream-50">
-        Live
+        {isHi ? "लाइव" : "Live"}
       </span>
       <span aria-hidden className="h-3 w-px bg-cream-50/20" />
       <span className="text-xs font-semibold tabular-nums text-cream-50/95">
-        {count} mention{count === 1 ? "" : "s"}
+        {isHi
+          ? `${count} ${count === 1 ? "चर्चा" : "चर्चाएँ"}`
+          : `${count} mention${count === 1 ? "" : "s"}`}
       </span>
     </span>
   );
@@ -913,7 +1022,7 @@ function LivePulseBadge({ count }: { count: number }) {
  *  previously this pill sat next to the 9,652 community total; moved
  *  here so the live-state signal reads as section-wide rather than
  *  tied to that single number. */
-function SectionLiveBadge() {
+function SectionLiveBadge({ isHi }: { isHi: boolean }) {
   return (
     <span className="inline-flex items-center gap-1 px-1.5 py-px rounded-full bg-emerald-400/15 text-emerald-300 text-[9px] font-semibold uppercase tracking-[0.16em] ring-1 ring-emerald-400/40 leading-none">
       <span className="relative inline-block w-1.5 h-1.5">
@@ -922,22 +1031,26 @@ function SectionLiveBadge() {
           className="live-pulse-dot absolute inset-0 rounded-full bg-emerald-400"
         />
       </span>
-      <span className="leading-none py-0.5">live</span>
+      <span className="leading-none py-0.5">{isHi ? "लाइव" : "live"}</span>
     </span>
   );
 }
 
-function PhotoCountChip({ count }: { count: number }) {
+function PhotoCountChip({ count, isHi }: { count: number; isHi: boolean }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 backdrop-blur-sm border border-leaf-400/50 text-leaf-400 px-2.5 py-1 text-xs font-medium shadow-[0_2px_8px_-2px_rgba(0,0,0,0.6)]">
       <span aria-hidden>📷</span>
       <span className="tabular-nums">{count}</span>
-      <span className="text-cream-50/80">live photo{count === 1 ? "" : "s"}</span>
+      <span className="text-cream-50/80">
+        {isHi
+          ? `लाइव ${count === 1 ? "तस्वीर" : "तस्वीरें"}`
+          : `live photo${count === 1 ? "" : "s"}`}
+      </span>
     </span>
   );
 }
 
-function CommunityCountChip({ count }: { count: number }) {
+function CommunityCountChip({ count, isHi }: { count: number; isHi: boolean }) {
   const display = useCountUp(count);
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-black/40 backdrop-blur-sm border border-cream-50/25 text-cream-50 px-2.5 py-1 text-xs font-medium shadow-[0_2px_8px_-2px_rgba(0,0,0,0.6)]">
@@ -945,9 +1058,9 @@ function CommunityCountChip({ count }: { count: number }) {
         <PeopleIcon />
       </span>
       <span className="tabular-nums font-semibold">
-        {display.toLocaleString("en-IN")}
+        {display.toLocaleString(isHi ? "hi-IN" : "en-IN")}
       </span>
-      <span className="text-cream-50/75">members</span>
+      <span className="text-cream-50/75">{isHi ? "सदस्य" : "members"}</span>
     </span>
   );
 }
@@ -978,15 +1091,17 @@ function ChatBubble({
   mention,
   isNew,
   isLast,
+  isHi,
 }: {
   mention: ChatterMention;
   isNew: boolean;
   isLast: boolean;
+  isHi: boolean;
 }) {
-  const intent = intentLabel(mention.intent);
+  const intent = intentLabel(mention.intent, isHi);
   const avatar = avatarSlot(mention.senderName ?? mention.id);
   const initial = avatarInitial(mention.senderName);
-  const name = displayName(mention.senderName);
+  const name = displayName(mention.senderName, isHi);
   const hasCoords = mention.lat !== null && mention.lng !== null;
   // ASKING bubbles must not surface ANY location-based action —
   // no Directions CTA, no map-deep-link on the photo, no location
@@ -1038,10 +1153,10 @@ function ChatBubble({
             target="_blank"
             rel="noopener noreferrer"
             className="shrink-0 inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-saffron-500 to-saffron-600 hover:from-saffron-500 hover:to-saffron-500 text-cream-50 px-2.5 py-1 text-[11px] font-medium shadow-[0_2px_8px_-2px_rgba(242,148,76,0.55)] transition-all"
-            title="Get directions"
+            title={isHi ? "रास्ता पाएँ" : "Get directions"}
           >
             <ArrowIcon />
-            <span className="hidden sm:inline">Directions</span>
+            <span className="hidden sm:inline">{isHi ? "रास्ता" : "Directions"}</span>
           </a>
         ) : null}
       </div>
@@ -1077,19 +1192,19 @@ function ChatBubble({
               {mention.locationLabel}
             </span>
           ) : null}
-          <span>{relativeTime(new Date(mention.createdAt))}</span>
+          <span>{relativeTime(new Date(mention.createdAt), isHi)}</span>
           {mention.bhandaraSlug ? (
             <a
               href={`/bhandara/${mention.bhandaraSlug}`}
               className="ml-0.5 inline-flex items-center gap-0.5 text-leaf-400 hover:text-leaf-400/80 underline decoration-dotted underline-offset-2"
             >
-              View bhandara →
+              {isHi ? "भंडारा देखें →" : "View bhandara →"}
             </a>
           ) : null}
           {mention.kind === "spot" ? (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/50 backdrop-blur-sm text-leaf-400">
               <span aria-hidden>📷</span>
-              Photo
+              {isHi ? "तस्वीर" : "Photo"}
             </span>
           ) : null}
         </div>
@@ -1097,7 +1212,7 @@ function ChatBubble({
 
       {isNew ? (
         <span className="absolute top-1.5 right-3 px-2 py-0.5 rounded-full bg-gradient-to-br from-saffron-500 to-saffron-600 text-cream-50 text-[9px] font-bold uppercase tracking-wider shadow">
-          New
+          {isHi ? "नई" : "New"}
         </span>
       ) : null}
     </li>
@@ -1281,12 +1396,13 @@ function WhatsappBadge() {
   );
 }
 
-function relativeTime(d: Date): string {
+function relativeTime(d: Date, isHi: boolean): string {
   const sec = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (sec < 60) return "just now";
+  if (sec < 60) return isHi ? "अभी" : "just now";
   const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
+  if (min < 60) return isHi ? `${min} मिनट पहले` : `${min}m ago`;
   const h = Math.floor(min / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  if (h < 24) return isHi ? `${h} घंटे पहले` : `${h}h ago`;
+  const days = Math.floor(h / 24);
+  return isHi ? `${days} दिन पहले` : `${days}d ago`;
 }
