@@ -17,23 +17,15 @@
  */
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { editAndApproveSpotAction } from "@/app/admin/actions";
+import { isAdmin } from "@/lib/admin-auth";
 import { stripBotProvenance } from "@/lib/sanitize";
 import SubmitButton from "@/components/admin/SubmitButton";
 import AdminPhotoField from "@/components/admin/AdminPhotoField";
 import MapLocationInput from "@/components/admin/MapLocationInput";
 
 export const dynamic = "force-dynamic";
-const COOKIE = "admin";
-
-async function isAdmin(): Promise<boolean> {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) return false;
-  const c = await cookies();
-  return c.get(COOKIE)?.value === expected;
-}
 
 type PageProps = { params: Promise<{ id: string }> };
 

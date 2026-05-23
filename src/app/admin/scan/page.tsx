@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import ScanReview from "@/components/admin/ScanReview";
+import { isAdmin } from "@/lib/admin-auth";
 import { AREAS } from "@/lib/lucknow";
 import { MENU_ITEMS } from "@/lib/menu";
 import { ALL_TUESDAY_ISO, ALL_SATURDAY_ISO } from "@/lib/dates";
@@ -13,13 +13,8 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-const COOKIE = "admin";
-
 export default async function AdminScanPage() {
-  const expected = process.env.ADMIN_PASSWORD;
-  const c = await cookies();
-  const isAuthed = Boolean(expected) && c.get(COOKIE)?.value === expected;
-  if (!isAuthed) {
+  if (!(await isAdmin())) {
     redirect("/admin");
   }
 
