@@ -579,14 +579,24 @@ export default async function HomePage() {
           the discovery surface. Reads locale from context. */}
       <HappeningNow initial={liveSpots} />
 
-      {/* LIVE CHATTER BOARD — promoted ABOVE the listed-bhandaras
-          grid (was previously between LiveFeedMarquee and history
-          teaser, deep in the page). Visitors arriving from search
-          or social land on map + happening-now + LIVE chatter as a
-          single "what's happening right now" stretch, then drop
-          into the curated bhandara list. Per-user feedback this is
-          the most clickable surface; pulling it up here improves
-          discovery of the WhatsApp community CTAs too. */}
+      {/* CARDS, equal-height grid with filters. Locale reads from
+          context inside the component. The saffron headline number
+          is `listings.length`, ie. the upcoming-only filtered total
+          (matches everything else on the page + the stats panel,
+          past-only bhandaras live exclusively on /archive). */}
+      {listings.length > 0 ? (
+        <BhandaraCardsSection listings={listings} />
+      ) : (
+        <HomeCardsEmpty />
+      )}
+
+      {/* LIVE CHATTER BOARD — sits BELOW the listed-bhandaras grid.
+          (Was briefly promoted above the grid; reverted because the
+          on-the-day chatter, when stale or from a previous Tuesday,
+          misled visitors landing on a non-Bada-Mangal day.) The
+          curated bhandara list reads first as the trustworthy
+          "what's listed" surface, and the live chatter + WhatsApp
+          community CTAs follow as supporting context. */}
       <LiveChatterBoard
         initial={mentionsInitial}
         communityMembers={
@@ -598,17 +608,6 @@ export default async function HomePage() {
             .map((r) => [r.id.replace("community_count_", ""), r.count]),
         )}
       />
-
-      {/* CARDS, equal-height grid with filters. Locale reads from
-          context inside the component. The saffron headline number
-          is `listings.length`, ie. the upcoming-only filtered total
-          (matches everything else on the page + the stats panel,
-          past-only bhandaras live exclusively on /archive). */}
-      {listings.length > 0 ? (
-        <BhandaraCardsSection listings={listings} />
-      ) : (
-        <HomeCardsEmpty />
-      )}
 
       {/* HOMEPAGE GALLERY, masonry of community photos. Mixes
           admin-curated GalleryPhoto rows with spot photos (primary +
