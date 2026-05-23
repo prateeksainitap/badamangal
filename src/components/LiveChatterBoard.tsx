@@ -52,6 +52,7 @@ import GalleryLightbox, {
   type GalleryItem,
 } from "@/components/GalleryLightbox";
 import { useT } from "@/lib/useT";
+import { trackEvent } from "@/lib/ga";
 
 export type ChatterMention = {
   id: string;
@@ -437,6 +438,41 @@ export default function LiveChatterBoard({
     return () => body.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Section-view event — fires ONCE per page load when the live
+  // chat / heatmap section becomes 50%+ visible. Lets us measure
+  // how many homepage visitors actually scroll far enough to see
+  // the live feature, vs how many bail above the fold. Using the
+  // section's root ID (set via id="live-chat" on the outer
+  // <section>) means we don't need a separate ref. IntersectionObserver
+  // is widely supported; we early-return on environments without it
+  // so the rest of the panel still works (a stale Edge / iOS 11
+  // user, etc).
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const node = document.getElementById("live-chat");
+    if (!node) return;
+    let fired = false;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting && e.intersectionRatio >= 0.5 && !fired) {
+            fired = true;
+            trackEvent("section_view_live_chat", {
+              area_chip_count: String(areaCounts.length),
+              mention_count: String(mentions.length),
+              spot_count: String(spotCount),
+            });
+            io.disconnect();
+          }
+        }
+      },
+      { threshold: [0, 0.5, 1] },
+    );
+    io.observe(node);
+    return () => io.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useLayoutEffect(() => {
     const body = chatBodyRef.current;
     if (!body) return;
@@ -651,25 +687,38 @@ export default function LiveChatterBoard({
           </div>
         </header>
 
-        {/* Active area chips. Borderless per design — the dark fill +
-            saffron text + saffron count badge already differentiate
-            them from the surrounding chrome. */}
+        {/* Active area chips. Now clickable — tapping a chip scrolls
+            the chat panel to its newest message and fires a GA
+            event so we can measure which neighbourhoods drive the
+            most attention. Hover lifts the border + saffron text
+            into a brighter saffron-500/85 state. */}
         {areaCounts.length > 0 ? (
           <div className="mb-6 flex flex-wrap items-center gap-1.5 text-xs">
             <span className="text-cream-50/60 mr-1">
               {isHi ? "सक्रिय इलाक़े:" : "Active areas:"}
             </span>
-            {areaCounts.map((a) => (
-              <span
+            {areaCounts.map((a, i) => (
+              <button
                 key={a.display}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-saffron-500 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.6)]"
+                type="button"
+                onClick={scrollToTop}
+                aria-label={
+                  isHi
+                    ? `${a.display}, ${a.count} ज़िक्र`
+                    : `${a.display}, ${a.count} mentions`
+                }
+                data-ga="cta_chatter_area_chip"
+                data-ga-area={a.display}
+                data-ga-count={String(a.count)}
+                data-ga-rank={String(i)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-saffron-500 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.6)] hover:bg-black/65 hover:text-saffron-500/95 hover:ring-1 hover:ring-saffron-500/40 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-500/60"
               >
                 <PinIcon />
                 <span className="font-medium">{a.display}</span>
                 <span className="px-1.5 py-0.5 rounded-full bg-gradient-to-br from-saffron-500 to-saffron-600 text-cream-50 text-[10px] font-semibold leading-none">
                   {a.count}
                 </span>
-              </span>
+              </button>
             ))}
           </div>
         ) : null}
@@ -1599,6 +1648,9 @@ function ChatBubble({
                   type="button"
                   onClick={goPrev}
                   aria-label="Previous photo"
+                  data-ga="cta_chatter_photo_prev"
+                  data-ga-mention-id={mention.id}
+                  data-ga-photo-count={String(photos.length)}
                   className="absolute left-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-black/65 hover:bg-black/85 text-cream-50 text-xs leading-none ring-1 ring-cream-50/20 shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-500"
                 >
                   ‹
@@ -1607,6 +1659,9 @@ function ChatBubble({
                   type="button"
                   onClick={goNext}
                   aria-label="Next photo"
+                  data-ga="cta_chatter_photo_next"
+                  data-ga-mention-id={mention.id}
+                  data-ga-photo-count={String(photos.length)}
                   className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-black/65 hover:bg-black/85 text-cream-50 text-xs leading-none ring-1 ring-cream-50/20 shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-500"
                 >
                   ›
@@ -1628,6 +1683,10 @@ function ChatBubble({
                           setPhotoIdx(i);
                         }}
                         aria-label={`Show photo ${i + 1}`}
+                        data-ga="cta_chatter_photo_dot"
+                        data-ga-mention-id={mention.id}
+                        data-ga-photo-index={String(i)}
+                        data-ga-photo-count={String(photos.length)}
                         className={
                           i === safeIdx
                             ? "w-2 h-2 rounded-full bg-saffron-500 ring-1 ring-saffron-500/60"
