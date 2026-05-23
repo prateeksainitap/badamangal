@@ -143,7 +143,19 @@ export async function GET(req: NextRequest) {
 
   // Fire both queries in parallel — they hit different tables so
   // there's no contention, and serialising would just add latency.
-  const now = new Date();
+  //
+  // `serverNow` is captured BEFORE the queries run and returned to
+  // the client as `fetchedAt`. The client uses it for the next
+  // `?since=…` instead of its own `new Date()`, closing a real race:
+  // if the client set `lastFetchAt` to the response-receive moment,
+  // any mention whose `approvedAt` fell between query-run and
+  // response-receive (typical RTT 200-500 ms) would be skipped by
+  // the next poll. Using a server-clock timestamp from BEFORE the
+  // query guarantees nothing in (serverNow, …) is lost — at worst
+  // a row gets fetched twice and the client's id-based dedup
+  // collapses it.
+  const serverNow = new Date();
+  const now = serverNow;
   const [mentionRows, spotRows] = await Promise.all([
     prisma.bhandaraMention.findMany({
       where: {
@@ -265,7 +277,14 @@ export async function GET(req: NextRequest) {
     .slice(0, limitN);
 
   return NextResponse.json(
-    { count: merged.length, mentions: merged },
+    {
+      count: merged.length,
+      mentions: merged,
+      // Server-clock timestamp captured BEFORE the query ran; the
+      // client passes this back as `?since=` next tick. See the
+      // serverNow comment above.
+      fetchedAt: serverNow.toISOString(),
+    },
     {
       headers: {
         "Cache-Control": "public, s-maxage=5, stale-while-revalidate=15",

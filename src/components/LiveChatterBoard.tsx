@@ -67,7 +67,16 @@ export type ChatterMention = {
   createdAt: string;
 };
 
-type FeedResp = { count: number; mentions: ChatterMention[] };
+type FeedResp = {
+  count: number;
+  mentions: ChatterMention[];
+  /** Server-clock ISO timestamp captured BEFORE the query ran on
+   *  /api/mentions/feed. The polling tick passes this back as
+   *  `?since=` next request to avoid a race where a mention whose
+   *  approvedAt landed between query-run and response-receive
+   *  would be skipped by the next poll. */
+  fetchedAt?: string;
+};
 
 const POLL_MS = 12_000;
 const TIME_TICK_MS = 15_000;
@@ -324,7 +333,15 @@ export default function LiveChatterBoard({
       if (!res.ok) return;
       const data = (await res.json()) as FeedResp;
       if (!aliveRef.current) return;
-      lastFetchAtRef.current = new Date().toISOString();
+      // Use the server-provided `fetchedAt` (captured BEFORE the
+      // query ran) for the next `?since=`. Fall back to the local
+      // clock only if the server didn't return one (old build, etc).
+      // Without this, the millisecond-level race between query-run
+      // and response-receive silently dropped any mention whose
+      // approvedAt landed in that window. id-based dedup further
+      // down still collapses any rows the small overlap fetches twice.
+      lastFetchAtRef.current =
+        data.fetchedAt ?? new Date().toISOString();
       if (data.mentions.length === 0) return;
       const body = chatBodyRef.current;
       const userAtTop = body ? body.scrollTop <= AUTOSCROLL_THRESHOLD_PX : true;
