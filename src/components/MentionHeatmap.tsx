@@ -100,21 +100,51 @@ if (typeof document !== "undefined") {
     const style = document.createElement("style");
     style.dataset.anim = SENTINEL;
     style.textContent = `
+      /* Faster, livelier breathe. Old: 3.6s, scale 1↔1.06 — felt
+         static at a glance. New: 1.6s, scale 1↔1.14, with the
+         saffron glow halo also pulsing on the same cycle so the
+         eye picks up motion even on a quiet panel. */
       @keyframes bm-heat-breathe {
-        0%, 100% { transform: scale(1); opacity: 0.95; }
-        50%      { transform: scale(1.06); opacity: 1; }
+        0%, 100% {
+          transform: scale(1);
+          opacity: 0.9;
+          box-shadow:
+            0 0 8px rgba(242, 148, 76, 0.32),
+            0 2px 6px rgba(0, 0, 0, 0.4);
+        }
+        50% {
+          transform: scale(1.14);
+          opacity: 1;
+          box-shadow:
+            0 0 22px rgba(242, 148, 76, 0.7),
+            0 2px 10px rgba(0, 0, 0, 0.5);
+        }
       }
+      /* Continuous outer halo — every cell now broadcasts a soft
+         expanding ring all the time, not just the <60s-fresh ones.
+         Reads as "live signal" rather than "marker on a map". */
+      @keyframes bm-heat-halo {
+        0%   { transform: translate(-50%, -50%) scale(0.85); opacity: 0.6; }
+        100% { transform: translate(-50%, -50%) scale(1.9);  opacity: 0; }
+      }
+      .bm-heat-halo {
+        animation: bm-heat-halo 1.8s ease-out infinite;
+      }
+      /* Fresh-mention ripple — same shape as before but punched up
+         so a new arrival visibly stands out from the always-on halo:
+         faster ring, brighter alpha at start, wider final scale. */
       @keyframes bm-heat-ripple {
-        0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.85; }
-        100% { transform: translate(-50%, -50%) scale(2.5); opacity: 0; }
+        0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.95; }
+        100% { transform: translate(-50%, -50%) scale(2.8); opacity: 0; }
       }
       .bm-heat-ripple {
-        animation: bm-heat-ripple 1.8s ease-out forwards;
+        animation: bm-heat-ripple 1.2s ease-out forwards;
       }
-      /* Respect reduced-motion: kill the breathing + ripple. Cells
-         still render in their static state, just don't move. */
+      /* Respect reduced-motion: kill every animation. Cells still
+         render in their static state, just don't move. */
       @media (prefers-reduced-motion: reduce) {
-        .bm-heat-disc { animation: none !important; }
+        .bm-heat-disc  { animation: none !important; }
+        .bm-heat-halo  { animation: none !important; opacity: 0 !important; }
         .bm-heat-ripple { animation: none !important; opacity: 0 !important; }
       }
     `;
@@ -238,6 +268,29 @@ function buildCellElement(cell: Cell): HTMLDivElement {
   // re-fires the animation on cells that are still inside the 60s
   // window. Pure decoration; pointer-events off so hovers still hit
   // the inner disc + its tooltip.
+  // Always-on halo: a soft expanding ring every cell broadcasts at
+  // 1.8s cadence. Reads as a live signal rather than a static
+  // marker. Sits BEHIND the inner disc in DOM order — pointer-
+  // events:none so hovers still hit the disc + its tooltip.
+  const halo = document.createElement("span");
+  halo.className = "bm-heat-halo";
+  halo.style.cssText = [
+    "position:absolute",
+    "left:50%",
+    "top:50%",
+    `width:${r}px`,
+    `height:${r}px`,
+    "transform:translate(-50%,-50%) scale(0.85)",
+    "border-radius:9999px",
+    `border:1.5px solid ${withAlpha(ramp.border, 0.55)}`,
+    "pointer-events:none",
+    "opacity:0",
+  ].join(";");
+  relWrap.appendChild(halo);
+
+  // Fresh-mention ripple: punchier ring that only fires when the
+  // cell's most recent mention is < 60s old. Visibly louder than
+  // the always-on halo so a brand-new arrival pops.
   if (isFresh) {
     const ripple = document.createElement("span");
     ripple.className = "bm-heat-ripple";
