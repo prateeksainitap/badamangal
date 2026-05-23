@@ -1157,12 +1157,29 @@ async function SpotsView({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex items-start gap-4 min-w-0">
                     {s.photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={s.photoUrl}
-                        alt=""
-                        className="h-20 w-20 rounded-xl object-cover border border-gold-500/40 shrink-0"
-                      />
+                      // Same clickable thumbnail pattern as the
+                      // Bhandaras queue above — click opens the
+                      // full-resolution image in a new tab so admins
+                      // can verify the photo without leaving the
+                      // moderation flow. The dedicated Edit button
+                      // still handles the row-level edit.
+                      <a
+                        href={s.photoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 group block focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600 rounded-xl"
+                        aria-label="Open full image in a new tab"
+                        title="Open full image"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={s.photoUrl}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          className="h-20 w-20 rounded-xl object-cover border border-gold-500/40 bg-cream-50 group-hover:border-saffron-500 transition-colors"
+                        />
+                      </a>
                     ) : (
                       <div className="h-20 w-20 rounded-xl border border-dashed border-gold-500/40 bg-saffron-50 grid place-items-center text-2xl text-saffron-600 shrink-0">
                         🪔
