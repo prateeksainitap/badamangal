@@ -831,6 +831,7 @@ export type ClassifiedText = z.infer<typeof classifiedTextSchema>;
  */
 export async function classifyBhandaraMessage(
   message: string,
+  groupName?: string,
 ): Promise<ClassifiedText> {
   const trimmed = message.trim();
   if (!trimmed) throw new Error("message is empty");
@@ -838,13 +839,26 @@ export async function classifyBhandaraMessage(
     throw new Error("message is too long (max 2000 characters)");
   }
 
-  const prompt = `You are reading a single WhatsApp chat message from a Lucknow community group during the Jyeshtha "Bada Mangal" season. The message may be in Hindi (Devanagari or Roman/Hinglish), English, or mixed. Many messages in the group are unrelated to bhandara at all — your first job is to filter those out.
+  // Whether the group itself is bhandara-themed. When it is, short
+  // location-only queries ("polytechnic ke aas pss?") and reply
+  // fragments ("batata hu abhi udher pahuch ke") are almost always
+  // about a bhandara even though the message body never says
+  // "bhandara" — every active sender in the group has bhandara
+  // context already loaded. We feed that signal to Gemini in the
+  // prompt so it can interpret short messages charitably instead of
+  // defaulting to UNRELATED.
+  const isBhandaraGroup = !!groupName && /bhandara|bhandare|mangal/i.test(groupName);
+  const groupBlock = groupName
+    ? `\n\nGroup: "${groupName}"${isBhandaraGroup ? "  (this group is explicitly about Bada Mangal bhandaras — assume bhandara context for ambiguous messages)" : ""}\n`
+    : "";
 
+  const prompt = `You are reading a single WhatsApp chat message from a Lucknow community group during the Jyeshtha "Bada Mangal" season. The message may be in Hindi (Devanagari or Roman/Hinglish), English, or mixed. Many messages in the group are unrelated to bhandara at all — your first job is to filter those out.
+${groupBlock}
 A "bhandara" is a free community meal traditionally served on Bada Mangal Tuesdays. Messages we care about include:
-  • ASKING:     "kahan ho raha hai bada mangal bhandara aaj?", "any bhandara near Hazratganj today?", "भंडारा कहाँ है?"
-  • SHARING:    "Aliganj sector E me bhandara ho raha hai 11 baje se", "bhandara at Ram Mandir, Indira Nagar — until 4pm", attaching a Google Maps URL
+  • ASKING:     "kahan ho raha hai bada mangal bhandara aaj?", "any bhandara near Hazratganj today?", "भंडारा कहाँ है?", and — when the group is bhandara-themed — short location-only queries that don't contain the word "bhandara" but clearly ask about one ("polytechnic ke aas pss ho toh batao", "Alambagh me kahi h kya?", "any in Aashiyana??", "GPO ke around?"). In a bhandara group, asking "X ke pass kuch h?" essentially always means "is there a bhandara near X?"
+  • SHARING:    "Aliganj sector E me bhandara ho raha hai 11 baje se", "bhandara at Ram Mandir, Indira Nagar — until 4pm", attaching a Google Maps URL. Also short location-led sharing when the group is bhandara-themed and the message names a place + time ("Kothari Bandhu park, Rajajipuram, 11 baje se", "Civil Hospital ke samne aaj"). Replies that promise location data soon ("batata hu abhi udher pahuch ke", "wait, location bhejta hu") are SHARING with low confidence and an empty extractedAddress.
   • MENTIONING: "puri-sabzi was amazing today, thanks Sharma ji", "बहुत अच्छा भंडारा था कल"
-  • UNRELATED:  "good morning", "happy birthday", "next meeting on Sunday", anything off-topic
+  • UNRELATED:  "good morning", "happy birthday", "next meeting on Sunday", anything off-topic. Bare acknowledgements ("ok", "thanks", "ji", "👍"), sticker reactions, and pure chitchat with no location/food cue stay UNRELATED even in a bhandara group.
 
 Output ONE JSON object only, no markdown, no commentary, no code fence:
 {

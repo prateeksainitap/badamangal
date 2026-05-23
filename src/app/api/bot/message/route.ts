@@ -351,7 +351,12 @@ export async function POST(req: NextRequest) {
   let classified: import("@/lib/vision").ClassifiedText | null = null;
   if (!hasLucknowShare) {
     try {
-      classified = await classifyBhandaraMessage(text);
+      // Pass groupName so the classifier can charitably interpret
+      // short location-only queries ("polytechnic ke aas pss?") in
+      // bhandara-themed groups as ASKING/SHARING instead of
+      // defaulting to UNRELATED when the message body doesn't
+      // contain the word "bhandara".
+      classified = await classifyBhandaraMessage(text, groupName || undefined);
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       console.error("[bot/message] gemini classify failed", detail);
