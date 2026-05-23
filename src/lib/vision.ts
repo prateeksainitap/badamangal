@@ -897,6 +897,30 @@ ${trimmed}
 //   • Gemini returns empty `.candidates` → caller renders an empty
 //     state ("no bhandaras found, try a different query").
 
+// Discovery JSON arrives directly from Gemini — and Gemini's habit
+// is to send `null` (not `undefined` or `""`) for fields it can't
+// extract from a source page. Plain `z.string().default("")` only
+// fires on undefined, so a null leaked through and made the whole
+// candidate fail validation with "Expected string, received null".
+//
+// Each optional text/array/number field is wrapped in a preprocess
+// that maps null → its "no data" default before the inner schema
+// gets to validate. Required fields (here: `name`) stay strict —
+// a candidate without a name isn't actionable.
+const optText = (max: number) =>
+  z.preprocess(
+    (v) => (v === null ? "" : v),
+    z.string().trim().max(max).default(""),
+  );
+const optArrayStr = z.preprocess(
+  (v) => (v === null ? [] : v),
+  z.array(z.string()).default([]),
+);
+const optConfidence = z.preprocess(
+  (v) => (v === null ? 0 : v),
+  z.number().min(0).max(1).default(0),
+);
+
 export const discoveredBhandaraSchema = z.object({
   /** English name of the bhandara as it appears on whatever source
    *  Gemini found. ≤ 80 chars. Required (a candidate without a
@@ -905,48 +929,54 @@ export const discoveredBhandaraSchema = z.object({
   /** Hindi (Devanagari) name when the source provides one or it's
    *  easily transliterable. Empty string when unknown — empty signals
    *  to the admin form that they should fill it. */
-  nameHi: z.string().trim().max(80).default(""),
+  nameHi: optText(80),
   /** Lucknow neighbourhood / locality. Should be one of the curated
    *  areas when possible (AREA_LIST in this file), but free-form
    *  values are accepted since web sources rarely match our taxonomy
    *  exactly. ≤ 60 chars. */
-  area: z.string().trim().max(60).default(""),
+  area: optText(60),
   /** Full street address as printed on the source. ≤ 300 chars.
    *  Empty when no address could be extracted (still actionable —
    *  the admin can geocode from area + name in the edit form). */
-  address: z.string().trim().max(300).default(""),
+  address: optText(300),
   /** One landmark phrase if explicitly mentioned. ≤ 120 chars. */
-  landmark: z.string().trim().max(120).default(""),
+  landmark: optText(120),
   /** Tuesday serving dates as YYYY-MM-DD. Empty array when the
    *  source doesn't specify (admin fills in via the edit form). */
-  tuesdayDates: z.array(z.string()).default([]),
+  tuesdayDates: optArrayStr,
   /** "HH:MM" 24h start time. Empty when unknown. */
-  timeStart: z.string().default(""),
+  timeStart: optText(8),
   /** "HH:MM" 24h end time. Empty when unknown. */
-  timeEnd: z.string().default(""),
+  timeEnd: optText(8),
   /** Host / organiser name as it appears on the source. ≤ 80 chars. */
-  organizerName: z.string().trim().max(80).default(""),
+  organizerName: optText(80),
   /** Indian mobile number if mentioned on the source. ≤ 20 chars
    *  (allows formatting like "+91 98xxx xxxxx"). */
-  organizerPhone: z.string().trim().max(20).default(""),
+  organizerPhone: optText(20),
   /** Free-form descriptive blurb from the source. ≤ 400 chars. */
-  description: z.string().trim().max(400).default(""),
+  description: optText(400),
   /** Source URLs grounding this candidate, max 3, in confidence order.
    *  Each is a https URL Gemini visited via the grounding tool. The
    *  admin sees these as small "via …" links under each card so they
    *  can verify the source before approving. */
-  sources: z
-    .array(
-      z.object({
-        url: z.string().url(),
-        title: z.string().trim().max(200).default(""),
-      }),
-    )
-    .max(3)
-    .default([]),
+  sources: z.preprocess(
+    (v) => (v === null ? [] : v),
+    z
+      .array(
+        z.object({
+          url: z.string().url(),
+          title: z.preprocess(
+            (v) => (v === null ? "" : v),
+            z.string().trim().max(200).default(""),
+          ),
+        }),
+      )
+      .max(3)
+      .default([]),
+  ),
   /** Self-reported 0-1. Below 0.5 the admin gets a "low confidence"
    *  pill on the card; below 0.3 we hide the candidate entirely. */
-  confidence: z.number().min(0).max(1).default(0),
+  confidence: optConfidence,
 });
 export type DiscoveredBhandara = z.infer<typeof discoveredBhandaraSchema>;
 
@@ -996,7 +1026,17 @@ Use the googleSearch tool to find specific bhandaras matching this query:
 
 QUERY: ${trimmed}
 
-Look at official websites, organisation pages, news articles, blog posts, Facebook events, and community pages. Compile a list of distinct bhandara events (NOT just news articles about the season in general — we want the actual events the public can attend).
+Cast a WIDE net across the open web so no bhandara is missed:
+  • Organisation / temple / mandir websites and Bajrang Sena / Hanuman seva chapter pages
+  • Hindi & English news (Hindustan Times, Amar Ujala, Dainik Jagran, Times of India, LallanTop, local Lucknow news blogs)
+  • Personal blogs and community rollups
+  • Facebook events and pages
+  • **Instagram posts and reels** — try grounded queries like \`site:instagram.com "Bada Mangal" Lucknow\`, \`site:instagram.com bhandara Lucknow ${year}\`, hashtags like #badamangallucknow, #lucknowbhandara, #badamangal${year}; check organiser handles for invite cards / story screenshots
+  • YouTube short titles & descriptions where organisers announce dates
+
+For Instagram results, the URL pattern is usually \`https://www.instagram.com/p/<shortcode>/\` or \`https://www.instagram.com/reel/<shortcode>/\` — include those as sources verbatim.
+
+Compile a list of distinct bhandara events (NOT just news articles about the season in general — we want the actual events the public can attend).
 
 For each event, return:
 {
@@ -1037,7 +1077,14 @@ Be conservative: if you can't verify a bhandara from a real source, omit it. NEV
       tools: [{ googleSearch: {} }],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 4096,
+        // Bumped from 4096 to 16384. With up to 12 candidates × ~14
+        // fields each + grounding citations, the smaller cap was
+        // truncating the JSON mid-array (Gemini returns finishReason
+        // = "MAX_TOKENS") and the endpoint bailed before any usable
+        // results reached the admin UI. 16384 leaves comfortable
+        // headroom and is well below Gemini Flash's per-response
+        // ceiling.
+        maxOutputTokens: 16384,
       },
     }),
   });
