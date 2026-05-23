@@ -60,7 +60,13 @@ export type ChatterMention = {
   lat: number | null;
   lng: number | null;
   locationSource: string;
+  /** Primary photo (back-compat). Kept alongside photoUrls so existing
+   *  consumers (heatmap, deep-link generators) keep working. */
   photoUrl: string | null;
+  /** All photos in display order (primary first, then up to 4 extras
+   *  from Spot.extraPhotoUrls). Empty for text mentions. The chat
+   *  bubble renders this as an in-card carousel when length > 1. */
+  photoUrls?: string[];
   bhandaraSlug: string | null;
   bhandaraName: string | null;
   senderName: string | null;
@@ -1291,6 +1297,30 @@ function ChatBubble({
   const initial = avatarInitial(mention.senderName);
   const name = displayName(mention.senderName, isHi);
   const hasCoords = mention.lat !== null && mention.lng !== null;
+  // Carousel state: which photo of the bubble is currently visible.
+  // Resets to 0 whenever the bubble's mention.id changes (parent
+  // remounts a new bubble; no manual reset needed). Defaults to 0;
+  // arrows + dots only render when photos.length > 1.
+  const photos: string[] =
+    mention.photoUrls && mention.photoUrls.length > 0
+      ? mention.photoUrls
+      : mention.photoUrl
+        ? [mention.photoUrl]
+        : [];
+  const [photoIdx, setPhotoIdx] = useState(0);
+  const safeIdx = Math.max(0, Math.min(photoIdx, photos.length - 1));
+  const activePhoto = photos[safeIdx] ?? null;
+  const showCarouselControls = photos.length > 1;
+  const goPrev = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPhotoIdx((i) => (i - 1 + photos.length) % photos.length);
+  };
+  const goNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPhotoIdx((i) => (i + 1) % photos.length);
+  };
   // ASKING bubbles must not surface ANY location-based action —
   // no Directions CTA, no map-deep-link on the photo, no location
   // pill below the message. The user is asking IF something's
@@ -1353,28 +1383,116 @@ function ChatBubble({
       </div>
 
       <div className="pl-8 mt-1 grid gap-1">
-        {mention.photoUrl ? (
-          <a
-            href={photoHref ?? mention.photoUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            data-ga="cta_chatter_photo_open"
-            data-ga-mention-id={mention.id}
-            data-ga-has-coords={hasCoords ? "true" : "false"}
-            className="group relative block rounded-xl overflow-hidden border border-cream-50/15 bg-ink-900 max-w-[11rem] hover:border-saffron-500/60 transition-colors"
-            aria-label="Open photo / location"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={mention.photoUrl}
-              alt={mention.text}
-              loading="lazy"
-              className="w-full h-auto max-h-36 object-cover group-hover:scale-[1.03] transition-transform duration-300"
-            />
-            <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1 text-[10px] font-medium text-cream-50 opacity-0 group-hover:opacity-100 transition-opacity">
-              Open ↗
-            </span>
-          </a>
+        {activePhoto ? (
+          <div className="relative max-w-[11rem]">
+            <a
+              href={activePhoto}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-ga="cta_chatter_photo_open"
+              data-ga-mention-id={mention.id}
+              data-ga-has-coords={hasCoords ? "true" : "false"}
+              data-ga-photo-index={String(safeIdx)}
+              data-ga-photo-count={String(photos.length)}
+              className="group relative block rounded-xl overflow-hidden border border-cream-50/15 bg-ink-900 hover:border-saffron-500/60 transition-colors"
+              aria-label={
+                showCarouselControls
+                  ? `Open photo ${safeIdx + 1} of ${photos.length}`
+                  : "Open photo"
+              }
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                key={activePhoto}
+                src={activePhoto}
+                alt={mention.text}
+                loading="lazy"
+                className="w-full h-auto max-h-36 object-cover group-hover:scale-[1.03] transition-transform duration-300"
+              />
+              <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1 text-[10px] font-medium text-cream-50 opacity-0 group-hover:opacity-100 transition-opacity">
+                Open ↗
+              </span>
+            </a>
+            {showCarouselControls ? (
+              <>
+                {/* Prev / next chips. Solid black/60 disc so they stay
+                    legible over any image. Positioned at left/right
+                    edges, vertically centred. Clicks cycle within the
+                    bubble and stop propagation so the parent anchor
+                    doesn't open the image in a new tab on every nudge. */}
+                <button
+                  type="button"
+                  onClick={goPrev}
+                  aria-label="Previous photo"
+                  className="absolute left-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-black/65 hover:bg-black/85 text-cream-50 text-xs leading-none ring-1 ring-cream-50/20 shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-500"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  aria-label="Next photo"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-black/65 hover:bg-black/85 text-cream-50 text-xs leading-none ring-1 ring-cream-50/20 shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-500"
+                >
+                  ›
+                </button>
+                {/* Position indicator dots — clickable for direct jump.
+                    Active dot is saffron + slightly larger; the rest
+                    are cream-translucent. Sits over the bottom of the
+                    image with a subtle dark gradient behind for
+                    legibility on bright shots. */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center">
+                  <div className="pointer-events-auto inline-flex items-center gap-1 px-1.5 py-1 rounded-full bg-black/55 backdrop-blur-sm">
+                    {photos.map((_, i) => (
+                      <button
+                        type="button"
+                        key={i}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setPhotoIdx(i);
+                        }}
+                        aria-label={`Show photo ${i + 1}`}
+                        className={
+                          i === safeIdx
+                            ? "w-2 h-2 rounded-full bg-saffron-500 ring-1 ring-saffron-500/60"
+                            : "w-1.5 h-1.5 rounded-full bg-cream-50/55 hover:bg-cream-50/85 transition-colors"
+                        }
+                      />
+                    ))}
+                  </div>
+                </div>
+                {/* Count badge in the top-right — at a glance "X / N". */}
+                <span
+                  aria-hidden
+                  className="absolute top-1 right-1 text-[9px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full bg-black/65 text-cream-50 ring-1 ring-cream-50/20"
+                >
+                  {safeIdx + 1}/{photos.length}
+                </span>
+              </>
+            ) : null}
+            {/* When the spot has a Google Maps location deep-link
+                available, expose it as a small secondary chip in the
+                bottom-left so users can still jump to the pin without
+                losing the photo carousel. Only renders for SHARING +
+                hasCoords (same gate as the directions CTA). */}
+            {photoHref ? (
+              <a
+                href={photoHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-ga="cta_chatter_photo_open_map"
+                data-ga-mention-id={mention.id}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute left-1 bottom-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-black/65 text-cream-50 text-[9px] font-semibold ring-1 ring-cream-50/20 hover:bg-black/85 transition-colors"
+                aria-label={isHi ? "नक़्शे पर देखें" : "Open on map"}
+                title={isHi ? "नक़्शे पर देखें" : "Open on map"}
+              >
+                <PinIcon />
+                {isHi ? "नक़्शा" : "Map"}
+              </a>
+            ) : null}
+          </div>
         ) : null}
         <p className="text-sm text-cream-50/95 leading-snug whitespace-pre-wrap break-words">
           {mention.text}

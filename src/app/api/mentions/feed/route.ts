@@ -52,6 +52,8 @@ type PublicMention = {
   locationSource: string;
   /** Mentions never carry a photo (they're text/location-share events). */
   photoUrl: null;
+  /** Mentions never carry any photos. Always empty for kind="mention". */
+  photoUrls: string[];
   /** Mentions never link to a specific bhandara slug yet (admin can
    *  match in moderation; until then, null). */
   bhandaraSlug: null;
@@ -85,8 +87,13 @@ type PublicSpot = {
    *  chat panel can show a "with photo" affordance. */
   locationSource: "spot_photo";
   /** Always set — that's the whole point of including Spots in this
-   *  unified feed. */
+   *  unified feed. The primary photo. */
   photoUrl: string;
+  /** All photos for the spot (primary first, then up to 4 from
+   *  Spot.extraPhotoUrls). The chat-bubble renders this as an
+   *  in-card carousel when length > 1. Always length ≥ 1 because
+   *  the spot is only included when photoUrl is non-null. */
+  photoUrls: string[];
   /** When admin has matched the spot to a curated bhandara row, the
    *  slug surfaces here so the chat bubble can link to the detail page. */
   bhandaraSlug: string | null;
@@ -210,6 +217,7 @@ export async function GET(req: NextRequest) {
         lat: true,
         lng: true,
         photoUrl: true,
+        extraPhotoUrls: true,
         reporterName: true,
         createdAt: true,
         bhandara: { select: { slug: true, name: true } },
@@ -240,6 +248,7 @@ export async function GET(req: NextRequest) {
     lng: m.lng,
     locationSource: m.locationSource,
     photoUrl: null,
+    photoUrls: [],
     bhandaraSlug: null,
     bhandaraName: null,
     senderName: m.senderName,
@@ -248,24 +257,42 @@ export async function GET(req: NextRequest) {
     createdAt: (m.approvedAt ?? m.createdAt).toISOString(),
   }));
 
-  const spotItems: PublicSpot[] = spotRows.map((s) => ({
-    id: `spot:${s.id}`,
-    kind: "spot",
-    // Strip the [bot:…] provenance tag from the caption — same hygiene
-    // as the existing /api/feed endpoint.
-    text: stripBotProvenance(s.caption) || "Bhandara spotted",
-    language: s.language,
-    intent: "SHARING",
-    locationLabel: s.area,
-    lat: s.lat,
-    lng: s.lng,
-    locationSource: "spot_photo",
-    photoUrl: s.photoUrl!, // not-null filter above guarantees this
-    bhandaraSlug: s.bhandara?.slug ?? null,
-    bhandaraName: s.bhandara?.name ?? null,
-    senderName: s.reporterName,
-    createdAt: s.createdAt.toISOString(),
-  }));
+  const spotItems: PublicSpot[] = spotRows.map((s) => {
+    // Build the photo list: primary first, then up to 4 extras from
+    // the JSON-encoded Spot.extraPhotoUrls column. Defensive parse so
+    // a malformed row can't crash the feed.
+    let extras: string[] = [];
+    try {
+      const parsed = JSON.parse(s.extraPhotoUrls || "[]") as unknown;
+      if (Array.isArray(parsed)) {
+        extras = parsed.filter(
+          (u): u is string => typeof u === "string" && u.length > 0,
+        );
+      }
+    } catch {
+      extras = [];
+    }
+    const photoUrls = [s.photoUrl!, ...extras];
+    return {
+      id: `spot:${s.id}`,
+      kind: "spot",
+      // Strip the [bot:…] provenance tag from the caption — same hygiene
+      // as the existing /api/feed endpoint.
+      text: stripBotProvenance(s.caption) || "Bhandara spotted",
+      language: s.language,
+      intent: "SHARING",
+      locationLabel: s.area,
+      lat: s.lat,
+      lng: s.lng,
+      locationSource: "spot_photo",
+      photoUrl: s.photoUrl!, // not-null filter above guarantees this
+      photoUrls,
+      bhandaraSlug: s.bhandara?.slug ?? null,
+      bhandaraName: s.bhandara?.name ?? null,
+      senderName: s.reporterName,
+      createdAt: s.createdAt.toISOString(),
+    };
+  });
 
   // Merge + sort by createdAt desc, then trim to limitN. We over-fetch
   // (limitN from EACH source) so the merge can fairly pick the most

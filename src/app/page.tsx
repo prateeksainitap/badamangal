@@ -341,6 +341,7 @@ export default async function HomePage() {
       lng: m.lng,
       locationSource: m.locationSource,
       photoUrl: null,
+      photoUrls: [],
       bhandaraSlug: null,
       bhandaraName: null,
       senderName: m.senderName,
@@ -359,22 +360,38 @@ export default async function HomePage() {
           s.lng !== 0 &&
           s.expiresAt > new Date(),
       )
-      .map((s): ChatterMention => ({
-        id: `spot:${s.id}`,
-        kind: "spot",
-        text: stripBotProvenance(s.caption) || "Bhandara spotted",
-        language: s.language,
-        intent: "SHARING",
-        locationLabel: s.area,
-        lat: s.lat,
-        lng: s.lng,
-        locationSource: "spot_photo",
-        photoUrl: s.photoUrl!,
-        bhandaraSlug: s.bhandara?.slug ?? null,
-        bhandaraName: s.bhandara?.name ?? null,
-        senderName: s.reporterName,
-        createdAt: s.createdAt.toISOString(),
-      })),
+      .map((s): ChatterMention => {
+        // Parse extra photo URLs (JSON-encoded string column) so the
+        // chat-bubble carousel can cycle through primary + extras.
+        let extras: string[] = [];
+        try {
+          const parsed = JSON.parse(s.extraPhotoUrls || "[]") as unknown;
+          if (Array.isArray(parsed)) {
+            extras = parsed.filter(
+              (u): u is string => typeof u === "string" && u.length > 0,
+            );
+          }
+        } catch {
+          extras = [];
+        }
+        return {
+          id: `spot:${s.id}`,
+          kind: "spot",
+          text: stripBotProvenance(s.caption) || "Bhandara spotted",
+          language: s.language,
+          intent: "SHARING",
+          locationLabel: s.area,
+          lat: s.lat,
+          lng: s.lng,
+          locationSource: "spot_photo",
+          photoUrl: s.photoUrl!,
+          photoUrls: [s.photoUrl!, ...extras],
+          bhandaraSlug: s.bhandara?.slug ?? null,
+          bhandaraName: s.bhandara?.name ?? null,
+          senderName: s.reporterName,
+          createdAt: s.createdAt.toISOString(),
+        };
+      }),
   ]
     .sort((a, b) =>
       a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0,
