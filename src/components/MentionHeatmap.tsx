@@ -453,24 +453,28 @@ export default function MentionHeatmap({
         hasAutoFittedRef.current = true;
         try {
           if (cells.length === 1) {
-            // Single cell: fitBounds collapses to a point and zooms
-            // to the world. Just centre on it at a neighbourhood
-            // zoom (~13) instead.
+            // Single cell: keep the city around it visible. Zoom 13
+            // was too tight — only ~1.5 km radius showed, so a lone
+            // Aliganj pin landed surrounded by unrelated streets
+            // with no Lucknow context. Zoom 11 (~5 km radius) frames
+            // the cell against the rest of the city.
             map.flyTo?.({
               center: [cells[0].lng, cells[0].lat],
-              zoom: 13,
+              zoom: 11,
               duration: 600,
             });
           } else {
-            // 100-px padding on each side keeps cells off the
-            // map edges. fitBounds is async-ish under MapLibre,
-            // 600ms animation duration matches our other camera moves.
+            // 60-px padding on each side keeps cells off the map
+            // edges. maxZoom 12 (was 14) prevents a too-tight crop
+            // when 2-3 cells happen to be in the same neighbourhood;
+            // the surrounding city stays visible so the reader can
+            // place the active zones.
             map.fitBounds(
               [
                 [minLng, minLat],
                 [maxLng, maxLat],
               ],
-              { padding: 60, duration: 600, maxZoom: 14 },
+              { padding: 60, duration: 600, maxZoom: 12 },
             );
           }
         } catch {

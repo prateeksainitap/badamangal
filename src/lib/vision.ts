@@ -851,10 +851,20 @@ Output ONE JSON object only, no markdown, no commentary, no code fence:
   "intent":             "ASKING" | "SHARING" | "MENTIONING" | "UNRELATED",
   "confidence":         0.0–1.0 (how sure you are about intent),
   "language":           "hi" | "en" | "mixed",
-  "extractedAddress":   Best-effort address or landmark mentioned in the message. Empty string if none. Examples: "Sector E, Aliganj, Lucknow", "Ram Mandir, Indira Nagar", "near Civil Hospital". When the message lists multiple locations, put the FIRST here and the full list in extractedAddresses below.
-  "extractedAddresses": Array of distinct locations the message refers to, in order of appearance. For single-location messages this is a 1-element array matching extractedAddress. For SHARING messages that list multiple bhandaras ("Aliganj sector E AND Hazratganj GPO", "bhandara at Ram Mandir, also one at Civil Hospital"), include each as a separate entry. Maximum 5. Empty array if no location.
-  "locationLabel":      Short human-friendly area label for the public feed. ≤ 40 chars. Examples: "Aliganj", "near GPO", "Indira Nagar". Empty if no location. Pairs with extractedAddress.
-  "locationLabels":     Per-location labels paired 1:1 with extractedAddresses (same length, same order). Each ≤ 40 chars. Pass empty string at an index if you can't derive a clean label for that one.
+  "extractedAddress":   The MOST SPECIFIC address-or-landmark the message gives, suffixed with the locality + ", Lucknow" so the forward-geocoder can resolve it precisely. ALWAYS include the landmark/park/temple/shop name when the sender mentions one — that is the difference between a precise pin and a generic neighbourhood centroid. Empty string only if the message names NO place at all. Examples:
+    • "Kothari Bandhu park ke hanuman mandir ke samne, Rajajipuram" → "Kothari Bandhu Park, Hanuman Mandir, Rajajipuram, Lucknow"
+    • "ramnagar wale bhandara" → "Ramnagar, Lucknow"
+    • "Sector E Aliganj, Civil Hospital ke paas"  → "Sector E, Civil Hospital, Aliganj, Lucknow"
+    • "near GPO"                                  → "GPO, Hazratganj, Lucknow"
+  When the message lists multiple locations, put the FIRST here and the full list in extractedAddresses below.
+  "extractedAddresses": Array of distinct locations the message refers to, in order of appearance. Same precision rules as extractedAddress (always include the landmark phrase). For single-location messages this is a 1-element array matching extractedAddress. For SHARING messages that list multiple bhandaras ("Aliganj sector E AND Hazratganj GPO", "bhandara at Ram Mandir, also one at Civil Hospital"), include each as a separate entry. Maximum 5. Empty array if no location.
+  "locationLabel":      Short human-friendly label for the public feed chip, ≤ 40 chars. PREFER the specific landmark/park/temple/shop the sender mentioned over the bare area name — "Rajajipuram" alone is much less useful than "Kothari Bandhu Park". Examples (acceptable → preferred):
+    • "Rajajipuram"          → "Kothari Bandhu Park, Rajajipuram"
+    • "Indira Nagar"         → "Ram Mandir, Indira Nagar"
+    • "Aliganj"              → "Sector E, Aliganj"
+    • "Hazratganj"           → "near GPO, Hazratganj"
+  Only fall back to the bare area name when the sender gave NO landmark. Empty if no location at all. Pairs with extractedAddress.
+  "locationLabels":     Per-location labels paired 1:1 with extractedAddresses (same length, same order). Same landmark-first rule as locationLabel. Each ≤ 40 chars. Pass empty string at an index if you can't derive a clean label for that one.
   "cleanedText":        The original message with phone numbers redacted to "<phone>" and email addresses redacted to "<email>". Otherwise verbatim. Preserve original language + script.
 }
 
