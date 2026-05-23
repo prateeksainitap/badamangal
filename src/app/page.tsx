@@ -282,14 +282,19 @@ export default async function HomePage() {
   // Live "spots", crowd-sourced sightings of bhandaras happening right
   // now (auto-expire after 8 hours). Already fetched above in the
   // Promise.all batch, just shape into the wire format here.
-  // 0,0 coord-less spots (bot-ingested with no EXIF until admin
-  // sets coords) are filtered out HERE because this array feeds
-  // MapBoard pins + HappeningNow's near-me distance math. The chat
-  // panel still gets them via mentionsInitial below, which doesn't
-  // join through liveSpots.
-  const liveSpots = spotRecords
-    .filter((s) => s.lat !== 0 && s.lng !== 0)
-    .map((s) => {
+  //
+  // Two derived arrays, NOT one:
+  //   • `liveSpots` (all approved + live) — fed to HappeningNow so the
+  //     homepage card grid matches /live exactly. /live's SSR query
+  //     doesn't filter 0,0 coords either; this keeps both surfaces in
+  //     sync so a coordless-but-photo-rich Spot (bot ingest without
+  //     EXIF / location share) doesn't appear on /live but vanish on
+  //     the homepage.
+  //   • `liveSpotsWithCoords` — same array minus 0,0 entries, fed to
+  //     MapBoard so the city map never plants an Africa-pin marker at
+  //     null-island. Map pins genuinely need real coords; HappeningNow
+  //     cards don't.
+  const liveSpots = spotRecords.map((s) => {
     // Build a multi-photo array so the HappeningNow card can show
     // an in-place carousel when the submitter attached extras.
     // Defensive JSON.parse; primary photoUrl is first.
@@ -323,6 +328,7 @@ export default async function HomePage() {
     bhandaraNameHi: s.bhandara?.nameHi ?? null,
   };
   });
+  const liveSpotsWithCoords = liveSpots.filter((s) => s.lat !== 0 && s.lng !== 0);
 
   // Live feed initial payload, active spots only. The Post model
   // (per-bhandara comments) was removed, so the marquee + /live feed
@@ -613,7 +619,7 @@ export default async function HomePage() {
           the LocaleProvider context, no locale props needed. */}
       <MapBoard
         listings={listings}
-        liveSpots={liveSpots.map((s) => ({
+        liveSpots={liveSpotsWithCoords.map((s) => ({
           id: s.id,
           lat: s.lat,
           lng: s.lng,
