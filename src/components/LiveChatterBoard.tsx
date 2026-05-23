@@ -619,6 +619,69 @@ export default function LiveChatterBoard({
     setNewSinceScrollAway(0);
   }, []);
 
+  // Click handler for the active-area chips above the chat panel.
+  // Finds the FIRST chat bubble whose data-areas attribute contains
+  // the chosen area key (lowercased + right-most-comma-segment, same
+  // extraction the chip strip uses) and smooth-scrolls it to the top
+  // of the chat-body viewport. Bubbles are already sorted newest-
+  // first, so "first match" = most recent mention from that area.
+  //
+  // We scroll inside chatBodyRef (NOT the document) so the page
+  // doesn't lurch — the chat panel stays where it is on the
+  // viewport while the panel's internal list scrolls to surface
+  // the matching bubble. On narrow viewports where the chat panel
+  // is below the heatmap, we also bring the panel into the
+  // viewport with a one-shot scrollIntoView.
+  const scrollToArea = useCallback((displayLabel: string) => {
+    const body = chatBodyRef.current;
+    if (!body) return;
+    const key = displayLabel.toLowerCase().trim();
+    if (!key) return;
+    // Reset the "new since scroll-away" badge so the user doesn't
+    // see a stale "5 new" pill after landing on the matching row.
+    setNewSinceScrollAway(0);
+    const target = body.querySelector<HTMLElement>(
+      `[data-areas~="${CSS.escape(key)}"]`,
+    );
+    if (target) {
+      // Scroll the chat-body container so the target sits a few
+      // pixels below the top edge. getBoundingClientRect deltas
+      // keep us inside chatBodyRef's scroll context.
+      const rect = target.getBoundingClientRect();
+      const bodyRect = body.getBoundingClientRect();
+      body.scrollTo({
+        top: body.scrollTop + (rect.top - bodyRect.top) - 8,
+        behavior: "smooth",
+      });
+      // Brief saffron flash on the matched bubble so the user
+      // sees the connection between "I tapped Aashiyana" and
+      // "this row is from Aashiyana". Re-uses the existing new-
+      // bubble glow animation; 1.5s is long enough to register,
+      // short enough to not linger as a permanent highlight.
+      target.classList.add("chatter-bubble--new");
+      window.setTimeout(
+        () => target.classList.remove("chatter-bubble--new"),
+        1500,
+      );
+    } else {
+      // No bubble matched (rare — the chip is built from the same
+      // mentions array, so a mismatch only happens if the data
+      // changed mid-render). Fall back to scrolling to the top
+      // so the click still does SOMETHING visible.
+      body.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    // On narrow viewports the panel can be below the fold — make
+    // sure it's in view before the body-scroll lands. No-op on
+    // desktop where chips + panel are already side-by-side.
+    const panel = body.closest("[data-chat-panel]");
+    if (panel) {
+      const pr = panel.getBoundingClientRect();
+      if (pr.top < 0 || pr.top > window.innerHeight * 0.5) {
+        panel.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  }, []);
+
   return (
     <section id="live-chat" className="relative bg-ink-900 text-cream-50 overflow-hidden">
       <div
@@ -701,7 +764,7 @@ export default function LiveChatterBoard({
               <button
                 key={a.display}
                 type="button"
-                onClick={scrollToTop}
+                onClick={() => scrollToArea(a.display)}
                 aria-label={
                   isHi
                     ? `${a.display}, ${a.count} ज़िक्र`
@@ -1538,8 +1601,37 @@ function ChatBubble({
           isPrecisePin && validCoords ? "&z=17" : ""
         }`
       : null;
+
+  // Space-separated lowercased area keys for every location this
+  // mention covers — used by the active-area chip click handler to
+  // find the first bubble matching the chosen area and scroll it
+  // into view. Same right-most-comma-segment rule as the chip
+  // strip's area extraction in areaCounts above. Multi-location
+  // mentions (Yash's "Aashiyana: Taj jwellers / Near Shubhash /
+  // Oyo townhouse" pattern) emit multiple areas separated by
+  // spaces so a `[data-areas~="aashiyana"]` selector matches.
+  const dataAreas = (() => {
+    const labels =
+      mention.locationLabels && mention.locationLabels.length > 0
+        ? mention.locationLabels
+        : mention.locationLabel
+          ? [mention.locationLabel]
+          : [];
+    const areas = labels
+      .map((l) => {
+        const segs = l
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        return (segs.length > 0 ? segs[segs.length - 1] : l).toLowerCase();
+      })
+      .filter(Boolean);
+    return Array.from(new Set(areas)).join(" ");
+  })();
+
   return (
     <li
+      data-areas={dataAreas || undefined}
       className={[
         "relative px-3 py-2.5",
         "transition-colors hover:bg-cream-50/[0.035]",
