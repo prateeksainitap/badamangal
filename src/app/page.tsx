@@ -335,7 +335,11 @@ export default async function HomePage() {
       bhandaraSlug: s.bhandara?.slug ?? null,
       bhandaraName: s.bhandara?.name ?? null,
       authorName: s.reporterName?.trim() || "Spotter",
-      text: s.caption,
+      // Strip the [bot:whatsapp …] provenance tag — was leaking onto
+      // the LiveFeedMarquee card, where the truncated tail "…[bot:
+      // whatsapp · from:R.K Pal Balaji ka bhandara (2) · …" was
+      // visible mid-caption.
+      text: stripBotProvenance(s.caption) || null,
       photoUrl: s.photoUrl,
       language: s.language,
       createdAt: s.createdAt.toISOString(),
