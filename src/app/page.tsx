@@ -289,13 +289,29 @@ export default async function HomePage() {
   // join through liveSpots.
   const liveSpots = spotRecords
     .filter((s) => s.lat !== 0 && s.lng !== 0)
-    .map((s) => ({
+    .map((s) => {
+    // Build a multi-photo array so the HappeningNow card can show
+    // an in-place carousel when the submitter attached extras.
+    // Defensive JSON.parse; primary photoUrl is first.
+    let extras: string[] = [];
+    try {
+      const parsed = JSON.parse(s.extraPhotoUrls || "[]") as unknown;
+      if (Array.isArray(parsed)) {
+        extras = parsed.filter(
+          (u): u is string => typeof u === "string" && u.length > 0,
+        );
+      }
+    } catch {
+      extras = [];
+    }
+    return {
     id: s.id,
     lat: s.lat,
     lng: s.lng,
     area: s.area,
     address: s.address,
     photoUrl: s.photoUrl,
+    photoUrls: s.photoUrl ? [s.photoUrl, ...extras] : extras,
     // Strip the internal [bot:whatsapp …] tag so it never reaches a
     // public surface. See lib/sanitize.ts for the regex source.
     caption: stripBotProvenance(s.caption) || null,
@@ -305,7 +321,8 @@ export default async function HomePage() {
     bhandaraSlug: s.bhandara?.slug ?? null,
     bhandaraName: s.bhandara?.name ?? null,
     bhandaraNameHi: s.bhandara?.nameHi ?? null,
-  }));
+  };
+  });
 
   // Live feed initial payload, active spots only. The Post model
   // (per-bhandara comments) was removed, so the marquee + /live feed

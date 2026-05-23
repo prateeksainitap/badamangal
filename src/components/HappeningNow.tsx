@@ -21,6 +21,11 @@ export type LiveSpot = {
   area: string | null;
   address: string | null;
   photoUrl: string | null;
+  /** Optional: full photo list when the submitter attached extras
+   *  via Spot.extraPhotoUrls. Primary first, then up to 4 extras.
+   *  Card renders an in-place carousel when length > 1. Falls back
+   *  to [photoUrl] when omitted so legacy callers keep working. */
+  photoUrls?: string[];
   caption: string | null;
   reporterName: string | null;
   createdAt: string;
@@ -407,19 +412,16 @@ function SpotCard({
           INSIDE the photo wrapper so the chat-style header above
           doesn't affect their absolute positioning. */}
       {spot.photoUrl ? (
-        <div className="relative aspect-square w-full overflow-hidden bg-saffron-50">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={spot.photoUrl}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            referrerPolicy="no-referrer"
-            className="w-full h-full object-cover"
-          />
-          {liveBadge}
-          {distanceChip}
-        </div>
+        <LiveSpotPhotoCarousel
+          photos={
+            spot.photoUrls && spot.photoUrls.length > 0
+              ? spot.photoUrls
+              : [spot.photoUrl]
+          }
+          alt={spot.caption ?? ""}
+          liveBadge={liveBadge}
+          distanceChip={distanceChip}
+        />
       ) : (
         <div
           className="relative aspect-square w-full flex items-center justify-center"
@@ -834,5 +836,83 @@ function StepIconBroadcast() {
       <path d="M3 12a9 9 0 0 1 18 0" />
       <circle cx="12" cy="12" r="2" fill="currentColor" />
     </svg>
+  );
+}
+
+/**
+ * Square photo wrapper for a Live spot card. When the spot carries
+ * just one photo it behaves exactly like the old static img; when
+ * it carries multiple (Spot.extraPhotoUrls populated by the public
+ * /spot form), the wrapper grows two small black/65 prev/next chips
+ * on the photo edges + a "n / N" counter pill in the bottom-left,
+ * mirroring the in-bubble carousel on the LiveChatterBoard. Click
+ * handlers stopPropagation so cycling photos doesn't trigger the
+ * card's outer Link to /bhandara/<slug>.
+ */
+function LiveSpotPhotoCarousel({
+  photos,
+  alt,
+  liveBadge,
+  distanceChip,
+}: {
+  photos: string[];
+  alt: string;
+  liveBadge: React.ReactNode;
+  distanceChip: React.ReactNode;
+}) {
+  const [idx, setIdx] = useState(0);
+  const safeIdx = Math.max(0, Math.min(idx, photos.length - 1));
+  const showControls = photos.length > 1;
+  const goPrev = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIdx((i) => (i - 1 + photos.length) % photos.length);
+  };
+  const goNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIdx((i) => (i + 1) % photos.length);
+  };
+  return (
+    <div className="relative aspect-square w-full overflow-hidden bg-saffron-50">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        key={photos[safeIdx]}
+        src={photos[safeIdx]}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        referrerPolicy="no-referrer"
+        className="w-full h-full object-cover"
+      />
+      {liveBadge}
+      {distanceChip}
+      {showControls ? (
+        <>
+          <button
+            type="button"
+            onClick={goPrev}
+            aria-label="Previous photo"
+            className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-7 h-7 rounded-full bg-black/65 hover:bg-black/85 text-cream-50 text-base leading-none ring-1 ring-cream-50/20 shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-500"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={goNext}
+            aria-label="Next photo"
+            className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-7 h-7 rounded-full bg-black/65 hover:bg-black/85 text-cream-50 text-base leading-none ring-1 ring-cream-50/20 shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-500"
+          >
+            ›
+          </button>
+          <span
+            aria-hidden
+            className="absolute bottom-2 left-2 inline-flex items-center text-[10px] font-semibold tabular-nums px-2 py-0.5 rounded-full bg-black/65 text-cream-50 ring-1 ring-cream-50/20"
+          >
+            {safeIdx + 1} / {photos.length}
+          </span>
+        </>
+      ) : null}
+    </div>
   );
 }

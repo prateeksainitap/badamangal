@@ -75,7 +75,23 @@ export default async function LivePage() {
     }),
   ]);
 
-  const spots = spotRecords.map((s) => ({
+  const spots = spotRecords.map((s) => {
+    // Multi-photo: primary first, then extras (Spot.extraPhotoUrls).
+    // Defensive JSON.parse. The LiveFeedTimeline card uses this for
+    // its in-card carousel; falls back gracefully to [photoUrl] when
+    // empty.
+    let extras: string[] = [];
+    try {
+      const parsed = JSON.parse(s.extraPhotoUrls || "[]") as unknown;
+      if (Array.isArray(parsed)) {
+        extras = parsed.filter(
+          (u): u is string => typeof u === "string" && u.length > 0,
+        );
+      }
+    } catch {
+      extras = [];
+    }
+    return {
     id: `spot:${s.id}`,
     bhandaraSlug: s.bhandara?.slug ?? null,
     bhandaraName: s.bhandara?.name ?? null,
@@ -86,9 +102,11 @@ export default async function LivePage() {
     // only. See lib/sanitize.ts.
     text: stripBotProvenance(s.caption) || null,
     photoUrl: s.photoUrl,
+    photoUrls: s.photoUrl ? [s.photoUrl, ...extras] : extras,
     language: s.language,
     createdAt: s.createdAt.toISOString(),
-  }));
+    };
+  });
 
   const feed = spots.slice(0, 50);
 

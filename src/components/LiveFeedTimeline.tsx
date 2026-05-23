@@ -25,6 +25,10 @@ export type FeedPost = {
   authorName: string;
   text: string | null;
   photoUrl: string | null;
+  /** All photos for this spot (primary first, then Spot.extraPhotoUrls
+   *  entries). Empty / undefined → use photoUrl alone. The lightbox
+   *  carousel cycles through every entry. */
+  photoUrls?: string[];
   language: string;
   createdAt: string;
 };
@@ -607,6 +611,29 @@ function PostCard({
 }) {
   const isHi = locale === "hi";
   const initial = post.authorName.trim().charAt(0).toUpperCase() || "•";
+  // In-card carousel state for multi-photo spots. Falls back to a
+  // single-photo array when post.photoUrls isn't populated (legacy
+  // callers / text-only posts).
+  const photos: string[] =
+    post.photoUrls && post.photoUrls.length > 0
+      ? post.photoUrls
+      : post.photoUrl
+        ? [post.photoUrl]
+        : [];
+  const [photoIdx, setPhotoIdx] = useState(0);
+  const safeIdx = Math.max(0, Math.min(photoIdx, photos.length - 1));
+  const activePhoto = photos[safeIdx] ?? null;
+  const showCarouselControls = photos.length > 1;
+  const goPrev = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPhotoIdx((i) => (i - 1 + photos.length) % photos.length);
+  };
+  const goNext = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPhotoIdx((i) => (i + 1) % photos.length);
+  };
   return (
     <li
       // `id` powers deep links from the homepage HappeningNow row,
@@ -642,15 +669,23 @@ function PostCard({
         </div>
       </div>
 
-      {post.photoUrl ? (
+      {activePhoto ? (
         // Image well: blurred backdrop of the same image (so portrait
         // posters and landscape photos both look intentional, never
         // cropped) + the real image rendered with `object-contain` on
-        // top. Click anywhere to open the full image in a lightbox.
+        // top. Click anywhere to open the FULL image in a lightbox.
+        // When the spot has extras (>1 photo) prev/next chips render
+        // on the photo edges + a "n / N" counter pill bottom-left;
+        // their click handlers stopPropagation so cycling doesn't
+        // also trigger the lightbox open.
         <button
           type="button"
-          onClick={() => post.photoUrl && onOpenLightbox(post.photoUrl)}
-          aria-label="View full image"
+          onClick={() => activePhoto && onOpenLightbox(activePhoto)}
+          aria-label={
+            showCarouselControls
+              ? `View photo ${safeIdx + 1} of ${photos.length}`
+              : "View full image"
+          }
           className="group/img relative block w-full overflow-hidden cursor-zoom-in"
           style={{ aspectRatio: "auto" }}
         >
@@ -662,7 +697,7 @@ function PostCard({
             aria-hidden
             className="absolute inset-0 bg-center bg-cover scale-110"
             style={{
-              backgroundImage: `url(${JSON.stringify(post.photoUrl).slice(1, -1)})`,
+              backgroundImage: `url(${JSON.stringify(activePhoto).slice(1, -1)})`,
               filter: "blur(28px) saturate(1.1)",
               opacity: 0.55,
             }}
@@ -675,16 +710,54 @@ function PostCard({
           />
           {/* The actual image, `object-contain` keeps the whole image
               visible regardless of aspect ratio. Min-height keeps very
-              wide landscape photos from collapsing to a sliver. */}
+              wide landscape photos from collapsing to a sliver.
+              `key` on the img so React swaps the DOM node when the
+              carousel advances — kills a brief flash of the previous
+              image while the new src decodes. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={post.photoUrl}
+            key={activePhoto}
+            src={activePhoto}
             alt=""
             loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"
             className="relative block w-full h-auto max-h-[420px] min-h-[180px] object-contain mx-auto"
           />
+          {showCarouselControls ? (
+            <>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={goPrev}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") goPrev(e as unknown as React.MouseEvent);
+                }}
+                aria-label="Previous photo"
+                className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-9 h-9 rounded-full bg-black/65 hover:bg-black/85 text-cream-50 text-lg leading-none ring-1 ring-cream-50/20 shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-500"
+              >
+                ‹
+              </span>
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={goNext}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") goNext(e as unknown as React.MouseEvent);
+                }}
+                aria-label="Next photo"
+                className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-9 h-9 rounded-full bg-black/65 hover:bg-black/85 text-cream-50 text-lg leading-none ring-1 ring-cream-50/20 shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-500"
+              >
+                ›
+              </span>
+              <span
+                aria-hidden
+                className="absolute bottom-2 left-2 inline-flex items-center text-[11px] font-semibold tabular-nums px-2 py-0.5 rounded-full bg-black/65 text-cream-50 ring-1 ring-cream-50/20"
+              >
+                {safeIdx + 1} / {photos.length}
+              </span>
+            </>
+          ) : null}
           {/* Tiny zoom-in glyph that hints at the click-to-expand
               affordance. Only visible on hover for desktop; on mobile
               the entire image is the tap target. */}
