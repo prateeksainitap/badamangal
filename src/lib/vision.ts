@@ -22,6 +22,7 @@
 import { z } from "zod";
 import { AREAS } from "@/lib/lucknow";
 import { MENU_KEYS } from "@/lib/menu";
+import { slugify } from "@/lib/slugify";
 
 const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
 
@@ -1003,6 +1004,14 @@ export async function discoverBhandarasViaSearch(
   rawQuery: string,
   opts?: {
     year?: number; // defaults to current calendar year
+    /** Names of bhandaras already in the directory. We tell Gemini
+     *  to skip them AND filter again server-side as a safety net so
+     *  the admin only sees genuinely new candidates. */
+    excludeNames?: ReadonlyArray<string>;
+    /** YYYY-MM-DD cutoff (IST). Candidates whose `tuesdayDates` have
+     *  no entry on/after this date are dropped — pamphlets for past
+     *  events aren't actionable on a live moderation queue. */
+    requireDateAtOrAfter?: string;
   },
 ): Promise<DiscoveryResult> {
   const trimmed = rawQuery.trim();
@@ -1015,6 +1024,21 @@ export async function discoverBhandarasViaSearch(
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not set");
 
+  // Cap the exclude-list at 200 names — comfortably more than a
+  // season's worth, keeps the prompt token count predictable when
+  // a future season has accumulated thousands of past rows.
+  const excludeList = (opts?.excludeNames ?? []).slice(0, 200);
+  const excludeBlock =
+    excludeList.length > 0
+      ? `\n\nEXCLUDE — these bhandaras are ALREADY in our directory; do not list them again, even under slightly different spellings:\n${excludeList
+          .map((n) => `  - ${n}`)
+          .join("\n")}\n`
+      : "";
+
+  const dateBlock = opts?.requireDateAtOrAfter
+    ? `\n\nDATE FILTER — focus on **pamphlets and invite cards announcing events on ${opts.requireDateAtOrAfter} (today, IST) or any later date**. SKIP:\n  - bhandaras whose dates have all already passed\n  - general news/feature articles about the Bada Mangal season (we want specific upcoming events)\n  - retrospective coverage of last week's bhandaras\nA candidate without a verifiable upcoming date is not actionable; drop it.\n`
+    : "";
+
   // Prompt anchors the search to Lucknow + Bada Mangal so a stray
   // query like "bhandara" doesn't pull in cross-city results. Output
   // is strict JSON matching DiscoveredBhandara — same shape as the
@@ -1025,6 +1049,7 @@ export async function discoverBhandarasViaSearch(
 Use the googleSearch tool to find specific bhandaras matching this query:
 
 QUERY: ${trimmed}
+${excludeBlock}${dateBlock}
 
 Cast a WIDE net across the open web so no bhandara is missed:
   • Organisation / temple / mandir websites and Bajrang Sena / Hanuman seva chapter pages
@@ -1057,7 +1082,7 @@ For each event, return:
 
 Output ONE JSON object only, no markdown, no commentary, no code fence:
 {
-  "candidates": [ ... up to 12 entries, sorted by confidence descending ... ],
+  "candidates": [ ... up to 20 entries, sorted by confidence descending — over-fetch because the server filters out anything already in the directory or with no upcoming date ... ],
   "summary":    "One sentence summary of what you found"
 }
 
@@ -1127,32 +1152,80 @@ Be conservative: if you can't verify a bhandara from a real source, omit it. NEV
     .replace(/\s*```$/i, "")
     .trim();
 
-  // Happy path: clean parse.
+  // Happy path: clean parse. Salvage path: MAX_TOKENS truncation
+  // → seal the partial JSON to the last complete candidate. Either
+  // way we end up with a parsed DiscoveryResult that still has to
+  // go through the post-parse filters below.
+  let parsed: DiscoveryResult;
   try {
-    return parseOrThrow(cleaned, discoveryResultSchema);
+    parsed = parseOrThrow(cleaned, discoveryResultSchema);
   } catch (parseErr) {
-    // MAX_TOKENS salvage path. When grounding burns through the
-    // budget mid-candidate, the JSON tail is truncated and the
-    // strict parse fails. Try to recover by finding the last
-    // complete `}` inside the `candidates` array, sealing the
-    // structure, and re-parsing. Worst-case we still throw — but
-    // it's cheap to attempt and a partial 6-candidate result is
-    // much more useful to an admin than a "discovery_failed" error.
     if (finishReason === "MAX_TOKENS") {
       const salvaged = salvageTruncatedDiscoveryJson(cleaned);
       if (salvaged) {
         try {
-          return parseOrThrow(salvaged, discoveryResultSchema);
+          parsed = parseOrThrow(salvaged, discoveryResultSchema);
         } catch {
-          /* fall through to original error */
+          throw new Error(
+            "Gemini hit maxOutputTokens during discovery and the partial response could not be salvaged. Try a narrower query.",
+          );
         }
+      } else {
+        throw new Error(
+          "Gemini hit maxOutputTokens during discovery and the partial response could not be salvaged. Try a narrower query.",
+        );
       }
-      throw new Error(
-        "Gemini hit maxOutputTokens during discovery and the partial response could not be salvaged. Try a narrower query.",
-      );
+    } else {
+      throw parseErr;
     }
-    throw parseErr;
   }
+
+  // ── Server-side filters (safety net beyond the prompt hints) ───
+  // Gemini sometimes re-lists known bhandaras under a slightly
+  // different spelling, or returns events whose dates have already
+  // passed despite the prompt's date filter. Re-check both here so
+  // the admin UI never sees them.
+  let candidates = parsed.candidates;
+  const droppedKnown: string[] = [];
+  const droppedPastDate: string[] = [];
+
+  if (excludeList.length > 0) {
+    // Slug-based match catches "Pandey Pariwar Bhandara" ≡
+    // "pandey pariwar bhandara" ≡ "Pandey  Pariwar—Bhandara!" since
+    // slugify normalises punctuation, case, and whitespace.
+    const knownSlugs = new Set(excludeList.map((n) => slugify(n)));
+    candidates = candidates.filter((c) => {
+      if (knownSlugs.has(slugify(c.name))) {
+        droppedKnown.push(c.name);
+        return false;
+      }
+      return true;
+    });
+  }
+
+  if (opts?.requireDateAtOrAfter) {
+    const cutoff = opts.requireDateAtOrAfter;
+    candidates = candidates.filter((c) => {
+      // Empty tuesdayDates → no actionable date → drop. A single
+      // YYYY-MM-DD entry on/after the cutoff is enough to keep.
+      // Lexicographic compare works because the format is fixed-
+      // width ISO 8601.
+      const hasFutureDate = c.tuesdayDates.some((d) => d >= cutoff);
+      if (!hasFutureDate) {
+        droppedPastDate.push(c.name);
+        return false;
+      }
+      return true;
+    });
+  }
+
+  if (droppedKnown.length > 0 || droppedPastDate.length > 0) {
+    console.log(
+      `[discoverBhandaras] post-filter dropped ${droppedKnown.length} known + ${droppedPastDate.length} past-date`,
+    );
+  }
+
+  return { ...parsed, candidates };
 }
 
 /** Attempt to repair a discovery JSON payload that was cut off mid-

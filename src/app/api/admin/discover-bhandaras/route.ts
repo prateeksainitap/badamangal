@@ -37,6 +37,8 @@ import {
   discoverBhandarasViaSearch,
   type DiscoveryResult,
 } from "@/lib/vision";
+import { prisma } from "@/lib/db";
+import { istTodayIso } from "@/lib/dates";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,9 +95,28 @@ export async function POST(req: NextRequest) {
       ? body.year
       : undefined;
 
+  // Pull the names of every bhandara already in the system (APPROVED
+  // is live + PENDING is in the admin queue + ARCHIVED is the
+  // historical archive). We exclude REJECTED so a deliberately-
+  // killed row can be re-discovered if it shows up again.
+  // Names — not slugs — go to Gemini so it can match by phrasing in
+  // the source pages. The vision helper re-derives slugs server-side
+  // for an exact match check.
+  const existing = await prisma.bhandara.findMany({
+    where: { status: { not: "REJECTED" } },
+    select: { name: true },
+    take: 500,
+  });
+  const excludeNames = existing.map((b) => b.name);
+  const today = istTodayIso();
+
   let result: DiscoveryResult;
   try {
-    result = await discoverBhandarasViaSearch(query, { year });
+    result = await discoverBhandarasViaSearch(query, {
+      year,
+      excludeNames,
+      requireDateAtOrAfter: today,
+    });
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("[admin/discover-bhandaras] failed:", detail);
@@ -111,5 +132,7 @@ export async function POST(req: NextRequest) {
     year: year ?? new Date().getFullYear(),
     summary: result.summary,
     candidates: result.candidates,
+    excludedKnownCount: excludeNames.length,
+    requireDateAtOrAfter: today,
   });
 }
