@@ -44,6 +44,20 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
   const s = await prisma.spot.findUnique({ where: { id } });
   if (!s) notFound();
 
+  // Spot.extraPhotoUrls is stored as a JSON-encoded string of URLs.
+  // Parse defensively — a malformed value shouldn't 500 the edit page.
+  let extraPhotoUrls: string[] = [];
+  try {
+    const parsed = JSON.parse(s.extraPhotoUrls || "[]") as unknown;
+    if (Array.isArray(parsed)) {
+      extraPhotoUrls = parsed.filter(
+        (u): u is string => typeof u === "string" && u.length > 0,
+      );
+    }
+  } catch {
+    extraPhotoUrls = [];
+  }
+
   const action = editAndApproveSpotAction.bind(null, s.id);
   // Compute a friendly remaining-TTL hint for the "Keep current
   // expiry" radio so the admin sees how much window is left before
@@ -94,6 +108,47 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
           label="Photo"
           hint="Spots are time-limited live photos. Only swap this if the original is genuinely wrong (rotated, cropped poorly, etc)."
         />
+
+        {/* Extra photos gallery — submitters can attach up to 4 additional
+            photos via the public /spot form (Spot.extraPhotoUrls). The
+            edit page previously ignored that column entirely, so admins
+            had no way to see the supplementary shots. Now: each extra is
+            a clickable thumbnail that opens the full-resolution image
+            in a new tab. Read-only for now — the primary photoUrl
+            remains the only editable one. */}
+        {extraPhotoUrls.length > 0 ? (
+          <div className="grid gap-2">
+            <span className="text-sm text-ink-600">
+              Extra photos ({extraPhotoUrls.length})
+              <span className="ml-2 text-xs text-ink-600/70">
+                Submitter attached these alongside the primary photo. Click any to open the full image.
+              </span>
+            </span>
+            <ul className="flex flex-wrap gap-2">
+              {extraPhotoUrls.map((url, i) => (
+                <li key={url}>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600"
+                    aria-label={`Open extra photo ${i + 1} of ${extraPhotoUrls.length} in a new tab`}
+                    title="Open full image"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="h-24 w-24 rounded-xl object-cover border border-gold-500/40 bg-cream-50 group-hover:border-saffron-500 transition-colors"
+                    />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <label className="grid gap-1.5">
           <span className="text-sm text-ink-600">
             Caption <span className="text-sindoor-700">*</span>

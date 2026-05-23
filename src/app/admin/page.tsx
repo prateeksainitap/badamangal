@@ -1156,35 +1156,73 @@ async function SpotsView({
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="flex items-start gap-4 min-w-0">
-                    {s.photoUrl ? (
-                      // Same clickable thumbnail pattern as the
-                      // Bhandaras queue above — click opens the
-                      // full-resolution image in a new tab so admins
-                      // can verify the photo without leaving the
-                      // moderation flow. The dedicated Edit button
-                      // still handles the row-level edit.
-                      <a
-                        href={s.photoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0 group block focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600 rounded-xl"
-                        aria-label="Open full image in a new tab"
-                        title="Open full image"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={s.photoUrl}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                          className="h-20 w-20 rounded-xl object-cover border border-gold-500/40 bg-cream-50 group-hover:border-saffron-500 transition-colors"
-                        />
-                      </a>
-                    ) : (
-                      <div className="h-20 w-20 rounded-xl border border-dashed border-gold-500/40 bg-saffron-50 grid place-items-center text-2xl text-saffron-600 shrink-0">
-                        🪔
-                      </div>
-                    )}
+                    {(() => {
+                      // Parse the extra photos array on render. Bot rows
+                      // typically have none; user-submitted spots can
+                      // carry up to 4 extras alongside the primary. The
+                      // primary thumbnail gets a small "+N" badge so
+                      // admins know more photos exist for the row;
+                      // the edit page shows the full gallery.
+                      let extraCount = 0;
+                      try {
+                        const parsed = JSON.parse(
+                          (s as { extraPhotoUrls?: string }).extraPhotoUrls ||
+                            "[]",
+                        );
+                        if (Array.isArray(parsed)) {
+                          extraCount = parsed.filter(
+                            (u) => typeof u === "string" && u.length > 0,
+                          ).length;
+                        }
+                      } catch {
+                        extraCount = 0;
+                      }
+                      return s.photoUrl ? (
+                        // Same clickable thumbnail pattern as the
+                        // Bhandaras queue above — click opens the
+                        // full-resolution image in a new tab so admins
+                        // can verify the photo without leaving the
+                        // moderation flow. The dedicated Edit button
+                        // still handles the row-level edit.
+                        <a
+                          href={s.photoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="relative shrink-0 group block focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600 rounded-xl"
+                          aria-label={
+                            extraCount > 0
+                              ? `Open primary photo in a new tab (${extraCount} more on the edit page)`
+                              : "Open full image in a new tab"
+                          }
+                          title={
+                            extraCount > 0
+                              ? `Open full image — ${extraCount} extra photo${extraCount === 1 ? "" : "s"} on the edit page`
+                              : "Open full image"
+                          }
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={s.photoUrl}
+                            alt=""
+                            loading="lazy"
+                            decoding="async"
+                            className="h-20 w-20 rounded-xl object-cover border border-gold-500/40 bg-cream-50 group-hover:border-saffron-500 transition-colors"
+                          />
+                          {extraCount > 0 ? (
+                            <span
+                              aria-hidden
+                              className="absolute bottom-1 right-1 inline-flex items-center justify-center rounded-full bg-ink-900/85 text-cream-50 text-[10px] font-semibold leading-none px-1.5 py-1 ring-1 ring-cream-50/60 shadow-[0_2px_6px_-2px_rgba(0,0,0,0.5)]"
+                            >
+                              +{extraCount}
+                            </span>
+                          ) : null}
+                        </a>
+                      ) : (
+                        <div className="h-20 w-20 rounded-xl border border-dashed border-gold-500/40 bg-saffron-50 grid place-items-center text-2xl text-saffron-600 shrink-0">
+                          🪔
+                        </div>
+                      );
+                    })()}
                     <div className="min-w-0">
                       <p className="font-fraunces text-lg text-ink-900">
                         {s.caption ?? <em className="text-ink-600">No caption</em>}
