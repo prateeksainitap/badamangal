@@ -217,6 +217,8 @@ export default function HomepageGallery({ items }: Props) {
           <div className="mt-8 text-center">
             <Link
               href={`/gallery${langSuffix}`}
+              data-ga="cta_gallery_view_all"
+              data-ga-count={String(items.length)}
               className="inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 shadow-warm px-5 py-2 text-sm font-semibold transition-colors"
             >
               {isHi
@@ -283,6 +285,13 @@ function MarqueeColumn({
             onClick={handleClick}
             disabled={!interactive}
             tabIndex={interactive ? 0 : -1}
+            {...(interactive
+              ? {
+                  "data-ga": "cta_gallery_photo_open",
+                  "data-ga-source": item.source,
+                  "data-ga-index": String(flatIndex),
+                }
+              : {})}
             aria-label={
               cap || (item.source === "admin" ? "Gallery photo" : "Spot photo")
             }

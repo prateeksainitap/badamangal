@@ -450,24 +450,28 @@ export default function LiveChatterBoard({
         <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="grid gap-1.5">
             <h2 className="font-fraunces font-bold text-2xl sm:text-3xl lg:text-4xl text-cream-50 inline-flex items-center flex-wrap gap-x-3 gap-y-1.5 leading-tight">
+              {/* SEO-aligned heading. Primary target keywords: "bhandaras
+                  near me" + "on the map" + "live". The poetic "What
+                  people are talking about?" version is captured in the
+                  subtitle's rhythm so we don't lose the warmth. */}
               <span>
                 {isHi
-                  ? "लोग क्या बात कर रहे हैं?"
-                  : "What people are talking about?"}
+                  ? "आपके पास के भंडारे — मानचित्र पर लाइव"
+                  : "Bhandaras near me, on the map and live in chat"}
               </span>
               <SectionLiveBadge isHi={isHi} />
             </h2>
             <p className="text-sm sm:text-base text-cream-50/75 leading-snug">
               {isHi ? (
                 <>
-                  लखनऊ के बड़ा मंगल समुदाय की धड़कन।{" "}
+                  लखनऊ के WhatsApp समुदाय से लाइव भंडारा अपडेट।{" "}
                   <span className="text-saffron-500 font-medium">हर शेयर</span>,{" "}
                   <span className="text-saffron-500 font-medium">हर तस्वीर</span>
                   , पल भर में यहाँ। ऑटो-क्यूरेटेड, फ़िल्टर्ड, हमेशा चालू।
                 </>
               ) : (
                 <>
-                  The pulse of Lucknow&apos;s Bada Mangal community.{" "}
+                  Real-time bhandara updates from Lucknow&apos;s WhatsApp community.{" "}
                   <span className="text-saffron-500 font-medium">Every share</span>,{" "}
                   <span className="text-saffron-500 font-medium">every photo</span>,{" "}
                   the second it lands. Auto-curated, profanity-filtered, always on.
@@ -643,6 +647,8 @@ export default function LiveChatterBoard({
               <button
                 type="button"
                 onClick={scrollToTop}
+                data-ga="cta_chatter_scroll_new"
+                data-ga-count={String(newSinceScrollAway)}
                 className="absolute top-14 left-1/2 -translate-x-1/2 z-10 rounded-full bg-gradient-to-br from-saffron-500 to-saffron-600 text-cream-50 text-xs font-medium px-3 py-1.5 shadow-warm chatter-new-pill"
               >
                 {isHi
@@ -962,6 +968,10 @@ function WhatsappCard({
       href={cta.href}
       target="_blank"
       rel="noopener noreferrer"
+      data-ga="cta_chatter_whatsapp"
+      data-ga-kind={cta.kind}
+      data-ga-key={cta.counterKey}
+      data-ga-source="homepage"
       className="chatter-glass chatter-glass-hover relative block rounded-2xl p-4 h-full focus:outline-none focus:ring-2 focus:ring-saffron-500/60"
     >
       {/* Top row: kind-specific tile (community=WA glyph, group=people
@@ -1137,6 +1147,8 @@ function LiveChatEmpty({
       <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
         <a
           href="/spot"
+          data-ga="cta_chatter_empty_spot"
+          data-ga-state={isChatOpen ? "open" : "offline"}
           className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-saffron-500 to-saffron-600 hover:from-saffron-500 hover:to-saffron-500 text-cream-50 px-3.5 py-1.5 text-xs font-semibold shadow-[0_4px_14px_-4px_rgba(242,148,76,0.55)] transition-all"
         >
           <PinIcon />
@@ -1144,6 +1156,8 @@ function LiveChatEmpty({
         </a>
         <a
           href="#join-community-heading"
+          data-ga="cta_chatter_empty_join_whatsapp"
+          data-ga-state={isChatOpen ? "open" : "offline"}
           className="inline-flex items-center gap-1.5 rounded-full bg-cream-50/10 hover:bg-cream-50/15 text-cream-50 px-3.5 py-1.5 text-xs font-semibold ring-1 ring-cream-50/15 transition-all"
         >
           <span aria-hidden className="text-leaf-400">
@@ -1286,6 +1300,9 @@ function ChatBubble({
             href={directionsHref}
             target="_blank"
             rel="noopener noreferrer"
+            data-ga="cta_chatter_directions"
+            data-ga-mention-id={mention.id}
+            data-ga-intent={mention.intent}
             className="shrink-0 inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-saffron-500 to-saffron-600 hover:from-saffron-500 hover:to-saffron-500 text-cream-50 px-2.5 py-1 text-[11px] font-medium shadow-[0_2px_8px_-2px_rgba(242,148,76,0.55)] transition-all"
             title={isHi ? "रास्ता पाएँ" : "Get directions"}
           >
@@ -1301,6 +1318,9 @@ function ChatBubble({
             href={photoHref ?? mention.photoUrl}
             target="_blank"
             rel="noopener noreferrer"
+            data-ga="cta_chatter_photo_open"
+            data-ga-mention-id={mention.id}
+            data-ga-has-coords={hasCoords ? "true" : "false"}
             className="group relative block rounded-xl overflow-hidden border border-cream-50/15 bg-ink-900 max-w-[11rem] hover:border-saffron-500/60 transition-colors"
             aria-label="Open photo / location"
           >
@@ -1330,6 +1350,9 @@ function ChatBubble({
           {mention.bhandaraSlug ? (
             <a
               href={`/bhandara/${mention.bhandaraSlug}`}
+              data-ga="cta_chatter_view_bhandara"
+              data-ga-slug={mention.bhandaraSlug}
+              data-ga-mention-id={mention.id}
               className="ml-0.5 inline-flex items-center gap-0.5 text-leaf-400 hover:text-leaf-400/80 underline decoration-dotted underline-offset-2"
             >
               {isHi ? "भंडारा देखें →" : "View bhandara →"}
