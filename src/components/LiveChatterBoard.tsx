@@ -48,6 +48,9 @@ import {
   useState,
 } from "react";
 import MentionHeatmap from "@/components/MentionHeatmap";
+import GalleryLightbox, {
+  type GalleryItem,
+} from "@/components/GalleryLightbox";
 import { useT } from "@/lib/useT";
 
 export type ChatterMention = {
@@ -304,6 +307,27 @@ export default function LiveChatterBoard({
   communityCountsByKey: Record<string, number>;
 }) {
   const [mentions, setMentions] = useState<ChatterMention[]>(initial);
+  // Lightbox state shared across all chat bubbles. A click on any
+  // photo opens GalleryLightbox with the bubble's photo array as the
+  // navigable set — same overlay component the HomepageGallery
+  // section uses, so the visual treatment + keyboard nav + escape /
+  // arrow shortcuts all match.
+  const [lightbox, setLightbox] = useState<{
+    items: GalleryItem[];
+    index: number;
+  } | null>(null);
+  const openLightbox = useCallback(
+    (items: GalleryItem[], index: number) => {
+      setLightbox({ items, index });
+    },
+    [],
+  );
+  const closeLightbox = useCallback(() => setLightbox(null), []);
+  const navigateLightbox = useCallback((next: number) => {
+    setLightbox((prev) =>
+      prev ? { items: prev.items, index: next } : prev,
+    );
+  }, []);
   const firstSeenRef = useRef<Map<string, number>>(new Map());
   if (firstSeenRef.current.size === 0 && initial.length > 0) {
     const past = Date.now() - NEW_GLOW_MS - 1000;
@@ -683,6 +707,7 @@ export default function LiveChatterBoard({
                       isNew={isNew}
                       isLast={idx === mentions.length - 1}
                       isHi={isHi}
+                      onOpenLightbox={openLightbox}
                     />
                   );
                 })
@@ -711,6 +736,18 @@ export default function LiveChatterBoard({
           isHi={isHi}
         />
       </div>
+
+      {/* Chat-photo lightbox. Reused GalleryLightbox so the overlay
+          matches the rest of the site (HomepageGallery + /gallery). */}
+      {lightbox ? (
+        <GalleryLightbox
+          items={lightbox.items}
+          index={lightbox.index}
+          onClose={closeLightbox}
+          onNavigate={navigateLightbox}
+          isHi={isHi}
+        />
+      ) : null}
 
       <style jsx>{`
         @keyframes chatter-slide-in {
@@ -1286,11 +1323,13 @@ function ChatBubble({
   isNew,
   isLast,
   isHi,
+  onOpenLightbox,
 }: {
   mention: ChatterMention;
   isNew: boolean;
   isLast: boolean;
   isHi: boolean;
+  onOpenLightbox: (items: GalleryItem[], index: number) => void;
 }) {
   const intent = intentLabel(mention.intent, isHi);
   const avatar = avatarSlot(mention.senderName ?? mention.id);
@@ -1387,6 +1426,11 @@ function ChatBubble({
           <div className="relative max-w-[11rem]">
             <a
               href={activePhoto}
+              // Anchor keeps a real href so middle-click / Cmd-click
+              // still opens the photo in a new tab the way browsers
+              // expect; plain left-click is intercepted to open the
+              // in-page GalleryLightbox overlay instead. Matches the
+              // homepage gallery's open behaviour exactly.
               target="_blank"
               rel="noopener noreferrer"
               data-ga="cta_chatter_photo_open"
@@ -1394,11 +1438,31 @@ function ChatBubble({
               data-ga-has-coords={hasCoords ? "true" : "false"}
               data-ga-photo-index={String(safeIdx)}
               data-ga-photo-count={String(photos.length)}
-              className="group relative block rounded-xl overflow-hidden border border-cream-50/15 bg-ink-900 hover:border-saffron-500/60 transition-colors"
+              onClick={(e) => {
+                if (
+                  e.metaKey ||
+                  e.ctrlKey ||
+                  e.shiftKey ||
+                  e.altKey ||
+                  e.button === 1
+                ) {
+                  return; // let the browser open in a new tab
+                }
+                e.preventDefault();
+                const items: GalleryItem[] = photos.map((url, i) => ({
+                  id: `${mention.id}:${i}`,
+                  url,
+                  source: "spot",
+                  caption: mention.text,
+                  createdAt: mention.createdAt,
+                }));
+                onOpenLightbox(items, safeIdx);
+              }}
+              className="group relative block rounded-xl overflow-hidden border border-cream-50/15 bg-ink-900 hover:border-saffron-500/60 transition-colors cursor-zoom-in"
               aria-label={
                 showCarouselControls
-                  ? `Open photo ${safeIdx + 1} of ${photos.length}`
-                  : "Open photo"
+                  ? `Open photo ${safeIdx + 1} of ${photos.length} in viewer`
+                  : "Open photo in viewer"
               }
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1410,7 +1474,7 @@ function ChatBubble({
                 className="w-full h-auto max-h-36 object-cover group-hover:scale-[1.03] transition-transform duration-300"
               />
               <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 py-1 text-[10px] font-medium text-cream-50 opacity-0 group-hover:opacity-100 transition-opacity">
-                Open ↗
+                {isHi ? "खोलें" : "Open"} ↗
               </span>
             </a>
             {showCarouselControls ? (

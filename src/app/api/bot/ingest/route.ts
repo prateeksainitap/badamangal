@@ -69,6 +69,12 @@ type IngestBody = {
   msgId?: string;
   /** Original mime type ("image/jpeg" | "image/png" | "image/webp"). */
   mime?: string;
+  /** Optional WhatsApp imageMessage.caption — the text the sender
+   *  typed alongside the photo. When present, the spot path uses it
+   *  verbatim as the public caption (Gemini's extract is ignored so
+   *  the chat panel reflects the sender's own words instead of a
+   *  generic vision summary). */
+  caption?: string;
 };
 
 function jsonError(status: number, error: string, extra?: Record<string, unknown>) {
@@ -340,7 +346,13 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // kind === "spot"
+  // kind === "spot"  — live photo (food / crowd / tents).
+  // Per the routing spec (pamphlets go to admin, live photos go
+  // straight to the chat panel + map), spot images auto-publish.
+  // Caption uses the WhatsApp sender's words verbatim when they
+  // typed one; Gemini's extracted summary is only the fallback so
+  // we never paste a vision model's interpretation into the public
+  // caption when the human author already gave us text.
   let extracted: ExtractedSpot;
   try {
     extracted = await extractSpotFromImage(base64Webp, "image/webp");
@@ -350,7 +362,15 @@ export async function POST(req: NextRequest) {
     return jsonError(502, "extract_failed", { detail, photoUrl });
   }
 
-  const caption = [extracted.caption, tag].filter(Boolean).join("\n\n");
+  // Caption priority:
+  //   1. body.caption  — WhatsApp imageMessage.caption (sender's words)
+  //   2. extracted.caption — Gemini's vision summary (fallback only)
+  //   3. neither       — empty
+  // The provenance tag is appended last; stripBotProvenance hides it
+  // on every public surface.
+  const senderCaption = (body.caption ?? "").trim().slice(0, 400);
+  const captionBody = senderCaption || extracted.caption || "";
+  const caption = [captionBody, tag].filter(Boolean).join("\n\n");
   const expiresAt = new Date(Date.now() + SPOT_TTL_HOURS * 60 * 60 * 1000);
 
   const spot = await prisma.spot.create({
@@ -364,9 +384,16 @@ export async function POST(req: NextRequest) {
       language: extracted.language || "mixed",
       reporterName: senderName,
       reporterPhoneHash: null,
-      // Hold for admin review, forwarded photos shouldn't auto-publish
-      // even with the 8-hour TTL backstop. Less surprise on the map.
-      status: "PENDING",
+      // Auto-publish live photos. Trade-off: a wrong image could
+      // surface on the map for up to SPOT_TTL_HOURS (8h) before an
+      // admin REJECTs it, but the alternative (PENDING gate) defeated
+      // the "live feed" experience entirely — every chat-panel
+      // arrival had to wait on manual moderation. lat/lng default to
+      // 0,0 because WhatsApp strips EXIF GPS; the map filter at
+      // /api/mentions/feed excludes 0,0 spots so the bare-image spot
+      // appears in the chat panel but NOT as a wrong pin on the
+      // heatmap until an admin sets coords via /admin/edit-spot.
+      status: "APPROVED",
       expiresAt,
       ipHash: "bot:whatsapp",
       userAgent: "openclaw/ingest-bhandara",
@@ -377,6 +404,12 @@ export async function POST(req: NextRequest) {
     ok: true,
     kind: "spot",
     id: spot.id,
+    /** True when the spot caption came from the WhatsApp sender's
+     *  imageMessage.caption (vs. Gemini's vision extract). The bot
+     *  uses this to skip the parallel POST to /api/bot/message —
+     *  the caption is already on the public Spot row, no need to
+     *  also create a duplicate text mention. */
+    captionUsedInSpot: senderCaption.length > 0,
     reviewUrl: `${SITE_URL}/admin#spot:${spot.id}`,
   });
 }
