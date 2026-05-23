@@ -51,11 +51,15 @@ export default async function LivePage() {
       where: {
         status: "APPROVED",
         expiresAt: { gt: now },
-        // /live anchors every card on a map pin. 0,0 (bot-ingested
-        // without coords yet) doesn't belong here — show those
-        // photos on the chat panel only until admin sets coords.
-        lat: { not: 0 },
-        lng: { not: 0 },
+        // No lat/lng filter here. /live renders photo cards with
+        // captions — there's no map on this page, so coordless
+        // bot-ingested spots ("0,0" pending admin geocode) belong
+        // in the feed exactly like any other live photo. The
+        // Africa-pin guard lives only in page.tsx (homepage
+        // MapBoard) where coords actually plant a marker. Keeping
+        // it in sync with /api/feed (which also doesn't filter
+        // 0,0) was the missing piece: SSR was dropping fresh
+        // coordless spots, then the 8s client poll added them back.
       },
       orderBy: { createdAt: "desc" },
       take: 50,
@@ -69,8 +73,6 @@ export default async function LivePage() {
       where: {
         status: "APPROVED",
         expiresAt: { gt: now },
-        lat: { not: 0 },
-        lng: { not: 0 },
       },
     }),
   ]);
