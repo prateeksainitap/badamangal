@@ -567,37 +567,55 @@ export async function POST(req: NextRequest) {
   );
 
   // ── 9b. Cross-group forward dedup ─────────────────────────────────
-  // If the SAME sender already posted the EXACT same cleanedText
-  // anywhere (any group) within FORWARD_DEDUP_WINDOW_MS, treat the
+  // If the SAME sender already posted the same (normalised)
+  // cleanedText anywhere within FORWARD_DEDUP_WINDOW_MS, treat the
   // new arrival as a duplicate forward. Admins routinely broadcast
   // a listing share into 10+ WhatsApp groups; without this check
   // each forward produced its own BhandaraMention row and the live
   // chat panel showed the same card N times in a row.
   //
-  // We dedup on (senderName, cleanedText) NOT (senderName, msgId)
-  // because WhatsApp assigns a fresh msgId to every re-forwarded
-  // message, so the existing msgId dedup at step 4 can't catch
-  // these. cleanedText is the classifier's PII-redacted version, so
-  // a phone-number substitution doesn't bust the match.
+  // We dedup on (senderName, NORMALISED cleanedText) NOT
+  // (senderName, msgId) because WhatsApp assigns a fresh msgId to
+  // every re-forwarded message, so the existing msgId dedup at
+  // step 4 can't catch these. Normalisation collapses every
+  // whitespace run to a single space, trims edges, and lower-cases
+  // so a forward whose newlines flattened to spaces (or whose
+  // sender retyped with slightly different capitalisation) still
+  // matches the original. Previous version did an exact equality
+  // compare in SQL — three Shyam "ONLY BHANDARA ON FRIDAY"
+  // forwards slipped through because msg 1 was single-line and
+  // msgs 2/3 had `\n` line breaks.
   //
   // Same-group repeats with EVOLVING text (text → pin → follow-up)
   // are handled by the merge logic immediately below — that's a
   // shorter window and only fires when the rows would naturally
-  // fold together; this forward-dedup uses a wider window and
-  // requires an exact text match.
+  // fold together; this forward-dedup uses a wider window and a
+  // normalised text match.
   const FORWARD_DEDUP_WINDOW_MS = 30 * 60 * 1000;
+  const normaliseForDedup = (s: string) =>
+    s.replace(/\s+/g, " ").trim().toLowerCase();
   if (senderName && finalCleanedText.length > 0) {
     const cutoff = new Date(Date.now() - FORWARD_DEDUP_WINDOW_MS);
-    const dup = await prisma.bhandaraMention.findFirst({
+    // Fetch recent same-sender rows and normalise them client-side
+    // rather than try to do whitespace-collapse in a SQL WHERE.
+    // Bounded by sender + window so this is cheap (typically <20
+    // rows). The cleanedText column is indexed via the existing
+    // `(status, expiresAt)` composite, but a sender-restricted
+    // scan is faster than any regexp on Postgres for our row count.
+    const recent = await prisma.bhandaraMention.findMany({
       where: {
         senderName,
-        cleanedText: finalCleanedText,
         status: "APPROVED",
         createdAt: { gt: cutoff },
       },
       orderBy: { createdAt: "desc" },
-      select: { id: true, groupName: true },
+      take: 30,
+      select: { id: true, cleanedText: true, groupName: true },
     });
+    const target = normaliseForDedup(finalCleanedText);
+    const dup = recent.find(
+      (r) => r.cleanedText && normaliseForDedup(r.cleanedText) === target,
+    );
     if (dup) {
       return NextResponse.json({
         ok: true,
