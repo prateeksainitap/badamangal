@@ -54,6 +54,13 @@ type PublicMention = {
   photoUrl: null;
   /** Mentions never carry any photos. Always empty for kind="mention". */
   photoUrls: string[];
+  /** When the WA message was a REPLY, the quoted message it's
+   *  answering. The chat bubble renders this as a small indented
+   *  strip above the main text so a reply like "Malhaur" doesn't
+   *  read as an unrelated stray word. Either field may be null;
+   *  both null = not a reply. */
+  quotedText: string | null;
+  quotedSender: string | null;
   /** Mentions never link to a specific bhandara slug yet (admin can
    *  match in moderation; until then, null). */
   bhandaraSlug: null;
@@ -102,6 +109,9 @@ type PublicSpot = {
    *  the image. Same privacy posture as PublicMention.senderName:
    *  exposed on the public feed for live-chat feel. */
   senderName: string | null;
+  /** Spots never carry quoted context. Always null. */
+  quotedText: null;
+  quotedSender: null;
   createdAt: string;
 };
 
@@ -187,6 +197,8 @@ export async function GET(req: NextRequest) {
         senderName: true,
         createdAt: true,
         approvedAt: true,
+        quotedText: true,
+        quotedSender: true,
       },
     }),
     prisma.spot.findMany({
@@ -249,6 +261,8 @@ export async function GET(req: NextRequest) {
     locationSource: m.locationSource,
     photoUrl: null,
     photoUrls: [],
+    quotedText: m.quotedText,
+    quotedSender: m.quotedSender,
     bhandaraSlug: null,
     bhandaraName: null,
     senderName: m.senderName,
@@ -287,6 +301,8 @@ export async function GET(req: NextRequest) {
       locationSource: "spot_photo",
       photoUrl: s.photoUrl!, // not-null filter above guarantees this
       photoUrls,
+      quotedText: null,
+      quotedSender: null,
       bhandaraSlug: s.bhandara?.slug ?? null,
       bhandaraName: s.bhandara?.name ?? null,
       senderName: s.reporterName,

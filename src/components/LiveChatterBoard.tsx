@@ -70,6 +70,11 @@ export type ChatterMention = {
    *  from Spot.extraPhotoUrls). Empty for text mentions. The chat
    *  bubble renders this as an in-card carousel when length > 1. */
   photoUrls?: string[];
+  /** When the WA message was a reply, the quoted text + best-effort
+   *  sender name. Chat bubble renders these as a small indented
+   *  context strip above the main text. */
+  quotedText?: string | null;
+  quotedSender?: string | null;
   bhandaraSlug: string | null;
   bhandaraName: string | null;
   senderName: string | null;
@@ -1587,6 +1592,23 @@ function ChatBubble({
                 {isHi ? "नक़्शा" : "Map"}
               </a>
             ) : null}
+          </div>
+        ) : null}
+        {/* Quoted-reply strip — only renders when the WA message was
+            a reply. Subtle indented block with a left rail and the
+            quoted sender + truncated text, so a one-word reply like
+            "Malhaur" lands under the question it's answering and
+            reads in context. */}
+        {mention.quotedText ? (
+          <div className="border-l-2 border-cream-50/30 pl-2 -ml-0.5 mb-1">
+            {mention.quotedSender ? (
+              <p className="text-[11px] font-semibold text-cream-50/70 leading-tight truncate">
+                {displayName(mention.quotedSender, isHi)}
+              </p>
+            ) : null}
+            <p className="text-[11px] text-cream-50/55 italic leading-snug line-clamp-2 whitespace-pre-wrap break-words">
+              {mention.quotedText}
+            </p>
           </div>
         ) : null}
         <p className="text-sm text-cream-50/95 leading-snug whitespace-pre-wrap break-words">

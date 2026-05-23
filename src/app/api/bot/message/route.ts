@@ -147,6 +147,12 @@ type IngestBody = {
    *  and 200 chars each; the classifier re-caps + sanitises before
    *  shipping to Gemini. */
   recentContext?: { senderName?: string; text?: string }[];
+  /** When the WhatsApp message was a reply (Baileys' contextInfo.
+   *  quotedMessage), the bot sends the quoted text + best-effort
+   *  sender so the chat panel can render "↳ <quoted> — <sender>"
+   *  above the reply bubble. Both fields capped server-side. */
+  quotedText?: string;
+  quotedSender?: string;
 };
 
 function jsonError(
@@ -733,6 +739,14 @@ export async function POST(req: NextRequest) {
   // FIRST row gets it; subsequent rows pass null (allowed by schema).
   const createdRows: Array<{ id: string }> = [];
   const createdSpotIds: string[] = [];
+  // Sanitise quoted-reply context once for the insert path. Trim
+  // hard so a malicious bot can't blow up a column with a huge
+  // string. Empty strings normalise to null so the schema column
+  // stays sparse.
+  const quotedTextSan =
+    (body.quotedText ?? "").trim().slice(0, 300) || null;
+  const quotedSenderSan =
+    (body.quotedSender ?? "").trim().slice(0, 80) || null;
   for (let i = 0; i < locations.length; i++) {
     const loc = locations[i];
     const row = await prisma.bhandaraMention.create({
@@ -749,6 +763,8 @@ export async function POST(req: NextRequest) {
         groupName,
         senderName,
         msgId: i === 0 ? msgId : null,
+        quotedText: quotedTextSan,
+        quotedSender: quotedSenderSan,
         status: "APPROVED",
         approvedAt: new Date(),
         expiresAt,

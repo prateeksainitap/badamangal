@@ -497,6 +497,14 @@ model BhandaraMention {
   senderName     String?
   /// WA message id; @unique so cross-group re-forwards dedupe to one row.
   msgId          String?   @unique
+  /// When the WhatsApp message was a REPLY (Baileys' contextInfo.
+  /// quotedMessage), we persist the quoted text + best-effort sender
+  /// name so the chat panel can render the context strip above the
+  /// reply bubble — "Malhaur" alone reads as a stray word; with
+  /// "↳ Amity konsa wala — Rohit" above it, the user sees the answer
+  /// is to that question. Nullable: most messages aren't replies.
+  quotedText     String?
+  quotedSender   String?
   // moderation
   /// PENDING (default) → APPROVED (visible on public feed + heatmap)
   /// or REJECTED (hidden, kept for audit). Auto-promotion can be
