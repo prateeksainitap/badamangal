@@ -191,7 +191,7 @@ export const viewport: Viewport = {
 // is one frame of English-default markup for Hindi-cookie visitors
 // before the swap, acceptable for the speed gain (and English is
 // already the new-visitor default).
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -199,6 +199,17 @@ export default function RootLayout({
   const gaId = process.env.NEXT_PUBLIC_GA_ID;
   const initialLocale = "en" as const;
   const lang = "en-IN";
+
+  // Admin routes own their viewport — they don't share the public
+  // Header / Footer / floating CTAs / locale provider chrome. The
+  // middleware (src/middleware.ts) injects `x-pathname` so we can
+  // detect server-side which "world" the request belongs to.
+  // Imported lazily inside the function so the static-prerender
+  // analyser doesn't try to read headers at build time.
+  const { headers } = await import("next/headers");
+  const h = await headers();
+  const pathname = h.get("x-pathname") ?? "";
+  const isAdmin = pathname.startsWith("/admin");
 
   return (
     <html
@@ -230,31 +241,50 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://tile.openstreetmap.org" />
         <link rel="dns-prefetch" href="https://www.youtube-nocookie.com" />
       </head>
-      <body className="paper text-ink-900 font-mukta min-h-dvh flex flex-col">
+      <body
+        // Keep `paper` even on admin routes so existing admin pages
+        // (which were designed against the cream background) keep
+        // working unchanged. Pages that opt into the new dark
+        // dashboard wrap themselves with <AdminShell>, which paints
+        // the dark surface on top of paper inside its own container.
+        // We only strip the PUBLIC chrome (Header/Footer/floating
+        // CTAs) on admin routes — the body skin stays the same.
+        className="paper text-ink-900 font-mukta min-h-dvh flex flex-col"
+      >
         <LocaleProvider value={initialLocale}>
         <ToastProvider>
-          <a
-            href="#main"
-            className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-full focus:bg-saffron-600 focus:text-cream-50 focus:px-4 focus:py-2 focus:shadow-md"
-          >
-            Skip to content
-          </a>
-          <FirstVisitGreeting />
-          {/* First-ever-visit audio chant was retired, autoplay surprised
-              users on the home page (especially on mobile data) and the
-              visual "जय श्री राम" greeting above already carries the
-              welcome moment. The <FirstVisitChant /> component is left
-              in the repo in case we want to re-enable it later behind
-              an explicit opt-in. */}
-          <GAClickDelegate />
-          <Header />
-          <main id="main" className="flex-1">
-            {children}
-          </main>
-          <SpotFloatingCta />
-          <ScrollToTopButton />
-          <LiveActivityTicker />
-          <Footer />
+          {isAdmin ? (
+            // Admin world: no public Header/Footer, no Spot CTA, no
+            // first-visit greeting, no scroll-to-top, no activity
+            // ticker. The admin layout (src/app/admin/layout.tsx)
+            // owns the entire viewport via <AdminShell>.
+            children
+          ) : (
+            <>
+              <a
+                href="#main"
+                className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-full focus:bg-saffron-600 focus:text-cream-50 focus:px-4 focus:py-2 focus:shadow-md"
+              >
+                Skip to content
+              </a>
+              <FirstVisitGreeting />
+              {/* First-ever-visit audio chant was retired, autoplay surprised
+                  users on the home page (especially on mobile data) and the
+                  visual "जय श्री राम" greeting above already carries the
+                  welcome moment. The <FirstVisitChant /> component is left
+                  in the repo in case we want to re-enable it later behind
+                  an explicit opt-in. */}
+              <GAClickDelegate />
+              <Header />
+              <main id="main" className="flex-1">
+                {children}
+              </main>
+              <SpotFloatingCta />
+              <ScrollToTopButton />
+              <LiveActivityTicker />
+              <Footer />
+            </>
+          )}
         </ToastProvider>
         </LocaleProvider>
 

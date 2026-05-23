@@ -267,7 +267,17 @@ export default async function AdminPage({
               Moderation queue
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Discovery link to the new Dashboard. Phase 1 of the
+                admin redesign ships /admin/home as the new landing
+                surface; until existing pages migrate to the same
+                shell, this pill is the entry point from the queue. */}
+            <a
+              href="/admin/home"
+              className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-saffron-500 to-saffron-600 text-cream-50 px-3.5 py-1.5 text-xs font-semibold shadow-[0_4px_14px_-4px_rgba(242,148,76,0.6)] hover:from-saffron-600 hover:to-saffron-600 transition-all"
+            >
+              ✨ Open new Dashboard →
+            </a>
             {/* Bot ingest liveness, renders only after the MacBook has
                 pinged at least once. Green pulsing dot when fresh,
                 gold when stale, red when offline. */}

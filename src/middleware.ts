@@ -15,6 +15,23 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 
+/** Forward the request pathname as an `x-pathname` header so server
+ *  components (specifically the root layout) can decide whether to
+ *  render the public Header/Footer chrome or treat the request as
+ *  an admin route that owns its full viewport. `next/headers` reads
+ *  request headers, which middleware can rewrite via the
+ *  `NextResponse.next({ request: { headers } })` form. */
+function withPathHeader(req: NextRequest, base?: NextResponse): NextResponse {
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", req.nextUrl.pathname);
+  const resp =
+    base ?? NextResponse.next({ request: { headers: requestHeaders } });
+  // Also expose on the response so any downstream layer (Vercel
+  // edge cache rules, future analytics) can key on it.
+  resp.headers.set("x-pathname", req.nextUrl.pathname);
+  return resp;
+}
+
 export function middleware(req: NextRequest) {
   const url = req.nextUrl;
 
@@ -23,10 +40,10 @@ export function middleware(req: NextRequest) {
   // gives us `lang === "en?lang=en"`. We detect by looking for a
   // literal `?` *inside* the query string.
   const search = url.search; // includes the leading "?"
-  if (search.length < 2) return NextResponse.next();
+  if (search.length < 2) return withPathHeader(req);
   // The query starts with "?", count any additional "?" past
   // position 0.
-  if (search.indexOf("?", 1) === -1) return NextResponse.next();
+  if (search.indexOf("?", 1) === -1) return withPathHeader(req);
 
   // Found a stray `?`. Preserve every NON-lang query parameter and
   // rebuild the URL with a single cleaned `lang` value (if found).
