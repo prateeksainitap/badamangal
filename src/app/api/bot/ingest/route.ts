@@ -294,6 +294,13 @@ export async function POST(req: NextRequest) {
       .join("\n\n");
     const descriptionHi = extracted.descriptionHi || null;
 
+    // Pamphlet/poster path. classifyImage returned "bhandara" so we
+    // create a PENDING listing row only — admin reviews + approves
+    // before the listing shows up on the public cards / map. The
+    // chat panel + map deliberately do NOT surface a companion Spot
+    // here: a pamphlet is an announcement of an event, not a live
+    // sighting. (Food/crowd/tent photos take the spot branch below
+    // and bypass admin via an APPROVED Spot.)
     const row = await prisma.bhandara.create({
       data: {
         slug,
@@ -325,72 +332,11 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Spot promotion — mirror the pamphlet into the live chat + map
-    // surfaces via an APPROVED Spot so the photo is visible on the
-    // homepage immediately, while the Bhandara row above still waits
-    // on admin review before joining the listings grid. Trade-off:
-    // a stale or wrong-day poster could surface for up to 8h before
-    // the admin rejects the source row; the standard SPOT_TTL_HOURS
-    // backstop limits the blast radius and the bhandaraId link lets
-    // the admin clean both rows in one click.
-    //
-    // Strict gate, same logic the message-path uses: require a real
-    // Lucknow lat/lng (geocoding succeeded), refuse the 0,0 fallback.
-    // No pin is better than a wrong pin.
-    let spotId: string | null = null;
-    if (lat !== 0 && lng !== 0 && Number.isFinite(lat) && Number.isFinite(lng)) {
-      // Caption strips the [bot:…] provenance off the public surface
-      // but keeps it embedded — stripBotProvenance grabs the prefix
-      // from any chatter-board / map render-site automatically.
-      const spotCaption = [extracted.name || "Bhandara", tag]
-        .filter(Boolean)
-        .join("\n\n");
-      const spotExpiresAt = new Date(
-        Date.now() + SPOT_TTL_HOURS * 60 * 60 * 1000,
-      );
-      try {
-        const spot = await prisma.spot.create({
-          data: {
-            lat,
-            lng,
-            area: extracted.area ?? null,
-            address: extracted.address || null,
-            photoUrl,
-            caption: spotCaption,
-            language: "mixed",
-            reporterName: senderName,
-            reporterPhoneHash: null,
-            status: "APPROVED",
-            expiresAt: spotExpiresAt,
-            ipHash: "bot:whatsapp:bhandara-poster",
-            bhandaraId: row.id,
-          },
-          select: { id: true },
-        });
-        spotId = spot.id;
-        // Refresh the SSR caches so the homepage's HappeningNow + map
-        // pick up the new Spot on the next render instead of waiting
-        // on the 60s revalidate window. Best-effort — never fatal.
-        try {
-          revalidatePath("/");
-          revalidatePath("/live");
-        } catch {
-          /* noop */
-        }
-      } catch (err) {
-        console.warn(
-          "[bot/ingest] bhandara-companion spot create failed:",
-          err,
-        );
-      }
-    }
-
     return NextResponse.json({
       ok: true,
       kind: "bhandara",
       id: row.id,
       slug: row.slug,
-      spotId,
       reviewUrl: `${SITE_URL}/admin#${row.id}`,
     });
   }
