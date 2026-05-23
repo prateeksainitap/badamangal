@@ -855,10 +855,20 @@ export async function classifyBhandaraMessage(
   const prompt = `You are reading a single WhatsApp chat message from a Lucknow community group during the Jyeshtha "Bada Mangal" season. The message may be in Hindi (Devanagari or Roman/Hinglish), English, or mixed. Many messages in the group are unrelated to bhandara at all — your first job is to filter those out.
 ${groupBlock}
 A "bhandara" is a free community meal traditionally served on Bada Mangal Tuesdays. Messages we care about include:
-  • ASKING:     "kahan ho raha hai bada mangal bhandara aaj?", "any bhandara near Hazratganj today?", "भंडारा कहाँ है?", and — when the group is bhandara-themed — short location-only queries that don't contain the word "bhandara" but clearly ask about one ("polytechnic ke aas pss ho toh batao", "Alambagh me kahi h kya?", "any in Aashiyana??", "GPO ke around?"). In a bhandara group, asking "X ke pass kuch h?" essentially always means "is there a bhandara near X?"
-  • SHARING:    "Aliganj sector E me bhandara ho raha hai 11 baje se", "bhandara at Ram Mandir, Indira Nagar — until 4pm", attaching a Google Maps URL. Also short location-led sharing when the group is bhandara-themed and the message names a place + time ("Kothari Bandhu park, Rajajipuram, 11 baje se", "Civil Hospital ke samne aaj"). Replies that promise location data soon ("batata hu abhi udher pahuch ke", "wait, location bhejta hu") are SHARING with low confidence and an empty extractedAddress.
+  • ASKING:     "kahan ho raha hai bada mangal bhandara aaj?", "any bhandara near Hazratganj today?", "भंडारा कहाँ है?", and — when the group is bhandara-themed — short location-only queries that don't contain the word "bhandara" but clearly ask about one ("polytechnic ke aas pss ho toh batao", "Alambagh me kahi h kya?", "any in Aashiyana??", "GPO ke around?", "Kamta, Chinhat ya amity ke taraf koi bhandara ho toh batao"). Clarifying questions in a chain ("Amity konsa wala?", "kaunsa Aliganj sector?") are also ASKING. In a bhandara group, asking "X ke pass kuch h?" essentially always means "is there a bhandara near X?"
+  • SHARING:    "Aliganj sector E me bhandara ho raha hai 11 baje se", "bhandara at Ram Mandir, Indira Nagar — until 4pm", attaching a Google Maps URL. Also short location-led sharing when the group is bhandara-themed and the message names a place + time ("Kothari Bandhu park, Rajajipuram, 11 baje se", "Civil Hospital ke samne aaj").
+
+                IMPORTANT: in a bhandara-themed group, BARE Lucknow place names sent as a single message — even one or two words, with no verb, no "bhandara" word, no other context — are SHARING. The sender is answering a previous "where?" question by naming the spot. Examples (each a complete one-line message, all SHARING):
+                  - "Golf city"                              → extractedAddress: "Golf City, Lucknow",   locationLabel: "Golf City"
+                  - "Atal chauk"                             → extractedAddress: "Atal Chauk, Lucknow",  locationLabel: "Atal Chauk"
+                  - "Aliganj sector E"                       → extractedAddress: "Sector E, Aliganj, Lucknow", locationLabel: "Sector E, Aliganj"
+                  - "Or shopping square pe hai"              → extractedAddress: "Shopping Square, Lucknow", locationLabel: "Shopping Square" ("Or" / "Aur" = "and also")
+                  - "Bhandara near Durga khasta corner, abhi start nhi hua h" → extractedAddress: "Durga Khasta Corner, Lucknow", locationLabel: "Durga Khasta Corner"
+
+                Replies that promise location data soon ("batata hu abhi udher pahuch ke", "wait, location bhejta hu") are SHARING with low confidence and an empty extractedAddress.
+
   • MENTIONING: "puri-sabzi was amazing today, thanks Sharma ji", "बहुत अच्छा भंडारा था कल"
-  • UNRELATED:  "good morning", "happy birthday", "next meeting on Sunday", anything off-topic. Bare acknowledgements ("ok", "thanks", "ji", "👍"), sticker reactions, and pure chitchat with no location/food cue stay UNRELATED even in a bhandara group.
+  • UNRELATED:  "good morning", "happy birthday", "next meeting on Sunday", anything off-topic. Bare acknowledgements ("ok", "ok brother", "thanks", "ji", "hn ji", "acha", "Bta rha", "👍"), one-word reaction replies, sticker reactions, and pure chitchat with no location/food cue stay UNRELATED even in a bhandara group. The give-away for UNRELATED is the absence of BOTH (a) any Lucknow place name AND (b) any bhandara/food/timing/contribution cue.
 
 Output ONE JSON object only, no markdown, no commentary, no code fence:
 {
