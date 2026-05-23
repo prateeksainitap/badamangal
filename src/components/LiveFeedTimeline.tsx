@@ -10,6 +10,7 @@ import { useToast } from "@/components/Toast";
 import type { Locale } from "@/content/strings";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import {
+  hasMapPin,
   spotShareText,
   whatsappShareUrlForSpot,
 } from "@/lib/share";
@@ -812,9 +813,15 @@ function PostActions({
   locale: Locale;
 }) {
   const toast = useToast();
-  const hasCoords =
-    typeof post.bhandaraLat === "number" && typeof post.bhandaraLng === "number";
-  const dirUrl = hasCoords
+  // Proper map-pin check — used to be just `typeof === "number"` which
+  // accepted 0,0 (the bot-ingest fallback for coords-less spots). Now
+  // we share the lib/share `hasMapPin` rule with every other surface:
+  // both coords numeric, both finite, neither zero. When that fails,
+  // hide the Directions CTA entirely so we never link to null island.
+  const dirUrl = hasMapPin({
+    lat: post.bhandaraLat ?? null,
+    lng: post.bhandaraLng ?? null,
+  })
     ? `https://www.google.com/maps/dir/?api=1&destination=${post.bhandaraLat},${post.bhandaraLng}`
     : null;
 

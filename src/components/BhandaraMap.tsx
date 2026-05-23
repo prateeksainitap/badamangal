@@ -30,6 +30,7 @@ import { useLocaleFromContext } from "@/lib/locale-context";
 import {
   bhandaraShareText,
   spotShareText,
+  hasMapPin,
   whatsappShareUrlForBhandara,
   whatsappShareUrlForSpot,
 } from "@/lib/share";
@@ -583,11 +584,19 @@ function buildSpotPopupHtml(
   s: LiveSpotPin,
   locale: "hi" | "en",
 ): string {
-  const dirUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
+  // Spots can land coordless (bot-ingested before admin sets coords)
+  // — hide the Directions CTA + the popup's maps fallback entirely
+  // in that case. The share-message builder also skips its Maps
+  // deep-link line via the same gate in lib/share.ts, so a Copy or
+  // Share from a coordless popup produces a message with no 0,0
+  // coordinate reference.
+  const pin = hasMapPin(s);
+  const dirUrl = pin
+    ? `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`
+    : null;
   // Plain `?q=lat,lng` maps URL is used by the popup's Copy button (so
   // the recipient gets a direct location pin, not a share message).
   // The WhatsApp share path uses the warmer message builder below.
-  const mapsUrl = `https://www.google.com/maps?q=${s.lat},${s.lng}&z=18`;
   // wa.me share text built from the shared helper so the popup, the
   // HappeningNow card, and the side-list row all hand recipients the
   // exact same warm message (intro + caption + maps link +
@@ -631,12 +640,14 @@ function buildSpotPopupHtml(
             : ""
         }
         <div style="margin-top:14px;display:flex;align-items:stretch;gap:6px;">
-          <a href="${dirUrl}" target="_blank" rel="noopener noreferrer"
-             data-ga="spot_popup_directions"
-             style="flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:5px;background:#E07A1F;color:#FBF7F0;border-radius:9999px;padding:7px 10px;font-size:11.5px;font-weight:600;text-decoration:none;box-shadow:0 2px 6px rgba(224,122,31,0.30);white-space:nowrap;">
-             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22s7-7.58 7-13a7 7 0 1 0-14 0c0 5.42 7 13 7 13zm0-10.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
-             Directions
-          </a>
+          ${dirUrl
+            ? `<a href="${dirUrl}" target="_blank" rel="noopener noreferrer"
+                  data-ga="spot_popup_directions"
+                  style="flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:5px;background:#E07A1F;color:#FBF7F0;border-radius:9999px;padding:7px 10px;font-size:11.5px;font-weight:600;text-decoration:none;box-shadow:0 2px 6px rgba(224,122,31,0.30);white-space:nowrap;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22s7-7.58 7-13a7 7 0 1 0-14 0c0 5.42 7 13 7 13zm0-10.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
+                  Directions
+               </a>`
+            : ""}
           <a href="${waUrl}" target="_blank" rel="noopener noreferrer"
              data-ga="spot_popup_whatsapp"
              style="flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid rgba(106,141,68,0.55);color:#6A8D44;border-radius:9999px;padding:6px 10px;font-size:11.5px;font-weight:600;text-decoration:none;background:#FFFFFF;white-space:nowrap;">
@@ -684,7 +695,12 @@ function buildListedBhandaraPopupHtml(
   b: Bhandara,
   locale: "hi" | "en",
 ): string {
-  const dirUrl = `https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}`;
+  // Listings sometimes carry 0,0 when geocoding failed at submission
+  // and admin hasn't fixed coords. Hide the Directions CTA in that
+  // case so we never link to the null-island coordinate.
+  const dirUrl = hasMapPin(b)
+    ? `https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}`
+    : null;
   const detailUrl = `/bhandara/${b.slug}`;
   // Full warm bhandara share message body, same content the
   // BhandaraCard's WhatsApp button sends. Pasted by the Copy button
@@ -744,12 +760,14 @@ function buildListedBhandaraPopupHtml(
              style="flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:5px;background:#9C2A2A;color:#FBF7F0;border-radius:9999px;padding:7px 12px;font-size:11.5px;font-weight:600;text-decoration:none;box-shadow:0 2px 6px rgba(156,42,42,0.30);white-space:nowrap;">
              View details
           </a>
-          <a href="${dirUrl}" target="_blank" rel="noopener noreferrer"
-             data-ga="listed_popup_directions"
-             style="flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:5px;background:#E07A1F;color:#FBF7F0;border-radius:9999px;padding:7px 12px;font-size:11.5px;font-weight:600;text-decoration:none;box-shadow:0 2px 6px rgba(224,122,31,0.30);white-space:nowrap;">
-             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22s7-7.58 7-13a7 7 0 1 0-14 0c0 5.42 7 13 7 13zm0-10.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
-             Directions
-          </a>
+          ${dirUrl
+            ? `<a href="${dirUrl}" target="_blank" rel="noopener noreferrer"
+                  data-ga="listed_popup_directions"
+                  style="flex:1 1 0;min-width:0;display:inline-flex;align-items:center;justify-content:center;gap:5px;background:#E07A1F;color:#FBF7F0;border-radius:9999px;padding:7px 12px;font-size:11.5px;font-weight:600;text-decoration:none;box-shadow:0 2px 6px rgba(224,122,31,0.30);white-space:nowrap;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22s7-7.58 7-13a7 7 0 1 0-14 0c0 5.42 7 13 7 13zm0-10.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z"/></svg>
+                  Directions
+               </a>`
+            : ""}
           <a href="${waUrl}" target="_blank" rel="noopener noreferrer"
              data-ga="listed_popup_whatsapp"
              style="flex:0 0 32px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(106,141,68,0.55);color:#6A8D44;border-radius:9999px;width:32px;height:32px;padding:0;background:#FFFFFF;text-decoration:none;"

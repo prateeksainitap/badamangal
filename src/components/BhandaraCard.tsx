@@ -7,7 +7,7 @@ import { JaliCorner } from "@/components/ornaments";
 // this so the message a recipient sees is identical regardless of
 // where the sharer clicked from. See lib/share.ts for the rationale
 // behind the new "🪔 Bada Mangal Bhandara, <name>" layout.
-import { whatsappShareUrlForBhandara } from "@/lib/share";
+import { hasMapPin, whatsappShareUrlForBhandara } from "@/lib/share";
 
 type Props = {
   bhandara: Bhandara;
@@ -273,19 +273,21 @@ export default function BhandaraCard({ bhandara, locale, pinnedDate }: Props) {
         {/* Action row, relative + z-10 keeps these buttons clickable above
             the stretched title link that covers the whole card. */}
         <div className="relative z-10 mt-auto pt-2 flex flex-wrap gap-2">
-          <a
-            href={googleDirectionsUrl(bhandara)}
-            target="_blank"
-            rel="noreferrer noopener"
-            data-ga="card_get_directions"
-            data-ga-slug={bhandara.slug}
-            data-ga-area={bhandara.area}
-            data-ga-date={gaDate}
-            className="btn btn-primary btn-sm"
-          >
-            <IconPin />
-            {t.cta.getDirections}
-          </a>
+          {hasMapPin(bhandara) ? (
+            <a
+              href={googleDirectionsUrl(bhandara)}
+              target="_blank"
+              rel="noreferrer noopener"
+              data-ga="card_get_directions"
+              data-ga-slug={bhandara.slug}
+              data-ga-area={bhandara.area}
+              data-ga-date={gaDate}
+              className="btn btn-primary btn-sm"
+            >
+              <IconPin />
+              {t.cta.getDirections}
+            </a>
+          ) : null}
           <a
             href={whatsappShareUrlForBhandara(bhandara, locale)}
             target="_blank"

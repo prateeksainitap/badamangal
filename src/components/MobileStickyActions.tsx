@@ -5,7 +5,9 @@ import { useEffect, useRef, useState } from "react";
 type Locale = "hi" | "en";
 
 type Props = {
-  directionsHref: string;
+  /** null when the bhandara has no map pin (lat=0/lng=0) — the
+   *  Directions slot is hidden entirely in that case. */
+  directionsHref: string | null;
   whatsappHref: string;
   sponsorHref: string | null; // null when no upiId, fall back to phone tel:
   organizerPhone: string;
@@ -80,18 +82,24 @@ export default function MobileStickyActions({
       aria-hidden={!show}
     >
       <div className="mx-3 mb-3 rounded-2xl border border-gold-500/40 bg-cream-50/95 backdrop-blur shadow-warm">
-        <div className="grid grid-cols-3 divide-x divide-gold-500/30">
-          <a
-            href={directionsHref}
-            target="_blank"
-            rel="noreferrer noopener"
-            data-ga="sticky_directions"
-            className="flex flex-col items-center gap-0.5 py-3 text-saffron-600 hover:text-sindoor-700"
-            aria-label={labels.dir}
-          >
-            <IconCompass />
-            <span className="text-xs font-medium">{labels.dir}</span>
-          </a>
+        <div
+          className={`grid divide-x divide-gold-500/30 ${
+            directionsHref ? "grid-cols-3" : "grid-cols-2"
+          }`}
+        >
+          {directionsHref ? (
+            <a
+              href={directionsHref}
+              target="_blank"
+              rel="noreferrer noopener"
+              data-ga="sticky_directions"
+              className="flex flex-col items-center gap-0.5 py-3 text-saffron-600 hover:text-sindoor-700"
+              aria-label={labels.dir}
+            >
+              <IconCompass />
+              <span className="text-xs font-medium">{labels.dir}</span>
+            </a>
+          ) : null}
           <a
             href={whatsappHref}
             target="_blank"

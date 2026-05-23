@@ -14,6 +14,7 @@ import { areaToSlug } from "@/lib/areaSlug";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import {
   bhandaraShareText,
+  hasMapPin,
   whatsappShareUrlForBhandara as whatsappShareUrl,
 } from "@/lib/share";
 
@@ -229,17 +230,19 @@ export default function BhandaraDetailView({ b, others }: Props) {
                   match the .btn-lg neighbours so the three CTAs read as
                   one row of decisions. */}
               <div className="mt-6 flex flex-wrap gap-2.5">
-                <a
-                  href={googleDirectionsUrl(b)}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  data-ga="detail_get_directions"
-                  data-ga-slug={b.slug}
-                  className="btn btn-primary btn-lg"
-                >
-                  <IconPinSolid />
-                  {t.cta.getDirections}
-                </a>
+                {hasMapPin(b) ? (
+                  <a
+                    href={googleDirectionsUrl(b)}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    data-ga="detail_get_directions"
+                    data-ga-slug={b.slug}
+                    className="btn btn-primary btn-lg"
+                  >
+                    <IconPinSolid />
+                    {t.cta.getDirections}
+                  </a>
+                ) : null}
                 <a
                   href={whatsappShareUrl(b, locale)}
                   target="_blank"
@@ -319,9 +322,12 @@ export default function BhandaraDetailView({ b, others }: Props) {
         </div>
       </header>
 
-      {/* Mobile sticky bottom bar, Directions / WhatsApp / Sponsor */}
+      {/* Mobile sticky bottom bar, Directions / WhatsApp / Sponsor.
+          When the bhandara has no map pin (geocoding failed and
+          admin hasn't fixed coords), pass null for the directions
+          link so MobileStickyActions can hide that slot. */}
       <MobileStickyActions
-        directionsHref={googleDirectionsUrl(b)}
+        directionsHref={hasMapPin(b) ? googleDirectionsUrl(b) : null}
         whatsappHref={whatsappShareUrl(b, locale)}
         sponsorHref={upi ?? null}
         organizerPhone={b.organizerPhone}

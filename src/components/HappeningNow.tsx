@@ -10,7 +10,11 @@ import { SunburstSpark } from "@/components/ornaments";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { useLocaleFromContext } from "@/lib/locale-context";
-import { spotShareText, whatsappShareUrlForSpot } from "@/lib/share";
+import {
+  hasMapPin,
+  spotShareText,
+  whatsappShareUrlForSpot,
+} from "@/lib/share";
 
 const NEAR_ME_RADIUS_KM = 3;
 
@@ -321,7 +325,16 @@ function SpotCard({
     ? spot.reporterName.trim().charAt(0).toUpperCase()
     : null;
 
-  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`;
+  // Bot-ingested spots can land with lat=0/lng=0 (WhatsApp strips EXIF
+  // until admin sets coords). When that's the case we hide the
+  // "Get directions" button entirely — a maps link to 0,0 drops the
+  // user in the Gulf of Guinea. The card still shows the photo +
+  // caption + reporter + relative time; the directions row simply
+  // doesn't render.
+  const hasPin = hasMapPin(spot);
+  const directionsUrl = hasPin
+    ? `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`
+    : null;
   // Share message comes from the shared lib/share builder so that the
   // wording stays in sync with the bhandara share + the popup share
   // on the map. The intro + closer match the bhandara share's voice
@@ -475,23 +488,25 @@ function SpotCard({
             stretched-link overlay so they remain independently
             clickable. */}
         <div className="relative z-20 mt-1 flex items-center gap-1.5 flex-wrap">
-          <a
-            href={directionsUrl}
-            target="_blank"
-            rel="noreferrer noopener"
-            onClick={(e) => {
-              e.stopPropagation();
-              trackEvent("happening_get_directions", {
-                spot_id: spot.id,
-                has_user_coords: userCoords ? 1 : 0,
-              });
-            }}
-            aria-label={isHi ? "रास्ता बताएँ" : "Get directions"}
-            title={isHi ? "रास्ता बताएँ" : "Get directions"}
-            className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 shadow-warm transition-colors"
-          >
-            <IconPin />
-          </a>
+          {directionsUrl ? (
+            <a
+              href={directionsUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              onClick={(e) => {
+                e.stopPropagation();
+                trackEvent("happening_get_directions", {
+                  spot_id: spot.id,
+                  has_user_coords: userCoords ? 1 : 0,
+                });
+              }}
+              aria-label={isHi ? "रास्ता बताएँ" : "Get directions"}
+              title={isHi ? "रास्ता बताएँ" : "Get directions"}
+              className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 shadow-warm transition-colors"
+            >
+              <IconPin />
+            </a>
+          ) : null}
           <a
             href={waUrl}
             target="_blank"

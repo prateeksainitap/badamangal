@@ -10,6 +10,7 @@ import { strings } from "@/content/strings";
 import { trackEvent } from "@/lib/ga";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import { useToast } from "@/components/Toast";
+import { hasMapPin } from "@/lib/share";
 import {
   bhandaraShareText,
   spotShareText,
@@ -431,7 +432,14 @@ export default function MapSideList({
 
 function SideRow({ entry: e, isHi }: { entry: Entry; isHi: boolean }) {
   const toast = useToast();
-  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lng}`;
+  // Sidebar lists rows from BOTH the listed-bhandaras table and the
+  // live-spots table; either can land coordless when geocoding
+  // failed (listings) or before admin sets coords (bot-ingested
+  // spots). The Directions CTA is hidden whenever there's no real
+  // map pin so we never link to null island.
+  const directionsUrl = hasMapPin(e)
+    ? `https://www.google.com/maps/dir/?api=1&destination=${e.lat},${e.lng}`
+    : null;
   // Pre-built by the shared share helpers, already encoded and
   // wrapped as a full wa.me URL.
   const waUrl = e.shareUrl;
@@ -527,19 +535,21 @@ function SideRow({ entry: e, isHi }: { entry: Entry; isHi: boolean }) {
 
       {/* Round CTA cluster, same icon-only language as the spot cards */}
       <div className="mt-2 flex items-center gap-1.5">
-        <a
-          href={directionsUrl}
-          target="_blank"
-          rel="noreferrer noopener"
-          aria-label={isHi ? "रास्ता बताएँ" : "Get directions"}
-          title={isHi ? "रास्ता बताएँ" : "Get directions"}
-          onClick={() =>
-            trackEvent("map_list_directions", { type: e.type })
-          }
-          className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 shadow-warm transition-colors"
-        >
-          <IconPin />
-        </a>
+        {directionsUrl ? (
+          <a
+            href={directionsUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label={isHi ? "रास्ता बताएँ" : "Get directions"}
+            title={isHi ? "रास्ता बताएँ" : "Get directions"}
+            onClick={() =>
+              trackEvent("map_list_directions", { type: e.type })
+            }
+            className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 shadow-warm transition-colors"
+          >
+            <IconPin />
+          </a>
+        ) : null}
         <a
           href={waUrl}
           target="_blank"

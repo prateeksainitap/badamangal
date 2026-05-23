@@ -248,9 +248,34 @@ export type ShareableSpot = {
  * paste the warm text into any messenger. The wa.me URL builder
  * `whatsappShareUrlForSpot` below just wraps + encodes this.
  */
+/**
+ * True when an object carries a usable Lucknow lat/lng. Bot-ingested
+ * spots default to lat=0/lng=0 until an admin sets coords; listings
+ * sometimes land at 0,0 when geocoding fails. Surfaces that render
+ * "Get directions" / "Open in Maps" / "Copy location" / the
+ * WhatsApp share-message maps line all gate on this so we never
+ * generate a link to the null-island coordinate (Gulf of Guinea).
+ */
+export function hasMapPin(b: {
+  lat?: number | null;
+  lng?: number | null;
+}): boolean {
+  return (
+    typeof b.lat === "number" &&
+    typeof b.lng === "number" &&
+    Number.isFinite(b.lat) &&
+    Number.isFinite(b.lng) &&
+    b.lat !== 0 &&
+    b.lng !== 0
+  );
+}
+
 export function spotShareText(s: ShareableSpot, locale: Locale): string {
   const isHi = locale === "hi";
-  const mapsUrl = `https://www.google.com/maps?q=${s.lat},${s.lng}&z=18`;
+  const pin = hasMapPin(s);
+  const mapsUrl = pin
+    ? `https://www.google.com/maps?q=${s.lat},${s.lng}&z=18`
+    : null;
   // Second link in the share message, sits next to the Google Maps
   // link as a "and here's where it lives on the BadaMangal map"
   // counterpart. When the spot is linked to a listed bhandara, point
@@ -301,19 +326,23 @@ export function spotShareText(s: ShareableSpot, locale: Locale): string {
   // means WhatsApp's automatic link-preview card (which previews
   // the FIRST URL in the message) shows OUR OG card, not Google's
   // raw maps thumbnail.
-  const lines: string[] = [
+  const lines: (string | null)[] = [
     intro,
     "",
     captionLine,
     placeLine,
     "",
     `${siteLabel} ${siteUrl}`,
-    `${mapsLabel} ${mapsUrl}`,
+    // Skip the Maps deep-link entirely when the spot doesn't have a
+    // pin yet — a `?q=0,0` link drops the recipient into the Gulf of
+    // Guinea, exactly the bug the user flagged. The site link above
+    // still works (lists this spot among today's live photos) so the
+    // share remains actionable.
+    mapsUrl ? `${mapsLabel} ${mapsUrl}` : null,
     "",
     closer,
-  ].filter((l): l is string => l !== null);
-
-  return lines.join("\n");
+  ];
+  return lines.filter((l): l is string => l !== null).join("\n");
 }
 
 /**
