@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import BhandaraCard from "@/components/BhandaraCard";
 import FancySelect from "@/components/FancySelect";
+import CtaPendingDot from "@/components/CtaPendingDot";
 import { trackEvent } from "@/lib/ga";
 import type { Bhandara } from "@/types/bhandara";
 import type { Locale } from "@/content/strings";
@@ -372,14 +373,22 @@ export default function BhandaraCardsSection({
               </p>
 
               <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                <a
+                {/* Was a plain <a> doing a hard navigation, which meant
+                    no Next.js prefetch + no in-flight feedback. Swapped
+                    to <Link> so the route prefetches when the empty
+                    state mounts, and added CtaPendingDot so a click on
+                    a cold cache shows the spinner immediately instead
+                    of looking dead for ~2 seconds. */}
+                <Link
                   href={`/list-bhandara${isHi ? "" : "?lang=en"}`}
+                  prefetch
                   data-ga="cta_empty_list_bhandara"
                   data-ga-source="cards_empty"
                   className="btn btn-primary btn-sm"
                 >
                   {isHi ? "अपना भंडारा जोड़ें" : "List your bhandara"}
-                </a>
+                  <CtaPendingDot />
+                </Link>
                 {(area !== "all" || tuesday !== "all") && (
                   <button
                     type="button"

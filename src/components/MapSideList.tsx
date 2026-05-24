@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import CtaPendingDot from "@/components/CtaPendingDot";
 import { type NearMeState } from "@/components/NearMeButton";
 import { haversineKm } from "@/lib/geo";
 import type { Bhandara } from "@/types/bhandara";
@@ -676,6 +677,7 @@ function EmptySpotted({ isHi }: { isHi: boolean }) {
       </p>
       <Link
         href="/spot"
+        prefetch
         className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-3.5 py-1.5 text-xs shadow-warm"
       >
         {/* Camera glyph evokes the "snap a photo" gesture that creates
@@ -695,6 +697,7 @@ function EmptySpotted({ isHi }: { isHi: boolean }) {
           <circle cx="12" cy="13" r="4" />
         </svg>
         {isHi ? "पहले बनो, स्पॉट करो" : "Be first, spot one"}
+        <CtaPendingDot className="inline-block h-3 w-3 rounded-full border-2 border-current/40 border-t-current motion-safe:animate-spin" />
       </Link>
     </div>
   );
@@ -748,6 +751,7 @@ function EmptyListed({ isHi }: { isHi: boolean }) {
       </p>
       <Link
         href="/list-bhandara"
+        prefetch
         className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-3.5 py-1.5 text-xs shadow-warm"
       >
         {/* Pencil/clipboard glyph: form-filling, planning. Distinct
@@ -770,6 +774,7 @@ function EmptyListed({ isHi }: { isHi: boolean }) {
           <line x1="9" y1="17" x2="13" y2="17" />
         </svg>
         {isHi ? "अपना भंडारा सूचीबद्ध करें" : "List your bhandara"}
+        <CtaPendingDot className="inline-block h-3 w-3 rounded-full border-2 border-current/40 border-t-current motion-safe:animate-spin" />
       </Link>
     </div>
   );

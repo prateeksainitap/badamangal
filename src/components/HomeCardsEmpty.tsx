@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { strings } from "@/content/strings";
 import { useLocaleFromContext } from "@/lib/locale-context";
+import CtaPendingDot from "@/components/CtaPendingDot";
 
 /**
  * Whole-section empty state shown on the homepage when there are zero
@@ -54,11 +55,18 @@ export default function HomeCardsEmpty() {
           </p>
           <Link
             href={`/list-bhandara${isHi ? "" : "?lang=en"}`}
+            prefetch
             data-ga="cta_empty_list_bhandara"
             data-ga-source="cards_empty"
             className="btn btn-primary btn-sm mt-5 inline-flex items-center gap-2"
           >
             {t.cta.listBhandara}
+            {/* Pending spinner renders the moment the user clicks,
+                before /list-bhandara starts rendering. When idle the
+                component returns null and the arrow shows; when
+                pending the arrow is hidden by the data attribute below
+                so the visitor sees one indicator at a time. */}
+            <CtaPendingDot className="inline-block h-3 w-3 rounded-full border-2 border-current/40 border-t-current motion-safe:animate-spin" />
             <span aria-hidden>→</span>
           </Link>
         </div>

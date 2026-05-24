@@ -6,6 +6,7 @@ import LangToggle from "@/components/LangToggle";
 import { JaliCorner } from "@/components/ornaments";
 import { useT } from "@/lib/useT";
 import { isLiveChatOpenToday } from "@/lib/live-chat-schedule";
+import CtaPendingDot from "@/components/CtaPendingDot";
 
 function HeaderInner() {
   const { t, locale } = useT();
@@ -193,10 +194,16 @@ function HeaderInner() {
           </div>
           <Link
             href={`/list-bhandara${locale === "en" ? "?lang=en" : ""}`}
+            prefetch
             className="hidden sm:inline-flex btn btn-primary btn-sm"
             data-ga="cta_header_list_bhandara"
           >
             {t.cta.listBhandara}
+            {/* Spinner replaces the chevron the moment the user clicks
+                and stays until /list-bhandara starts rendering. Closes
+                the perceived-latency gap before the route-level
+                loading.tsx skeleton fires. */}
+            <CtaPendingDot />
           </Link>
 
           {/* Mobile menu trigger */}
@@ -289,6 +296,7 @@ function HeaderInner() {
                 list because it's the most useful action on bhandara day. */}
             <Link
               href="/spot"
+              prefetch
               onClick={() => setMenuOpen(false)}
               data-ga="cta_drawer_spot"
               className="relative block overflow-hidden rounded-2xl border border-saffron-500/40 bg-gradient-to-br from-saffron-50 to-cream-50 p-4 shadow-warm group"
