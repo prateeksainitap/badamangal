@@ -716,6 +716,284 @@ html[lang^="hi"] .uppercase {
   text-transform: none !important;
 }
 
+/* ──────────────────────────────────────────────────────────────────
+ *  ADMIN console — visual effects scoped to /admin/* surfaces.
+ *  Kept here (vs inline in AdminShell) so future admin pages can
+ *  re-use the same vocabulary (.admin-ember-*, .admin-kpi-glow,
+ *  .admin-counter, etc.) without duplicating keyframes.
+ * ────────────────────────────────────────────────────────────── */
+
+/* When the admin shell is mounted, override the global cream-50
+   body bg so any stretchy-scroll / overscroll surface (and any
+   sub-pixel paint gap between the shell and viewport) stays in
+   the operator-console palette. `body:has(.admin-shell)` is the
+   single source of truth — nothing in the public site needs to
+   opt in, and the rule no-ops on pages without the admin shell. */
+body:has(.admin-shell) {
+  background-color: #080A10 !important;
+}
+
+/* Pulsing ember particles. 4px saffron/sindoor/gold dots at fixed
+   absolute positions across the admin-shell viewport — same recipe
+   as the public LiveChatterBoard's chatter-ember-* but tuned for
+   the wider admin canvas (lower density, slower cycles to keep
+   long admin sessions calm).
+   Each ember pulses opacity + scale on its own staggered cycle so
+   the dots never "blink in sync", which would read as a flicker
+   rather than a breathing surface. */
+@keyframes admin-ember-pulse {
+  0%, 100% { opacity: 0; transform: scale(0.55); }
+  50%      { opacity: 0.75; transform: scale(1); }
+}
+.admin-ember {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background: rgba(242, 148, 76, 0.85);
+  box-shadow: 0 0 12px rgba(242, 148, 76, 0.65);
+  pointer-events: none;
+}
+.admin-ember-1 { top: 12%; left: 18%; animation: admin-ember-pulse 5.5s ease-in-out 0s    infinite; }
+.admin-ember-2 { top: 68%; left: 28%; animation: admin-ember-pulse 6.5s ease-in-out 1.4s  infinite; background: rgba(201,162,74,0.85); box-shadow: 0 0 12px rgba(201,162,74,0.60); }
+.admin-ember-3 { top: 26%; left: 82%; animation: admin-ember-pulse 7s   ease-in-out 0.7s  infinite; }
+.admin-ember-4 { top: 84%; left: 64%; animation: admin-ember-pulse 5.0s ease-in-out 2.5s  infinite; background: rgba(156,42,42,0.85); box-shadow: 0 0 12px rgba(156,42,42,0.60); }
+.admin-ember-5 { top: 6%;  left: 52%; animation: admin-ember-pulse 6.0s ease-in-out 2.0s  infinite; background: rgba(201,162,74,0.85); box-shadow: 0 0 12px rgba(201,162,74,0.60); }
+.admin-ember-6 { top: 50%; left: 92%; animation: admin-ember-pulse 8.0s ease-in-out 3.0s  infinite; background: rgba(242,148,76,0.85); box-shadow: 0 0 12px rgba(242,148,76,0.55); }
+.admin-ember-7 { top: 42%; left: 8%;  animation: admin-ember-pulse 7.5s ease-in-out 4.0s  infinite; background: rgba(156,42,42,0.75); box-shadow: 0 0 12px rgba(156,42,42,0.55); }
+
+/* Saffron-glow border that breathes on hovered KPI cards. Used by
+   admin-kpi-glow utility on the AttentionKpi tile. Keyframe drives
+   the box-shadow intensity so the card "exhales" warmth toward
+   the eye without ever fully going dark (creates a sense the page
+   is alive even when nothing is happening). */
+@keyframes admin-kpi-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(242, 148, 76, 0.0), inset 0 0 0 1px rgba(242, 148, 76, 0.30); }
+  50%      { box-shadow: 0 0 30px -6px rgba(242, 148, 76, 0.45), inset 0 0 0 1px rgba(242, 148, 76, 0.55); }
+}
+.admin-kpi-breathe {
+  animation: admin-kpi-breathe 3.5s ease-in-out infinite;
+}
+
+/* Count-up reveal on big KPI numbers — soft fade + lift on first
+   render so the dashboard "snaps to life" rather than appearing
+   pre-loaded. Pure CSS (no JS), runs once via `forwards`. */
+@keyframes admin-counter-rise {
+  from { opacity: 0; transform: translateY(8px); letter-spacing: -0.04em; }
+  to   { opacity: 1; transform: translateY(0); letter-spacing: -0.02em; }
+}
+.admin-counter {
+  animation: admin-counter-rise 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Activity-stream row stagger — 14 rows fade in sequentially over
+   ~700ms total so the panel feels like it's "receiving" the events
+   not "rendering" them. Each row's delay is set via --i inline. */
+@keyframes admin-row-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.admin-row-in {
+  animation: admin-row-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+/* Heat-cell pulse for the hero panel "city is breathing" visual —
+   a slow radial scale that emanates from a fixed center, like the
+   homepage map's heat cells but oversized and decorative. */
+@keyframes admin-heatcell-pulse {
+  0%   { transform: scale(0.4); opacity: 0; }
+  35%  { opacity: 0.55; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.admin-heatcell {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(242,148,76,0.55) 0%, rgba(156,42,42,0.20) 60%, transparent 80%);
+  animation: admin-heatcell-pulse 4s ease-out infinite;
+  pointer-events: none;
+}
+
+/* Live-status dot (sticky in the top bar greeting). A soft halo
+   that pulses every 1.6s, brighter than a generic LED dot so the
+   operator sees "this is live" at peripheral vision. */
+@keyframes admin-live-halo {
+  0%, 100% { transform: scale(1);   opacity: 0.55; }
+  50%      { transform: scale(2.2); opacity: 0;    }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ *  ADMIN — AI / ops console theme.
+ *  The dashboard at /admin/home opts into a distinctly tech-leaning
+ *  visual language: deep near-black canvas, electric cyan + violet
+ *  accents, animated neural network background, monospaced numerics.
+ *  Saffron stays for the BadaMangal brand mark + a few CTA accents
+ *  so the operator never forgets which product they're looking at.
+ *
+ *  Scoped behind the .admin-ai class so legacy admin pages (Bhandaras
+ *  / Spots / etc moderation queues) keep the warm-ember theme.
+ * ────────────────────────────────────────────────────────────── */
+
+/* Neural-network ambient background ----------------------------- */
+
+/* Node breathing — soft scale + opacity pulse, staggered per-node
+   so the network never blinks in sync. */
+@keyframes neural-pulse {
+  0%, 100% { transform: scale(1);   opacity: 0.55; }
+  50%      { transform: scale(1.35); opacity: 1; }
+}
+
+/* Edge data-flow — the dashed pattern (set as stroke-dasharray on
+   the SVG line) marches along the line, creating the illusion of a
+   data packet traversing the edge. Distance is normalised to 16px
+   in dash-space so all edges look like the same "speed of data"
+   regardless of length. */
+@keyframes neural-flow {
+  from { stroke-dashoffset: 0;   }
+  to   { stroke-dashoffset: -32; }
+}
+
+/* Optional opacity gate on the whole network — fades the surface
+   in once on first paint so it doesn't snap into existence. */
+@keyframes neural-bg-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.neural-bg {
+  animation: neural-bg-fade-in 800ms ease-out both;
+}
+
+/* Animated data grid ------------------------------------------- */
+
+/* Two SVGs layered: a thin square grid + a few brighter horizontal
+   "scan" lines that slowly drift down. The grid itself is static
+   (no animation); only the scan line moves. Gives the surface a
+   sense of being actively watched / measured by a system without
+   being noisy. */
+.admin-data-grid {
+  background-image:
+    /* Vertical micro-lines */
+    linear-gradient(
+      90deg,
+      rgba(34, 211, 238, 0.05) 1px,
+      transparent 1px
+    ),
+    /* Horizontal micro-lines */
+    linear-gradient(
+      0deg,
+      rgba(34, 211, 238, 0.05) 1px,
+      transparent 1px
+    );
+  background-size: 48px 48px;
+}
+
+@keyframes admin-scanline {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(200vh); }
+}
+.admin-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(34, 211, 238, 0.6) 50%,
+    transparent
+  );
+  pointer-events: none;
+  animation: admin-scanline 11s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.55));
+}
+
+/* Terminal-cursor blink — applied to a small element to read as a
+   "system is alive" signal in headers / activity stream. */
+@keyframes admin-cursor-blink {
+  0%, 49%   { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.admin-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  vertical-align: -0.12em;
+  background: currentColor;
+  margin-left: 0.15em;
+  animation: admin-cursor-blink 1.1s steps(1) infinite;
+}
+
+/* Mono digits on KPI tiles — animate the colour subtly so the
+   number reads as "live, computed just now". Held back to 4s so
+   it doesn't pull focus from the actual value. */
+@keyframes admin-data-tick {
+  0%, 100% { color: var(--admin-data-color, #67e8f9); }
+  50%      { color: var(--admin-data-color-bright, #a5f3fc); }
+}
+.admin-data-tick {
+  animation: admin-data-tick 4s ease-in-out infinite;
+}
+
+/* Glow border on cards — sweeps a soft cyan/violet light around
+   the border edge. Used sparingly on attention tiles. */
+@keyframes admin-card-glow {
+  0%   { box-shadow: 0 0 0 1px rgba(34,211,238,0.30), 0 0 20px -8px rgba(34,211,238,0.40); }
+  50%  { box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.45), 0 0 28px -6px rgba(139, 92, 246, 0.55); }
+  100% { box-shadow: 0 0 0 1px rgba(34,211,238,0.30), 0 0 20px -8px rgba(34,211,238,0.40); }
+}
+.admin-card-glow {
+  animation: admin-card-glow 5.5s ease-in-out infinite;
+}
+
+/* Big number reveal — count-up replaced by a glitch-fade so the
+   value snaps to life rather than feeling pre-rendered. */
+@keyframes admin-value-snap {
+  0%   { opacity: 0; filter: blur(8px); transform: translateY(6px); letter-spacing: -0.05em; }
+  60%  { opacity: 0.85; filter: blur(0); }
+  100% { opacity: 1; filter: blur(0); transform: translateY(0); letter-spacing: -0.02em; }
+}
+.admin-value-snap {
+  animation: admin-value-snap 700ms cubic-bezier(0.2, 0.85, 0.2, 1) both;
+}
+
+/* Sidebar active-item glow — a faint cyan bar fading + scaling
+   into place when the operator navigates between pages. Positioning
+   in the markup uses `inset-y-0 my-auto` (NOT translate-y) so this
+   keyframe owns the `transform` property exclusively — otherwise the
+   utility translate fights the animation and the bar shifts off
+   centre. */
+@keyframes admin-nav-slide-in {
+  from { opacity: 0; transform: scaleY(0.4); }
+  to   { opacity: 1; transform: scaleY(1); }
+}
+.admin-nav-slide-in {
+  animation: admin-nav-slide-in 260ms ease-out both;
+  transform-origin: center center;
+}
+
+/* AI / "model" thinking shimmer — applied to the AI status pill
+   when the bot is connected and processing. A soft gradient
+   travels across the pill text. */
+@keyframes admin-ai-shimmer {
+  0%   { background-position: 200% 50%; }
+  100% { background-position: -200% 50%; }
+}
+.admin-ai-shimmer {
+  background-image: linear-gradient(
+    100deg,
+    #22d3ee 0%,
+    #67e8f9 25%,
+    #a5f3fc 50%,
+    #67e8f9 75%,
+    #22d3ee 100%
+  );
+  background-size: 300% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: admin-ai-shimmer 4s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto !important;
@@ -727,4 +1005,259 @@ html[lang^="hi"] .uppercase {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ *  Keyboard-first focus styles.
+ *
+ *  Every interactive element gets a visible focus ring on
+ *  `:focus-visible` (i.e. keyboard navigation), but NOT on mouse
+ *  click (`:focus`-only). The double-ring trick — solid saffron on
+ *  cream, solid cyan on the admin dark theme — survives any
+ *  background colour the element happens to sit on.
+ *
+ *  Skip-to-content link is rendered by RootLayout / AdminShell.
+ *  Tab order is HTML-driven; we don't override with tabindex
+ *  anywhere (and shouldn't).
+ * ────────────────────────────────────────────────────────────── */
+
+/* Global focus ring — saffron by default. Specific surfaces (admin
+   dark, gallery cyan inputs) override with their own ring colour
+   via `focus:ring-*` Tailwind classes already in place. */
+:focus-visible {
+  outline: 2px solid rgba(242, 148, 76, 0.85);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* On the admin dark surface, switch to cyan so the ring sits on the
+   ink-900 backdrop with high contrast. We scope via `.admin-shell`
+   so the public site (cream backdrop, saffron ring) is untouched. */
+.admin-shell :focus-visible {
+  outline-color: rgba(34, 211, 238, 0.85);
+}
+
+/* Native form elements (input, textarea, select) get a deeper ring
+   on focus-visible because their background often dominates the
+   focus signal. We keep the existing per-component `focus:ring-*`
+   classes — this is just a safety net for unstyled fields. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline-offset: 0;
+  box-shadow: 0 0 0 2px rgba(242, 148, 76, 0.85);
+}
+
+.admin-shell input:focus-visible,
+.admin-shell textarea:focus-visible,
+.admin-shell select:focus-visible {
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.85);
+}
+
+/* Skip-link surface for the admin world. Identical mechanics to
+   the public layout's skip link, just re-skinned to the cyan/violet
+   AI palette. AdminShell mounts it as the first focusable element.
+   Visible only when focused (sr-only otherwise). */
+.admin-skip-link {
+  position: fixed;
+  top: -100px;
+  left: 12px;
+  z-index: 100;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, #06b6d4, #8b5cf6);
+  color: #fbf7f0;
+  font-family: var(--font-mukta), system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px -8px rgba(34, 211, 238, 0.6);
+  transition: top 200ms ease-out;
+}
+.admin-skip-link:focus,
+.admin-skip-link:focus-visible {
+  top: 12px;
+  outline: none;
+}
+
+/* Listbox popover open animation — quick scale + opacity ramp from
+   the top so the menu reads as "dropping in" rather than appearing
+   instantly. 140ms keeps it snappy. */
+.admin-listbox-pop {
+  animation: admin-listbox-pop 140ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+@keyframes admin-listbox-pop {
+  from {
+    opacity: 0;
+    transform: scaleY(0.92) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+}
+
+/* Admin-shell skeleton fill — cyan-tinted base with a subtle violet
+   sweep travelling across it. The `motion-safe:animate-pulse` on the
+   individual elements drives the opacity breath; this rule supplies
+   the cool gradient fill so the skeleton reads as "system busy" in
+   the same palette as the rest of the ops console. */
+.admin-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(34, 211, 238, 0.10) 0%,
+    rgba(139, 92, 246, 0.16) 50%,
+    rgba(34, 211, 238, 0.10) 100%
+  );
+  background-size: 200% 100%;
+  animation: admin-skeleton-sweep 2.4s ease-in-out infinite;
+}
+@keyframes admin-skeleton-sweep {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-skeleton {
+    animation: none;
+    background: rgba(34, 211, 238, 0.10);
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Content Hub — "reading sheet" prose
+   ──────────────────────────────────────────────────────────────────
+   The dark AI/ops theme used by the rest of the admin is great for
+   scan-mode surfaces (dashboard, queues, the map). It's terrible
+   for long-form reading: 8000-character pitch decks set in mono on
+   a near-black background tire the eyes within a paragraph.
+
+   This block scopes a focused "paper" surface to the markdown body
+   of a Content card. Visually distinct from the dark chrome around
+   it — the operator's eye snaps from the dark card meta straight
+   into a high-contrast cream sheet that reads like a doc.
+
+   The light surface stays INSIDE the dark dashboard. Operators get
+   ops-grade scanning chrome + book-grade reading body, in the same
+   page. Same trick GitHub uses for PR diff vs. comment threads,
+   VS Code for editor vs. terminal, Linear for issue list vs. body.
+   ────────────────────────────────────────────────────────────── */
+.bm-prose {
+  /* Inter-derived stack via Mukta (already loaded). Falls back to
+     system serif-free defaults if the font isn't ready yet. */
+  color: #2A211A; /* ink-ish on cream — same body colour the public
+                     site uses for prose */
+  font-size: 15px;
+  line-height: 1.7;
+  font-feature-settings: "ss01", "cv11";
+  word-wrap: break-word;
+}
+.bm-prose > * + * {
+  margin-top: 1.05em;
+}
+.bm-prose h1,
+.bm-prose h2,
+.bm-prose h3,
+.bm-prose h4 {
+  font-family: var(--font-fraunces, "Fraunces", Georgia, serif);
+  color: #1A1410;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.bm-prose h1 { font-size: 1.7rem; margin-top: 1.6em; margin-bottom: 0.4em; }
+.bm-prose h2 {
+  font-size: 1.35rem;
+  margin-top: 1.7em;
+  margin-bottom: 0.4em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid rgba(26, 20, 16, 0.10);
+}
+.bm-prose h3 { font-size: 1.1rem;  margin-top: 1.5em; margin-bottom: 0.3em; }
+.bm-prose h4 { font-size: 0.98rem; margin-top: 1.3em; margin-bottom: 0.3em; }
+.bm-prose p { margin: 0; }
+.bm-prose a {
+  color: #9C2A2A;            /* sindoor — brand reading-link colour */
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+.bm-prose a:hover { color: #F2944C; }
+.bm-prose strong { color: #1A1410; font-weight: 600; }
+.bm-prose em { color: #2A211A; }
+.bm-prose ul,
+.bm-prose ol {
+  padding-left: 1.4em;
+  margin: 0;
+}
+.bm-prose ul { list-style: disc; }
+.bm-prose ol { list-style: decimal; }
+.bm-prose li + li { margin-top: 0.35em; }
+.bm-prose li::marker { color: #C9A24A; } /* gold marker — gentle brand cue */
+.bm-prose blockquote {
+  margin: 0;
+  padding: 0.6em 1em;
+  border-left: 3px solid #C9A24A;
+  background: rgba(201, 162, 74, 0.08);
+  color: #2A211A;
+  font-style: italic;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+.bm-prose blockquote > * + * { margin-top: 0.6em; }
+.bm-prose code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.86em;
+  background: rgba(26, 20, 16, 0.06);
+  padding: 0.1em 0.35em;
+  border-radius: 0.3em;
+  color: #6B2828;
+}
+.bm-prose pre {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.86em;
+  background: #1A1410;
+  color: #FBF7F0;
+  padding: 1em 1.1em;
+  border-radius: 0.6rem;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+.bm-prose pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: 1em;
+}
+.bm-prose hr {
+  border: 0;
+  border-top: 1px solid rgba(26, 20, 16, 0.12);
+  margin: 2em 0;
+}
+.bm-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+}
+.bm-prose th,
+.bm-prose td {
+  padding: 0.55em 0.7em;
+  border-bottom: 1px solid rgba(26, 20, 16, 0.12);
+  text-align: left;
+}
+.bm-prose th {
+  font-weight: 600;
+  color: #1A1410;
+  background: rgba(201, 162, 74, 0.08);
+}
+.bm-prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+.bm-prose .bm-md-fallback {
+  background: rgba(26, 20, 16, 0.06);
+  color: #2A211A;
+  padding: 1em;
+  border-radius: 0.5rem;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  white-space: pre-wrap;
+  overflow-x: auto;
 }

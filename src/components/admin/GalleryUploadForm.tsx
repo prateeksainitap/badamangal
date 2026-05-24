@@ -49,21 +49,31 @@ export default function GalleryUploadForm({ action }: Props) {
     }
   }
 
+  // Shared field className — cyan-bordered dark inputs, mono text,
+  // cyan focus ring. Drops in for every <input> in the form.
+  const FIELD =
+    "rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors";
+  const LABEL =
+    "text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono";
+
   return (
-    <section className="mt-6 rounded-3xl border border-saffron-500/40 bg-cream-50 p-5 sm:p-6">
-      <h2 className="font-fraunces text-xl text-sindoor-700">
-        Add a photo to the gallery
+    <section className="mt-6 rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm p-5 sm:p-6">
+      <h2 className="font-fraunces text-xl text-cream-50">
+        Add a photo to the{" "}
+        <span className="bg-gradient-to-r from-cyan-300 to-violet-300 bg-clip-text text-transparent">
+          gallery
+        </span>
       </h2>
-      <p className="mt-1 text-sm text-ink-600">
-        Pick an image, add an optional caption + credit, hit save.
-        It'll appear in the homepage gallery within a few minutes
-        (ISR revalidate window).
+      <p className="mt-1 text-sm text-cream-50/55 font-mono">
+        Pick an image, add an optional caption + credit, hit save. It'll
+        appear in the homepage gallery within a few minutes (ISR
+        revalidate window).
       </p>
 
       {/* Step 1: file upload */}
       <div className="mt-4">
         <label className="grid gap-1.5 text-sm">
-          <span className="text-ink-600">Image file</span>
+          <span className={LABEL}>Image file</span>
           <input
             type="file"
             accept="image/*"
@@ -72,24 +82,26 @@ export default function GalleryUploadForm({ action }: Props) {
               const f = e.target.files?.[0];
               if (f) handleFile(f);
             }}
-            className="block w-full text-sm file:rounded-full file:border-0 file:bg-saffron-600 file:text-cream-50 file:px-4 file:py-2 file:font-semibold file:cursor-pointer hover:file:bg-saffron-500"
+            className="block w-full text-sm text-cream-50/80 font-mono file:rounded-lg file:border file:border-cyan-300/40 file:bg-gradient-to-r file:from-cyan-500 file:to-violet-500 file:text-cream-50 file:px-4 file:py-2 file:font-semibold file:cursor-pointer hover:file:from-cyan-400 hover:file:to-violet-400 file:shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)]"
           />
         </label>
         {uploading ? (
-          <p className="mt-2 text-xs text-ink-600 italic">Uploading…</p>
+          <p className="mt-2 text-xs text-cyan-300/85 font-mono">Uploading…</p>
         ) : null}
         {error ? (
-          <p className="mt-2 text-xs text-alert-500">Upload failed: {error}</p>
+          <p className="mt-2 text-xs text-sindoor-700 font-mono">
+            Upload failed: {error}
+          </p>
         ) : null}
         {uploadedUrl ? (
-          <div className="mt-3 flex items-center gap-3 rounded-xl border border-leaf-600/40 bg-leaf-600/5 p-3">
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-leaf-400/40 bg-leaf-400/[0.08] p-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={uploadedUrl}
               alt="uploaded preview"
-              className="w-16 h-16 rounded-lg object-cover border border-gold-500/40"
+              className="w-16 h-16 rounded-lg object-cover border border-cyan-400/30"
             />
-            <p className="text-xs text-leaf-600 font-medium">
+            <p className="text-xs text-leaf-400 font-medium font-mono">
               Uploaded! Fill in the details below and hit save.
             </p>
           </div>
@@ -101,40 +113,40 @@ export default function GalleryUploadForm({ action }: Props) {
         <input type="hidden" name="imageUrl" value={uploadedUrl ?? ""} />
 
         <label className="grid gap-1.5 text-sm">
-          <span className="text-ink-600">Caption (optional)</span>
+          <span className={LABEL}>Caption (optional)</span>
           <input
             name="caption"
             type="text"
             maxLength={140}
             placeholder="e.g. Hanuman Setu mandir, dawn ke time"
-            className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600"
+            className={FIELD}
           />
         </label>
 
         <label className="grid gap-1.5 text-sm">
-          <span className="text-ink-600">Caption in Hindi (optional)</span>
+          <span className={LABEL}>Caption in Hindi (optional)</span>
           <input
             name="captionHi"
             type="text"
             maxLength={140}
             placeholder="उदा. हनुमान सेतु मंदिर, सुबह की झलक"
-            className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600"
+            className={FIELD}
           />
         </label>
 
         <div className="grid sm:grid-cols-2 gap-3">
           <label className="grid gap-1.5 text-sm">
-            <span className="text-ink-600">Uploaded by (optional)</span>
+            <span className={LABEL}>Uploaded by (optional)</span>
             <input
               name="uploadedBy"
               type="text"
               maxLength={60}
               placeholder="Prateek"
-              className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600"
+              className={FIELD}
             />
           </label>
           <label className="grid gap-1.5 text-sm">
-            <span className="text-ink-600">
+            <span className={LABEL}>
               Display order (lower = surfaces earlier)
             </span>
             <input
@@ -143,7 +155,7 @@ export default function GalleryUploadForm({ action }: Props) {
               defaultValue="100"
               min="0"
               max="9999"
-              className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600"
+              className={FIELD}
             />
           </label>
         </div>
@@ -151,13 +163,13 @@ export default function GalleryUploadForm({ action }: Props) {
         <button
           type="submit"
           disabled={!uploadedUrl}
-          className={`mt-2 inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${
+          className={`mt-2 inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-mono font-semibold transition-all ${
             uploadedUrl
-              ? "bg-saffron-600 text-cream-50 hover:bg-saffron-500 shadow-warm"
-              : "bg-cream-50 text-ink-600 border border-gold-500/40 cursor-not-allowed opacity-60"
+              ? "bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-cream-50 border border-cyan-300/40 shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)]"
+              : "bg-[#0B0E16]/60 text-cream-50/35 border border-cyan-400/15 cursor-not-allowed"
           }`}
         >
-          {uploadedUrl ? "Save to gallery" : "Upload an image first"}
+          {uploadedUrl ? "Save to gallery →" : "Upload an image first"}
         </button>
       </form>
     </section>

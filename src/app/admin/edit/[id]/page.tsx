@@ -20,10 +20,14 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { editAndPublishAction } from "@/app/admin/actions";
 import { stripBotProvenance } from "@/lib/sanitize";
+import { resolveBhandaraCoords } from "@/lib/geocodeFallback";
 import MapLocationInput from "@/components/admin/MapLocationInput";
 import SubmitButton from "@/components/admin/SubmitButton";
 import AdminPhotoField from "@/components/admin/AdminPhotoField";
 import PhoneInput from "@/components/PhoneInput";
+import AdminShell from "@/components/admin/AdminShell";
+import { getAdminNavCounts } from "@/lib/admin-nav-counts";
+import BotHeartbeat from "@/components/admin/BotHeartbeat";
 import { isAdmin } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
@@ -59,44 +63,105 @@ export default async function AdminEditPage({ params }: PageProps) {
     /* tolerate legacy rows */
   }
 
+  // Auto-resolve 0,0 coords via the geocode fallback chain.
+  // Bhandaras ingested before the chain landed (or where every
+  // candidate missed at ingest time) sit at lat=lng=0 and force the
+  // admin to manually paste a Maps link to publish. Now we try the
+  // same prioritised candidate list at view time and prefill the
+  // lat/lng inputs with the best hit — same data path as ingest, so
+  // results are consistent. MapLocationInput surfaces a "auto / X"
+  // tag so the admin sees the pre-fill is a guess (not human-pinned)
+  // and can override with a real paste if it landed wrong.
+  let mapInitialLat = b.lat;
+  let mapInitialLng = b.lng;
+  let autoResolvedFrom: string | undefined;
+  if (b.lat === 0 && b.lng === 0) {
+    try {
+      const hit = await resolveBhandaraCoords({
+        address: b.address,
+        area: b.area,
+        landmark: b.landmark,
+        organizerName: b.organizerName,
+        name: b.name,
+      });
+      if (hit) {
+        mapInitialLat = hit.lat;
+        mapInitialLng = hit.lng;
+        autoResolvedFrom = hit.candidateTag;
+      }
+    } catch (err) {
+      // Fallback chain shouldn't block page render. If Ola Maps is
+      // down or rate-limits us, fall through to the existing
+      // 0,0-with-warning UI so the admin can still paste manually.
+      console.warn("[admin/edit] auto-resolve failed:", err);
+    }
+  }
+
   const action = editAndPublishAction.bind(null, b.id);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 sm:px-6 pb-24">
-      <header className="pt-8 pb-4 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-ink-600">
-            Moderation
-          </p>
-          <h1 className="font-fraunces text-3xl text-sindoor-700 mt-1">
-            Edit &amp; publish
-          </h1>
-          <p className="mt-2 text-sm text-ink-600">
-            Fix anything the model got wrong on the invite, then click
-            <strong> Save &amp; publish</strong> to flip this row live.
-          </p>
-        </div>
-        <Link
-          href="/admin"
-          className="text-sm rounded-full px-3 py-1.5 border border-gold-500/50 text-ink-900 hover:bg-cream-50"
-        >
-          ← Back to queue
-        </Link>
-      </header>
+    <AdminShell navCounts={await getAdminNavCounts()} botHeartbeat={<BotHeartbeat />}>
+      <div className="mx-auto max-w-6xl">
+        <header className="mb-6 flex items-end justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1.5 font-mono text-[10px]">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-400/[0.06] border border-cyan-400/20 px-2.5 py-1 uppercase tracking-[0.18em] text-cyan-300/85">
+                <span aria-hidden className="relative inline-flex h-1.5 w-1.5">
+                  <span className="absolute inset-0 rounded-full bg-cyan-400/70 motion-safe:animate-ping" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                </span>
+                Moderation
+              </span>
+            </div>
+            <h1 className="font-fraunces text-3xl sm:text-4xl text-cream-50 leading-[1.05] tracking-tight">
+              Edit &amp;{" "}
+              <span className="bg-gradient-to-r from-cyan-300 to-violet-300 bg-clip-text text-transparent">
+                publish
+              </span>
+            </h1>
+            <p className="mt-2 text-sm text-cream-50/55 font-mono max-w-xl">
+              <span className="text-cyan-300">$</span> Fix anything Gemini got
+              wrong on the invite, then save to flip this listing live.
+            </p>
+          </div>
+          <Link
+            href="/admin/bhandaras"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/[0.08] border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/[0.16] hover:border-cyan-400/50 hover:text-cyan-100 px-4 py-2 text-sm transition-colors font-mono font-medium"
+          >
+            ← Back to bhandaras queue
+          </Link>
+        </header>
 
-      {/* Photo field lives inside the form now (vs the old read-only
-          preview band that sat above it). AdminPhotoField renders the
-          same wide preview at the top of the form and adds Replace /
-          Take photo buttons that POST to /api/admin/upload-image. The
-          new URL flows through a hidden <input name="photoUrl"> so
-          the form action keeps reading photoUrl unchanged. */}
-      <form action={action} className="mt-6 grid gap-5">
-        <AdminPhotoField
-          name="photoUrl"
-          defaultValue={b.photoUrl ?? ""}
-          label="Photo"
-          hint="Replacing the photo only swaps the image. All other fields below stay as they are until you click Save & publish."
-        />
+        {/* Two-pane edit layout — pamphlet pins to the left so the
+            operator can keep reading it while scrolling through the
+            form on the right. AdminPhotoField writes to a hidden
+            `<input name="photoUrl">` that's still inside the same
+            <form>, so the server action signature is unchanged.
+            Below lg, the panes stack (photo on top, form below) —
+            same UX the old single-column page had. */}
+        <form
+          action={action}
+          className="grid gap-5 lg:gap-6 lg:grid-cols-12 items-start"
+        >
+          {/* LEFT — sticky pamphlet pane. `lg:self-start` keeps the
+              grid item from stretching to match the right pane's
+              height, which is what allows `lg:sticky lg:top-20` to
+              actually pin it as the right pane scrolls past.
+              `top-20` (5rem ≈ 80px) clears the AdminShell's 56px
+              (h-14) sticky top bar with ~24px of breathing room so
+              the pamphlet doesn't visually crash into it. */}
+          <aside className="lg:col-span-5 lg:sticky lg:top-20 lg:self-start rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm p-5 sm:p-6">
+            <AdminPhotoField
+              name="photoUrl"
+              defaultValue={b.photoUrl ?? ""}
+              label="Pamphlet"
+              hint="Read the pamphlet here while you verify + fix the form on the right. Replacing the photo only swaps the image; other fields stay until you click Save & publish."
+            />
+          </aside>
+
+          {/* RIGHT — scrollable form fields. Keeps the same dark
+              card styling the old single-pane form had. */}
+          <div className="lg:col-span-7 grid gap-5 rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm p-5 sm:p-7">
         <Pair label="Name (English)" name="name" defaultValue={b.name} required />
         <Pair label="Name (हिन्दी)" name="nameHi" defaultValue={b.nameHi ?? ""} />
 
@@ -142,25 +207,21 @@ export default async function AdminEditPage({ params }: PageProps) {
             number inputs. The form fields are still
             `name="lat"`/`name="lng"`, so editAndPublishAction reads
             them unchanged. */}
-        <MapLocationInput initialLat={b.lat} initialLng={b.lng} />
+        <MapLocationInput
+          initialLat={mapInitialLat}
+          initialLng={mapInitialLng}
+          autoResolvedFrom={autoResolvedFrom}
+        />
 
         <label className="grid gap-1.5">
-          <span className="text-sm text-ink-600">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
             Tuesday dates (one per line, DD-MM-YYYY)
           </span>
-          {/* Display in DD-MM-YYYY (the format the admin reads / writes),
-              but the DB row stays in YYYY-MM-DD ISO so the upcoming-date
-              picker in /bhandara/[slug] (which sorts strings lexically
-              and compares with today.toISOString().slice(0,10)) keeps
-              working without a per-row format check. The conversion
-              loop is intentionally tolerant of legacy rows that are
-              already in DD-MM-YYYY or any other shape, formatDateForDisplay
-              passes them through unchanged. */}
           <textarea
             name="tuesdayDates"
             defaultValue={tuesdayDates.map(formatDateForDisplay).join("\n")}
             rows={Math.max(2, tuesdayDates.length)}
-            className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+            className="rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
             placeholder="12-05-2026"
           />
         </label>
@@ -180,14 +241,14 @@ export default async function AdminEditPage({ params }: PageProps) {
         </div>
 
         <label className="grid gap-1.5">
-          <span className="text-sm text-ink-600">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
             Menu (comma-separated)
           </span>
           <input
             name="menu"
             defaultValue={menu.join(", ")}
             placeholder="puri, sabzi, prasad"
-            className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+            className="rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
           />
         </label>
 
@@ -210,7 +271,9 @@ export default async function AdminEditPage({ params }: PageProps) {
               the inner <input name="organizerPhone"> wires straight
               into editAndPublishAction. */}
           <label className="grid gap-1.5">
-            <span className="text-sm text-ink-600">Organizer phone</span>
+            <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
+              Organizer phone
+            </span>
             <PhoneInput
               name="organizerPhone"
               defaultValue={b.organizerPhone}
@@ -236,58 +299,47 @@ export default async function AdminEditPage({ params }: PageProps) {
             which writes to a hidden <input name="photoUrl"> so the
             server action signature is unchanged. */}
 
-        <label className="flex items-center gap-2 text-sm text-ink-900 mt-2">
+        <label className="flex items-center gap-2 text-sm text-cream-50/85 mt-2 font-mono">
           <input
             type="checkbox"
             name="isVerified"
             defaultChecked={b.isVerified}
-            className="h-4 w-4 accent-leaf-600"
+            className="h-4 w-4 accent-leaf-400"
           />
-          Mark as <strong>Verified</strong> (called &amp; confirmed by phone)
+          Mark as <strong className="text-cream-50">Verified</strong>{" "}
+          (called &amp; confirmed by phone)
         </label>
 
-        {/* Admin-controlled "feature on homepage" toggle. When on,
-            this bhandara jumps to the very top of the homepage's
-            FeaturedBhandaras row, ahead of today's-bhandara +
-            verified-with-photo + everything else. Use for the lead
-            story of the week (e.g. host bhandara for the next
-            Tuesday, a venue that just landed press coverage). */}
-        <label className="flex items-center gap-2 text-sm text-ink-900 mt-2">
+        <label className="flex items-center gap-2 text-sm text-cream-50/85 mt-2 font-mono">
           <input
             type="checkbox"
             name="isFeatured"
             defaultChecked={b.isFeatured}
-            className="h-4 w-4 accent-saffron-600"
+            className="h-4 w-4 accent-cyan-400"
           />
-          Mark as <strong>Featured on homepage</strong> (lands at the very top of the featured row)
+          Mark as <strong className="text-cream-50">Featured on homepage</strong>{" "}
+          (lands at the very top of the featured row)
         </label>
 
-        {/* SubmitButton (shared across /admin) wraps the same saffron
-            primary styling as the inline button it replaced, plus a
-            useFormStatus()-driven pending state: button disables and
-            swaps "Save & publish" → spinner + "Saving…" while the
-            server action is in flight. Stops the admin from double-
-            clicking on slow round-trips (Netlify cold start) and
-            writing the same APPROVED row twice. Cancel stays a plain
-            <Link> deliberately, the admin should always be able to
-            bail to /admin even mid-submit. */}
         <div className="flex items-center gap-3 mt-4">
           <SubmitButton
             variant="primary-saffron"
             size="md"
             pendingLabel="Saving…"
           >
-            Save &amp; publish
+            Save &amp; publish →
           </SubmitButton>
           <Link
-            href="/admin"
-            className="text-sm rounded-full px-3 py-2 border border-gold-500/50 text-ink-900 hover:bg-cream-50"
+            href="/admin/bhandaras"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/[0.08] border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/[0.16] hover:border-cyan-400/50 hover:text-cyan-100 px-4 py-2 text-sm transition-colors font-mono font-medium"
           >
             Cancel
           </Link>
         </div>
-      </form>
-    </div>
+          </div>
+        </form>
+      </div>
+    </AdminShell>
   );
 }
 
@@ -333,9 +385,9 @@ function Pair({
 }) {
   return (
     <label className="grid gap-1.5">
-      <span className="text-sm text-ink-600">
+      <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
         {label}
-        {required ? <span className="text-sindoor-700"> *</span> : null}
+        {required ? <span className="text-sindoor-700"> ·</span> : null}
       </span>
       <input
         name={name}
@@ -346,9 +398,11 @@ function Pair({
         maxLength={maxLength}
         pattern={pattern}
         inputMode={inputMode}
-        className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+        className="rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
       />
-      {hint ? <span className="text-xs text-ink-600">{hint}</span> : null}
+      {hint ? (
+        <span className="text-xs text-cream-50/55 font-mono">{hint}</span>
+      ) : null}
     </label>
   );
 }
@@ -379,12 +433,14 @@ function PairArea({
 }) {
   return (
     <label className="grid gap-1.5">
-      <span className="text-sm text-ink-600">{label}</span>
+      <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
+        {label}
+      </span>
       <textarea
         name={name}
         defaultValue={defaultValue}
         rows={3}
-        className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+        className="rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
       />
     </label>
   );

@@ -1,15 +1,33 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { isAdmin } from "@/lib/admin-auth";
-import { stripBotProvenance } from "@/lib/sanitize";
+import {
+  getCachedCommunityMembers,
+  getCachedVisitorCount,
+} from "@/lib/admin-cache";
 import AdminShell from "@/components/admin/AdminShell";
+import { getAdminNavCounts } from "@/lib/admin-nav-counts";
 import BotHeartbeat from "@/components/admin/BotHeartbeat";
 import KpiTile from "@/components/admin/KpiTile";
-import ActivityStream, {
-  type ActivityEvent,
-} from "@/components/admin/ActivityStream";
+import DashboardLiveMap, {
+  DashboardLiveMapSkeleton,
+} from "@/components/admin/DashboardLiveMap";
+// Dashboard composes the hero illustration directly (alongside the
+// greeting) instead of stacking AdminPageHero above it, so we
+// import the inner art component rather than the band wrapper.
+import AdminHeroArt from "@/components/admin/AdminHeroArt";
+import { NotificationBell } from "@/components/admin/DashboardAlerts";
+import {
+  isLiveChatOpenToday,
+  mostRecentOpenDayIST,
+  dayNameEn,
+} from "@/lib/live-chat-schedule";
+import ActivityFeed, {
+  ActivityFeedSkeleton,
+} from "@/components/admin/ActivityFeed";
 
 export const metadata: Metadata = {
   title: "Dashboard · Admin · Bada Mangal",
@@ -43,19 +61,28 @@ export default async function AdminDashboardPage() {
   const now = new Date();
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-  // Fan out every read in parallel — they hit different tables so
-  // there's no contention, and the dashboard's first-paint feel is
-  // bounded by the slowest query, not the sum.
+  // Above-the-fold queries only — KPI counts. The 3 map `findMany`
+  // queries (live spots / bhandaras / mentions with coords) used to
+  // live in this Promise.all and added ~150–300ms to time-to-first
+  // byte. They now live inside <DashboardLiveMap/> behind its own
+  // Suspense boundary, streaming in after the KPIs paint. Same
+  // pattern as the ActivityFeed split — the page's first paint
+  // depends only on cheap COUNT queries plus the cached community
+  // members + visitor counters.
+  //
+  // Community-counter query is wrapped in `unstable_cache` because
+  // it only updates ~hourly (bot push); serving from in-memory cache
+  // shaves a Prisma round-trip off every dashboard load. Tags allow
+  // `revalidateTag("community-counter")` from the bot's stats route
+  // to punch through immediately when fresh data lands.
   const [
     pendingBhandaras,
     liveSpotsCount,
     mentions24hCount,
-    communityCounter,
+    communityMembers,
+    visitorCount,
     pendingVolunteers,
-    recentBhandaras,
-    recentSpots,
-    recentMentions,
-    recentVolunteers,
+    newEmailsCount,
   ] = await Promise.all([
     prisma.bhandara.count({ where: { status: "PENDING" } }),
     prisma.spot.count({
@@ -64,161 +91,217 @@ export default async function AdminDashboardPage() {
     prisma.bhandaraMention.count({
       where: { status: "APPROVED", createdAt: { gt: dayAgo } },
     }),
-    prisma.siteCounter.findUnique({
-      where: { id: "community_total_members" },
-      select: { count: true },
-    }),
+    getCachedCommunityMembers(),
+    getCachedVisitorCount(),
     prisma.volunteer.count({ where: { status: "PENDING" } }),
-    prisma.bhandara.findMany({
-      where: { createdAt: { gt: dayAgo } },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        area: true,
-        status: true,
-        createdAt: true,
-      },
-    }),
-    prisma.spot.findMany({
-      where: { createdAt: { gt: dayAgo } },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-      select: {
-        id: true,
-        area: true,
-        address: true,
-        caption: true,
-        reporterName: true,
-        createdAt: true,
-        status: true,
-      },
-    }),
-    prisma.bhandaraMention.findMany({
-      where: {
-        status: "APPROVED",
-        createdAt: { gt: dayAgo },
-        intent: "SHARING",
-      },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-      select: {
-        id: true,
-        cleanedText: true,
-        originalText: true,
-        senderName: true,
-        locationLabel: true,
-        createdAt: true,
-      },
-    }),
-    prisma.volunteer.findMany({
-      where: { createdAt: { gt: dayAgo } },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-      select: {
-        id: true,
-        name: true,
-        status: true,
-        createdAt: true,
-      },
-    }),
+    // Unread inbox count for the Emails quick-action tile + sidebar.
+    // Fast — `status` is indexed via @@index([status, createdAt]).
+    prisma.contactMessage.count({ where: { status: "NEW" } }),
   ]);
 
-  const communityMembers = communityCounter?.count ?? 0;
+  // "Total reach" = WhatsApp community members + cumulative website
+  // visitor count. The KPI tile shows the sum (a single big number
+  // the operator reads as "the size of the network we touch") with
+  // the per-source breakdown in the delta line.
+  const totalReach = communityMembers + visitorCount;
 
-  // Build a unified activity feed from the four sources. Each event
-  // gets a discriminator + a deep-link target so the operator can
-  // act on it in one click.
-  const events: ActivityEvent[] = [
-    ...recentBhandaras.map((b): ActivityEvent => ({
-      id: `bhandara:${b.id}`,
-      kind: "bhandara",
-      title:
-        b.status === "PENDING"
-          ? `New bhandara pending review — ${b.name}`
-          : `Bhandara published — ${b.name}`,
-      subtitle: b.area ? `${b.area} · ${b.status.toLowerCase()}` : b.status.toLowerCase(),
-      createdAt: b.createdAt.toISOString(),
-      href:
-        b.status === "PENDING"
-          ? `/admin/edit/${b.id}`
-          : `/bhandara/${b.slug}`,
-    })),
-    ...recentSpots.map((s): ActivityEvent => ({
-      id: `spot:${s.id}`,
-      kind: "spot",
-      title: stripBotProvenance(s.caption) || "New live spot",
-      subtitle: [s.reporterName?.split(" ")[0] ?? "anon", s.area || s.address || "—"]
-        .filter(Boolean)
-        .join(" · "),
-      createdAt: s.createdAt.toISOString(),
-      href: `/admin/edit-spot/${s.id}`,
-    })),
-    ...recentMentions.map((m): ActivityEvent => {
-      const text = m.cleanedText ?? m.originalText.split("\n\n[bot:")[0] ?? "";
-      return {
-        id: `mention:${m.id}`,
-        kind: "mention",
-        title: text.length > 80 ? text.slice(0, 77) + "…" : text,
-        subtitle: [
-          m.senderName?.split(" ")[0] ?? "anon",
-          m.locationLabel ?? null,
-        ]
-          .filter(Boolean)
-          .join(" · "),
-        createdAt: m.createdAt.toISOString(),
-        href: "/admin/mentions",
-      };
-    }),
-    ...recentVolunteers.map((v): ActivityEvent => ({
-      id: `volunteer:${v.id}`,
-      kind: "volunteer",
-      title: v.name?.trim() || "New volunteer signup",
-      subtitle: v.status.toLowerCase(),
-      createdAt: v.createdAt.toISOString(),
-      href: "/admin/volunteers",
-    })),
-  ]
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0))
-    .slice(0, 14);
+  // Activity stream is now a separate Suspense boundary
+  // (<ActivityFeed/>) so its four `findMany` queries no longer
+  // block the dashboard's first paint.
+
+  // Time-of-day greeting in IST. Tuesday is the Bada Mangal day so
+  // we surface "It's Tuesday" with a pulsing dot when the operator
+  // logs in on a season Tuesday — the most "alive" day for the bot.
+  const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+  const istHour = istNow.getUTCHours();
+  const greeting =
+    istHour < 12 ? "Good morning" : istHour < 17 ? "Good afternoon" : "Good evening";
+  const isTuesday = istNow.getUTCDay() === 2;
+  const todayLabel = istNow.toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
+  // Live-chat-day label — on Tue/Sat the public chat is live (matches
+  // the public LiveChatterBoard's schedule). On other days the panel
+  // shows the most-recent open day's discussion as a backlog view,
+  // so we relabel "Live chat" → "Saturday's chat" / "Tuesday's chat"
+  // so the operator knows they're reading yesterday's signal not
+  // today's. Schedule helpers live in src/lib/live-chat-schedule.ts.
+  const chatOpenToday = isLiveChatOpenToday();
+  const lastOpenDayName = dayNameEn(mostRecentOpenDayIST());
+  const chatTitleLeader = chatOpenToday ? "Live" : `${lastOpenDayName}'s`;
+  const chatEyebrowLabel = chatOpenToday
+    ? "lucknow.network · live chat"
+    : `lucknow.network · ${lastOpenDayName.toLowerCase()}'s chat`;
+
+  // Alerts source — same Promise.all data the rest of the dashboard
+  // reads, plumbed into the NotificationBell shown in the AdminShell
+  // header. Used to render inline at the top of /admin/home; now
+  // lives behind the bell so the dashboard surface stays clean.
+  const alertsProps = {
+    pendingBhandaras,
+    pendingVolunteers,
+    newEmailsCount,
+    mentions24hCount,
+    isTuesday,
+  };
 
   return (
-    <AdminShell botHeartbeat={<BotHeartbeat />}>
+    <AdminShell
+      navCounts={await getAdminNavCounts()}
+      botHeartbeat={<BotHeartbeat />}
+      notifications={<NotificationBell {...alertsProps} />}
+    >
     <div className="max-w-7xl mx-auto">
-      {/* Page header */}
-      <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="font-fraunces text-2xl sm:text-3xl text-cream-50 leading-tight">
-            Dashboard
-          </h1>
-          <p className="text-sm text-cream-50/55 mt-1">
-            What&apos;s happening across Bada Mangal right now.
-          </p>
+      {/* Combined hero + greeting — used to be two stacked panels
+          (a full-width AdminPageHero band on top, then the greeting
+          row underneath), which ate ~260px of vertical space before
+          the operator saw any data. Now the isometric illustration
+          tucks to the right of the greeting as a decorative aside, so
+          the whole header collapses to a single ~160px panel while
+          keeping the playful AI/ops console personality intact. */}
+      <div className="relative mb-6 rounded-2xl border border-cyan-400/15 bg-gradient-to-br from-[#0B0E16] via-[#0A0C13] to-[#080A10] overflow-hidden">
+        {/* Same faint data-grid texture AdminPageHero used to render.
+            Inlined here so the panel reads as the same console
+            surface even after the merge. */}
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-50 admin-data-grid pointer-events-none"
+        />
+        <div className="relative grid items-center gap-4 sm:gap-5 p-4 sm:p-5 sm:grid-cols-[1fr_auto]">
+          {/* Left column — eyebrow + greeting + subtitle */}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1 font-mono text-[10px] flex-wrap">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-400/[0.06] border border-cyan-400/20 px-2.5 py-1 uppercase tracking-[0.18em] text-cyan-300/85">
+                <span aria-hidden className="relative inline-flex h-1.5 w-1.5">
+                  <span className="absolute inset-0 rounded-full bg-cyan-400/70 motion-safe:animate-ping" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                </span>
+                {todayLabel}
+              </span>
+              {isTuesday ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-saffron-500/20 to-violet-500/20 border border-saffron-500/35 px-2.5 py-1 uppercase tracking-[0.18em] text-saffron-400">
+                  <span aria-hidden>◉</span> Bada Mangal · live
+                </span>
+              ) : null}
+              <span className="text-cream-50/35 ml-1">
+                sys.uptime <span className="text-cream-50/70">stable</span>
+              </span>
+            </div>
+            <h1 className="font-fraunces text-2xl sm:text-3xl text-cream-50 leading-[1.05] tracking-tight">
+              {greeting},{" "}
+              <span className="bg-gradient-to-br from-cyan-300 via-cyan-200 to-violet-300 bg-clip-text text-transparent">
+                Prateek
+              </span>
+              .
+              <span className="admin-cursor text-cyan-300/85" />
+            </h1>
+            <p className="text-[13px] text-cream-50/55 mt-1.5 font-mono whitespace-nowrap overflow-hidden text-ellipsis">
+              <span className="text-cyan-300/85">$</span>{" "}
+              <span className="text-cream-50/75">monitor</span>{" "}
+              bhandara.network ·{" "}
+              <span className="text-cream-50/40">
+                bot, volunteers, mentions all reporting in
+              </span>
+            </p>
+            {/* Header CTAs intentionally removed — duplicates of the
+                quick.actions strip directly below this hero. */}
+          </div>
+
+          {/* Right column — compact isometric illustration. Hidden on
+              narrow screens; revealed at sm+ as a fixed-size aside.
+              Smaller dimensions now (h-20→24→28 vs the old 28→32→36)
+              so the whole hero collapses to ~120px tall. */}
+          <div
+            aria-hidden
+            className="relative shrink-0 hidden sm:block w-40 md:w-52 lg:w-60 h-20 md:h-24 lg:h-28"
+          >
+            <AdminHeroArt subject="dashboard" />
+          </div>
         </div>
-        <Link
-          href="/admin/scan"
-          prefetch={false}
-          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-saffron-500 to-saffron-600 text-cream-50 px-4 py-2 text-sm font-medium shadow-[0_6px_20px_-6px_rgba(242,148,76,0.7)] hover:from-saffron-600 hover:to-saffron-600 transition-all"
-        >
-          <span aria-hidden>+</span> Scan &amp; publish
-        </Link>
       </div>
 
-      {/* KPI tile row — 5 tiles. Grid collapses to 2/3/5 across
-          breakpoints so the dashboard reads well on tablet too. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
+      {/* Quick actions — bumped to the TOP (above KPI tiles) so the
+          operator's most-frequent destinations are the first thing
+          they see. Tiles use a FILLED accent fill so they read as
+          first-class "do this now" buttons. The decorative
+          quick.actions divider that used to sit above this strip
+          was removed — the tiles themselves are self-explanatory
+          and the divider was visual chrome with no information value. */}
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-7">
+        <QuickAction
+          href="/admin/scan"
+          label="scan_and_publish"
+          subtitle="Upload an invite poster"
+          icon={<QuickIconScan />}
+          accent="primary"
+          shortcut="S"
+        />
+        <QuickAction
+          href="/admin/bhandaras?status=PENDING"
+          label="review_queue"
+          subtitle={`${pendingBhandaras} pending`}
+          icon={<QuickIconClipboard />}
+          accent="violet"
+          shortcut="R"
+        />
+        <QuickAction
+          href="/admin/discover"
+          label="discover"
+          subtitle="Find new bhandaras"
+          icon={<QuickIconCompass />}
+          accent="cyan"
+          shortcut="D"
+        />
+        <QuickAction
+          href="/admin/volunteers"
+          label="volunteers"
+          subtitle={`${pendingVolunteers} new`}
+          icon={<QuickIconUsers />}
+          accent="leaf"
+          shortcut="V"
+        />
+        <QuickAction
+          href="/admin/content"
+          label="content_hub"
+          subtitle="Pitches · IG · prompts"
+          icon={<QuickIconSparkle />}
+          accent="saffron"
+          shortcut="C"
+        />
+        <QuickAction
+          href="/admin/emails"
+          label="emails"
+          subtitle={
+            newEmailsCount > 0
+              ? `${newEmailsCount} unread`
+              : "Inbox zero"
+          }
+          icon={<QuickIconEnvelope />}
+          accent="sindoor"
+          shortcut="E"
+        />
+      </div>
+
+      {/* KPI tile row — 6 tiles with Fraunces serif hero numbers.
+          Total Reach (WhatsApp + visitors combined) sits next to its
+          two component metrics — Site visitors gets its own tile so
+          the website-traffic number doesn't hide in a delta-line
+          subtitle. Attention tiles breathe a slow saffron glow
+          until cleared. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-7">
         <KpiTile
           label="Pending review"
           value={pendingBhandaras.toLocaleString("en-IN")}
           delta={
             pendingBhandaras > 0
-              ? "Waiting for your call"
-              : "Caught up"
+              ? `${pendingBhandaras} waiting for your call`
+              : "All caught up"
           }
-          variant={pendingBhandaras > 0 ? "attention" : "default"}
-          href="/admin"
+          variant={pendingBhandaras > 0 ? "attention" : "success"}
+          href="/admin/bhandaras?status=PENDING"
           icon={<KpiIconClipboard />}
         />
         <KpiTile
@@ -226,7 +309,7 @@ export default async function AdminDashboardPage() {
           value={liveSpotsCount.toLocaleString("en-IN")}
           delta="Auto-expire in 8h"
           variant="default"
-          href="/admin?type=spot"
+          href="/admin/spots?status=LIVE"
           icon={<KpiIconCamera />}
         />
         <KpiTile
@@ -238,18 +321,25 @@ export default async function AdminDashboardPage() {
           icon={<KpiIconChat />}
         />
         <KpiTile
-          label="Community"
-          value={communityMembers.toLocaleString("en-IN")}
-          delta="Total WhatsApp members"
+          label="Site visitors"
+          value={visitorCount.toLocaleString("en-IN")}
+          delta="Cumulative since launch"
+          variant="default"
+          icon={<KpiIconGlobe />}
+        />
+        <KpiTile
+          label="Total reach"
+          value={totalReach.toLocaleString("en-IN")}
+          delta={`${communityMembers.toLocaleString("en-IN")} WhatsApp · ${visitorCount.toLocaleString("en-IN")} site`}
           variant="success"
           icon={<KpiIconUsers />}
         />
         <KpiTile
-          label="Volunteers"
+          label="Volunteer signups"
           value={pendingVolunteers.toLocaleString("en-IN")}
           delta={
             pendingVolunteers > 0
-              ? "Pending signups"
+              ? `${pendingVolunteers} pending`
               : "All processed"
           }
           variant={pendingVolunteers > 0 ? "attention" : "default"}
@@ -258,107 +348,260 @@ export default async function AdminDashboardPage() {
         />
       </div>
 
-      {/* Hero panel — 60/40 split on lg. Map on left, activity on
-          right. Stacks vertically on smaller viewports. */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-6">
-        {/* MAP slot — placeholder card for now. Real map widget
-            (MentionHeatmap with an admin overlay) lands in Phase 2;
-            wiring it cleanly requires moving the SSR mention fetch
-            into a shared loader so dashboard + homepage share one
-            source of truth. Until then, this card communicates
-            intent + offers a direct link to the live homepage map. */}
-        <div className="lg:col-span-3 rounded-2xl border border-cream-50/10 bg-cream-50/[0.03] backdrop-blur-sm overflow-hidden min-h-[22rem]">
-          <div className="px-5 pt-5 pb-3 flex items-end justify-between gap-3">
-            <div>
-              <h2 className="font-fraunces text-lg text-cream-50">
-                Lucknow — mention heatmap
-              </h2>
-              <p className="text-xs text-cream-50/55 mt-1">
-                Live activity across the city, last 24h
-              </p>
+      {/* Live chat — merged hero. Used to be two side-by-side panels
+          (a city-firing map on the left, a Recent-activity feed on
+          the right) which felt like two separate readouts. They're
+          actually the same thing told two ways: WHERE in the city
+          things are happening (map) + WHEN they happened (stream).
+          One bordered panel, shared header, two-column body on lg+,
+          stacked on smaller screens. */}
+      <section className="mb-7 rounded-2xl border border-cyan-400/15 bg-gradient-to-br from-[#0B0E16] to-[#0A0C13] overflow-hidden admin-card-glow">
+        {/* Shared header — eyebrow + title + count + open-live link. */}
+        <div className="relative px-5 sm:px-6 pt-5 sm:pt-6 pb-3 flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300/85 font-mono mb-1.5 inline-flex items-center gap-1.5">
+              <span aria-hidden className="relative inline-flex h-1.5 w-1.5">
+                {chatOpenToday ? (
+                  <span className="absolute inset-0 rounded-full bg-cyan-400/70 motion-safe:animate-ping" />
+                ) : null}
+                <span
+                  className={`relative inline-flex h-1.5 w-1.5 rounded-full ${
+                    chatOpenToday ? "bg-cyan-400" : "bg-cream-50/40"
+                  }`}
+                />
+              </span>
+              {chatEyebrowLabel}
             </div>
-            <Link
-              href="/#live-chat"
-              target="_blank"
-              prefetch={false}
-              className="inline-flex items-center gap-1 rounded-full border border-cream-50/15 px-3 py-1 text-xs text-cream-50/75 hover:text-cream-50 hover:border-cream-50/30 transition-colors"
-            >
-              Open public map ↗
-            </Link>
+            <h2 className="font-fraunces text-2xl text-cream-50 leading-tight">
+              {chatTitleLeader}{" "}
+              <span className="bg-gradient-to-r from-cyan-300 via-cyan-200 to-violet-300 bg-clip-text text-transparent">
+                chat
+              </span>
+            </h2>
+            <p className="text-[11.5px] text-cream-50/55 font-mono mt-0.5">
+              {liveSpotsCount} live · {mentions24hCount} mentions · 24h ·{" "}
+              <span className="text-cream-50/40">
+                {chatOpenToday
+                  ? isTuesday
+                    ? "today is Tuesday — chat is live"
+                    : "today is Saturday — chat is live"
+                  : `off-day — showing ${lastOpenDayName}'s discussion`}
+              </span>
+            </p>
           </div>
-          <div className="px-5 pb-5">
-            <div className="aspect-[16/9] rounded-xl overflow-hidden relative bg-[radial-gradient(circle_at_60%_30%,rgba(242,148,76,0.18),transparent_55%),radial-gradient(circle_at_30%_75%,rgba(156,42,42,0.16),transparent_55%)] border border-cream-50/10 flex items-center justify-center">
-              <div className="text-center px-6">
-                <div className="font-fraunces text-cream-50 text-lg">
-                  {mentions24hCount.toLocaleString("en-IN")} mentions
-                </div>
-                <div className="text-xs text-cream-50/55 mt-1">
-                  from {communityMembers.toLocaleString("en-IN")} community members across 14 WhatsApp groups
-                </div>
-                <Link
-                  href="/#live-chat"
-                  target="_blank"
-                  prefetch={false}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-saffron-500/15 text-saffron-500 px-3 py-1.5 text-xs hover:bg-saffron-500/25 transition-colors"
-                >
-                  View live heatmap ↗
-                </Link>
+          <Link
+            href="/live"
+            target="_blank"
+            prefetch={false}
+            className="inline-flex items-center gap-1 rounded-lg bg-cyan-400/[0.08] border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/[0.16] hover:border-cyan-400/50 hover:text-cyan-100 px-3 py-1.5 text-[11px] transition-colors font-mono"
+          >
+            open live ↗
+          </Link>
+        </div>
+
+        {/* Body — two columns on lg, stacked on smaller screens.
+            Left ~60% (map), right ~40% (chronological stream). The
+            vertical divider only appears on lg (where the columns
+            are side-by-side); on mobile each column gets its own
+            section header so the stack still reads as one panel. */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 lg:divide-x lg:divide-cyan-400/[0.10]">
+          {/* LEFT — map. Plain block container (no flex-1 chain) so
+              AdminOlaMap's own h-[22rem] sm:h-[24rem] lg:h-[28rem]
+              dimensions are what actually drive the canvas size. The
+              prior `flex-1 min-h-[20rem]` setup looked right but the
+              `flex-1` percentage-basis chain didn't always propagate
+              a definite height through to the WebGL container,
+              causing the canvas to silently fail. */}
+          <div className="lg:col-span-3 relative">
+            {/* Map data lives inside this Suspense boundary so the
+                3 `findMany`s no longer block the KPI tile paint
+                above. While the queries run, the skeleton renders at
+                the exact same height stack the real map will occupy,
+                so the layout doesn't jump on swap. */}
+            <Suspense fallback={<DashboardLiveMapSkeleton />}>
+              <DashboardLiveMap liveSpotsCount={liveSpotsCount} />
+            </Suspense>
+            {/* Mini stats row pinned to the bottom of the map column. */}
+            <div className="relative px-5 sm:px-6 pb-5 pt-3 bg-gradient-to-t from-[#0B0E16] via-[#0B0E16]/85 to-transparent">
+              <div className="grid grid-cols-3 gap-2.5">
+                <HeroStat
+                  label="live_spots"
+                  value={liveSpotsCount}
+                  accent="cyan"
+                />
+                <HeroStat
+                  label="mentions_24h"
+                  value={mentions24hCount}
+                  accent="violet"
+                />
+                <HeroStat
+                  label="today"
+                  value={
+                    chatOpenToday
+                      ? dayNameEn(istNow.getUTCDay()).toUpperCase()
+                      : `${lastOpenDayName.toUpperCase()}'S`
+                  }
+                  accent="leaf"
+                  isText
+                />
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ACTIVITY STREAM slot — 40% on lg. */}
-        <div className="lg:col-span-2 flex flex-col min-h-[22rem]">
-          <div className="px-1 pb-2 flex items-end justify-between gap-3">
-            <h2 className="font-fraunces text-lg text-cream-50">
-              Recent activity
-            </h2>
-            <span className="text-[11px] text-cream-50/45 tabular-nums">
-              {events.length} events · 24h
-            </span>
+          {/* RIGHT — chronological activity stream. Wrapped in Suspense
+              so the four `findMany` queries that populate it never
+              block the dashboard's KPI/hero paint. ActivityFeed runs
+              in `bare` mode (no inner border / no inner header), the
+              wrapping panel here owns those. */}
+          <div className="lg:col-span-2 flex flex-col min-h-[22rem] lg:max-h-[34rem]">
+            <div className="px-5 sm:px-6 pt-4 pb-2 flex items-center justify-between gap-2 border-b border-cyan-400/[0.08] lg:border-b-0">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/85 font-mono">
+                Stream
+              </div>
+              <span className="text-[10.5px] text-cream-50/45 tabular-nums font-mono">
+                last 24h
+              </span>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <Suspense fallback={<ActivityFeedSkeleton />}>
+                <ActivityFeed />
+              </Suspense>
+            </div>
           </div>
-          <ActivityStream events={events} />
         </div>
-      </div>
+      </section>
 
-      {/* Quick actions */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <QuickAction
-          href="/admin/scan"
-          label="Scan & publish"
-          subtitle="Upload an invite poster"
-          icon={<QuickIconScan />}
-          accent="saffron"
-        />
-        <QuickAction
-          href="/admin"
-          label="Review queue"
-          subtitle={`${pendingBhandaras} pending`}
-          icon={<QuickIconClipboard />}
-          accent="cream"
-        />
-        <QuickAction
-          href="/admin/discover"
-          label="Discover"
-          subtitle="Find new bhandaras"
-          icon={<QuickIconCompass />}
-          accent="cream"
-        />
-        <QuickAction
-          href="/admin/volunteers"
-          label="Volunteers"
-          subtitle={`${pendingVolunteers} new`}
-          icon={<QuickIconUsers />}
-          accent="cream"
-        />
-      </div>
     </div>
     </AdminShell>
   );
 }
 
-/* ───────── QuickAction tile ───────── */
+/* ───────── HeroStat — small in-hero stat readout ───────── */
+
+function HeroStat({
+  label,
+  value,
+  accent,
+  isText,
+}: {
+  label: string;
+  value: number | string;
+  accent: "cyan" | "violet" | "leaf" | "saffron" | "sindoor";
+  isText?: boolean;
+}) {
+  const accentMap: Record<typeof accent, { text: string; border: string }> = {
+    cyan: { text: "text-cyan-300", border: "border-cyan-400/25" },
+    violet: { text: "text-violet-300", border: "border-violet-400/25" },
+    leaf: { text: "text-leaf-400", border: "border-leaf-400/25" },
+    saffron: { text: "text-saffron-400", border: "border-saffron-400/25" },
+    sindoor: { text: "text-sindoor-700", border: "border-sindoor-700/30" },
+  };
+  const a = accentMap[accent];
+  return (
+    <div className={`rounded-xl border ${a.border} bg-[#0B0E16]/55 backdrop-blur-sm px-3 py-2.5`}>
+      <div className="text-[10px] uppercase tracking-[0.14em] text-cream-50/55 font-mono">
+        {label}
+      </div>
+      <div
+        className={[
+          "mt-1 font-mono font-bold tabular-nums tracking-tight",
+          isText ? "text-sm" : "text-2xl leading-none",
+          a.text,
+        ].join(" ")}
+      >
+        {typeof value === "number" ? value.toLocaleString("en-IN") : value}
+      </div>
+    </div>
+  );
+}
+
+/* ───────── QuickAction tile ─────────
+ *
+ * Terminal-command palette aesthetic. Each tile reads as a callable
+ * function — mono label like `scan_and_publish()`, a per-accent
+ * coloured icon plate, a keyboard-shortcut chip on the right, and a
+ * thin animated underline on hover that doubles as a "ready to fire"
+ * cue. The primary action gets the cyan→violet gradient plate; the
+ * rest get the variant accent at lower intensity.
+ */
+
+type QuickAccent = "primary" | "cyan" | "violet" | "leaf" | "saffron" | "sindoor";
+
+const QUICK_ACCENTS: Record<
+  QuickAccent,
+  {
+    surface: string;
+    iconWrap: string;
+    label: string;
+    sub: string;
+    chip: string;
+  }
+> = {
+  // Filled-style accents. Each tile gets its accent colour as the
+  // dominant card fill (vs the old outlined dark-bg cards) so the
+  // strip reads as primary, high-contrast CTAs at the very top of
+  // the dashboard. Icon plate is a brighter solid block of the same
+  // hue; the keyboard-shortcut chip is reversed (light glass on the
+  // colour fill) so it stays legible.
+  primary: {
+    surface:
+      "bg-gradient-to-br from-cyan-500/90 via-cyan-500/80 to-violet-500/90 hover:from-cyan-400 hover:to-violet-400 shadow-[0_12px_30px_-12px_rgba(34,211,238,0.7)]",
+    iconWrap: "bg-cream-50/15 text-cream-50",
+    label: "text-cream-50",
+    sub: "text-cream-50/85",
+    chip: "bg-cream-50/20 text-cream-50",
+  },
+  cyan: {
+    surface:
+      "bg-gradient-to-br from-cyan-500/85 to-cyan-600/95 hover:from-cyan-400 hover:to-cyan-500 shadow-[0_12px_30px_-12px_rgba(34,211,238,0.55)]",
+    iconWrap: "bg-cream-50/15 text-cream-50",
+    label: "text-cream-50",
+    sub: "text-cream-50/85",
+    chip: "bg-cream-50/20 text-cream-50",
+  },
+  violet: {
+    surface:
+      "bg-gradient-to-br from-violet-500/90 to-violet-600/95 hover:from-violet-400 hover:to-violet-500 shadow-[0_12px_30px_-12px_rgba(139,92,246,0.6)]",
+    iconWrap: "bg-cream-50/15 text-cream-50",
+    label: "text-cream-50",
+    sub: "text-cream-50/85",
+    chip: "bg-cream-50/20 text-cream-50",
+  },
+  leaf: {
+    surface:
+      "bg-gradient-to-br from-leaf-600/95 to-leaf-600 hover:from-leaf-600 hover:to-leaf-600/95 shadow-[0_12px_30px_-12px_rgba(93,174,93,0.55)]",
+    iconWrap: "bg-cream-50/15 text-cream-50",
+    label: "text-cream-50",
+    sub: "text-cream-50/85",
+    chip: "bg-cream-50/20 text-cream-50",
+  },
+  // Saffron — used by the Content Hub tile so the "creative / outbound
+  // content" surface gets its own warm fill, distinct from the cooler
+  // cyan/violet ops accents. Carries the brand's saffron continuity
+  // through to the dashboard without dominating it.
+  saffron: {
+    surface:
+      "bg-gradient-to-br from-saffron-500/90 to-saffron-600 hover:from-saffron-500 hover:to-saffron-500 shadow-[0_12px_30px_-12px_rgba(242,148,76,0.6)]",
+    iconWrap: "bg-cream-50/15 text-cream-50",
+    label: "text-cream-50",
+    sub: "text-cream-50/85",
+    chip: "bg-cream-50/20 text-cream-50",
+  },
+  // Sindoor — deep red used by the Emails tile. The tone signals
+  // "incoming attention" without overlapping any of the cooler ops
+  // accents (cyan / violet) or the warm content accent (saffron),
+  // so the operator's eye lands on Emails immediately when there's
+  // unread mail. Still inside the brand palette (sindoor-700 is
+  // also the destructive-action token used elsewhere in admin).
+  sindoor: {
+    surface:
+      "bg-gradient-to-br from-sindoor-700 to-sindoor-700/85 hover:from-sindoor-700 hover:to-sindoor-700 shadow-[0_12px_30px_-12px_rgba(156,42,42,0.65)]",
+    iconWrap: "bg-cream-50/15 text-cream-50",
+    label: "text-cream-50",
+    sub: "text-cream-50/85",
+    chip: "bg-cream-50/20 text-cream-50",
+  },
+};
 
 function QuickAction({
   href,
@@ -366,92 +609,152 @@ function QuickAction({
   subtitle,
   icon,
   accent,
+  shortcut,
 }: {
   href: string;
   label: string;
   subtitle: string;
   icon: React.ReactNode;
-  accent: "saffron" | "cream";
+  accent: QuickAccent;
+  shortcut?: string;
 }) {
+  const a = QUICK_ACCENTS[accent];
   return (
     <Link
       href={href}
-      prefetch={false}
       className={[
-        "group rounded-2xl border bg-cream-50/[0.03] backdrop-blur-sm p-4 transition-all",
-        accent === "saffron"
-          ? "border-saffron-500/40 hover:border-saffron-500/60 hover:bg-saffron-500/[0.06]"
-          : "border-cream-50/12 hover:border-cream-50/22 hover:bg-cream-50/[0.05]",
+        // Sleeker chrome — reduced padding so the label has more
+        // horizontal room. With 6 tiles in a row at lg, every pixel
+        // of icon/padding/chip we shave goes to the label.
+        "group relative rounded-2xl px-3 py-2.5 transition-all duration-300 overflow-hidden border border-cream-50/15 hover:-translate-y-0.5",
+        a.surface,
       ].join(" ")}
     >
-      <div className="flex items-center gap-3">
+      {/* Subtle inner highlight on the top edge to give the filled
+          card a soft "lifted" feel rather than a flat slab. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cream-50/40 to-transparent"
+      />
+      <div className="relative flex items-center gap-2.5">
         <div
           className={[
-            "shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl",
-            accent === "saffron"
-              ? "bg-gradient-to-br from-saffron-500 to-saffron-600 text-cream-50 shadow-[0_4px_14px_-4px_rgba(242,148,76,0.6)]"
-              : "bg-cream-50/[0.06] text-cream-50/85",
+            // 36×36 icon plate (was 44) — small enough that the
+            // label gets ~24px more breathing room without losing
+            // the icon as the primary visual handle.
+            "shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg",
+            a.iconWrap,
           ].join(" ")}
         >
           {icon}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-cream-50 text-sm">{label}</div>
-          <div className="text-xs text-cream-50/55 mt-0.5 truncate">
+          <div
+            className={[
+              // text-[13px] (was text-sm/14px) + tracking-tight so
+              // long labels like "scan_and_publish" fit without
+              // truncating at lg. font-mono is unchanged — that's
+              // the "console terminal" voice we keep across admin.
+              "font-mono text-[13px] tracking-tight truncate font-semibold",
+              a.label,
+            ].join(" ")}
+          >
+            {label}
+            <span className="opacity-65">()</span>
+          </div>
+          <div
+            className={[
+              "text-[11px] mt-0.5 truncate font-mono",
+              a.sub,
+            ].join(" ")}
+          >
             {subtitle}
           </div>
         </div>
-        <span
-          aria-hidden
-          className="text-cream-50/45 group-hover:text-cream-50/85 transition-colors"
-        >
-          →
-        </span>
+        {shortcut ? (
+          <div
+            className={[
+              // Smaller shortcut chip — 1.25rem min vs 1.6rem.
+              "shrink-0 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-md font-mono text-[10px] font-bold uppercase tracking-[0.08em]",
+              a.chip,
+            ].join(" ")}
+            aria-hidden
+          >
+            {shortcut}
+          </div>
+        ) : (
+          <span
+            aria-hidden
+            className="text-cream-50/75 group-hover:translate-x-0.5 transition-transform"
+          >
+            →
+          </span>
+        )}
       </div>
     </Link>
   );
 }
 
-/* ───────── Icons ───────── */
+/* ───────── KPI Icons — sized for the larger 44×44 icon plate
+ *  on each KpiTile. Stroke 2.2 reads bold without going pictographic. */
 function KpiIconClipboard() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="6" y="4" width="12" height="17" rx="2" />
+      <path d="M9 4 v-1 h6 v1" />
       <line x1="9" y1="10" x2="15" y2="10" />
       <line x1="9" y1="14" x2="15" y2="14" />
+      <line x1="9" y1="18" x2="13" y2="18" />
     </svg>
   );
 }
 function KpiIconCamera() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="7" width="18" height="13" rx="2.5" />
+      <path d="M9 7 l1.5 -3 h3 l1.5 3" />
       <circle cx="12" cy="13.5" r="3.5" />
     </svg>
   );
 }
 function KpiIconChat() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 12a8 8 0 1 1-3.5-6.6L21 4l-1.4 3.6A8 8 0 0 1 21 12z" />
+      <circle cx="9" cy="12" r="1" fill="currentColor" />
+      <circle cx="12.5" cy="12" r="1" fill="currentColor" />
+      <circle cx="16" cy="12" r="1" fill="currentColor" />
     </svg>
   );
 }
 function KpiIconUsers() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="9" cy="9" r="3.5" />
       <path d="M2.5 20 c0 -4 3 -7 6.5 -7 s6.5 3 6.5 7" />
       <circle cx="17" cy="10" r="2.5" />
+      <path d="M15 20 c0 -3 2 -5 4.5 -5 s2 1 2 5" />
     </svg>
   );
 }
 function KpiIconUserCheck() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="10" cy="9" r="3.5" />
       <path d="M3 20 c0 -4 3 -7 7 -7 s7 3 7 7" />
       <polyline points="16 11 18 13 22 9" />
+    </svg>
+  );
+}
+/** Globe — used by the Site visitors KPI tile. Plain meridians +
+ *  equator on a circle. Same stroke weight (2.2) as the other KPI
+ *  icons so the row reads as a single family. */
+function KpiIconGlobe() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <ellipse cx="12" cy="12" rx="4" ry="9" />
+      <line x1="3" y1="12" x2="21" y2="12" />
     </svg>
   );
 }
@@ -491,6 +794,22 @@ function QuickIconUsers() {
       <circle cx="9" cy="9" r="3.5" />
       <path d="M2.5 20 c0 -4 3 -7 6.5 -7 s6.5 3 6.5 7" />
       <circle cx="17" cy="10" r="2.5" />
+    </svg>
+  );
+}
+function QuickIconSparkle() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3 L13.8 9.2 L20 11 L13.8 12.8 L12 19 L10.2 12.8 L4 11 L10.2 9.2 Z" />
+      <path d="M19 4 L19.6 5.8 L21.5 6.5 L19.6 7.2 L19 9 L18.4 7.2 L16.5 6.5 L18.4 5.8 Z" opacity="0.85" />
+    </svg>
+  );
+}
+function QuickIconEnvelope() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 7 L12 13 L21 7" />
     </svg>
   );
 }

@@ -372,6 +372,18 @@ export default function LiveChatterBoard({
   const nextOpenLabel = isChatOpen
     ? isHi ? "आज" : "today"
     : dayName(nextOpenDay, isHi);
+  // Most-recent past open day used for the off-day chat title
+  // ("Saturday's chat", "Tuesday's chat"). On open days this equals
+  // today, but we don't use the label on open days anyway.
+  let lastOpenDay = today;
+  for (let offset = 0; offset < 7; offset++) {
+    const d = (today - offset + 7) % 7;
+    if (LIVE_CHAT_OPEN_DAYS.has(d)) {
+      lastOpenDay = d;
+      break;
+    }
+  }
+  const lastOpenLabel = dayName(lastOpenDay, isHi);
 
   const tick = useCallback(async () => {
     if (typeof window === "undefined") return;
@@ -635,7 +647,12 @@ export default function LiveChatterBoard({
   const scrollToArea = useCallback((displayLabel: string) => {
     const body = chatBodyRef.current;
     if (!body) return;
-    const key = displayLabel.toLowerCase().trim();
+    // Slugify the same way the bubbles do — spaces become hyphens so
+    // multi-word areas ("Kuris Road Near Rama Hospital", "Vrindavan
+    // Colony", "LU New Campus") survive the `~=` attribute-match
+    // selector, which splits on whitespace and would never find a
+    // phrase containing spaces.
+    const key = displayLabel.toLowerCase().trim().replace(/\s+/g, "-");
     if (!key) return;
     // Reset the "new since scroll-away" badge so the user doesn't
     // see a stale "5 new" pill after landing on the matching row.
@@ -717,7 +734,11 @@ export default function LiveChatterBoard({
                   ? "आपके पास के भंडारे — मानचित्र पर लाइव"
                   : "Bhandaras near me, on the map and live in chat"}
               </span>
-              <SectionLiveBadge isHi={isHi} />
+              {/* The green "live" pill is only shown on actual
+                  live-chat days (Tue/Sat IST). On off-days the
+                  heading reads as a feature description rather than
+                  a state claim, so the pill would lie. */}
+              {isChatOpen ? <SectionLiveBadge isHi={isHi} /> : null}
             </h2>
             <p className="text-sm sm:text-base text-cream-50/75 leading-snug">
               {isHi ? (
@@ -817,14 +838,26 @@ export default function LiveChatterBoard({
                   <ChatBubbleGlyph size={18} />
                 </span>
                 <span className="font-fraunces text-cream-50 text-base shrink-0">
-                  {isHi ? "लाइव चैट" : "Live chat"}
+                  {isChatOpen
+                    ? isHi
+                      ? "लाइव चैट"
+                      : "Live chat"
+                    : isHi
+                      ? `${lastOpenLabel} की चैट`
+                      : `${lastOpenLabel}'s chat`}
                 </span>
-                {/* Hide the LIVE pill on a cold-load with no chatter
-                    yet — otherwise the header reads "LIVE · 0 mentions"
-                    which looks broken. Reappears the instant a poll
-                    lands a fresh row. */}
+                {/* On open days (Tue/Sat) with at least one mention,
+                    show the broadcast-style "LIVE · N mentions" pill.
+                    On closed days we replace the LIVE prefix with a
+                    plain mentions counter so the chrome doesn't lie
+                    about the chat being on air. Cold-load with zero
+                    mentions hides the pill entirely. */}
                 {totalToday > 0 ? (
-                  <LivePulseBadge count={totalToday} isHi={isHi} />
+                  isChatOpen ? (
+                    <LivePulseBadge count={totalToday} isHi={isHi} />
+                  ) : (
+                    <RecentCountBadge count={totalToday} isHi={isHi} />
+                  )
                 ) : null}
               </div>
               {isChatOpen ? (
@@ -1307,6 +1340,24 @@ function WhatsappCard({
   );
 }
 
+/** "12 recent mentions" badge — same chrome as LivePulseBadge but
+ *  without the green dot + LIVE label. Used on off-days (Sun/Mon/Wed/
+ *  Thu/Fri) when the chat isn't taking new messages, so the count
+ *  reflects "what's still on the feed from the last open day" rather
+ *  than an on-air claim. */
+function RecentCountBadge({ count, isHi }: { count: number; isHi: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full bg-black text-cream-50 px-3 py-1.5 border border-cream-50/15 shadow-[0_4px_14px_-4px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.06)]">
+      <span aria-hidden>💬</span>
+      <span className="text-xs font-semibold tabular-nums text-cream-50/95">
+        {isHi
+          ? `${count} ${count === 1 ? "हालिया चर्चा" : "हालिया चर्चाएँ"}`
+          : `${count} recent mention${count === 1 ? "" : "s"}`}
+      </span>
+    </span>
+  );
+}
+
 /** "LIVE · 12 mentions" badge. Solid-black pill with a green
  *  pulsing dot. Reads like a broadcast-control tally: the green dot
  *  is the universal "on-air" signal, the black pill keeps it from
@@ -1602,7 +1653,7 @@ function ChatBubble({
         }`
       : null;
 
-  // Space-separated lowercased area keys for every location this
+  // Space-separated slugified area keys for every location this
   // mention covers — used by the active-area chip click handler to
   // find the first bubble matching the chosen area and scroll it
   // into view. Same right-most-comma-segment rule as the chip
@@ -1610,6 +1661,12 @@ function ChatBubble({
   // mentions (Yash's "Aashiyana: Taj jwellers / Near Shubhash /
   // Oyo townhouse" pattern) emit multiple areas separated by
   // spaces so a `[data-areas~="aashiyana"]` selector matches.
+  //
+  // Each area name is slugified (spaces → hyphens) before joining,
+  // because the CSS `[attr~="value"]` selector splits on whitespace
+  // and would never match a phrase containing spaces. So
+  // "Vrindavan Colony" becomes "vrindavan-colony", and the chip
+  // handler slugifies its key the same way before querying.
   const dataAreas = (() => {
     const labels =
       mention.locationLabels && mention.locationLabels.length > 0
@@ -1623,7 +1680,8 @@ function ChatBubble({
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean);
-        return (segs.length > 0 ? segs[segs.length - 1] : l).toLowerCase();
+        const area = segs.length > 0 ? segs[segs.length - 1] : l;
+        return area.toLowerCase().replace(/\s+/g, "-");
       })
       .filter(Boolean);
     return Array.from(new Set(areas)).join(" ");

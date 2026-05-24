@@ -32,6 +32,7 @@
 
 import { useRef, useState } from "react";
 import { trackEvent } from "@/lib/ga";
+import { IconCheck } from "@/components/admin/AdminIcons";
 
 type UploadResponse = {
   ok?: boolean;
@@ -71,6 +72,15 @@ export default function AdminPhotoField({
 }: Props) {
   const [photoUrl, setPhotoUrl] = useState<string>(defaultValue);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  // `removed` is the explicit "user clicked Remove" intent. We
+  // surface it via a hidden `${name}__remove=1` field that the
+  // server actions (editAndApproveSpotAction, editAndPublishAction)
+  // honour to drop the column to null + evict the R2 object. The
+  // local photoUrl state also goes empty so the preview clears and
+  // the Upload/Take buttons read as "add a new photo". A re-upload
+  // automatically un-flips the removed flag so the user can change
+  // their mind without re-saving.
+  const [removed, setRemoved] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const cameraRef = useRef<HTMLInputElement | null>(null);
 
@@ -119,6 +129,8 @@ export default function AdminPhotoField({
         return;
       }
       setPhotoUrl(json.photoUrl);
+      // A new upload supersedes any prior "Remove" intent.
+      setRemoved(false);
       setStatus({
         kind: "ok",
         sizeKb: json.sizeBytes ? Math.round(json.sizeBytes / 1024) : sizeKb,
@@ -139,32 +151,42 @@ export default function AdminPhotoField({
   return (
     <div className="grid gap-2">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-ink-600">{label}</span>
+        <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
+          {label}
+        </span>
         {status.kind === "ok" ? (
-          <span className="text-xs text-leaf-600">
-            ✓ New photo saved ({status.sizeKb} KB)
+          <span className="text-xs text-leaf-400 font-mono inline-flex items-center gap-1.5">
+            <IconCheck size={12} />
+            <span>New photo saved ({status.sizeKb} KB)</span>
+          </span>
+        ) : removed ? (
+          <span className="text-xs text-sindoor-300 font-mono">
+            ⌫ Photo will be removed on save
           </span>
         ) : null}
       </div>
 
-      {/* Hidden field, this is what the server action reads. We keep
-          it as a real <input name={name}> rather than building the
-          FormData by hand so the page stays no-JS-friendly: if the
-          admin never touches the photo, the original defaultValue
-          flows through unchanged. */}
+      {/* Hidden fields — the server action reads photoUrl + an
+          explicit removePhoto=1 flag. Keeping them as real <input>s
+          (vs. building FormData by hand) preserves the no-JS
+          fallback: untouched form round-trips the original photo. */}
       <input type="hidden" name={name} value={photoUrl} readOnly />
+      <input
+        type="hidden"
+        name="removePhoto"
+        value={removed ? "1" : "0"}
+        readOnly
+      />
 
-      {/* Preview band. Same look as the standalone preview that lives
-          above the form on /admin/edit/[id], so the visual hierarchy
-          stays consistent: photo on top, fields below. Mirrors the
-          existing "click image → open full size" affordance via a
-          wrapping anchor. */}
+      {/* Preview band — dark cyan-bordered surface that matches the
+          rest of the AI/ops console. Click the preview to open the
+          full-resolution image in a new tab. */}
       {hasPhoto ? (
         <a
           href={photoUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="block rounded-2xl border border-gold-500/40 overflow-hidden bg-cream-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600"
+          className="block rounded-2xl border border-cyan-400/20 overflow-hidden bg-[#0B0E16]/85 backdrop-blur-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/55"
           title="Open full image in a new tab"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -175,8 +197,10 @@ export default function AdminPhotoField({
           />
         </a>
       ) : (
-        <div className="rounded-2xl border border-dashed border-gold-500/40 bg-cream-50 px-4 py-10 text-center text-sm text-ink-600">
-          No photo yet. Use the buttons below to add one.
+        <div className="rounded-2xl border border-dashed border-cyan-400/30 bg-cyan-400/[0.03] px-4 py-10 text-center text-sm text-cream-50/65 font-mono">
+          {removed
+            ? "Photo removed. Upload a new one or save to keep it gone."
+            : "No photo yet. Use the buttons below to add one."}
         </div>
       )}
 
@@ -185,7 +209,7 @@ export default function AdminPhotoField({
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-cream-50 font-mono font-semibold border border-cyan-300/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {uploading ? (
             <>
@@ -206,21 +230,46 @@ export default function AdminPhotoField({
           type="button"
           onClick={() => cameraRef.current?.click()}
           disabled={uploading}
-          className="inline-flex items-center gap-1.5 rounded-full border border-gold-500/50 bg-white hover:bg-cream-50 text-ink-900 font-medium px-4 py-2 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/[0.08] border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/[0.16] hover:border-cyan-400/50 hover:text-cyan-100 font-mono font-semibold px-4 py-2 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Take photo
         </button>
+        {/* Remove photo — explicit destructive action. Only enabled
+            when a photo is actually present (or staged). Confirms via
+            native confirm() because R2 eviction is one-way; the next
+            re-upload re-creates a fresh object under a new key. */}
         {hasPhoto && !uploading ? (
-          <span className="text-xs text-ink-600 break-all">
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                window.confirm(
+                  "Remove this photo on save? The file will be deleted from storage. You can upload a new one to undo before saving.",
+                )
+              ) {
+                setPhotoUrl("");
+                setRemoved(true);
+                setStatus({ kind: "idle" });
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-alert-500/[0.08] border border-alert-500/30 text-alert-400 hover:bg-alert-500/[0.18] hover:border-alert-500/55 hover:text-alert-300 font-mono font-semibold px-4 py-2 text-sm transition-colors"
+          >
+            🗑 Remove photo
+          </button>
+        ) : null}
+        {hasPhoto && !uploading ? (
+          <span className="text-xs text-cream-50/55 break-all font-mono">
             {shortenUrl(photoUrl)}
           </span>
         ) : null}
       </div>
 
-      {hint ? <span className="text-xs text-ink-600">{hint}</span> : null}
+      {hint ? (
+        <span className="text-xs text-cream-50/55 font-mono">{hint}</span>
+      ) : null}
 
       {status.kind === "err" ? (
-        <p className="text-xs text-alert-500">{status.message}</p>
+        <p className="text-xs text-sindoor-300 font-mono">{status.message}</p>
       ) : null}
 
       {/* The two hidden file inputs. Kept off-screen rather than

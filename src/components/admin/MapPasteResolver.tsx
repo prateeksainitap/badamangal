@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { trackEvent } from "@/lib/ga";
+import { IconCheck } from "@/components/admin/AdminIcons";
 
 /**
  * Compact "paste anything Google-Maps-y → get coordinates" widget.
@@ -129,7 +130,9 @@ export default function MapPasteResolver({
 
   return (
     <label className="grid gap-1.5">
-      <span className="text-sm text-ink-600">{label}</span>
+      <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
+        {label}
+      </span>
       <div className="flex gap-2">
         <input
           type="text"
@@ -142,13 +145,13 @@ export default function MapPasteResolver({
             }
           }}
           placeholder="https://maps.app.goo.gl/…  ·  VXR6+QP Lucknow  ·  26.89,80.96"
-          className="flex-1 rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+          className="flex-1 rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
         />
         <button
           type="button"
           onClick={() => void resolve()}
           disabled={resolving || !paste.trim()}
-          className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-cream-50 font-mono font-semibold border border-cyan-300/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {resolving ? (
             <>
@@ -161,18 +164,21 @@ export default function MapPasteResolver({
         </button>
       </div>
       {feedback.kind === "ok" ? (
-        <span className="text-xs text-leaf-600">
-          ✓ Coordinates filled from {feedback.source.replace(/_/g, " ")}.
+        <span className="text-xs text-leaf-400 font-mono inline-flex items-center gap-1.5">
+          <IconCheck size={12} />
+          <span>Coordinates filled from {feedback.source.replace(/_/g, " ")}.</span>
           {!feedback.inLucknow ? (
-            <span className="ml-1 text-alert-500">
+            <span className="ml-1 text-sindoor-300">
               ⚠ Outside Lucknow bbox, double-check before saving.
             </span>
           ) : null}
         </span>
       ) : feedback.kind === "err" ? (
-        <span className="text-xs text-alert-500">{feedback.message}</span>
+        <span className="text-xs text-sindoor-300 font-mono">
+          {feedback.message}
+        </span>
       ) : (
-        <span className="text-xs text-ink-600">
+        <span className="text-xs text-cream-50/55 font-mono">
           On Google Maps: search the venue → Share → Copy link → paste here.
         </span>
       )}

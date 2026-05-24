@@ -71,3 +71,6 @@ prisma/migrations/dev.db*
 
 # Phase 2b photo migration logs — keep local as rollback insurance
 migration-log-*.json
+
+# Overnight working notes (NOT for the repo)
+/notes/

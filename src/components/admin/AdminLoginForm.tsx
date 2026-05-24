@@ -28,7 +28,9 @@ export default function AdminLoginForm({ error }: { error: boolean }) {
   return (
     <form action={loginAction} className="mt-6 grid gap-3 text-left">
       <label className="grid gap-1.5">
-        <span className="text-sm text-ink-600">Password</span>
+        <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
+          Password
+        </span>
         <div className="relative">
           <input
             required
@@ -36,15 +38,14 @@ export default function AdminLoginForm({ error }: { error: boolean }) {
             name="password"
             autoFocus
             autoComplete="current-password"
-            // Right-pad so the toggle button doesn't overlap the text.
-            className="w-full rounded-xl border border-gold-500/50 bg-white pl-3 pr-11 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+            className="w-full rounded-xl border border-cyan-400/25 bg-[#080A10]/70 backdrop-blur-sm pl-3 pr-11 py-2.5 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
           />
           <button
             type="button"
             onClick={() => setShow((v) => !v)}
             aria-label={show ? "Hide password" : "Show password"}
             aria-pressed={show}
-            className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-9 h-9 rounded-lg text-ink-600 hover:text-sindoor-700 hover:bg-saffron-50 transition-colors"
+            className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-9 h-9 rounded-lg text-cream-50/55 hover:text-cyan-300 hover:bg-cyan-400/[0.08] transition-colors"
           >
             {show ? <EyeOff /> : <Eye />}
           </button>
@@ -52,7 +53,9 @@ export default function AdminLoginForm({ error }: { error: boolean }) {
       </label>
 
       {error ? (
-        <p className="text-xs text-alert-500">Wrong password. Try again.</p>
+        <p className="text-xs text-sindoor-700 font-mono">
+          Wrong password. Try again.
+        </p>
       ) : null}
 
       <SubmitButton />
@@ -71,15 +74,15 @@ function SubmitButton() {
       type="submit"
       disabled={pending}
       aria-busy={pending}
-      className="mt-2 inline-flex justify-center items-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 shadow-sm transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+      className="mt-2 inline-flex justify-center items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-cream-50 font-mono font-semibold border border-cyan-300/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
     >
       {pending ? (
         <>
           <Spinner />
-          Signing in…
+          authenticating…
         </>
       ) : (
-        "Sign in"
+        <>Sign in →</>
       )}
     </button>
   );

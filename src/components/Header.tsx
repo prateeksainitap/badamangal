@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import LangToggle from "@/components/LangToggle";
 import { JaliCorner } from "@/components/ornaments";
 import { useT } from "@/lib/useT";
+import { isLiveChatOpenToday } from "@/lib/live-chat-schedule";
 
 function HeaderInner() {
   const { t, locale } = useT();
@@ -78,7 +79,13 @@ function HeaderInner() {
           : "Photos & updates from today",
       icon: <NavIconBroadcast />,
       accent: "saffron",
-      live: true,
+      // The "Live" pill on this nav item is only truthful on actual
+      // live-chat days (Tue/Sat IST). On off-days the link still
+      // works — it just shouldn't claim "live" status, otherwise it
+      // mirrors the broken signal the LiveChatterBoard header used
+      // to show. The /live page itself still surfaces recent photos
+      // and the chat history.
+      live: isLiveChatOpenToday(),
     },
     {
       href: "/history",

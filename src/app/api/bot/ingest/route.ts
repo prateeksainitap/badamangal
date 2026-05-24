@@ -44,10 +44,10 @@ import {
   type ExtractedSpot,
 } from "@/lib/vision";
 import { getSupabaseAdmin, PHOTO_BUCKET } from "@/lib/supabase";
-import { uploadToR2 } from "@/lib/r2";
+import { uploadToR2, deleteFromR2 } from "@/lib/r2";
 import { slugify, ensureUniqueSlug } from "@/lib/slugify";
 import { menuHiFor } from "@/lib/menu";
-import { geocodeLucknow } from "@/lib/geocodeServer";
+import { resolveBhandaraCoords } from "@/lib/geocodeFallback";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -65,6 +65,75 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB before normalisation
 const SPOT_TTL_HOURS = 8;
 
+/** Allowed outcome values for BotIngestionLog.outcome. Kept as a
+ *  const union so callers can't accidentally write a typo'd outcome
+ *  string that breaks the /admin/bot-log filter chips. */
+type IngestionOutcome =
+  | "SUCCESS_BHANDARA"
+  | "SUCCESS_SPOT"
+  | "DUPLICATE_HASH"
+  | "DUPLICATE_CONTENT"
+  | "IGNORED_NON_BHANDARA"
+  | "FAILED_CLASSIFY"
+  | "FAILED_EXTRACT"
+  | "FAILED_UPLOAD"
+  | "FAILED_OTHER";
+
+/** Fire-and-forget audit-row write. Wrapped in try/catch so a log
+ *  write failure NEVER crashes the actual ingest — losing one audit
+ *  row is acceptable; losing a real Bhandara/Spot create is not. */
+async function logIngestion(args: {
+  outcome: IngestionOutcome;
+  senderName?: string | null;
+  msgId?: string | null;
+  groupName?: string | null;
+  resultRowId?: string | null;
+  resultRowKind?: "bhandara" | "spot" | null;
+  reason?: string | null;
+  imageHash?: string | null;
+  extractedName?: string | null;
+}): Promise<void> {
+  try {
+    await prisma.botIngestionLog.create({
+      data: {
+        outcome: args.outcome,
+        senderName: args.senderName?.slice(0, 200) ?? null,
+        msgId: args.msgId?.slice(0, 200) ?? null,
+        groupName: args.groupName?.slice(0, 200) ?? null,
+        resultRowId: args.resultRowId ?? null,
+        resultRowKind: args.resultRowKind ?? null,
+        reason: args.reason?.slice(0, 500) ?? null,
+        imageHash: args.imageHash ?? null,
+        extractedName: args.extractedName?.slice(0, 200) ?? null,
+      },
+    });
+  } catch (err) {
+    // Don't let logging failures cascade. Log to stderr so a missing
+    // table / schema drift is still visible to the operator via
+    // server logs.
+    console.warn("[bot/ingest] logIngestion failed", err);
+  }
+}
+
+/** Normalise a bhandara name for content-dedup comparison. Lowercases,
+ *  collapses whitespace, strips the common "Shri" / "Sri" prefix and
+ *  the trailing "Bhandara" / "Bhandare" suffix that 95% of posters
+ *  carry. Returns "" when the input has fewer than ~3 meaningful
+ *  characters left — caller treats "" as "not enough signal to dedup".
+ *  Conservative on purpose: a generic "Bhandara" or "श्री राम" name
+ *  shouldn't match every other generic poster in the queue. */
+function normaliseBhandaraName(s: string | null | undefined): string {
+  if (!s) return "";
+  const cleaned = s
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/^(shri|sri|श्री)\s+/i, "")
+    .replace(/\s+(bhandara|bhandare|भंडारा|भंडारे)\s*$/i, "")
+    .trim();
+  return cleaned.length >= 3 ? cleaned : "";
+}
+
 type IngestBody = {
   /** "bhandara" for an invite poster, "spot" for a live photo, or
    *  "auto" to let us classify the image via Gemini and route. The bot
@@ -74,6 +143,13 @@ type IngestBody = {
   photoBase64?: string;
   /** Display name of the WhatsApp sender (for the admin's eyes). */
   senderName?: string;
+  /** WhatsApp group / channel display name (e.g. "Jai Sri Ram"). The
+   *  bot agent reads this from `chat.name` on each forwarded message
+   *  and ships it through so the admin can slice the BotIngestionLog
+   *  by source channel ("what came in from group X today?") and the
+   *  [bot:…] provenance tag on the canonical row carries it as well.
+   *  Optional — old bot daemon builds that don't send it still work. */
+  groupName?: string;
   /** WhatsApp message id, used by the agent for "you already
    *  ingested this" dedupe. We persist it inside the description tag. */
   msgId?: string;
@@ -124,6 +200,12 @@ export async function POST(req: NextRequest) {
   const requestedKind: "bhandara" | "spot" | "auto" =
     body.kind === "bhandara" || body.kind === "spot" ? body.kind : "auto";
   const senderName = (body.senderName ?? "").slice(0, 80) || "WhatsApp sender";
+  // Capture the WhatsApp group / channel name when the bot agent
+  // sends one. Trim to 80 chars to match senderName so the
+  // BotIngestionLog row stays compact + indexable. Null if the bot
+  // didn't send one (old build / personal-chat forward / etc.) — the
+  // ingest pipeline still works either way.
+  const groupName = ((body.groupName ?? "").trim().slice(0, 80)) || null;
   const msgId = (body.msgId ?? "").slice(0, 120);
   const declaredMime = body.mime ?? "image/jpeg";
   const sourceMime: "image/jpeg" | "image/png" | "image/webp" =
@@ -166,10 +248,24 @@ export async function POST(req: NextRequest) {
   // later extract from, slightly more accurate than classifying the
   // raw upload and then re-encoding.
   const base64Webp = webp.toString("base64");
-  const classified =
-    requestedKind === "auto"
-      ? await classifyImage(base64Webp, "image/webp")
-      : requestedKind;
+  let classified: "bhandara" | "spot" | "other";
+  try {
+    classified =
+      requestedKind === "auto"
+        ? await classifyImage(base64Webp, "image/webp")
+        : requestedKind;
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("[bot/ingest] gemini classify failed", detail);
+    await logIngestion({
+      outcome: "FAILED_CLASSIFY",
+      senderName,
+      groupName,
+      msgId,
+      reason: detail.slice(0, 400),
+    });
+    return jsonError(502, "classify_failed", { detail });
+  }
 
   // Off-topic guard: when Gemini decided the image isn't actually a
   // bhandara poster OR a venue snapshot (newspaper clipping, recipe
@@ -179,6 +275,14 @@ export async function POST(req: NextRequest) {
   // notifier can log the rejection without an admin chase. The
   // uploaded WebP is discarded — we don't even upload to R2.
   if (classified === "other") {
+    await logIngestion({
+      outcome: "IGNORED_NON_BHANDARA",
+      senderName,
+      groupName,
+      msgId,
+      reason:
+        "Gemini classified the image as off-topic (news clipping / recipe / generic poster / etc).",
+    });
     return NextResponse.json({
       ok: true,
       kind: "ignored",
@@ -215,6 +319,16 @@ export async function POST(req: NextRequest) {
     }),
   ]);
   if (dupBhandara || dupSpot) {
+    await logIngestion({
+      outcome: "DUPLICATE_HASH",
+      senderName,
+      groupName,
+      msgId,
+      imageHash,
+      resultRowId: dupBhandara?.id ?? dupSpot?.id ?? null,
+      resultRowKind: dupBhandara ? "bhandara" : "spot",
+      reason: "Byte-identical re-forward — matched on hash marker.",
+    });
     return NextResponse.json({
       ok: true,
       kind: "duplicate",
@@ -247,6 +361,14 @@ export async function POST(req: NextRequest) {
   if (!photoUrl) {
     const supabase = getSupabaseAdmin();
     if (!supabase) {
+      await logIngestion({
+        outcome: "FAILED_UPLOAD",
+        senderName,
+        groupName,
+        msgId,
+        imageHash,
+        reason: "No storage configured (R2 and Supabase both missing).",
+      });
       return jsonError(500, "storage_unavailable", {
         detail:
           "Neither R2 (R2_*) nor Supabase (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY) is configured on the server.",
@@ -266,6 +388,14 @@ export async function POST(req: NextRequest) {
         "[bot/ingest] supabase fallback upload failed",
         upload.error,
       );
+      await logIngestion({
+        outcome: "FAILED_UPLOAD",
+        senderName,
+        groupName,
+        msgId,
+        imageHash,
+        reason: `R2 + Supabase both failed: ${upload.error.message ?? ""}`.slice(0, 400),
+      });
       return jsonError(500, "storage_upload_failed");
     }
     photoUrl = supabase.storage
@@ -287,7 +417,12 @@ export async function POST(req: NextRequest) {
   // worth of unique posters. The whole [bot:…] block is stripped
   // from every public surface by stripBotProvenance (lib/sanitize).
   const timestamp = `${new Date().toISOString().slice(0, 19)}Z`;
-  const tag = `[bot:whatsapp · from:${senderName}${msgId ? ` · msg:${msgId.slice(0, 24)}` : ""} · ${timestamp} · ${hashMarker}]`;
+  // Embed groupName into the provenance tag (when present) so the
+  // admin can see "this came from Jai Sri Ram channel" right on the
+  // queue row without opening the bot-log. Slicing to 40 chars keeps
+  // the tag from blowing past the row title's display width.
+  const groupFragment = groupName ? ` · in:${groupName.slice(0, 40)}` : "";
+  const tag = `[bot:whatsapp · from:${senderName}${groupFragment}${msgId ? ` · msg:${msgId.slice(0, 24)}` : ""} · ${timestamp} · ${hashMarker}]`;
 
   if (kind === "bhandara") {
     let extracted: ExtractedBhandara;
@@ -296,7 +431,103 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       console.error("[bot/ingest] gemini bhandara extract failed", detail);
+      await logIngestion({
+        outcome: "FAILED_EXTRACT",
+        senderName,
+        groupName,
+        msgId,
+        imageHash,
+        reason: `Gemini bhandara extract: ${detail.slice(0, 380)}`,
+      });
       return jsonError(502, "extract_failed", { detail, photoUrl });
+    }
+
+    // ── Content-based dedup ────────────────────────────────────────
+    // The byte-hash dedup above catches re-forwards of the EXACT same
+    // bytes. WhatsApp re-encodes images between groups (slight EXIF /
+    // compression variance), so the same poster forwarded to 3 groups
+    // ends up with 3 different hashes — and previously created 3
+    // separate PENDING rows that the operator had to triage.
+    //
+    // After Gemini extraction we have the structured signal we need:
+    // the bhandara name + the dates printed on the poster. Same name
+    // (normalised) + same first date = same event, regardless of how
+    // many times the image was forwarded.
+    //
+    // Conservative guard: only dedup when the normalised name has ≥3
+    // meaningful characters AND a first date is present, so a generic
+    // "Bhandara" or dateless poster doesn't false-match every other
+    // generic forward in the queue.
+    const normName = normaliseBhandaraName(extracted.name);
+    const firstDate = extracted.dateIsoList?.[0];
+    if (normName && firstDate) {
+      const candidates = await prisma.bhandara.findMany({
+        where: {
+          tuesdayDates: { contains: firstDate },
+          status: { in: ["PENDING", "APPROVED"] },
+        },
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          description: true,
+        },
+      });
+      const contentDup = candidates.find((c) => {
+        const candNorm = normaliseBhandaraName(c.name);
+        if (!candNorm) return false;
+        // Fuzzy match: exact OR one contains the other (handles
+        // "World Iron Champ Gym" vs "World Iron Champ Gym Bhandara"
+        // both surviving normalisation).
+        return (
+          candNorm === normName ||
+          candNorm.includes(normName) ||
+          normName.includes(candNorm)
+        );
+      });
+      if (contentDup) {
+        // Append a re-forward audit line to the canonical row's
+        // description so the operator can see WHICH groups + senders
+        // surfaced this same event. The [bot:reforward…] tag is
+        // stripped from public surfaces by stripBotProvenance.
+        const forwardTag = `[bot:reforward · from:${senderName}${groupFragment}${msgId ? ` · msg:${msgId.slice(0, 24)}` : ""} · ${timestamp} · hash:${imageHash}]`;
+        try {
+          await prisma.bhandara.update({
+            where: { id: contentDup.id },
+            data: {
+              description: `${contentDup.description ?? ""}\n${forwardTag}`,
+            },
+          });
+        } catch (err) {
+          console.warn("[bot/ingest] reforward tag append failed", err);
+        }
+        // Evict the freshly-uploaded WebP — we're not using it. Best
+        // effort; R2 cleanup failure isn't fatal.
+        if (photoUrl) {
+          await deleteFromR2(photoUrl).catch((err) =>
+            console.warn("[bot/ingest] R2 evict (content-dup) failed", err),
+          );
+        }
+        await logIngestion({
+          outcome: "DUPLICATE_CONTENT",
+          senderName,
+          groupName,
+          msgId,
+          imageHash,
+          resultRowId: contentDup.id,
+          resultRowKind: "bhandara",
+          extractedName: extracted.name ?? null,
+          reason: `Same normalised name ("${normName}") + first date (${firstDate}) as ${contentDup.id}.`,
+        });
+        return NextResponse.json({
+          ok: true,
+          kind: "duplicate",
+          duplicateOf: contentDup.id,
+          reviewUrl: `${SITE_URL}/admin?type=whatsapp#${contentDup.id}`,
+          message:
+            "Content-dedup: same bhandara (name + first date) was already ingested. Re-forward note appended to the canonical row.",
+        });
+      }
     }
 
     // Build a Bhandara row. Fields we can't infer get sane defaults the
@@ -317,33 +548,44 @@ export async function POST(req: NextRequest) {
     // edit form if Gemini couldn't read them off the banner.
     const tuesdayDates = extracted.dateIsoList;
 
-    // Forward-geocode the extracted address via Ola Maps so the row
-    // lands with real lat/lng (matched against Lucknow's bounding box)
-    // instead of 0,0. The admin can still edit, but most rows now go
-    // live without manual coord-pasting, which was the #1 reason
-    // /admin/edit/[id] existed for bot rows in the first place.
-    // Returns null on network failure, missing key, or zero results
-    // in the Lucknow bbox; in that case we keep 0,0 + the admin fills
-    // it in the edit form as before. `geocodeNote` records what
-    // happened so the admin can see at a glance whether to trust
-    // the coords or correct them.
-    let lat = 0;
-    let lng = 0;
-    let geocodeNote = "geocode:skipped";
-    if (extracted.address && extracted.address.length >= 5) {
-      try {
-        const hit = await geocodeLucknow(extracted.address);
-        if (hit) {
-          lat = hit.lat;
-          lng = hit.lng;
-          geocodeNote = `geocode:${hit.source}`;
-        } else {
-          geocodeNote = "geocode:miss";
-        }
-      } catch (err) {
-        console.error("[bot/ingest] geocode error:", err);
-        geocodeNote = "geocode:error";
-      }
+    // Forward-geocode with a FALLBACK CHAIN, not just the address.
+    // The candidate list (address → organizer → organizer+area →
+    // landmark → venue) + the geocodeLucknow call are now both in
+    // `@/lib/geocodeFallback` so the edit page can re-run the same
+    // chain when an old row still sits at 0,0. Keeping the two
+    // call-sites on one helper means future tweaks (new candidates,
+    // changed strip rules) ship to both at once.
+    //
+    // If every candidate misses, fall back to Lucknow centre (NOT
+    // 0,0) and stamp a `geocode:fallback-center` note so the admin
+    // sees it needs a manual pin.
+    const hit = await resolveBhandaraCoords({
+      address: extracted.address,
+      area: extracted.area,
+      landmark: extracted.landmark,
+      organizerName: extracted.organizerName,
+      name: extracted.name,
+    });
+    const hasAnyCandidateSignal = Boolean(
+      (extracted.address && extracted.address.length >= 5) ||
+        (extracted.organizerName && extracted.organizerName.length >= 3) ||
+        (extracted.landmark && extracted.landmark.length >= 3) ||
+        (extracted.name && extracted.name.length >= 3),
+    );
+    let lat: number;
+    let lng: number;
+    let geocodeNote: string;
+    if (hit) {
+      lat = hit.lat;
+      lng = hit.lng;
+      geocodeNote = `geocode:${hit.source}/${hit.candidateTag}`;
+    } else {
+      // Hazratganj-ish — matches LKO_CENTER in lib/geocodeServer.ts.
+      lat = 26.8467;
+      lng = 80.9462;
+      geocodeNote = hasAnyCandidateSignal
+        ? "geocode:fallback-center/miss"
+        : "geocode:fallback-center/no-signal";
     }
 
     // Tag carries the geocode outcome too, admin can spot whether a
@@ -393,6 +635,17 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    await logIngestion({
+      outcome: "SUCCESS_BHANDARA",
+      senderName,
+      groupName,
+      msgId,
+      imageHash,
+      resultRowId: row.id,
+      resultRowKind: "bhandara",
+      extractedName: extracted.name ?? null,
+      reason: `Created PENDING bhandara · slug=${row.slug}`,
+    });
     return NextResponse.json({
       ok: true,
       kind: "bhandara",
@@ -415,6 +668,14 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("[bot/ingest] gemini spot extract failed", detail);
+    await logIngestion({
+      outcome: "FAILED_EXTRACT",
+      senderName,
+      groupName,
+      msgId,
+      imageHash,
+      reason: `Gemini spot extract: ${detail.slice(0, 380)}`,
+    });
     return jsonError(502, "extract_failed", { detail, photoUrl });
   }
 
@@ -456,6 +717,18 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  await logIngestion({
+    outcome: "SUCCESS_SPOT",
+    senderName,
+    groupName,
+    msgId,
+    imageHash,
+    resultRowId: spot.id,
+    resultRowKind: "spot",
+    reason: senderCaption
+      ? `Spot created with sender caption (${senderCaption.length} chars).`
+      : `Spot created with Gemini-extracted caption.`,
+  });
   return NextResponse.json({
     ok: true,
     kind: "spot",

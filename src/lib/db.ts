@@ -7,8 +7,115 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
+/* ────────────────────────────────────────────────────────────────────
+   Transient-connection retry middleware.
+
+   Why this exists:
+     The Supabase pooler at aws-1-ap-southeast-1.pooler.supabase.com
+     occasionally drops a single connection during recycle / failover /
+     pool-saturation. When that happens a perfectly-formed Prisma query
+     comes back as `PrismaClientKnownRequestError: Can't reach database
+     server`, the route 500s, and the admin sees the DATABASE HICCUP
+     error boundary card. The pooler is back up by the time the card
+     renders — clicking Retry succeeds — but it's a constant friction
+     under any reasonable load.
+
+   What this does:
+     Wraps every Prisma read operation (findUnique / findFirst /
+     findMany / count / aggregate / groupBy) with a one-shot retry on
+     known transient errors. The delay (250ms) is long enough for the
+     pool to free / failover to complete in the vast majority of cases.
+
+   What this does NOT do:
+     Skip mutations. Retrying a `create` / `update` / `delete` on a
+     transient error risks double-writes (the original may have
+     succeeded server-side but the client dropped the response). Those
+     surface to the user as before — which is correct: a write failure
+     during moderation is a real signal, not noise.
+
+   Why $use (deprecated in v6) and not $extends:
+     $extends returns a different runtime client type that breaks the
+     `export const prisma: PrismaClient` contract every call site
+     depends on. $use stays type-stable. When we eventually migrate to
+     Prisma 6, the equivalent is `$extends({ query: { $allModels: {
+     $allOperations } } })` with the same predicate inside.
+
+   Read-vs-write classifier:
+     We treat anything matching the `safeReadOps` set as retryable.
+     `findRaw` / `aggregateRaw` are intentionally NOT included (they're
+     usually used for migrations, and the retry semantics differ).
+   ──────────────────────────────────────────────────────────────── */
+
+const SAFE_READ_OPS = new Set([
+  "findUnique",
+  "findUniqueOrThrow",
+  "findFirst",
+  "findFirstOrThrow",
+  "findMany",
+  "count",
+  "aggregate",
+  "groupBy",
+]);
+
+function isTransientConnectionError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const msg =
+    "message" in err && typeof err.message === "string" ? err.message : "";
+  const code =
+    "code" in err && typeof (err as { code?: unknown }).code === "string"
+      ? (err as { code: string }).code
+      : "";
+  // Prisma surfaces transient pool / pgbouncer failures with a few
+  // distinct shapes:
+  //   • PrismaClientInitializationError — "Can't reach database server"
+  //   • P1001 / P1002 / P1008 / P1017 codes — connection-layer issues
+  //   • "Server has closed the connection" — pgbouncer recycling
+  return (
+    /Can't reach database server/i.test(msg) ||
+    /Server has closed the connection/i.test(msg) ||
+    /Timed out fetching a new connection/i.test(msg) ||
+    /Connection terminated unexpectedly/i.test(msg) ||
+    code === "P1001" ||
+    code === "P1002" ||
+    code === "P1008" ||
+    code === "P1017"
+  );
+}
+
+function createPrismaWithRetry(): PrismaClient {
+  const client = new PrismaClient();
+  client.$use(async (params, next) => {
+    if (!SAFE_READ_OPS.has(params.action)) {
+      return next(params);
+    }
+    try {
+      return await next(params);
+    } catch (err) {
+      if (isTransientConnectionError(err)) {
+        // Brief backoff — long enough for the pool to recycle, short
+        // enough that the user doesn't notice. One retry only;
+        // hammering past that just delays surfacing a real outage.
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        try {
+          return await next(params);
+        } catch (retryErr) {
+          // Annotate the retry-failure for the admin error boundary
+          // so a persistent outage is distinguishable from a single
+          // blip in the logs.
+          if (retryErr instanceof Error) {
+            retryErr.message = `${retryErr.message} (after 1 retry)`;
+          }
+          throw retryErr;
+        }
+      }
+      throw err;
+    }
+  });
+  return client;
+}
+
 export const prisma: PrismaClient =
-  globalForPrisma.prisma ?? new PrismaClient();
+  globalForPrisma.prisma ?? createPrismaWithRetry();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;

@@ -24,6 +24,9 @@ import { stripBotProvenance } from "@/lib/sanitize";
 import SubmitButton from "@/components/admin/SubmitButton";
 import AdminPhotoField from "@/components/admin/AdminPhotoField";
 import MapLocationInput from "@/components/admin/MapLocationInput";
+import AdminShell from "@/components/admin/AdminShell";
+import { getAdminNavCounts } from "@/lib/admin-nav-counts";
+import BotHeartbeat from "@/components/admin/BotHeartbeat";
 
 export const dynamic = "force-dynamic";
 
@@ -64,86 +67,113 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
       : `(≈ ${hoursLeft}h ${minutesLeft}m remaining)`;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 sm:px-6 pb-24">
-      <header className="pt-8 pb-4 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-ink-600">
-            Moderation
-          </p>
-          <h1 className="font-fraunces text-3xl text-sindoor-700 mt-1">
-            Edit &amp; approve spot
-          </h1>
-          <p className="mt-2 text-sm text-ink-600">
-            Fix the caption / coords / address, then click
-            <strong> Save &amp; approve</strong> to put this photo on
-            the live map.
-          </p>
-        </div>
-        <Link
-          href="/admin?type=whatsapp&status=spot"
-          className="text-sm rounded-full px-3 py-1.5 border border-gold-500/50 text-ink-900 hover:bg-cream-50"
-        >
-          ← Back to bot spots
-        </Link>
-      </header>
-
-      {/* Photo field is now editable inside the form via AdminPhotoField.
-          Old read-only preview band was removed; the field still shows
-          the current photo on top (same look as before) and adds
-          Replace / Take photo buttons that POST to /api/admin/upload-image.
-          The new URL flows through a hidden <input name="photoUrl"> read
-          by editAndApproveSpotAction on save. */}
-      <form action={action} className="mt-6 grid gap-5">
-        <AdminPhotoField
-          name="photoUrl"
-          defaultValue={s.photoUrl ?? ""}
-          label="Photo"
-          hint="Spots are time-limited live photos. Only swap this if the original is genuinely wrong (rotated, cropped poorly, etc)."
-        />
-
-        {/* Extra photos gallery — submitters can attach up to 4 additional
-            photos via the public /spot form (Spot.extraPhotoUrls). The
-            edit page previously ignored that column entirely, so admins
-            had no way to see the supplementary shots. Now: each extra is
-            a clickable thumbnail that opens the full-resolution image
-            in a new tab. Read-only for now — the primary photoUrl
-            remains the only editable one. */}
-        {extraPhotoUrls.length > 0 ? (
-          <div className="grid gap-2">
-            <span className="text-sm text-ink-600">
-              Extra photos ({extraPhotoUrls.length})
-              <span className="ml-2 text-xs text-ink-600/70">
-                Submitter attached these alongside the primary photo. Click any to open the full image.
+    <AdminShell navCounts={await getAdminNavCounts()} botHeartbeat={<BotHeartbeat />}>
+      <div className="mx-auto max-w-6xl">
+        <header className="mb-6 flex items-end justify-between gap-4 flex-wrap">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1.5 font-mono text-[10px]">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-400/[0.06] border border-cyan-400/20 px-2.5 py-1 uppercase tracking-[0.18em] text-cyan-300/85">
+                <span aria-hidden className="relative inline-flex h-1.5 w-1.5">
+                  <span className="absolute inset-0 rounded-full bg-cyan-400/70 motion-safe:animate-ping" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                </span>
+                Moderation
               </span>
-            </span>
-            <ul className="flex flex-wrap gap-2">
-              {extraPhotoUrls.map((url, i) => (
-                <li key={url}>
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600"
-                    aria-label={`Open extra photo ${i + 1} of ${extraPhotoUrls.length} in a new tab`}
-                    title="Open full image"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={url}
-                      alt=""
-                      loading="lazy"
-                      decoding="async"
-                      className="h-24 w-24 rounded-xl object-cover border border-gold-500/40 bg-cream-50 group-hover:border-saffron-500 transition-colors"
-                    />
-                  </a>
-                </li>
-              ))}
-            </ul>
+            </div>
+            <h1 className="font-fraunces text-3xl sm:text-4xl text-cream-50 leading-[1.05] tracking-tight">
+              Edit &amp;{" "}
+              <span className="bg-gradient-to-r from-cyan-300 to-violet-300 bg-clip-text text-transparent">
+                approve spot
+              </span>
+            </h1>
+            <p className="mt-2 text-sm text-cream-50/55 font-mono max-w-xl">
+              <span className="text-cyan-300">$</span> Fix the caption /
+              coords / address, then save to put this photo on the live
+              map.
+            </p>
           </div>
-        ) : null}
+          <Link
+            href="/admin/spots"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/[0.08] border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/[0.16] hover:border-cyan-400/50 hover:text-cyan-100 px-4 py-2 text-sm transition-colors font-mono font-medium"
+          >
+            ← Back to spots queue
+          </Link>
+        </header>
+
+        {/* Two-pane edit layout — primary photo + any extras pin to
+            the left so the operator can verify the live photo (and
+            its submitter-attached extras) while scrolling through
+            the caption / coords / address fields on the right.
+            AdminPhotoField writes to a hidden `<input name="photoUrl">`
+            that's still inside this <form>, so editSpotAction's
+            signature is unchanged. Below lg, the panes stack as
+            before. */}
+        <form
+          action={action}
+          className="grid gap-5 lg:gap-6 lg:grid-cols-12 items-start"
+        >
+          {/* LEFT — sticky photo pane. `lg:self-start` keeps the
+              grid item from stretching to match the right pane's
+              height, which is what allows `lg:sticky lg:top-20` to
+              actually pin it as the right pane scrolls past. The
+              extras gallery lives in this pane too so admins can
+              see all the submitter's images while verifying.
+              `top-20` (5rem ≈ 80px) clears the AdminShell's 56px
+              sticky top bar with ~24px of breathing room. */}
+          <aside className="lg:col-span-5 lg:sticky lg:top-20 lg:self-start rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm p-5 sm:p-6 grid gap-5">
+            <AdminPhotoField
+              name="photoUrl"
+              defaultValue={s.photoUrl ?? ""}
+              label="Live photo"
+              hint="Verify the photo here while editing the caption + coords on the right. Spots are time-limited; only swap if the original is genuinely wrong (rotated, cropped poorly, etc)."
+            />
+
+            {/* Extra photos gallery — submitters can attach up to 4
+                additional photos via the public /spot form
+                (Spot.extraPhotoUrls). Read-only — primary photoUrl
+                remains the only editable one. */}
+            {extraPhotoUrls.length > 0 ? (
+              <div className="grid gap-2">
+                <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
+                  Extra photos ({extraPhotoUrls.length})
+                </span>
+                <span className="text-xs text-cream-50/55 font-mono">
+                  Submitter attached these alongside the primary photo. Click
+                  any to open the full image.
+                </span>
+                <ul className="flex flex-wrap gap-2">
+                  {extraPhotoUrls.map((url, i) => (
+                    <li key={url}>
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/55"
+                        aria-label={`Open extra photo ${i + 1} of ${extraPhotoUrls.length} in a new tab`}
+                        title="Open full image"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={url}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          className="h-20 w-20 rounded-xl object-cover border border-cyan-400/20 bg-[#0B0E16]/85 group-hover:border-cyan-400/55 transition-colors"
+                        />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </aside>
+
+          {/* RIGHT — scrollable form fields. Same dark card styling
+              the old single-pane form had. */}
+          <div className="lg:col-span-7 grid gap-5 rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm p-5 sm:p-7">
         <label className="grid gap-1.5">
-          <span className="text-sm text-ink-600">
-            Caption <span className="text-sindoor-700">*</span>
+          <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
+            Caption <span className="text-sindoor-700">·</span>
           </span>
           {/* Strip the [bot:whatsapp …] provenance tag from the
               textarea value so the admin doesn't have to delete it
@@ -156,12 +186,12 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
             rows={3}
             maxLength={200}
             placeholder="Puri-sabzi being served outside a saffron-draped pandal."
-            className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+            className="rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
           />
-          <span className="text-xs text-ink-600">
-            Max 200 chars. The [bot:…] provenance tag was auto-stripped
-            from this field; the bot moderation view keeps the
-            sender / group / hash info until the row is approved.
+          <span className="text-xs text-cream-50/55 font-mono">
+            Max 200 chars. The [bot:…] provenance tag was auto-stripped from
+            this field; the bot moderation view keeps the sender / group /
+            hash info until the row is approved.
           </span>
         </label>
 
@@ -209,62 +239,63 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
           hint="Whoever forwarded the photo into the WhatsApp group."
         />
 
-        <fieldset className="grid gap-2 rounded-xl border border-gold-500/40 bg-cream-50/50 p-3">
-          <legend className="text-sm text-ink-600 px-1">
+        <fieldset className="grid gap-2 rounded-xl border border-cyan-400/20 bg-cyan-400/[0.02] p-3">
+          <legend className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono px-1">
             Expiry on save
           </legend>
-          <label className="flex items-start gap-2 text-sm text-ink-900">
+          <label className="flex items-start gap-2 text-sm text-cream-50/85 font-mono">
             <input
               type="radio"
               name="ttl"
               value="keep"
               defaultChecked
-              className="mt-1 accent-saffron-600"
+              className="mt-1 accent-cyan-400"
             />
             <span>
-              <strong>Keep current expiry</strong>{" "}
-              <span className="text-ink-600">{ttlHint}</span>
+              <strong className="text-cream-50">Keep current expiry</strong>{" "}
+              <span className="text-cream-50/55">{ttlHint}</span>
             </span>
           </label>
-          <label className="flex items-start gap-2 text-sm text-ink-900">
+          <label className="flex items-start gap-2 text-sm text-cream-50/85 font-mono">
             <input
               type="radio"
               name="ttl"
               value="reset"
-              className="mt-1 accent-saffron-600"
+              className="mt-1 accent-cyan-400"
             />
             <span>
-              <strong>Reset to 8 hours from now</strong>{" "}
-              <span className="text-ink-600">
-               , gives this spot a full TTL window even if the upload
-                sat in PENDING for a while.
+              <strong className="text-cream-50">Reset to 8 hours from now</strong>{" "}
+              <span className="text-cream-50/55">
+                — gives this spot a full TTL window even if the upload sat in
+                PENDING for a while.
               </span>
             </span>
           </label>
         </fieldset>
 
         {/* Shared SubmitButton gives us a pending spinner + disable
-            during the editAndApproveSpotAction round-trip. Mirrors
-            the bhandara edit page so both edit forms behave the
-            same on slow Netlify cold starts. Cancel stays a Link
-            (always allow escape). */}
+            during the editAndApproveSpotAction round-trip. The
+            primary-saffron variant is re-skinned globally to the
+            cyan→violet gradient. */}
         <div className="flex items-center gap-3 mt-2">
           <SubmitButton
             variant="primary-saffron"
             size="md"
             pendingLabel="Saving…"
           >
-            Save &amp; approve
+            Save &amp; approve →
           </SubmitButton>
           <Link
-            href="/admin?type=whatsapp&status=spot"
-            className="text-sm rounded-full px-3 py-2 border border-gold-500/50 text-ink-900 hover:bg-cream-50"
+            href="/admin/spots"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/[0.08] border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/[0.16] hover:border-cyan-400/50 hover:text-cyan-100 px-4 py-2 text-sm transition-colors font-mono font-medium"
           >
             Cancel
           </Link>
         </div>
-      </form>
-    </div>
+          </div>
+        </form>
+      </div>
+    </AdminShell>
   );
 }
 
@@ -287,9 +318,9 @@ function Pair({
 }) {
   return (
     <label className="grid gap-1.5">
-      <span className="text-sm text-ink-600">
+      <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
         {label}
-        {required ? <span className="text-sindoor-700"> *</span> : null}
+        {required ? <span className="text-sindoor-700"> ·</span> : null}
       </span>
       <input
         name={name}
@@ -297,9 +328,11 @@ function Pair({
         step={step}
         required={required}
         defaultValue={defaultValue}
-        className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+        className="rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
       />
-      {hint ? <span className="text-xs text-ink-600">{hint}</span> : null}
+      {hint ? (
+        <span className="text-xs text-cream-50/55 font-mono">{hint}</span>
+      ) : null}
     </label>
   );
 }

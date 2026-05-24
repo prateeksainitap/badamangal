@@ -87,7 +87,7 @@ export async function approveAction(id: string, _formData?: FormData): Promise<v
   // Drop the in-process Bhandara cache so the next /bhandara/[slug]
   // regeneration reads fresh. See lib/db.ts MUTATION CONTRACT.
   invalidateBhandaraQueryCache();
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
 }
@@ -113,7 +113,7 @@ export async function publishVerifiedAction(
     },
   });
   invalidateBhandaraQueryCache();
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
 }
@@ -130,7 +130,7 @@ export async function rejectAction(id: string, _formData?: FormData): Promise<vo
   // expired. Reject is a real public-state change → revalidate the
   // public surfaces too + drop the in-process cache.
   invalidateBhandaraQueryCache();
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
 }
@@ -147,7 +147,7 @@ export async function verifyAction(id: string, _formData?: FormData): Promise<vo
     data: { isVerified: true },
   });
   invalidateBhandaraQueryCache();
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
 }
@@ -159,7 +159,7 @@ export async function unverifyAction(id: string, _formData?: FormData): Promise<
     data: { isVerified: false },
   });
   invalidateBhandaraQueryCache();
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
 }
@@ -244,6 +244,28 @@ export async function editAndPublishAction(
   // + verified-with-photo etc.
   const featured = formData.get("isFeatured") === "on";
 
+  // Photo handling — three states, same contract as the spot edit
+  // action: leave alone, replace, or remove. `removePhoto=1` is set
+  // by AdminPhotoField's "Remove photo" button and is the only way
+  // to explicitly null the column from the UI.
+  const wantsPhotoRemoval = str("removePhoto") === "1";
+  let photoForUpdate: string | null = str("photoUrl");
+  if (wantsPhotoRemoval) {
+    const existing = await prisma.bhandara.findUnique({
+      where: { id },
+      select: { photoUrl: true },
+    });
+    if (existing?.photoUrl) {
+      await deleteFromR2(existing.photoUrl).catch((err) =>
+        console.warn(
+          "[editAndPublishAction] R2 evict on remove failed",
+          err,
+        ),
+      );
+    }
+    photoForUpdate = null;
+  }
+
   await prisma.bhandara.update({
     where: { id },
     data: {
@@ -266,7 +288,7 @@ export async function editAndPublishAction(
       organizerPhone: str("organizerPhone"),
       organizerWhatsapp: str("organizerWhatsapp") || null,
       upiId: str("upiId") || null,
-      photoUrl: str("photoUrl"),
+      photoUrl: photoForUpdate,
       googleMapsUrl: `https://www.google.com/maps?q=${num("lat")},${num("lng")}&z=18`,
       status: "APPROVED",
       approvedAt: new Date(),
@@ -282,7 +304,7 @@ export async function editAndPublishAction(
   // MUTATION CONTRACT for the full story. This was the bug behind
   // "I uploaded a new photo but the detail page won't update."
   invalidateBhandaraQueryCache();
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
   redirect("/admin");
@@ -327,11 +349,16 @@ export async function editAndApproveSpotAction(
   // photoUrl is fed by AdminPhotoField via a hidden form input. If the
   // admin never replaced the image it round-trips as the original DB
   // value; if they uploaded a new one, the field carries the new
-  // Supabase URL. We only overwrite the column when the field is
-  // non-empty, an empty string would blank out a previously-uploaded
-  // photo, which is never what the admin meant (they'd have hit the
-  // explicit "Reject" workflow for that).
+  // Supabase URL. Three states the form can submit:
+  //   1. unchanged    → photoUrl === DB value, leave it alone
+  //   2. replaced     → photoUrl is a new URL, overwrite
+  //   3. removed      → removePhoto === "1", drop the column to null +
+  //                     evict the file from R2
+  // The legacy "empty string means leave it alone" path is preserved
+  // for back-compat with any caller that submits photoUrl="" without
+  // also flipping removePhoto.
   const newPhotoUrl = str("photoUrl");
+  const wantsRemoval = str("removePhoto") === "1";
   const data: Record<string, unknown> = {
     caption: str("caption") || null,
     area: str("area") || null,
@@ -342,7 +369,25 @@ export async function editAndApproveSpotAction(
     reporterName: str("reporterName") || null,
     status: "APPROVED",
   };
-  if (newPhotoUrl) {
+  if (wantsRemoval) {
+    // Snapshot the existing photo URL before we null it so we can
+    // evict the R2 object. If R2 eviction fails we still null the DB
+    // — the orphaned file is a much smaller problem than a column
+    // pointing at a deleted bucket key.
+    const existing = await prisma.spot.findUnique({
+      where: { id },
+      select: { photoUrl: true },
+    });
+    data.photoUrl = null;
+    if (existing?.photoUrl) {
+      await deleteFromR2(existing.photoUrl).catch((err) =>
+        console.warn(
+          "[editAndApproveSpotAction] R2 evict on remove failed",
+          err,
+        ),
+      );
+    }
+  } else if (newPhotoUrl) {
     data.photoUrl = newPhotoUrl;
   }
   if (ttlChoice === "reset") {
@@ -351,7 +396,7 @@ export async function editAndApproveSpotAction(
 
   await prisma.spot.update({ where: { id }, data });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
   redirect("/admin?type=whatsapp&status=spot");
 }
@@ -386,7 +431,7 @@ export async function clearBotQueueAction(): Promise<void> {
   // hit this button, the detail page would 404 on next visit
   // unless we kick off a regeneration.
   invalidateBhandaraQueryCache();
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
   redirect("/admin?type=whatsapp");
@@ -416,7 +461,7 @@ export async function delistSpotAction(
     where: { id },
     data: { status: "REJECTED" },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
 }
 
@@ -432,7 +477,7 @@ export async function approveSpotAction(
     where: { id },
     data: { status: "APPROVED" },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
 }
 
@@ -449,7 +494,7 @@ export async function extendSpotAction(
     where: { id },
     data: { expiresAt: newExpiry, status: "APPROVED" },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
 }
 
@@ -494,7 +539,7 @@ export async function deleteSpotAction(
       /* malformed JSON, nothing to evict */
     }
   }
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
 }
 
@@ -545,7 +590,7 @@ export async function deleteBhandaraAction(
       console.warn("[deleteBhandaraAction] R2 evict failed", err),
     );
   }
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
 }
@@ -584,7 +629,7 @@ async function setOrganiseRequestStatus(
     data: { status },
   });
   revalidatePath("/admin/organise");
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 export async function markOrganiseRequestContactedAction(
@@ -782,7 +827,7 @@ async function setVolunteerSubmissionStatus(
     revalidatePath("/");
     revalidatePath(`/bhandara/[slug]`, "page");
   }
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/admin/volunteer-submissions");
 }
 
@@ -1128,7 +1173,7 @@ export async function approveMentionAction(
     where: { id },
     data: { status: "APPROVED", approvedAt: new Date() },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
 }
 
@@ -1144,7 +1189,7 @@ export async function rejectMentionAction(
     where: { id },
     data: { status: "REJECTED" },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
 }
 
@@ -1163,7 +1208,7 @@ export async function extendMentionAction(
     where: { id },
     data: { expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   revalidatePath("/");
 }
 
@@ -1178,7 +1223,7 @@ export async function purgeStaleMentionsAction(): Promise<void> {
   await prisma.bhandaraMention.deleteMany({
     where: { status: "PENDING", createdAt: { lt: cutoff } },
   });
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -1295,8 +1340,156 @@ export async function addDiscoveredBhandaraAction(
     },
   });
 
-  revalidatePath("/admin");
+  revalidatePath("/admin", "layout");
   // Drop the admin straight onto the edit page so they can fix
   // coords + menu + confirm the import landed correctly.
   redirect(`/admin/edit/${row.id}`);
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ *  BULK ACTIONS — multi-row operations from the moderation queue's
+ *  selection bar. Each one takes a FormData with multiple `ids`
+ *  values, fans the per-id mutation in a single Prisma updateMany
+ *  (faster + atomic-ish via Postgres) where possible, falling back
+ *  to a loop for actions that need per-row logic.
+ *
+ *  All bulk actions revalidate the admin layout so every queue + the
+ *  dashboard refresh after the bulk write.
+ * ────────────────────────────────────────────────────────────── */
+
+/** Parse a `name="ids"` multi-value FormData entry into a clean
+ *  string[]. Trims whitespace, drops empties, caps at 200 to keep
+ *  any future "select all" from accidentally issuing a giant
+ *  query. */
+function parseIds(formData: FormData): string[] {
+  const raw = formData.getAll("ids");
+  const ids = raw
+    .map((v) => (typeof v === "string" ? v.trim() : ""))
+    .filter((s) => s.length > 0 && s.length < 64);
+  return Array.from(new Set(ids)).slice(0, 200);
+}
+
+/** Bulk publish PENDING bhandaras as VERIFIED. Same effect as
+ *  hitting "Verify & publish" on every selected row. Idempotent —
+ *  rows already APPROVED+verified are skipped by the where clause. */
+export async function bulkVerifyBhandarasAction(
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const ids = parseIds(formData);
+  if (ids.length === 0) return;
+  await prisma.bhandara.updateMany({
+    where: { id: { in: ids } },
+    data: { status: "APPROVED", isVerified: true, approvedAt: new Date() },
+  });
+  invalidateBhandaraQueryCache();
+  revalidatePath("/admin", "layout");
+  revalidatePath("/");
+}
+
+/** Bulk publish without verified badge (status=APPROVED, leaves
+ *  isVerified at its current value, false by default for PENDING
+ *  rows). Same effect as hitting "Publish (no badge)" on every
+ *  selected row. */
+export async function bulkApproveBhandarasAction(
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const ids = parseIds(formData);
+  if (ids.length === 0) return;
+  await prisma.bhandara.updateMany({
+    where: { id: { in: ids } },
+    data: { status: "APPROVED", approvedAt: new Date() },
+  });
+  invalidateBhandaraQueryCache();
+  revalidatePath("/admin", "layout");
+  revalidatePath("/");
+}
+
+/** Bulk reject (status=REJECTED). Mirrors per-row rejectAction. */
+export async function bulkRejectBhandarasAction(
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const ids = parseIds(formData);
+  if (ids.length === 0) return;
+  await prisma.bhandara.updateMany({
+    where: { id: { in: ids } },
+    data: { status: "REJECTED" },
+  });
+  invalidateBhandaraQueryCache();
+  revalidatePath("/admin", "layout");
+  revalidatePath("/");
+}
+
+/** Bulk hard-delete bhandaras + their photos. Same effect as
+ *  hitting "Delete" on every selected row. The per-row delete also
+ *  evicts the R2 photo; for the bulk path we collect every photoUrl
+ *  first, delete in DB, then fire R2 deletes in parallel. */
+export async function bulkDeleteBhandarasAction(
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const ids = parseIds(formData);
+  if (ids.length === 0) return;
+  const rows = await prisma.bhandara.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, photoUrl: true },
+  });
+  await prisma.bhandara.deleteMany({ where: { id: { in: ids } } });
+  // R2 cleanup is best-effort; never let a network error fail the
+  // bulk action after the DB rows are already gone.
+  await Promise.allSettled(
+    rows
+      .filter((r): r is { id: string; photoUrl: string } => Boolean(r.photoUrl))
+      .map((r) => deleteFromR2(r.photoUrl)),
+  );
+  invalidateBhandaraQueryCache();
+  revalidatePath("/admin", "layout");
+  revalidatePath("/");
+}
+
+/** Bulk delist (= reject) spots. Mirrors per-row delistSpotAction. */
+export async function bulkDelistSpotsAction(
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const ids = parseIds(formData);
+  if (ids.length === 0) return;
+  await prisma.spot.updateMany({
+    where: { id: { in: ids } },
+    data: { status: "REJECTED" },
+  });
+  revalidatePath("/admin", "layout");
+  revalidatePath("/");
+}
+
+/** Bulk approve mentions. Mirrors per-row approveMentionAction. */
+export async function bulkApproveMentionsAction(
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const ids = parseIds(formData);
+  if (ids.length === 0) return;
+  await prisma.bhandaraMention.updateMany({
+    where: { id: { in: ids } },
+    data: { status: "APPROVED", approvedAt: new Date() },
+  });
+  revalidatePath("/admin", "layout");
+  revalidatePath("/");
+}
+
+/** Bulk reject mentions. Mirrors per-row rejectMentionAction. */
+export async function bulkRejectMentionsAction(
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const ids = parseIds(formData);
+  if (ids.length === 0) return;
+  await prisma.bhandaraMention.updateMany({
+    where: { id: { in: ids } },
+    data: { status: "REJECTED" },
+  });
+  revalidatePath("/admin", "layout");
+  revalidatePath("/");
 }

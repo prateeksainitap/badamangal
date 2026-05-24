@@ -29,6 +29,7 @@ import type { Bhandara } from "@/types/bhandara";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { useLocaleFromContext } from "@/lib/locale-context";
+import { isLiveChatOpenToday } from "@/lib/live-chat-schedule";
 
 type LiveSpotInput = {
   id: string;
@@ -92,6 +93,10 @@ export default function MapBoard({
   const locale = useLocaleFromContext();
   const isHi = locale === "hi";
   const t = strings[locale];
+  // Live chat only runs on Tue/Sat IST. On other days we keep the
+  // community-count + WhatsApp link in the header chip but drop the
+  // green LIVE pill so the chrome doesn't lie about being on air.
+  const chatLive = isLiveChatOpenToday();
   // Total bhandaras on the map = listed bhandaras + live spots.
   // Matches the "All N" count the filter chip strip already shows
   // (single source of truth: both derive from the same prop arrays).
@@ -200,15 +205,25 @@ export default function MapBoard({
                   : `Open live chat · ${communityMembers.toLocaleString("en-IN")} in our WhatsApp community`
               }
             >
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full bg-sindoor-700 text-cream-50 px-2 py-0.5 font-semibold uppercase tracking-wide"
-              >
-                <span aria-hidden className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inset-0 rounded-full bg-cream-50 opacity-60 motion-safe:animate-ping" />
-                  <span className="relative h-1.5 w-1.5 rounded-full bg-cream-50" />
+              {chatLive ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-sindoor-700 text-cream-50 px-2 py-0.5 font-semibold uppercase tracking-wide">
+                  <span aria-hidden className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inset-0 rounded-full bg-cream-50 opacity-60 motion-safe:animate-ping" />
+                    <span className="relative h-1.5 w-1.5 rounded-full bg-cream-50" />
+                  </span>
+                  LIVE
                 </span>
-                LIVE
-              </span>
+              ) : (
+                // Off-day: no LIVE pill. WhatsApp glyph carries the
+                // chat-community signal instead; the number + text +
+                // hover arrow already make it clear this is a link.
+                <span
+                  aria-hidden
+                  className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-leaf-600/20 text-leaf-400"
+                >
+                  <WhatsAppGlyph />
+                </span>
+              )}
               <span className="font-medium">
                 <span className="font-numerals tabular-nums text-saffron-500">
                   {communityMembers.toLocaleString("en-IN")}
@@ -362,5 +377,23 @@ export default function MapBoard({
         />
       </div>
     </section>
+  );
+}
+
+/** Small WhatsApp glyph used as the off-day fallback for the LIVE
+ *  pill in the community-count chip. Keeps the chip visually
+ *  weighted (a glyph is the same visual heft as the "LIVE" pill it
+ *  replaces) so the layout doesn't reflow between days. */
+function WhatsAppGlyph() {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 2.1.55 4.07 1.6 5.84L2 22l4.4-1.6a9.92 9.92 0 0 0 5.64 1.72c5.47 0 9.92-4.45 9.92-9.92 0-2.65-1.03-5.14-2.91-7.02A9.83 9.83 0 0 0 12.04 2zm5.84 14.13c-.25.7-1.42 1.34-1.99 1.42-.51.07-1.16.1-1.87-.12-.43-.13-.99-.32-1.7-.62-2.99-1.29-4.94-4.32-5.09-4.52-.15-.2-1.22-1.62-1.22-3.1 0-1.47.77-2.19 1.04-2.49.27-.3.6-.37.8-.37.2 0 .4 0 .57.01.18.01.43-.07.67.51.25.6.85 2.07.93 2.22.07.15.12.32.02.52-.1.2-.15.32-.3.5-.15.17-.32.39-.45.52-.15.15-.31.31-.13.61.18.3.8 1.32 1.71 2.14 1.18 1.05 2.17 1.37 2.47 1.52.3.15.47.13.65-.08.18-.2.75-.87.95-1.17.2-.3.4-.25.67-.15.27.1 1.74.82 2.04.97.3.15.5.22.57.34.07.13.07.75-.18 1.46z" />
+    </svg>
   );
 }

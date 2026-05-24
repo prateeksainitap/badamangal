@@ -32,7 +32,7 @@ export default async function BotHeartbeat() {
 
   const COLOURS = {
     fresh: "bg-leaf-600/10 border-leaf-600/40 text-leaf-600",
-    stale: "bg-gold-100 border-gold-500/45 text-gold-500",
+    stale: "bg-saffron-500/[0.14] border-saffron-500/40 text-saffron-300",
     dead: "bg-alert-500/10 border-alert-500/45 text-alert-500",
   } as const;
   const DOT = {

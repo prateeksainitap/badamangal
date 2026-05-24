@@ -213,6 +213,17 @@ export async function GET(req: NextRequest) {
         // thumbnail. Spots without photoUrl belong in the existing
         // /api/feed marquee, not here.
         photoUrl: { not: null },
+        // STRICT WHATSAPP-ONLY CONTRACT (2026-05):
+        // The live chat is a window into the WhatsApp community feed.
+        // We previously also merged in /spot-form submissions and
+        // admin-scan uploads, which violated visitor expectation:
+        // "if I see a row here, someone posted in WhatsApp". Now we
+        // filter Spots to only those the WhatsApp bot ingested, by
+        // requiring the `[bot:` provenance tag the bot stamps onto
+        // every caption it writes. User-submitted spots still live in
+        // the Spots queue and the homepage map heatmap, just not in
+        // this conversational stream.
+        caption: { contains: "[bot:" },
         // NOTE: we used to drop spots at the "null island" 0,0 here.
         // That filtered out bot-ingested spots which auto-publish with
         // lat=0/lng=0 (WhatsApp strips EXIF GPS, so the bot has no

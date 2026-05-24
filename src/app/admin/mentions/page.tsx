@@ -1,425 +1,374 @@
-/**
- * Admin moderation queue for BhandaraMention rows (WhatsApp text-message
- * ingest). Sister page to /admin (which moderates Bhandara + Spot rows
- * from the image ingest pipeline).
- *
- * Layout: three column grid per row —
- *   1. The verbatim cleanedText (what the public would see) + provenance
- *      pill (sender, group, intent, confidence, time).
- *   2. Location: either a small "here's the pin" hint with locationLabel
- *      + a Google-Maps preview link, or a "no location" indicator if the
- *      classifier couldn't extract coords.
- *   3. Action cluster: Approve (saffron primary), Reject (outline-alert),
- *      Extend (outline-ink, only on already-APPROVED rows).
- *
- * Filters at the top: status tabs (Pending / Approved / Rejected),
- * intent dropdown (All / ASKING / SHARING / MENTIONING), and a
- * confidence-floor slider so admins can triage low-confidence rows
- * separately. Defaults to status=Pending so the queue lands on the
- * "needs your attention" view.
- *
- * No client JS for the moderation actions themselves, every Approve/
- * Reject/Extend button is inside its own <form action={…}> bound to a
- * server action. SubmitButton handles the pending spinner.
- *
- * Auth: same admin cookie as /admin. Redirects to /admin (which shows
- * the login form) on auth miss.
- */
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { isAdmin } from "@/lib/admin-auth";
 import {
-  approveMentionAction,
-  rejectMentionAction,
-  extendMentionAction,
   purgeStaleMentionsAction,
+  bulkApproveMentionsAction,
+  bulkRejectMentionsAction,
 } from "@/app/admin/actions";
-import SubmitButton from "@/components/admin/SubmitButton";
-import ScreenshotIngestPanel from "@/components/admin/ScreenshotIngestPanel";
+import AdminShell from "@/components/admin/AdminShell";
+import { getAdminNavCounts } from "@/lib/admin-nav-counts";
+import BotHeartbeat from "@/components/admin/BotHeartbeat";
 import AdminLiveRefresh from "@/components/admin/AdminLiveRefresh";
+import ScreenshotIngestPanel from "@/components/admin/ScreenshotIngestPanel";
+import SubmitButton from "@/components/admin/SubmitButton";
+import ModerationQueue, {
+  type QueueTab,
+} from "@/components/admin/ModerationQueue";
+import MentionRow, {
+  type MentionQueueRow,
+} from "@/components/admin/MentionRow";
+import AdminListbox from "@/components/admin/AdminListbox";
+import KpiStrip from "@/components/admin/KpiStrip";
+import AdminPageHero from "@/components/admin/AdminPageHero";
+import {
+  IconMention,
+  IconPending,
+  IconCheck,
+  IconX,
+} from "@/components/admin/AdminIcons";
+import {
+  QueueSelectionProvider,
+  BulkActionBar,
+} from "@/components/admin/QueueSelection";
+
+/**
+ * WhatsApp mentions moderation queue — dark-themed rewrite.
+ *
+ * Original logic preserved: status tabs (PENDING/APPROVED/REJECTED/ALL),
+ * secondary intent + min-confidence filters, AdminLiveRefresh every
+ * 10s, ScreenshotIngestPanel for upload-and-classify, purge action
+ * for stale PENDING rows.
+ *
+ * Lands in the new AdminShell so it shares the sidebar + topbar
+ * with Dashboard / Bhandaras / Spots.
+ */
+
+export const metadata: Metadata = {
+  title: "Mentions · Admin · Bada Mangal",
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = "force-dynamic";
 
-type PageProps = {
-  searchParams: Promise<{
-    status?: string;
-    intent?: string;
-    minConf?: string;
-  }>;
-};
+type SearchParams = Promise<{
+  status?: string;
+  intent?: string;
+  minConf?: string;
+  q?: string;
+}>;
 
-/** Parse + clamp the confidence-floor query param. Defaults to 0 (no
- *  filter); admin can override to 0.6 / 0.8 to triage low-confidence
- *  rows separately. */
+const STATUS_KEYS = ["PENDING", "APPROVED", "REJECTED", "ALL"] as const;
+type StatusKey = (typeof STATUS_KEYS)[number];
+
+const INTENT_OPTIONS = ["ALL", "ASKING", "SHARING", "MENTIONING"] as const;
+type IntentKey = (typeof INTENT_OPTIONS)[number];
+
 function parseMinConf(raw: string | undefined): number {
-  if (!raw) return 0;
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(1, n));
+  const n = Number(raw ?? "0");
+  if (!Number.isFinite(n) || n < 0) return 0;
+  if (n > 1) return 1;
+  return n;
 }
 
-/** Map intent → display label + pill colour. Kept here (not in a
- *  shared constants file) because the mention moderation UI is the
- *  only surface that renders the full intent vocabulary; the public
- *  feed only differentiates ASKING vs SHARING. */
-function intentMeta(intent: string): { label: string; className: string } {
-  switch (intent) {
-    case "ASKING":
-      return {
-        label: "Asking",
-        className: "bg-saffron-100 text-saffron-700 border-saffron-300",
-      };
-    case "SHARING":
-      return {
-        label: "Sharing",
-        className: "bg-leaf-100 text-leaf-700 border-leaf-300",
-      };
-    case "MENTIONING":
-      return {
-        label: "Mentioning",
-        className: "bg-gold-100 text-gold-700 border-gold-300",
-      };
-    default:
-      return {
-        label: intent,
-        className: "bg-ink-100 text-ink-700 border-ink-300",
-      };
-  }
-}
-
-function timeAgo(d: Date): string {
-  const sec = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (sec < 60) return `${sec}s ago`;
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h}h ago`;
-  const day = Math.floor(h / 24);
-  return `${day}d ago`;
-}
-
-export default async function MentionsModerationPage({
+export default async function AdminMentionsPage({
   searchParams,
-}: PageProps) {
+}: {
+  searchParams: SearchParams;
+}) {
   if (!(await isAdmin())) redirect("/admin");
-  const sp = await searchParams;
 
-  const status = sp.status ?? "PENDING";
-  const intent = sp.intent ?? "ALL";
+  const sp = await searchParams;
+  const status = ((STATUS_KEYS as readonly string[]).includes(
+    (sp.status ?? "PENDING").toUpperCase(),
+  )
+    ? (sp.status ?? "PENDING").toUpperCase()
+    : "PENDING") as StatusKey;
+  const intent = ((INTENT_OPTIONS as readonly string[]).includes(
+    (sp.intent ?? "ALL").toUpperCase(),
+  )
+    ? (sp.intent ?? "ALL").toUpperCase()
+    : "ALL") as IntentKey;
   const minConf = parseMinConf(sp.minConf);
 
-  // Pull rows for the current filter view. Limit at 200 to keep the
-  // page snappy; the purge button at the bottom keeps the PENDING
-  // tab from growing unboundedly.
-  const rows = await prisma.bhandaraMention.findMany({
-    where: {
-      ...(status === "ALL" ? {} : { status }),
-      ...(intent === "ALL" ? {} : { intent }),
-      ...(minConf > 0 ? { confidence: { gte: minConf } } : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
+  const [rows, countPending, countApproved, countRejected, countAll] =
+    await Promise.all([
+      prisma.bhandaraMention.findMany({
+        where: {
+          ...(status === "ALL" ? {} : { status }),
+          ...(intent === "ALL" ? {} : { intent }),
+          ...(minConf > 0 ? { confidence: { gte: minConf } } : {}),
+        },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      }),
+      prisma.bhandaraMention.count({ where: { status: "PENDING" } }),
+      prisma.bhandaraMention.count({ where: { status: "APPROVED" } }),
+      prisma.bhandaraMention.count({ where: { status: "REJECTED" } }),
+      prisma.bhandaraMention.count({}),
+    ]);
 
-  // Counts for the filter pills (visible without clicking).
-  const [countPending, countApproved, countRejected] = await Promise.all([
-    prisma.bhandaraMention.count({ where: { status: "PENDING" } }),
-    prisma.bhandaraMention.count({ where: { status: "APPROVED" } }),
-    prisma.bhandaraMention.count({ where: { status: "REJECTED" } }),
-  ]);
+  const tabs: QueueTab[] = [
+    { key: "PENDING", label: "Pending", count: countPending },
+    { key: "APPROVED", label: "Approved", count: countApproved },
+    { key: "REJECTED", label: "Rejected", count: countRejected },
+    { key: "ALL", label: "All", count: countAll },
+  ];
+
+  const totalInTab =
+    status === "PENDING"
+      ? countPending
+      : status === "APPROVED"
+        ? countApproved
+        : status === "REJECTED"
+          ? countRejected
+          : countAll;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 pb-24">
-      {/* Auto-refresh the server-rendered queue every 10s so newly-
-          ingested PENDING mentions appear without operator F5. Pure
-          client-side effect; renders nothing. */}
+    <AdminShell navCounts={await getAdminNavCounts()} botHeartbeat={<BotHeartbeat />}>
+      {/* Auto-refresh every 10s so newly-ingested PENDING mentions
+          show up without operator F5. Pure client effect; renders
+          nothing. */}
       <AdminLiveRefresh intervalMs={10_000} />
 
-      <header className="pt-8 pb-4">
-        <p className="text-xs uppercase tracking-wider text-ink-600">
-          Moderation
-        </p>
-        <h1 className="font-fraunces text-3xl text-sindoor-700 mt-1">
-          WhatsApp mentions
-        </h1>
-        <p className="mt-2 text-sm text-ink-600 max-w-2xl">
-          Text messages forwarded by the OpenClaw agent from allowlisted
-          bhandara WhatsApp groups, classified by Gemini and held for
-          your review. Approved mentions appear on the homepage&apos;s
-          live chatter section and seed the bhandara-density heatmap
-          for 24 hours.
-        </p>
-        <div className="mt-3">
-          <Link
-            href="/admin"
-            className="text-sm text-saffron-600 hover:text-saffron-700 underline decoration-dotted underline-offset-4"
-          >
-            ← Back to main admin
-          </Link>
-        </div>
-      </header>
+      <div className="max-w-7xl mx-auto">
+        <AdminPageHero
+          subject="mentions"
+          eyebrow="Moderation"
+          title="WhatsApp mentions"
+          subtitle="Text messages forwarded by the WhatsApp bot, classified by Gemini, awaiting review. Approved mentions appear on the homepage's live chat panel and seed the heatmap for 24 hours."
+          primaryAction={
+            <Link
+              href="/admin/home"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/[0.08] border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/[0.16] hover:border-cyan-400/50 hover:text-cyan-100 px-4 py-2 text-sm transition-colors font-mono font-medium"
+            >
+              ← Dashboard
+            </Link>
+          }
+        />
+        <KpiStrip
+          items={[
+            {
+              label: "Total · 24h",
+              value: countAll.toLocaleString("en-IN"),
+              accent: "cyan",
+              icon: <IconMention />,
+            },
+            {
+              label: "Pending",
+              value: countPending.toLocaleString("en-IN"),
+              accent: "violet",
+              icon: <IconPending />,
+              href: "?status=PENDING",
+              delta: countPending > 0 ? "Awaiting review" : "Caught up",
+            },
+            {
+              label: "Approved",
+              value: countApproved.toLocaleString("en-IN"),
+              accent: "leaf",
+              icon: <IconCheck />,
+              href: "?status=APPROVED",
+            },
+            {
+              label: "Rejected",
+              value: countRejected.toLocaleString("en-IN"),
+              accent: "sindoor",
+              icon: <IconX />,
+              href: "?status=REJECTED",
+            },
+          ]}
+        />
+      </div>
 
-      {/* Screenshot-ingest test panel — collapsed by default. Lets
-          the admin upload a WhatsApp chat screenshot, run it through
-          Gemini Vision + classifier, and seed APPROVED BhandaraMention
-          rows so the homepage heatmap populates without waiting for
-          the OpenClaw agent. See src/components/admin/ScreenshotIngestPanel.tsx
-          for the full flow + rationale. */}
-      <ScreenshotIngestPanel />
-
-      {/* Status tabs — three pills with live counts. Clicking sets
-          ?status=… on the URL so refreshes preserve the view. */}
-      <nav className="mt-4 flex flex-wrap gap-2 text-sm">
-        <StatusPill
-          label={`Pending (${countPending})`}
-          target="PENDING"
-          active={status === "PENDING"}
-          intent={intent}
-          minConf={minConf}
-        />
-        <StatusPill
-          label={`Approved (${countApproved})`}
-          target="APPROVED"
-          active={status === "APPROVED"}
-          intent={intent}
-          minConf={minConf}
-        />
-        <StatusPill
-          label={`Rejected (${countRejected})`}
-          target="REJECTED"
-          active={status === "REJECTED"}
-          intent={intent}
-          minConf={minConf}
-        />
-        <StatusPill
-          label="All"
-          target="ALL"
-          active={status === "ALL"}
-          intent={intent}
-          minConf={minConf}
-        />
-      </nav>
-
-      {/* Secondary filters: intent dropdown + confidence floor. Both
-          submit on change via GET (no client JS needed — the form's
-          method=get + name=… inputs round-trip through searchParams). */}
-      <form
-        method="get"
-        className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] items-end"
+      <ModerationQueue
+        tabs={tabs}
+        activeTab={status}
+        showSearch={false}
+        shownCount={rows.length}
+        totalInTab={totalInTab}
       >
-        <input type="hidden" name="status" value={status} />
-        <label className="grid gap-1 text-xs text-ink-600">
-          Intent
-          <select
-            name="intent"
-            defaultValue={intent}
-            className="rounded-lg border border-gold-500/50 bg-white px-3 py-1.5 text-sm text-ink-900"
-          >
-            <option value="ALL">All intents</option>
-            <option value="ASKING">Asking</option>
-            <option value="SHARING">Sharing</option>
-            <option value="MENTIONING">Mentioning</option>
-          </select>
-        </label>
-        <label className="grid gap-1 text-xs text-ink-600">
-          Min confidence
-          <select
-            name="minConf"
-            defaultValue={String(minConf)}
-            className="rounded-lg border border-gold-500/50 bg-white px-3 py-1.5 text-sm text-ink-900"
-          >
-            <option value="0">Any</option>
-            <option value="0.4">0.4+</option>
-            <option value="0.6">0.6+</option>
-            <option value="0.8">0.8+</option>
-          </select>
-        </label>
-        <button
-          type="submit"
-          className="rounded-full px-4 py-1.5 border border-gold-500/50 text-ink-900 text-sm hover:bg-cream-50"
-        >
-          Apply
-        </button>
-      </form>
-
-      {/* Empty state — different copy per status so the admin knows
-          whether "nothing here" means "all caught up" or "no rejected
-          rows yet". */}
-      {rows.length === 0 ? (
-        <p className="mt-10 text-sm text-ink-600 italic">
-          {status === "PENDING"
-            ? "Nothing waiting for review. The OpenClaw agent will surface new mentions here as they arrive."
-            : status === "APPROVED"
-              ? "No approved mentions match this filter."
-              : status === "REJECTED"
-                ? "No rejected mentions match this filter."
-                : "No mentions match this filter."}
-        </p>
-      ) : (
-        <ul className="mt-6 grid gap-3">
-          {rows.map((m) => {
-            const meta = intentMeta(m.intent);
-            // Friendly group + sender display. Both are optional on
-            // the payload, fall back to "—" so the row never renders
-            // with awkward dangling "from: ·".
-            const fromBits = [m.senderName, m.groupName].filter(Boolean);
-            const fromLine =
-              fromBits.length > 0 ? fromBits.join(" · ") : "Unknown sender";
-            return (
-              <li
-                id={m.id}
-                key={m.id}
-                className="rounded-2xl border border-gold-500/40 bg-white p-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-start"
+        {/* Screenshot ingest tool — promoted to the TOP of the queue
+            (above the row list) because it's an *action* the admin
+            visits this page TO USE, not a buried footer. Re-skinned to
+            the cyan AI/ops palette and given a stronger callout chip
+            so it reads as "this is something you can do right now". */}
+        <div className="mb-6 rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm shadow-[0_8px_30px_-12px_rgba(0,0,0,0.55)] p-4">
+          <details className="group">
+            <summary className="cursor-pointer list-none flex items-center gap-3 flex-wrap">
+              <span
+                aria-hidden
+                className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500/30 to-violet-500/30 border border-cyan-400/40 text-cyan-200 group-open:rotate-90 transition-transform"
               >
-                <div className="grid gap-2 min-w-0">
-                  {/* Provenance + intent pill */}
-                  <div className="flex flex-wrap gap-2 items-center text-xs text-ink-600">
-                    <span
-                      className={`px-2 py-0.5 rounded-full border ${meta.className}`}
-                    >
-                      {meta.label}
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full bg-ink-100 text-ink-700 border border-ink-300">
-                      conf {m.confidence.toFixed(2)}
-                    </span>
-                    <span className="text-ink-600">{fromLine}</span>
-                    <span className="text-ink-600">·</span>
-                    <span className="text-ink-600">{timeAgo(m.createdAt)}</span>
-                  </div>
+                ▸
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-cyan-300/85 inline-flex items-center gap-1.5">
+                <span aria-hidden className="relative inline-flex h-1.5 w-1.5">
+                  <span className="absolute inset-0 rounded-full bg-cyan-400/70 motion-safe:animate-ping" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                </span>
+                Seed action
+              </span>
+              <span className="font-medium text-cream-50 text-sm">
+                Seed from a chat screenshot
+              </span>
+              <span className="text-xs text-cream-50/60 font-mono">
+                · upload a WhatsApp chat image, classify, and seed approved mentions
+              </span>
+            </summary>
+            <div className="mt-4 pt-4 border-t border-cyan-400/15">
+              <ScreenshotIngestPanel />
+            </div>
+          </details>
+        </div>
 
-                  {/* The cleaned message itself — the public surface
-                      renders this verbatim. */}
-                  <p className="text-sm text-ink-900 leading-relaxed whitespace-pre-wrap break-words">
-                    {m.cleanedText ?? m.originalText.split("\n\n[bot:")[0]}
-                  </p>
+        {/* Secondary filters — intent + confidence floor. Plain GET
+            form so navigation re-runs the server query without any
+            client JS. */}
+        <SecondaryFilters status={status} intent={intent} minConf={minConf} />
 
-                  {/* Location strip: pin + label + maps link, or a
-                      "no location" indicator. The heatmap can only
-                      render mentions with non-null lat/lng, so this
-                      is the admin's signal that approving this row
-                      adds heat to the map. */}
-                  {m.lat !== null && m.lng !== null ? (
-                    <div className="text-xs text-leaf-700 flex flex-wrap items-center gap-2">
-                      <span>
-                        📍 {m.locationLabel ?? `${m.lat.toFixed(4)}, ${m.lng.toFixed(4)}`}
-                      </span>
-                      <span className="text-ink-600">
-                        ({m.locationSource.replace(/_/g, " ")})
-                      </span>
-                      <a
-                        href={`https://www.google.com/maps?q=${m.lat},${m.lng}&z=17`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline decoration-dotted underline-offset-4 text-saffron-600 hover:text-saffron-700"
-                      >
-                        preview ↗
-                      </a>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-ink-600 italic">
-                      No location extracted — mention will appear on the
-                      feed but not on the heatmap.
-                    </p>
-                  )}
-                </div>
+        {rows.length === 0 ? (
+          <EmptyState status={status} />
+        ) : (
+          <QueueSelectionProvider total={rows.length}>
+            <div className="space-y-3">
+              {rows.map((m, idx) => (
+                <MentionRow
+                  key={m.id}
+                  mention={m as MentionQueueRow}
+                  index={idx}
+                />
+              ))}
+            </div>
+            <BulkActionBar
+              allRowIds={rows.map((m) => m.id)}
+              actions={[
+                {
+                  key: "approve",
+                  label: "Approve {n}",
+                  variant: "primary-green",
+                  pendingLabel: "Approving…",
+                  action: bulkApproveMentionsAction,
+                },
+                {
+                  key: "reject",
+                  label: "Reject {n}",
+                  variant: "outline-alert",
+                  pendingLabel: "Rejecting…",
+                  confirm: "Reject {n} mention(s)?",
+                  action: bulkRejectMentionsAction,
+                },
+              ]}
+            />
+          </QueueSelectionProvider>
+        )}
 
-                {/* Action cluster. Each button is its own form so the
-                    SubmitButton can use useFormStatus to disable + show
-                    a spinner during the round-trip. */}
-                <div className="flex flex-wrap gap-2 justify-end sm:flex-col sm:items-stretch sm:min-w-[10rem]">
-                  {m.status !== "APPROVED" ? (
-                    <form action={approveMentionAction.bind(null, m.id)}>
-                      <SubmitButton
-                        variant="primary-saffron"
-                        size="sm"
-                        pendingLabel="…"
-                      >
-                        ✓ Approve
-                      </SubmitButton>
-                    </form>
-                  ) : null}
-                  {m.status !== "REJECTED" ? (
-                    <form action={rejectMentionAction.bind(null, m.id)}>
-                      <SubmitButton
-                        variant="outline-alert"
-                        size="sm"
-                        pendingLabel="…"
-                      >
-                        ✕ Reject
-                      </SubmitButton>
-                    </form>
-                  ) : null}
-                  {m.status === "APPROVED" ? (
-                    <form action={extendMentionAction.bind(null, m.id)}>
-                      <SubmitButton
-                        variant="outline-ink"
-                        size="sm"
-                        pendingLabel="…"
-                      >
-                        +24h
-                      </SubmitButton>
-                    </form>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {/* Maintenance: purge PENDING rows older than 7 days. Kept
-          out of the per-row action cluster (it's a queue-wide
-          operation) and styled as a quiet outlined button at the
-          bottom so it doesn't draw eye away from per-row triage. */}
-      {countPending > 0 ? (
-        <form
-          action={purgeStaleMentionsAction}
-          className="mt-10 pt-6 border-t border-gold-500/30"
-        >
-          <p className="text-xs text-ink-600 mb-2">
-            Maintenance: hard-delete every PENDING mention older than 7
-            days. Approved + rejected rows are preserved.
-          </p>
-          <SubmitButton variant="outline-alert" size="sm" pendingLabel="Purging…">
-            Purge stale pending mentions
-          </SubmitButton>
-        </form>
-      ) : null}
-    </div>
+        {/* Maintenance — purge PENDING rows older than 7 days. */}
+        {countPending > 0 ? (
+          <form
+            action={purgeStaleMentionsAction}
+            className="mt-6 pt-6 border-t border-cream-50/10 flex items-center justify-between flex-wrap gap-3"
+          >
+            <p className="text-xs text-cream-50/55 max-w-md">
+              Maintenance: hard-delete every PENDING mention older than 7
+              days. Approved + rejected rows are preserved.
+            </p>
+            <SubmitButton
+              variant="outline-alert"
+              pendingLabel="Purging…"
+              confirm="Purge all PENDING mentions older than 7 days?"
+            >
+              Purge stale pending
+            </SubmitButton>
+          </form>
+        ) : null}
+      </ModerationQueue>
+    </AdminShell>
   );
 }
 
-/** Status filter pill. Preserves the other filter params (intent +
- *  minConf) when navigating between status tabs so the admin doesn't
- *  lose their drill-down on tab switch. */
-function StatusPill({
-  label,
-  target,
-  active,
+/* ────────────────────── SecondaryFilters ──────────────────────── */
+
+function SecondaryFilters({
+  status,
   intent,
   minConf,
 }: {
-  label: string;
-  target: string;
-  active: boolean;
+  status: string;
   intent: string;
   minConf: number;
 }) {
-  const qs = new URLSearchParams();
-  qs.set("status", target);
-  if (intent !== "ALL") qs.set("intent", intent);
-  if (minConf > 0) qs.set("minConf", String(minConf));
   return (
-    <Link
-      href={`/admin/mentions?${qs.toString()}`}
-      className={
-        active
-          ? "rounded-full px-4 py-1.5 bg-sindoor-700 text-cream-50 font-medium"
-          : "rounded-full px-4 py-1.5 border border-gold-500/50 text-ink-900 hover:bg-cream-50"
-      }
+    <form
+      method="get"
+      className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto] items-end"
     >
-      {label}
-    </Link>
+      <input type="hidden" name="status" value={status} />
+      <div className="flex items-center gap-2 flex-wrap">
+        <AdminListbox
+          name="intent"
+          label="Intent"
+          value={intent}
+          options={[
+            { value: "ALL", label: "All intents", hint: "Any classification" },
+            {
+              value: "ASKING",
+              label: "Asking",
+              hint: "Members searching for a bhandara",
+            },
+            {
+              value: "SHARING",
+              label: "Sharing",
+              hint: "Live photos / arrivals",
+            },
+            {
+              value: "MENTIONING",
+              label: "Mentioning",
+              hint: "Indirect references",
+            },
+          ]}
+        />
+        <AdminListbox
+          name="minConf"
+          label="Confidence"
+          value={String(minConf)}
+          options={[
+            { value: "0", label: "Any", hint: "Don't filter" },
+            { value: "0.4", label: "≥ 0.4", hint: "Loose match" },
+            { value: "0.6", label: "≥ 0.6", hint: "Moderate" },
+            { value: "0.8", label: "≥ 0.8", hint: "High confidence only" },
+          ]}
+        />
+      </div>
+      <button
+        type="submit"
+        className="rounded-lg px-4 py-2 bg-gradient-to-r from-cyan-500 to-violet-500 text-cream-50 border border-cyan-300/40 text-sm font-semibold shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)] hover:from-cyan-400 hover:to-violet-400 transition-all font-mono"
+      >
+        Apply →
+      </button>
+    </form>
+  );
+}
+
+/* ────────────────────────── Empty state ───────────────────────── */
+
+function EmptyState({ status }: { status: StatusKey }) {
+  const messages: Record<StatusKey, string> = {
+    PENDING:
+      "Nothing waiting for review. The WhatsApp bot will surface new mentions here as they arrive.",
+    APPROVED: "No approved mentions match this filter.",
+    REJECTED: "No rejected mentions match this filter.",
+    ALL: "No mentions match this filter.",
+  };
+  return (
+    <div className="rounded-2xl border border-cyan-400/15 bg-[#0B0E16]/85 backdrop-blur-sm p-12 text-center">
+      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-cyan-400/[0.08] border border-cyan-400/20 mb-4 text-3xl">
+        💬
+      </div>
+      <div className="font-fraunces text-cream-50 text-lg">
+        {messages[status]}
+      </div>
+    </div>
   );
 }

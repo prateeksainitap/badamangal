@@ -47,3 +47,33 @@ export function stripBotProvenance(
   // that was sandwiched between paragraphs.
   return cleaned.replace(/\n{3,}/g, "\n\n");
 }
+
+/**
+ * Pull the `in:<groupName>` fragment out of a `[bot:…]` provenance
+ * tag. Returns the WhatsApp group / channel name the bot saw on the
+ * forwarded message, or null when the tag is missing the field
+ * (older rows ingested before `groupName` was wired through, or
+ * forwards from a personal DM where chat.name is empty).
+ *
+ * Used by BhandaraRow + SpotRow to surface the source channel on
+ * each moderation card without re-querying BotIngestionLog. The
+ * tag fragment looks like:
+ *   [bot:whatsapp · from:Prateek · in:Jai Sri Ram · msg:… · …]
+ * Group names can contain spaces; the `·` separator is the
+ * non-overlapping boundary.
+ */
+export function parseBotGroupName(
+  text: string | null | undefined,
+): string | null {
+  if (!text) return null;
+  // Scope the search to inside the [bot:…] tag so we never pick up
+  // an "in:" fragment that happens to live in admin-typed prose.
+  const tagMatch = /\[bot:[^\]]*\]/.exec(text);
+  if (!tagMatch) return null;
+  // Within the tag, find ` · in:<groupName> · ` (or end-of-tag).
+  // Group name continues until the next ` · ` or the closing `]`.
+  const inMatch = / · in:([^·\]]+?)(?= · |\])/.exec(tagMatch[0]);
+  if (!inMatch) return null;
+  const name = inMatch[1].trim();
+  return name.length > 0 ? name : null;
+}

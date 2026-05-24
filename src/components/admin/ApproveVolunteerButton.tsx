@@ -21,6 +21,7 @@
 import { useState } from "react";
 import { approveAndIssueVolunteerCodeAction } from "@/app/admin/actions";
 import { trackEvent } from "@/lib/ga";
+import { IconCheck } from "@/components/admin/AdminIcons";
 
 export default function ApproveVolunteerButton({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
@@ -63,15 +64,18 @@ export default function ApproveVolunteerButton({ id }: { id: string }) {
   if (issued) {
     return (
       <div className="flex flex-col gap-2 items-start">
-        <div className="text-xs text-leaf-600">
-          ✓ Code <span className="font-mono font-semibold">{issued.code}</span> issued
+        <div className="text-xs text-leaf-600 inline-flex items-center gap-1.5">
+          <IconCheck size={12} />
+          <span>
+            Code <span className="font-mono font-semibold">{issued.code}</span> issued
+          </span>
         </div>
         <a
           href={issued.waUrl}
           target="_blank"
           rel="noopener noreferrer"
           data-ga="admin_volunteer_reopen_whatsapp"
-          className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-leaf-600 hover:bg-leaf-500 text-cream-50 font-medium border border-leaf-400/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(93,174,93,0.55)] transition-colors"
         >
           💬 Re-open WhatsApp
         </a>
@@ -85,7 +89,7 @@ export default function ApproveVolunteerButton({ id }: { id: string }) {
         type="button"
         onClick={onClick}
         disabled={busy}
-        className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center gap-1.5 rounded-lg bg-leaf-600 hover:bg-leaf-500 text-cream-50 font-medium border border-leaf-400/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(93,174,93,0.55)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {busy ? (
           <>

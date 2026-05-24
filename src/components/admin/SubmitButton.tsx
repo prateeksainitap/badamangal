@@ -22,32 +22,56 @@ import { useFormStatus } from "react-dom";
  * used by AdminLoginForm, see the long comment block there for the
  * "why useFormStatus and not local state" reasoning.
  *
- * The visual variants mirror the existing button styles in /admin
- * (saffron primary, outlined secondary, etc.) so callers swap the
- * old <button> tag for <SubmitButton variant="…"> with no other
- * changes.
+ *
+ * VISUAL SYSTEM — "one bold + tinted siblings"
+ * --------------------------------------------
+ * Every action button across the admin app shares one shape and two
+ * sizing tokens (sm for rows, md for forms). Variants only change
+ * fill / border weight, never padding or radius. That gives the
+ * operator a single visual language to scan:
+ *
+ *   • Tier 1 — SOLID (one per row max)
+ *     primary-green     leaf-600 fill, soft green glow      → Verify, Approve, Confirm
+ *     primary-saffron   cyan→violet gradient, soft glow     → Scan & publish, hero CTAs
+ *
+ *   • Tier 2 — SUBTLE TINTED (multiple per row, calmer siblings)
+ *     outline-leaf      leaf-tint bg + thin leaf border     → +8h, Re-approve, secondary positive
+ *     outline-saffron   cyan-tint bg + thin cyan border     → Edit, Publish (no badge), neutral
+ *     outline-alert     alert-tint bg + thin alert border   → Reject, Delist, Delete
+ *     outline-ink       ink-tint bg + thin neutral border   → Sign out, Refresh, overflow text
+ *
+ * Variant names are preserved so the dozens of existing call sites
+ * keep working with no edits — only the underlying classes change.
  */
 type Variant =
-  | "primary-green" // ✓ Called & confirmed, publish (leaf-600 filled)
-  | "primary-saffron" // Default fill (saffron-600 filled)
-  | "outline-leaf"
-  | "outline-saffron"
-  | "outline-alert"
-  | "outline-ink";
+  | "primary-green" // solid leaf — the row's ONE main positive action
+  | "primary-saffron" // solid cyan→violet gradient — page-hero CTAs
+  | "outline-leaf" // subtle leaf-tint — secondary positive
+  | "outline-saffron" // subtle cyan-tint — neutral / edit / view
+  | "outline-alert" // subtle alert-tint — destructive
+  | "outline-ink"; // subtle ink-tint — neutral text actions
 
 const styleByVariant: Record<Variant, string> = {
+  // SOLID — bold fills + a soft drop-glow in the matching hue so the
+  // tile reads as "click me first". A thin matching border keeps the
+  // edge crisp on top of the dark ops-console background.
   "primary-green":
-    "bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium shadow-sm",
+    "bg-leaf-600 hover:bg-leaf-500 text-cream-50 border border-leaf-400/40 shadow-[0_4px_14px_-4px_rgba(93,174,93,0.55)]",
   "primary-saffron":
-    "bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium shadow-sm",
+    "bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-cream-50 border border-cyan-300/40 shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)]",
+
+  // SUBTLE TINTED — soft tinted fill (~8% alpha) + 1px border at the
+  // matching tone. Reads as a quiet sibling of the solid primary,
+  // not as a competing CTA. Hover bumps the fill to ~14% so the
+  // hit-feedback is unmistakable without screaming.
   "outline-leaf":
-    "border-2 border-leaf-600 text-leaf-600 hover:bg-leaf-600 hover:text-cream-50 font-medium",
+    "bg-leaf-500/[0.08] border border-leaf-400/30 text-leaf-300 hover:bg-leaf-500/[0.16] hover:border-leaf-400/55 hover:text-leaf-200",
   "outline-saffron":
-    "border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 font-medium",
+    "bg-cyan-400/[0.08] border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/[0.16] hover:border-cyan-400/50 hover:text-cyan-100",
   "outline-alert":
-    "border-2 border-alert-500 text-alert-500 hover:bg-alert-500 hover:text-cream-50 font-medium",
+    "bg-alert-500/[0.08] border border-alert-500/30 text-alert-400 hover:bg-alert-500/[0.18] hover:border-alert-500/55 hover:text-alert-300",
   "outline-ink":
-    "border-2 border-ink-600/45 text-ink-900 hover:bg-cream-50 font-medium",
+    "bg-cream-50/[0.05] border border-cream-50/15 text-cream-50/80 hover:bg-cream-50/[0.10] hover:border-cream-50/30 hover:text-cream-50",
 };
 
 export default function SubmitButton({
@@ -72,7 +96,10 @@ export default function SubmitButton({
   confirm?: string;
 }) {
   const { pending } = useFormStatus();
-  const sizing = size === "md" ? "px-5 py-2.5 text-sm" : "px-4 py-2 text-sm";
+  // sm — row actions (alongside Edit links + overflow menus)
+  // md — form-bottom CTAs ("Save changes", "Approve volunteer")
+  const sizing =
+    size === "md" ? "px-4 py-2 text-sm" : "px-3 py-1.5 text-xs";
   return (
     <button
       type="submit"
@@ -85,7 +112,7 @@ export default function SubmitButton({
             }
           : undefined
       }
-      className={`inline-flex items-center justify-center gap-1.5 rounded-full transition-colors ${
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition-colors ${
         styleByVariant[variant]
       } ${sizing} disabled:opacity-70 disabled:cursor-not-allowed ${className}`}
     >

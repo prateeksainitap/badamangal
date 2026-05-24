@@ -21,6 +21,7 @@ import SeasonDatePicker from "@/components/SeasonDatePicker";
 import MapPasteResolver from "@/components/admin/MapPasteResolver";
 import PhoneInput from "@/components/PhoneInput";
 import { trackEvent } from "@/lib/ga";
+import { IconCheck } from "@/components/admin/AdminIcons";
 
 // ── Client-side image compression ────────────────────────────────────
 //
@@ -89,6 +90,14 @@ type Props = {
   menuItems: MenuItem[];
   tuesdays: string[];
   saturdays: string[];
+  /** When set, the component skips the upload/scan UI and opens the
+   *  review form pre-populated with empty fields for the given kind.
+   *  Used by /admin/new where the operator types details from scratch
+   *  (organizer phoned in, news article spotted, seed data, etc.) —
+   *  same publish endpoint, no Gemini in the loop. The kind toggle
+   *  at the top still lets them flip between bhandara/spot inside
+   *  the form. */
+  initialBlank?: Kind;
 };
 
 type Kind = "bhandara" | "spot";
@@ -131,21 +140,44 @@ type ScanResponse =
       geocode: { lat: number; lng: number; matched: string; source: string } | null;
     };
 
+/** Build an empty ScanResponse so the review form can render with
+ *  blank values when the admin chose "Add manually" instead of
+ *  uploading a poster. Same shape Gemini would return after a scan,
+ *  just with nothing filled in. */
+function emptyScan(kind: Kind): ScanResponse {
+  return kind === "bhandara"
+    ? {
+        kind: "bhandara",
+        photoUrl: "",
+        extracted: {},
+        geocode: null,
+      }
+    : {
+        kind: "spot",
+        photoUrl: "",
+        extracted: {},
+        geocode: null,
+      };
+}
+
 export default function ScanReview({
   areas,
   menuItems,
   tuesdays,
   saturdays,
+  initialBlank,
 }: Props) {
-  const [kind, setKind] = useState<Kind>("bhandara");
+  const [kind, setKind] = useState<Kind>(initialBlank ?? "bhandara");
   const [file, setFile] = useState<File | null>(null);
   /** Captured before client-side compression so we can show the savings. */
   const [originalSize, setOriginalSize] = useState<number | null>(null);
   const [compressing, setCompressing] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
+  // When `initialBlank` is set, jump straight to the review form with
+  // an empty payload. Otherwise we start in idle (upload/scan flow).
   const [phase, setPhase] = useState<"idle" | "scanning" | "review" | "publishing" | "done">(
-    "idle",
+    initialBlank ? "review" : "idle",
   );
   const [error, setError] = useState<string | null>(null);
   // Raw server-side detail (e.g. "GEMINI_API_KEY is not set", a
@@ -154,7 +186,9 @@ export default function ScanReview({
   // admin can dig in when something looks weird.
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [showDetail, setShowDetail] = useState(false);
-  const [scan, setScan] = useState<ScanResponse | null>(null);
+  const [scan, setScan] = useState<ScanResponse | null>(
+    initialBlank ? emptyScan(initialBlank) : null,
+  );
   const [publishResult, setPublishResult] = useState<{
     slug?: string;
     id?: string;
@@ -237,19 +271,31 @@ export default function ScanReview({
   return (
     <div className="mt-6">
       {/* ── Kind toggle ───────────────────────────────────────── */}
-      <div className="inline-flex rounded-full bg-cream-50 border border-gold-500/40 p-1">
+      <div className="inline-flex rounded-full bg-[#0B0E16]/85 border border-cyan-400/20 p-1 font-mono">
         {(["bhandara", "spot"] as const).map((k) => (
           <button
             key={k}
             type="button"
             onClick={() => {
               setKind(k);
-              reset();
+              // In manual-create mode, "reset" means "blank form of
+              // the newly-chosen kind", not "back to upload". In
+              // scan mode it's the normal reset to idle.
+              if (initialBlank) {
+                setFile(null);
+                setOriginalSize(null);
+                setError(null);
+                setPublishResult(null);
+                setScan(emptyScan(k));
+                setPhase("review");
+              } else {
+                reset();
+              }
             }}
             className={`px-4 py-1.5 text-sm rounded-full transition-colors ${
               kind === k
-                ? "bg-saffron-600 text-cream-50"
-                : "text-ink-600 hover:text-sindoor-700"
+                ? "bg-gradient-to-r from-cyan-500 to-violet-500 text-cream-50 shadow-[0_4px_14px_-4px_rgba(34,211,238,0.5)]"
+                : "text-cream-50/65 hover:text-cream-50 hover:bg-cyan-400/[0.06]"
             }`}
           >
             {k === "bhandara" ? "Listed bhandara" : "Live spot"}
@@ -258,9 +304,12 @@ export default function ScanReview({
       </div>
 
       {/* ── Upload card ───────────────────────────────────────── */}
-      {phase === "idle" || phase === "scanning" ? (
-        <div className="mt-4 rounded-2xl border border-dashed border-gold-500/50 bg-cream-50/60 p-6 sm:p-8">
-          <p className="text-sm text-ink-600">
+      {/* In manual-create mode the upload UI is suppressed entirely —
+          the form below opens with empty fields and the operator
+          types everything. */}
+      {!initialBlank && (phase === "idle" || phase === "scanning") ? (
+        <div className="mt-4 rounded-2xl border border-dashed border-cyan-400/35 bg-cyan-400/[0.02] p-6 sm:p-8">
+          <p className="text-sm text-cream-50/65 font-mono">
             {kind === "bhandara"
               ? "Upload a WhatsApp invite, or snap one with the camera."
               : "Snap a photo of the live bhandara, or upload one from the gallery."}
@@ -287,27 +336,38 @@ export default function ScanReview({
             onChange={(e) => handleIncomingFile(e.target.files?.[0] ?? null)}
           />
 
+          {/* CTA hierarchy:
+              • Before a file is picked: Choose file is the cyan→violet
+                primary; Take photo is the muted secondary.
+              • Once a file is picked: both upload buttons demote to
+                outline-secondary (so they don't compete with the real
+                primary action), and Scan with Gemini takes over as the
+                cyan→violet primary. Single primary at every step. */}
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => fileInput.current?.click()}
               disabled={compressing || phase === "scanning"}
-              className="inline-flex items-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 disabled:opacity-60 text-cream-50 font-medium px-4 py-2 text-sm shadow-warm"
+              className={
+                file
+                  ? "inline-flex items-center gap-2 rounded-lg bg-cyan-400/[0.08] border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/[0.16] hover:border-cyan-400/50 hover:text-cyan-100 disabled:opacity-60 font-mono font-semibold px-4 py-2 text-sm transition-colors"
+                  : "inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 disabled:opacity-60 text-cream-50 font-mono font-semibold border border-cyan-300/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)] transition-colors"
+              }
             >
               <IconUpload />
-              Choose file
+              {file ? "Replace file" : "Choose file"}
             </button>
             <button
               type="button"
               onClick={() => cameraInput.current?.click()}
               disabled={compressing || phase === "scanning"}
-              className="inline-flex items-center gap-2 rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 disabled:opacity-60 font-medium px-4 py-2 text-sm"
+              className="inline-flex items-center gap-2 rounded-lg bg-cyan-400/[0.08] border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/[0.16] hover:border-cyan-400/50 hover:text-cyan-100 disabled:opacity-60 font-mono font-semibold px-4 py-2 text-sm transition-colors"
             >
               <IconCamera />
               Take photo
             </button>
             {compressing ? (
-              <span className="inline-flex items-center gap-2 text-sm text-ink-600">
+              <span className="inline-flex items-center gap-2 text-sm text-cream-50/65 font-mono">
                 <Spinner dark />
                 Compressing image…
               </span>
@@ -320,11 +380,11 @@ export default function ScanReview({
               <img
                 src={previewUrl}
                 alt="preview"
-                className="h-32 w-32 object-cover rounded-xl border border-gold-500/40"
+                className="h-32 w-32 object-cover rounded-xl border border-cyan-400/25"
               />
-              <div className="flex-1 text-sm text-ink-600">
-                <p className="font-medium text-ink-900 break-all">{file.name}</p>
-                <p className="text-xs text-ink-600 mt-0.5 font-numerals tabular-nums">
+              <div className="flex-1 text-sm text-cream-50/80">
+                <p className="font-medium text-cream-50 break-all">{file.name}</p>
+                <p className="text-xs text-cream-50/55 mt-0.5 font-numerals tabular-nums">
                   {/* Show "5.4 MB → 380 KB · 93% smaller" so the admin
                       sees the bandwidth win that compression bought. */}
                   {originalSize && originalSize !== file.size ? (
@@ -333,10 +393,10 @@ export default function ScanReview({
                         {formatBytes(originalSize)}
                       </span>
                       {" → "}
-                      <span className="font-semibold text-leaf-600">
+                      <span className="font-semibold text-leaf-300">
                         {formatBytes(file.size)}
                       </span>
-                      <span className="ml-1 text-leaf-600/80">
+                      <span className="ml-1 text-leaf-300/80">
                         ({Math.round(
                           ((originalSize - file.size) / originalSize) * 100,
                         )}
@@ -351,7 +411,7 @@ export default function ScanReview({
                   type="button"
                   disabled={phase === "scanning" || compressing}
                   onClick={handleScan}
-                  className="mt-3 inline-flex items-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 disabled:opacity-60 text-cream-50 font-medium px-5 py-2 text-sm shadow-warm"
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 disabled:opacity-60 text-cream-50 font-semibold border border-cyan-300/40 px-5 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)] transition-colors"
                 >
                   {phase === "scanning" ? (
                     <>
@@ -359,7 +419,10 @@ export default function ScanReview({
                       Reading the invite…
                     </>
                   ) : (
-                    <>✨ Scan with Gemini</>
+                    <>
+                      <span aria-hidden>✨</span>
+                      <span>Scan with Gemini</span>
+                    </>
                   )}
                 </button>
               </div>
@@ -374,12 +437,12 @@ export default function ScanReview({
                   <button
                     type="button"
                     onClick={() => setShowDetail((v) => !v)}
-                    className="mt-1 text-[11px] uppercase tracking-[0.18em] text-ink-600 hover:text-sindoor-700"
+                    className="mt-1 text-[11px] uppercase tracking-[0.18em] text-cream-50/65 hover:text-cyan-200"
                   >
                     {showDetail ? "hide detail" : "show detail"}
                   </button>
                   {showDetail ? (
-                    <pre className="mt-2 max-h-40 overflow-auto rounded-lg border border-gold-500/30 bg-cream-50/70 p-2 text-[11px] leading-snug text-ink-700 whitespace-pre-wrap break-words">
+                    <pre className="mt-2 max-h-40 overflow-auto rounded-lg border border-cyan-400/15 bg-[#080A10]/70 p-2 text-[11px] leading-snug text-cream-50/75 whitespace-pre-wrap break-words">
                       {errorDetail}
                     </pre>
                   ) : null}
@@ -435,6 +498,7 @@ export default function ScanReview({
             onCancel={reset}
             publishing={phase === "publishing"}
             publishError={error}
+            blank={Boolean(initialBlank)}
           />
         ) : (
           <SpotReviewForm
@@ -473,17 +537,19 @@ export default function ScanReview({
             onCancel={reset}
             publishing={phase === "publishing"}
             publishError={error}
+            blank={Boolean(initialBlank)}
           />
         )
       ) : null}
 
       {/* ── Done ──────────────────────────────────────────────── */}
       {phase === "done" && publishResult ? (
-        <div className="mt-4 rounded-2xl border border-leaf-600/50 bg-leaf-600/8 p-6">
-          <p className="font-fraunces text-xl text-leaf-600">
-            ✓ Published. It's live on the homepage now.
+        <div className="mt-4 rounded-2xl border border-leaf-400/35 bg-leaf-400/[0.08] p-6">
+          <p className="font-fraunces text-xl text-leaf-300 inline-flex items-center gap-2">
+            <IconCheck size={20} />
+            <span>Published. It&apos;s live on the homepage now.</span>
           </p>
-          <p className="mt-1 text-sm text-ink-600">
+          <p className="mt-1 text-sm text-cream-50/65">
             {publishResult.slug
               ? `/bhandara/${publishResult.slug}`
               : `Spot id: ${publishResult.id}`}
@@ -494,7 +560,7 @@ export default function ScanReview({
                 href={`/bhandara/${publishResult.slug}`}
                 target="_blank"
                 rel="noreferrer noopener"
-                className="inline-flex items-center rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 font-medium px-4 py-2 text-sm"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/[0.08] border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/[0.16] hover:border-cyan-400/50 hover:text-cyan-100 font-medium px-4 py-2 text-sm transition-colors"
               >
                 View public page ↗
               </a>
@@ -502,7 +568,7 @@ export default function ScanReview({
             <button
               type="button"
               onClick={reset}
-              className="inline-flex items-center rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-cream-50 font-medium border border-cyan-300/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)] transition-colors"
             >
               Scan another
             </button>
@@ -527,6 +593,7 @@ function BhandaraReviewForm({
   onCancel,
   publishing,
   publishError,
+  blank,
 }: {
   scan: Extract<ScanResponse, { kind: "bhandara" }>;
   areas: string[];
@@ -537,6 +604,12 @@ function BhandaraReviewForm({
   onCancel: () => void;
   publishing: boolean;
   publishError: string | null;
+  /** True when the page reached this form via /admin/new (manual
+   *  create). Suppresses scan-flow chrome that doesn't apply: the
+   *  empty cream photo slot, the "No geocode hit" alert, the
+   *  "Edit anything Gemini misread" subhead, and the "Discard &
+   *  scan another" link. */
+  blank?: boolean;
 }) {
   const e = scan.extracted;
   const [name, setName] = useState(e.name ?? "");
@@ -615,42 +688,66 @@ function BhandaraReviewForm({
     Number.isFinite(parseFloat(lng));
 
   return (
-    <div className="mt-4 grid gap-6 lg:grid-cols-[260px_1fr]">
-      {/* Photo + extras column */}
-      <div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={scan.photoUrl}
-          alt="uploaded invite"
-          className="w-full aspect-[3/4] object-contain bg-cream-50 rounded-2xl border border-gold-500/40"
-        />
-        <p className="mt-2 text-[11px] text-ink-600 break-all">{scan.photoUrl}</p>
-        {scan.geocode ? (
-          <div className="mt-3 rounded-xl border border-leaf-600/40 bg-leaf-600/8 p-3 text-xs">
-            <p className="font-semibold text-leaf-600">
-              📍 Geocoded ({scan.geocode.source})
-            </p>
-            <p className="mt-1 text-ink-600 break-words">{scan.geocode.matched}</p>
-          </div>
-        ) : (
-          <div className="mt-3 rounded-xl border border-alert-500/40 bg-alert-500/8 p-3 text-xs">
-            <p className="font-semibold text-alert-500">No geocode hit</p>
-            <p className="mt-1 text-ink-600">
-              Fill the lat/lng manually before publishing.
-            </p>
-          </div>
-        )}
-        {e.notes ? (
-          <p className="mt-3 text-xs text-ink-600 italic">📝 {e.notes}</p>
-        ) : null}
-      </div>
+    // In blank (manual-create) mode we drop the photo column and let
+    // the form span the full width. In scan mode we keep the two-col
+    // layout so the poster sits beside the editable fields.
+    <div
+      className={
+        blank
+          ? "mt-4"
+          : "mt-4 grid gap-6 lg:grid-cols-[260px_1fr]"
+      }
+    >
+      {/* Photo + extras column — scan flow only. The slot is meaningless
+          in manual-create mode (no upload, no Gemini geocode), so we
+          omit it entirely instead of leaving an empty cream rectangle.
+          Sticky on lg+ so the poster + geocode notice stay in view
+          while the operator scrolls the form. Same `top-20 self-start`
+          combo as /admin/edit + /admin/edit-spot. */}
+      {!blank ? (
+        <div className="lg:sticky lg:top-20 lg:self-start">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={scan.photoUrl}
+            alt="uploaded invite"
+            className="w-full aspect-[3/4] object-contain bg-[#080A10]/70 rounded-2xl border border-cyan-400/25"
+          />
+          <p className="mt-2 text-[10px] text-cream-50/45 font-mono break-all">
+            {scan.photoUrl}
+          </p>
+          {scan.geocode ? (
+            <div className="mt-3 rounded-xl border border-leaf-400/35 bg-leaf-400/[0.08] p-3 text-xs">
+              <p className="font-semibold text-leaf-300 inline-flex items-center gap-1.5">
+                <span aria-hidden>📍</span>
+                Geocoded ({scan.geocode.source})
+              </p>
+              <p className="mt-1 text-cream-50/70 break-words">
+                {scan.geocode.matched}
+              </p>
+            </div>
+          ) : (
+            <div className="mt-3 rounded-xl border border-alert-500/40 bg-alert-500/[0.10] p-3 text-xs">
+              <p className="font-semibold text-alert-300">No geocode hit</p>
+              <p className="mt-1 text-cream-50/70">
+                Fill the lat/lng manually before publishing.
+              </p>
+            </div>
+          )}
+          {e.notes ? (
+            <p className="mt-3 text-xs text-cream-50/60 italic">📝 {e.notes}</p>
+          ) : null}
+        </div>
+      ) : null}
 
-      {/* Form column */}
-      <div className="rounded-2xl border border-gold-500/40 bg-cream-50 p-5 sm:p-6">
-        <h2 className="font-fraunces text-xl text-sindoor-700">Review &amp; publish</h2>
-        <p className="text-xs text-ink-600 mt-1">
-          Edit anything Gemini misread, especially organizer phone, exact
-          venue, and the area pin.
+      {/* Form column — dark admin surface */}
+      <div className="rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/70 backdrop-blur-sm p-5 sm:p-6">
+        <h2 className="font-fraunces text-xl text-cream-50">
+          {blank ? "New bhandara" : "Review & publish"}
+        </h2>
+        <p className="text-xs text-cream-50/55 mt-1 font-mono">
+          {blank
+            ? "Type the details an organizer gave you. Lat/lng can come from a Maps link below, or paste a Plus Code (“VXR6+QP Lucknow”) and click Resolve."
+            : "Edit anything Gemini misread, especially organizer phone, exact venue, and the area pin."}
         </p>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -674,7 +771,7 @@ function BhandaraReviewForm({
               Same pattern as the public BhandaraForm so admin and
               organiser have one mental model. */}
           <div>
-            <span className="text-[11px] uppercase tracking-wider text-ink-600">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
               Area *
             </span>
             {customAreaMode ? (
@@ -684,7 +781,7 @@ function BhandaraReviewForm({
                   onChange={(ev) => setArea(ev.target.value)}
                   placeholder="Type the area name"
                   maxLength={50}
-                  className="w-full rounded-lg border border-gold-500/50 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+                  className="w-full rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-sm text-cream-50 placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
                   autoFocus
                 />
                 <button
@@ -693,7 +790,7 @@ function BhandaraReviewForm({
                     setArea("");
                     setCustomAreaMode(false);
                   }}
-                  className="text-[11px] uppercase tracking-[0.18em] text-ink-600 hover:text-sindoor-700"
+                  className="text-[11px] uppercase tracking-[0.18em] text-cream-50/65 hover:text-cyan-200"
                 >
                   ← Pick from the list
                 </button>
@@ -710,7 +807,7 @@ function BhandaraReviewForm({
                   }
                   setArea(v);
                 }}
-                className="mt-1 w-full rounded-lg border border-gold-500/50 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+                className="mt-1 w-full rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-sm text-cream-50 placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
               >
                 <option value="">Select…</option>
                 {areas.map((o) => (
@@ -765,6 +862,7 @@ function BhandaraReviewForm({
             required
             mono
           />
+          <MapPreviewLink lat={lat} lng={lng} />
           <Field
             label="Time start (HH:MM 24h)"
             value={timeStart}
@@ -788,7 +886,7 @@ function BhandaraReviewForm({
               Same control used on public + admin/edit forms so admins
               and organisers share one mental model. */}
           <label className="block">
-            <span className="text-[11px] uppercase tracking-wider text-ink-600">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
               Organizer phone *
             </span>
             <div className="mt-1">
@@ -800,7 +898,7 @@ function BhandaraReviewForm({
             </div>
           </label>
           <label className="block">
-            <span className="text-[11px] uppercase tracking-wider text-ink-600">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
               Organizer WhatsApp (optional)
             </span>
             <div className="mt-1">
@@ -823,7 +921,7 @@ function BhandaraReviewForm({
             picker (any 2026 date) for off-season events or one-off
             community dinners the calendar doesn't preset. */}
         <div className="mt-5">
-          <p className="text-[11px] uppercase tracking-wider text-ink-600">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
             Dates *
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -839,8 +937,8 @@ function BhandaraReviewForm({
                     onClick={() => toggleDate(d)}
                     className={`text-xs rounded-full px-2.5 py-1 border ${
                       active
-                        ? "bg-saffron-600 border-saffron-600 text-cream-50"
-                        : "bg-white border-gold-500/40 text-ink-600 hover:border-saffron-500"
+                        ? "bg-gradient-to-r from-cyan-500 to-violet-500 border-cyan-300/40 text-cream-50 shadow-[0_4px_14px_-4px_rgba(34,211,238,0.5)]"
+                        : "bg-cyan-400/[0.06] border-cyan-400/20 text-cream-50/70 hover:border-cyan-400/50 hover:text-cream-50"
                     }`}
                   >
                     {d.slice(8)}
@@ -860,7 +958,7 @@ function BhandaraReviewForm({
               {customDates.map((d) => (
                 <span
                   key={d}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 border border-leaf-600 text-cream-50 px-2.5 py-1 text-xs"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-leaf-400/85 border border-leaf-400/55 text-ink-900 font-medium px-2.5 py-1 text-xs"
                 >
                   {d.slice(8)}/{d.slice(5, 7)}/{d.slice(2, 4)}
                   <button
@@ -891,7 +989,7 @@ function BhandaraReviewForm({
 
         {/* Menu */}
         <div className="mt-5">
-          <p className="text-[11px] uppercase tracking-wider text-ink-600">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
             Menu
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -904,8 +1002,8 @@ function BhandaraReviewForm({
                   onClick={() => toggleMenu(m.en)}
                   className={`text-xs rounded-full px-2.5 py-1 border ${
                     active
-                      ? "bg-leaf-600 border-leaf-600 text-cream-50"
-                      : "bg-white border-gold-500/40 text-ink-600 hover:border-leaf-600"
+                      ? "bg-leaf-400/85 border-leaf-400/55 text-ink-900 font-medium"
+                      : "bg-cyan-400/[0.06] border-cyan-400/20 text-cream-50/70 hover:border-leaf-400/55 hover:text-cream-50"
                   }`}
                 >
                   {m.en} · {m.hi}
@@ -985,7 +1083,7 @@ function BhandaraReviewForm({
                     fire(false);
                     onPublish(buildPayload(false));
                   }}
-                  className="inline-flex items-center gap-2 rounded-full bg-leaf-600 hover:bg-leaf-600/90 disabled:opacity-60 text-cream-50 font-medium px-5 py-2 text-sm shadow-warm"
+                  className="inline-flex items-center gap-2 rounded-lg bg-leaf-600 hover:bg-leaf-500 disabled:opacity-60 text-cream-50 font-medium border border-leaf-400/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(93,174,93,0.55)] transition-colors"
                 >
                   {publishing ? (
                     <>
@@ -993,7 +1091,10 @@ function BhandaraReviewForm({
                       Publishing…
                     </>
                   ) : (
-                    <>✓ Publish bhandara</>
+                    <>
+                      <IconCheck size={14} />
+                      <span>Publish bhandara</span>
+                    </>
                   )}
                 </button>
                 <button
@@ -1003,10 +1104,11 @@ function BhandaraReviewForm({
                     fire(true);
                     onPublish(buildPayload(true));
                   }}
-                  className="inline-flex items-center gap-2 rounded-full border-2 border-leaf-600 text-leaf-600 hover:bg-leaf-600 hover:text-cream-50 disabled:opacity-60 font-medium px-5 py-2 text-sm transition-colors"
+                  className="inline-flex items-center gap-2 rounded-lg bg-leaf-500/[0.08] border border-leaf-400/30 text-leaf-300 hover:bg-leaf-500/[0.16] hover:border-leaf-400/55 hover:text-leaf-200 disabled:opacity-60 font-medium px-4 py-2 text-sm transition-colors"
                   title="Stamps the green Verified badge on the listing in the same write."
                 >
-                  ✓ Called &amp; confirmed, publish
+                  <IconCheck size={14} />
+                  <span>Called &amp; confirmed, publish</span>
                 </button>
               </>
             );
@@ -1014,9 +1116,9 @@ function BhandaraReviewForm({
           <button
             type="button"
             onClick={onCancel}
-            className="text-sm text-ink-600 hover:text-sindoor-700 underline decoration-dotted underline-offset-4"
+            className="text-sm text-cream-50/65 hover:text-cyan-200 underline decoration-dotted underline-offset-4"
           >
-            Discard &amp; scan another
+            {blank ? "Discard" : "Discard & scan another"}
           </button>
         </div>
       </div>
@@ -1035,6 +1137,7 @@ function SpotReviewForm({
   onCancel,
   publishing,
   publishError,
+  blank,
 }: {
   scan: Extract<ScanResponse, { kind: "spot" }>;
   areas: string[];
@@ -1042,6 +1145,8 @@ function SpotReviewForm({
   onCancel: () => void;
   publishing: boolean;
   publishError: string | null;
+  /** Same flag as BhandaraReviewForm — see there for details. */
+  blank?: boolean;
 }) {
   const e = scan.extracted;
   const [caption, setCaption] = useState(e.caption ?? "");
@@ -1058,41 +1163,54 @@ function SpotReviewForm({
     Number.isFinite(parseFloat(lat)) && Number.isFinite(parseFloat(lng));
 
   return (
-    <div className="mt-4 grid gap-6 lg:grid-cols-[260px_1fr]">
-      <div>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={scan.photoUrl}
-          alt="uploaded spot"
-          className="w-full aspect-square object-cover bg-cream-50 rounded-2xl border border-gold-500/40"
-        />
-        <p className="mt-2 text-[11px] text-ink-600 break-all">{scan.photoUrl}</p>
-        {scan.geocode ? (
-          <div className="mt-3 rounded-xl border border-leaf-600/40 bg-leaf-600/8 p-3 text-xs">
-            <p className="font-semibold text-leaf-600">
-              📍 Geocoded ({scan.geocode.source})
-            </p>
-            <p className="mt-1 text-ink-600 break-words">{scan.geocode.matched}</p>
-          </div>
-        ) : (
-          <div className="mt-3 rounded-xl border border-alert-500/40 bg-alert-500/8 p-3 text-xs">
-            <p className="font-semibold text-alert-500">No geocode hit</p>
-            <p className="mt-1 text-ink-600">
-              Drop a pin manually, type lat/lng below.
-            </p>
-          </div>
-        )}
-        {e.notes ? (
-          <p className="mt-3 text-xs text-ink-600 italic">📝 {e.notes}</p>
-        ) : null}
-      </div>
+    // Blank mode drops the photo-+-geocode column entirely; scan mode
+    // keeps the two-column layout for the poster + extracted data.
+    <div
+      className={
+        blank
+          ? "mt-4"
+          : "mt-4 grid gap-6 lg:grid-cols-[260px_1fr]"
+      }
+    >
+      {!blank ? (
+        // Sticky on lg+ — same rationale as BhandaraReviewForm above.
+        <div className="lg:sticky lg:top-20 lg:self-start">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={scan.photoUrl}
+            alt="uploaded spot"
+            className="w-full aspect-square object-cover bg-[#080A10]/70 rounded-2xl border border-cyan-400/25"
+          />
+          <p className="mt-2 text-[11px] text-cream-50/65 break-all">{scan.photoUrl}</p>
+          {scan.geocode ? (
+            <div className="mt-3 rounded-xl border border-leaf-400/35 bg-leaf-400/[0.08] p-3 text-xs">
+              <p className="font-semibold text-leaf-300">
+                📍 Geocoded ({scan.geocode.source})
+              </p>
+              <p className="mt-1 text-cream-50/65 break-words">{scan.geocode.matched}</p>
+            </div>
+          ) : (
+            <div className="mt-3 rounded-xl border border-alert-500/40 bg-alert-500/[0.10] p-3 text-xs">
+              <p className="font-semibold text-alert-300">No geocode hit</p>
+              <p className="mt-1 text-cream-50/65">
+                Drop a pin manually, type lat/lng below.
+              </p>
+            </div>
+          )}
+          {e.notes ? (
+            <p className="mt-3 text-xs text-cream-50/65 italic">📝 {e.notes}</p>
+          ) : null}
+        </div>
+      ) : null}
 
-      <div className="rounded-2xl border border-gold-500/40 bg-cream-50 p-5 sm:p-6">
-        <h2 className="font-fraunces text-xl text-sindoor-700">
-          Review &amp; publish spot
+      <div className="rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/70 backdrop-blur-sm p-5 sm:p-6">
+        <h2 className="font-fraunces text-xl text-cream-50">
+          {blank ? "New spot" : "Review & publish spot"}
         </h2>
-        <p className="text-xs text-ink-600 mt-1">
-          Live spots auto-expire after 8 hours. Photo + lat/lng required.
+        <p className="text-xs text-cream-50/65 mt-1">
+          {blank
+            ? "Type the details of a live spot you saw on the field. Lat/lng is required; everything else is optional. Spot auto-expires 8 hours after the time you publish."
+            : "Live spots auto-expire after 8 hours. Photo + lat/lng required."}
         </p>
 
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -1123,6 +1241,7 @@ function SpotReviewForm({
           />
           <Field label="Latitude" value={lat} onChange={setLat} required mono />
           <Field label="Longitude" value={lng} onChange={setLng} required mono />
+          <MapPreviewLink lat={lat} lng={lng} />
           <Field
             label="Reporter name (optional)"
             value={reporterName}
@@ -1150,7 +1269,7 @@ function SpotReviewForm({
                 reporterName: reporterName || undefined,
               })
             }
-            className="inline-flex items-center gap-2 rounded-full bg-leaf-600 hover:bg-leaf-600/90 disabled:opacity-60 text-cream-50 font-medium px-5 py-2 text-sm shadow-warm"
+            className="inline-flex items-center gap-2 rounded-lg bg-leaf-600 hover:bg-leaf-500 disabled:opacity-60 text-cream-50 font-medium border border-leaf-400/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(93,174,93,0.55)] transition-colors"
           >
             {publishing ? (
               <>
@@ -1158,15 +1277,18 @@ function SpotReviewForm({
                 Publishing…
               </>
             ) : (
-              <>✓ Publish spot</>
+              <>
+                <IconCheck size={14} />
+                <span>Publish spot</span>
+              </>
             )}
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="text-sm text-ink-600 hover:text-sindoor-700 underline decoration-dotted underline-offset-4"
+            className="text-sm text-cream-50/65 hover:text-cyan-200 underline decoration-dotted underline-offset-4"
           >
-            Discard &amp; scan another
+            {blank ? "Discard" : "Discard & scan another"}
           </button>
         </div>
       </div>
@@ -1178,6 +1300,10 @@ function SpotReviewForm({
 // Small primitives
 // ────────────────────────────────────────────────────────────────────
 
+// Field + SelectField match the AI/ops palette used by /admin/edit
+// (MapLocationInput, etc.) — cyan-tinted dark inputs, cyan-300/70
+// uppercase mono labels. Re-skinned in one place; every form that
+// uses these picks up the dark theme automatically.
 function Field({
   label,
   value,
@@ -1195,12 +1321,12 @@ function Field({
   wide?: boolean;
   mono?: boolean;
 }) {
-  const cls = `mt-1 w-full rounded-lg border border-gold-500/50 bg-white px-3 py-2 text-sm ${
-    mono ? "font-numerals tabular-nums" : ""
-  } focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600`;
+  const cls = `mt-1.5 w-full rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-sm text-cream-50 placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors ${
+    mono ? "font-mono tabular-nums" : ""
+  }`;
   return (
     <label className={`block ${wide ? "sm:col-span-2" : ""}`}>
-      <span className="text-[11px] uppercase tracking-wider text-ink-600">
+      <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
         {label}
         {required ? " *" : ""}
       </span>
@@ -1238,14 +1364,14 @@ function SelectField({
 }) {
   return (
     <label className="block">
-      <span className="text-[11px] uppercase tracking-wider text-ink-600">
+      <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
         {label}
         {required ? " *" : ""}
       </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-lg border border-gold-500/50 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+        className="mt-1.5 w-full rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-sm text-cream-50 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
       >
         <option value="">Select…</option>
         {options.map((o) => (
@@ -1255,6 +1381,43 @@ function SelectField({
         ))}
       </select>
     </label>
+  );
+}
+
+/** Renders a "Preview on Google Maps ↗" link below the lat/lng pair
+ *  whenever both parse to valid finite numbers (and aren't the 0,0
+ *  null-island placeholder). Doubles as a sanity-check for Lucknow:
+ *  when the coords sit outside the bbox we colour the row sindoor to
+ *  flag the operator before publish. Spans the full row inside the
+ *  parent 2-col grid via sm:col-span-2 so it sits cleanly under the
+ *  inputs without re-flowing them. */
+function MapPreviewLink({ lat, lng }: { lat: string; lng: string }) {
+  const latNum = parseFloat(lat);
+  const lngNum = parseFloat(lng);
+  const hasCoords =
+    Number.isFinite(latNum) &&
+    Number.isFinite(lngNum) &&
+    (latNum !== 0 || lngNum !== 0);
+  if (!hasCoords) return null;
+  const inLucknow =
+    latNum >= 26.6 && latNum <= 27.0 && lngNum >= 80.7 && lngNum <= 81.2;
+  return (
+    <p
+      className={[
+        "sm:col-span-2 -mt-2 text-xs font-mono",
+        inLucknow ? "text-leaf-300" : "text-sindoor-300",
+      ].join(" ")}
+    >
+      {inLucknow ? "✓ Coords look correct for Lucknow." : "⚠ Coords sit outside the Lucknow bbox."}{" "}
+      <a
+        href={`https://www.google.com/maps?q=${latNum},${lngNum}&z=18`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline decoration-dotted underline-offset-4 hover:text-cream-50"
+      >
+        Preview on Google Maps ↗
+      </a>
+    </p>
   );
 }
 

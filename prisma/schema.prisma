@@ -430,8 +430,130 @@ model GalleryPhoto {
   status       String   @default("VISIBLE")
   createdAt    DateTime @default(now())
   uploadedBy   String? // free-form note like "Prateek", "Akanksha"
+  // Free-form tags for the Content Hub Images tab. Conventions:
+  //   "ig" | "wa" | "reddit" | "press" | "pamphlet" | "brand"
+  //   | "community" | "ai-generated"
+  // Empty = legacy photo (homepage gallery only); populated = the
+  // image ALSO surfaces in /admin/content under the Images tab,
+  // filterable by tag. Same row can carry multiple tags.
+  tags         String[] @default([])
 
   @@index([status, displayOrder, createdAt])
+  @@index([tags])
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Content Hub — pitches, templates, strategy docs
+// ──────────────────────────────────────────────────────────────────
+//
+// Centralised store for everything the admin sends OUT to the world:
+// sponsor pitches, influencer outreach, press release drafts,
+// WhatsApp / email templates for organisers / volunteers / donors,
+// strategy memos, prompts library (the LLM-runnable stuff lives in
+// the Prompt model below). Rendered + edited via /admin/content.
+//
+// Seeded one-shot from /notes/*.md files via importNotesAction.
+// After seed, the markdown source is no longer canonical — the DB
+// row is. Re-running import is idempotent (skips on duplicate title).
+model Content {
+  id          String   @id @default(cuid())
+  // Drives which tab the card appears in inside /admin/content.
+  //   PITCH      — pitch decks / cold outreach (sponsor, influencer, press)
+  //   TEMPLATE   — copy-paste templates (WhatsApp / email / IG caption)
+  //   STRATEGY   — long-form planning docs (off-season strategy, personas)
+  //   OTHER      — catch-all
+  kind        String   @default("PITCH")
+  // Fine-grained audience — drives filter chips inside each tab.
+  //   SPONSOR | INFLUENCER | PRESS | ORGANISER | VOLUNTEER | DONOR
+  //   | COMMUNITY | INTERNAL | OTHER
+  audience    String   @default("OTHER")
+  // Distribution channel — drives a second filter dimension.
+  //   INSTAGRAM | WHATSAPP | EMAIL | REDDIT | PRESS | INTERNAL | OTHER
+  channel     String   @default("OTHER")
+  // "en" | "hi" | "bilingual" — bilingual carries both in the body
+  // separated by a `---` rule.
+  language    String   @default("en")
+  // Card title (shown in list).
+  title       String
+  // Markdown body. Editor is a plain <textarea>; viewer renders with
+  // a minimal MD→HTML pipeline server-side (no client JS needed).
+  // Copy-to-clipboard ships the plain markdown verbatim.
+  body        String
+  // One-line summary for the card preview / list item subtitle.
+  summary     String?
+  // Free-form tags for ad-hoc grouping ("jyeshtha", "off-season",
+  // "tier-1-sponsor", etc.). Postgres native array — Prisma 5+ is
+  // happy with this on PG, we don't need the JSON-in-string trick
+  // older models used for SQLite parity.
+  tags        String[] @default([])
+  // Where this row came from — usually a `notes/NN-slug.md` filename
+  // from the import seed. NULL for hand-written entries.
+  source      String?
+  // ACTIVE   — visible in the hub
+  // ARCHIVED — hidden but kept for history (admin can flip back)
+  status      String   @default("ACTIVE")
+  // Free-form "last edited by" attribution. Defaults to "Prateek"
+  // since this is a single-operator tool today.
+  lastEditor  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, kind])
+  @@index([kind, audience, channel])
+  @@index([updatedAt])
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Prompts library — runnable AI prompts
+// ──────────────────────────────────────────────────────────────────
+//
+// Saved prompts that the admin can "Run with ChatGPT / Gemini" from
+// the dashboard. Each row stores the prompt + the last run's output
+// so the admin can re-read recent results without paying for another
+// API call. Variables in the prompt body use {{double-brace}} syntax
+// and the runner UI generates a text input per unique variable.
+//
+// Example body:
+//   "Draft a WhatsApp message to {{name}} about organising a bhandara
+//    in {{area}}. Mention {{detail}}. Sign as Prateek."
+//
+// Wired to OpenAI by default (gpt-4o-mini) with an option to override
+// to gpt-4o per run. Gemini fallback uses the existing
+// src/lib/vision.ts integration. See src/lib/openai.ts for the runner.
+model Prompt {
+  id            String    @id @default(cuid())
+  title         String
+  // The prompt template. May contain {{name}}-style placeholders.
+  body          String
+  // Optional system instruction prepended when calling the LLM.
+  // Useful for setting tone ("You are Prateek, a community organiser…").
+  systemPrompt  String?
+  // Default model string passed to the OpenAI / Gemini SDK.
+  //   "gpt-4o-mini" (cheap, fast)
+  //   "gpt-4o" (smart, pricier)
+  //   "gemini-2.5-flash" (free credits)
+  defaultModel  String    @default("gpt-4o-mini")
+  // Free-form tags ("outreach", "instagram-caption", "press-pitch",
+  // "fundraising") for filter chips.
+  tags          String[]  @default([])
+  // Cache of the most recent run for quick re-display. We only store
+  // the last run (not the full history) to keep this table small;
+  // run-history can be added later if it becomes useful.
+  lastRunAt     DateTime?
+  lastRunModel  String?
+  // Truncated to 8000 chars before insert (large GPT-4 responses
+  // can run longer; admin can re-run if they need the full output).
+  lastRunOutput String?
+  // The variables substituted in the last run (JSON-encoded). Lets
+  // the UI pre-fill the inputs when the admin re-opens the prompt.
+  lastRunVars   String?
+  // ACTIVE | ARCHIVED — same convention as Content.
+  status        String    @default("ACTIVE")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([status, updatedAt])
+  @@index([tags])
 }
 
 /// WhatsApp text-message mentions of a bhandara (askings + answers +
@@ -523,5 +645,64 @@ model BhandaraMention {
 
   @@index([status, expiresAt])
   @@index([status, expiresAt, lat, lng])
+  @@index([createdAt])
+}
+
+/// Audit log for every WhatsApp bot ingestion attempt that hits
+/// /api/bot/ingest. One row per inbound image POST, regardless of
+/// outcome — success (Bhandara/Spot created), duplicate (hash or
+/// content), ignored (Gemini classified as non-bhandara), or failed
+/// (network / classify / extract / upload errors). Lets the admin
+/// answer "why didn't this poster from group X show up?" without
+/// re-posting the image, and without grepping bot stdout.
+///
+/// Keep it lean — no image bytes, no full extracted JSON. Just the
+/// signal-bearing fields: who sent it, message id, classification
+/// outcome, dedup reason, the resulting Bhandara/Spot row id (when
+/// one was created OR matched against), a short human note for the
+/// "why was this dropped" cases, and the SHA-256 hash prefix we
+/// computed (so the operator can correlate with the [bot:…] tag
+/// embedded in description / caption).
+///
+/// Read by /admin/bot-log; written by /api/bot/ingest at every exit.
+model BotIngestionLog {
+  id            String   @id @default(cuid())
+  // Inbound provenance from the bot agent.
+  senderName    String?
+  msgId         String?
+  groupName     String?
+  // What we did with this request.
+  //   SUCCESS_BHANDARA      — created a PENDING Bhandara
+  //   SUCCESS_SPOT          — created an APPROVED Spot
+  //   DUPLICATE_HASH        — exact byte-hash already ingested
+  //   DUPLICATE_CONTENT     — same name + date already on file
+  //   IGNORED_NON_BHANDARA  — Gemini said off-topic
+  //   FAILED_CLASSIFY       — Gemini classify call errored
+  //   FAILED_EXTRACT        — Gemini extract call errored
+  //   FAILED_UPLOAD         — R2 + Supabase both failed
+  //   FAILED_OTHER          — uncaught path / unknown error
+  outcome       String
+  // Pointer to the Bhandara / Spot row that was created OR that the
+  // dedup matched. Lets the admin click straight to the canonical
+  // row from the log. NULL when no row exists yet (failed /
+  // ignored paths).
+  resultRowId   String?
+  resultRowKind String? // "bhandara" | "spot"
+  // Short human-readable note. e.g. "Gemini said 'other'",
+  // "Same name + 2026-05-26 as cmpxyz", "R2 + Supabase both 500".
+  reason        String?
+  // SHA-256 hash prefix of the normalised WebP bytes (same value
+  // embedded into the [bot:…] tag on the canonical row). Powers
+  // cross-correlation when the operator is staring at a Bhandara
+  // row in the queue and wants to see which forwards produced it.
+  imageHash     String?
+  // Best-effort extracted name (when extraction got that far).
+  // Helps the admin scan the log without opening each row.
+  extractedName String?
+  createdAt     DateTime @default(now())
+
+  @@index([outcome, createdAt])
+  @@index([msgId])
+  @@index([imageHash])
   @@index([createdAt])
 }

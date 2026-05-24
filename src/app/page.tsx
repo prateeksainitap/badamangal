@@ -393,6 +393,13 @@ export default async function HomePage() {
     // filter to ones with a real photo + non-zero coords (the same
     // filter the API endpoint applies — keeps SSR + poll responses
     // identical in shape).
+    //
+    // STRICT WHATSAPP-ONLY: only bot-ingested spots (caption carries
+    // the `[bot:…]` provenance tag) belong in the live chat. User-
+    // submitted spots via /spot or admin-scan uploads still live in
+    // the homepage gallery + map heatmap, but the chat stream itself
+    // is reserved for things the WhatsApp community actually posted.
+    // Mirror of the same filter on /api/mentions/feed (2026-05).
     ...spotRecords
       .filter(
         (s) =>
@@ -401,7 +408,9 @@ export default async function HomePage() {
           // 0,0 because WhatsApp strips EXIF GPS, and the chat panel
           // should still show the photo. The heatmap filters 0,0
           // separately so no ghost pin lands on null island.
-          s.photoUrl && s.expiresAt > new Date(),
+          s.photoUrl &&
+          s.expiresAt > new Date() &&
+          (s.caption ?? "").includes("[bot:"),
       )
       .map((s): ChatterMention => {
         // Parse extra photo URLs (JSON-encoded string column) so the

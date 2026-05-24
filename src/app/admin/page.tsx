@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/admin-auth";
 import { cache } from "react";
 import { prisma, toBhandara } from "@/lib/db";
@@ -118,6 +119,15 @@ export default async function AdminPage({
   if (!(await isAdmin())) {
     return <LoginScreen error={Boolean(sp.error)} />;
   }
+
+  // Legacy /admin queue was replaced by the dedicated route surfaces
+  // (/admin/bhandaras, /admin/spots, /admin/mentions). Any
+  // authenticated visit to /admin now redirects to the new
+  // dashboard. The legacy SpotsView / WhatsAppBotView / bhandara
+  // queue rendering below is kept compiled but unreachable; it can
+  // be deleted once we're confident no bookmarks still hit the old
+  // ?type= URLs without being caught by the prior redirects.
+  redirect("/admin/home");
 
   // Top-level mode toggle: bhandara (default) / spot / whatsapp bot.
   // Each mode has its own status tabs + counts; the search bar adapts
@@ -549,7 +559,7 @@ export default async function AdminPage({
                     {isFromBot ? (
                       <Link
                         href={`/admin/edit/${b.id}`}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-leaf-600 hover:bg-leaf-500 text-cream-50 font-medium border border-leaf-400/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(93,174,93,0.55)] transition-colors"
                       >
                         ✎ Edit &amp; publish
                       </Link>
@@ -1757,7 +1767,7 @@ function BotBhandaraCard({ b }: { b: BotBhandara }) {
           <>
             <Link
               href={`/admin/edit/${b.id}`}
-              className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-leaf-600 hover:bg-leaf-500 text-cream-50 font-medium border border-leaf-400/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(93,174,93,0.55)] transition-colors"
             >
               ✎ Edit &amp; publish
             </Link>
@@ -1938,7 +1948,7 @@ function BotSpotCard({ s }: { s: BotSpot }) {
         {s.status !== "REJECTED" ? (
           <Link
             href={`/admin/edit-spot/${s.id}`}
-            className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-leaf-600 hover:bg-leaf-500 text-cream-50 font-medium border border-leaf-400/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(93,174,93,0.55)] transition-colors"
           >
             ✎ Edit &amp; approve
           </Link>
@@ -1947,7 +1957,7 @@ function BotSpotCard({ s }: { s: BotSpot }) {
           <>
             <Link
               href={`/admin/edit-spot/${s.id}`}
-              className="inline-flex items-center gap-1.5 rounded-full border-2 border-leaf-600 text-leaf-600 hover:bg-leaf-600 hover:text-cream-50 font-medium px-4 py-2 text-sm"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-leaf-500/[0.08] border border-leaf-400/30 text-leaf-300 hover:bg-leaf-500/[0.16] hover:border-leaf-400/55 hover:text-leaf-200 font-medium px-4 py-2 text-sm transition-colors"
             >
               ✎ Edit &amp; re-approve
             </Link>
@@ -2017,20 +2027,64 @@ function Row({
 }
 
 function LoginScreen({ error }: { error: boolean }) {
-  // The form fields (with show/hide password + submission spinner)
-  // live in <AdminLoginForm />, a client component using
-  // useFormStatus() to render a "Signing in…" state while
-  // loginAction does its server-side work.
+  // Dark AI/ops console framing for the sign-in card. The form
+  // fields (with show/hide toggle + submission spinner) still live
+  // in <AdminLoginForm />, only the surrounding shell is restyled.
   return (
-    <div className="mx-auto max-w-md px-4 py-20">
-      <div className="rounded-3xl border border-gold-500/40 bg-cream-50 p-8 text-center">
-        <p className="font-cormorant text-sm uppercase tracking-[0.25em] text-gold-500">
-          Admin
-        </p>
-        <h1 className="mt-2 font-fraunces text-2xl text-sindoor-700">
-          Sign in to moderate
-        </h1>
-        <AdminLoginForm error={error} />
+    <div
+      className="min-h-dvh flex items-center justify-center px-4 py-12 relative overflow-hidden"
+      style={{ backgroundColor: "#080A10" }}
+    >
+      {/* Mesh-gradient backdrop matching the AdminShell. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 60% at 92% -5%, rgba(34, 211, 238, 0.16) 0%, transparent 55%), radial-gradient(ellipse 60% 50% at -5% 105%, rgba(139, 92, 246, 0.18) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 50% 50%, rgba(242,148,76,0.05) 0%, transparent 70%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 admin-data-grid opacity-50"
+      />
+      <div className="relative w-full max-w-md">
+        <div className="rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-md p-8 text-center admin-card-glow">
+          <div className="inline-flex items-center justify-center gap-2 mb-4">
+            <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-saffron-500 to-saffron-600 flex items-center justify-center shadow-[0_4px_18px_-4px_rgba(242,148,76,0.55)] overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/brand/Final-Logo-BM-white.svg"
+                alt="Bada Mangal"
+                width="40"
+                height="40"
+                className="w-9 h-9 drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]"
+              />
+              <span
+                aria-hidden
+                className="absolute -inset-1 rounded-2xl ring-1 ring-cyan-400/30"
+              />
+            </div>
+          </div>
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-cyan-400/[0.06] border border-cyan-400/20 px-2.5 py-1 mb-3 font-mono text-[10px] uppercase tracking-[0.18em] text-cyan-300/85">
+            <span aria-hidden className="relative inline-flex h-1.5 w-1.5">
+              <span className="absolute inset-0 rounded-full bg-cyan-400/70 motion-safe:animate-ping" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-400" />
+            </span>
+            ops.console
+          </div>
+          <h1 className="font-fraunces text-2xl text-cream-50 leading-tight">
+            Sign in to{" "}
+            <span className="bg-gradient-to-r from-cyan-300 via-cyan-200 to-violet-300 bg-clip-text text-transparent">
+              moderate
+            </span>
+          </h1>
+          <p className="mt-2 text-xs font-mono text-cream-50/55">
+            <span className="text-cyan-300/85">$</span>{" "}
+            authenticate · bhandara.network
+          </p>
+          <AdminLoginForm error={error} />
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { IconCheck } from "@/components/admin/AdminIcons";
 
 /**
  * Admin-only coordinate picker. Wraps the existing `lat` and `lng`
@@ -36,6 +37,14 @@ type Props = {
    *  Default false keeps the bhandara edit form's existing strict
    *  behavior unchanged. */
   optional?: boolean;
+  /** When the server pre-filled the lat/lng on load (typically when
+   *  the row was at 0,0 and we resolved a candidate via the geocode
+   *  fallback chain — organizer / landmark / venue / etc.), pass the
+   *  candidate tag here (e.g. "organizer+area", "landmark", "venue").
+   *  We surface it as a small saffron "auto-resolved from X" notice
+   *  so the operator sees that the pre-fill was a best-guess (not a
+   *  human-confirmed pin) and can sanity-check before saving. */
+  autoResolvedFrom?: string;
 };
 
 const LKO_BBOX = {
@@ -54,7 +63,12 @@ function inLucknow(lat: number, lng: number): boolean {
   );
 }
 
-export default function MapLocationInput({ initialLat, initialLng, optional = false }: Props) {
+export default function MapLocationInput({
+  initialLat,
+  initialLng,
+  optional = false,
+  autoResolvedFrom,
+}: Props) {
   const [lat, setLat] = useState<string>(String(initialLat));
   const [lng, setLng] = useState<string>(String(initialLng));
   const [paste, setPaste] = useState<string>("");
@@ -63,7 +77,26 @@ export default function MapLocationInput({ initialLat, initialLng, optional = fa
     | { kind: "idle" }
     | { kind: "ok"; source: string; inLucknow: boolean }
     | { kind: "err"; message: string }
-  >({ kind: "idle" });
+  >(
+    // Seed the feedback strip with the server-side auto-resolve hit
+    // so the operator sees "auto-resolved from organizer+area" on
+    // first paint, without having to click Resolve. The user can
+    // overwrite by pasting a real Maps link if the auto-guess is
+    // wrong — the same flow that handles the manual case.
+    autoResolvedFrom
+      ? {
+          kind: "ok",
+          source: `auto / ${autoResolvedFrom}`,
+          inLucknow:
+            Number.isFinite(initialLat) &&
+            Number.isFinite(initialLng) &&
+            initialLat >= 26.6 &&
+            initialLat <= 27.0 &&
+            initialLng >= 80.7 &&
+            initialLng <= 81.2,
+        }
+      : { kind: "idle" },
+  );
 
   const latNum = Number(lat);
   const lngNum = Number(lng);
@@ -124,7 +157,7 @@ export default function MapLocationInput({ initialLat, initialLng, optional = fa
     <div className="grid gap-3">
       {/* Paste-anything input */}
       <label className="grid gap-1.5">
-        <span className="text-sm text-ink-600">
+        <span className="text-sm text-cream-50/65">
           Paste a Google Maps link, Plus Code, or coords
         </span>
         <div className="flex gap-2">
@@ -139,13 +172,13 @@ export default function MapLocationInput({ initialLat, initialLng, optional = fa
               }
             }}
             placeholder="https://maps.app.goo.gl/…  ·  VXR6+QP Lucknow  ·  26.89,80.96"
-            className="flex-1 rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+            className="flex-1 rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
           />
           <button
             type="button"
             onClick={() => void resolve()}
             disabled={resolving || !paste.trim()}
-            className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-cream-50 font-mono font-semibold border border-cyan-300/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {resolving ? (
               <>
@@ -158,8 +191,9 @@ export default function MapLocationInput({ initialLat, initialLng, optional = fa
           </button>
         </div>
         {feedback.kind === "ok" ? (
-          <span className="text-xs text-leaf-600">
-            ✓ Coordinates filled from {feedback.source.replace(/_/g, " ")}.
+          <span className="text-xs text-leaf-400 inline-flex items-center gap-1.5">
+            <IconCheck size={12} />
+            <span>Coordinates filled from {feedback.source.replace(/_/g, " ")}.</span>
             {!feedback.inLucknow ? (
               <span className="ml-1 text-alert-500">
                 ⚠ Outside Lucknow bbox, double-check before saving.
@@ -169,7 +203,7 @@ export default function MapLocationInput({ initialLat, initialLng, optional = fa
         ) : feedback.kind === "err" ? (
           <span className="text-xs text-alert-500">{feedback.message}</span>
         ) : (
-          <span className="text-xs text-ink-600">
+          <span className="text-xs text-cream-50/55 font-mono">
             On Google Maps: search the venue → Share → Copy link → paste here.
           </span>
         )}
@@ -180,12 +214,12 @@ export default function MapLocationInput({ initialLat, initialLng, optional = fa
           for admins who already have coordinates handy. */}
       <div className="grid sm:grid-cols-2 gap-4">
         <label className="grid gap-1.5">
-          <span className="text-sm text-ink-600">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
             Latitude{" "}
             {optional ? (
-              <span className="text-ink-600/70">(optional)</span>
+              <span className="text-cream-50/50">(optional)</span>
             ) : (
-              <span className="text-sindoor-700">*</span>
+              <span className="text-sindoor-300">*</span>
             )}
           </span>
           <input
@@ -195,17 +229,17 @@ export default function MapLocationInput({ initialLat, initialLng, optional = fa
             required={!optional}
             value={lat}
             onChange={(e) => setLat(e.target.value)}
-            className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+            className="rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
           />
-          <span className="text-xs text-ink-600">Lucknow ≈ 26.6 – 27.0</span>
+          <span className="text-xs text-cream-50/55 font-mono">Lucknow ≈ 26.6 – 27.0</span>
         </label>
         <label className="grid gap-1.5">
-          <span className="text-sm text-ink-600">
+          <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
             Longitude{" "}
             {optional ? (
-              <span className="text-ink-600/70">(optional)</span>
+              <span className="text-cream-50/50">(optional)</span>
             ) : (
-              <span className="text-sindoor-700">*</span>
+              <span className="text-sindoor-300">*</span>
             )}
           </span>
           <input
@@ -215,9 +249,9 @@ export default function MapLocationInput({ initialLat, initialLng, optional = fa
             required={!optional}
             value={lng}
             onChange={(e) => setLng(e.target.value)}
-            className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+            className="rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
           />
-          <span className="text-xs text-ink-600">Lucknow ≈ 80.7 – 81.2</span>
+          <span className="text-xs text-cream-50/55 font-mono">Lucknow ≈ 80.7 – 81.2</span>
         </label>
       </div>
 
@@ -226,13 +260,14 @@ export default function MapLocationInput({ initialLat, initialLng, optional = fa
           pin on the public map) BEFORE the admin clicks Save. */}
       {hasCoords ? (
         coordsInLucknow ? (
-          <p className="text-xs text-leaf-600">
-            ✓ Coords look correct for Lucknow.{" "}
+          <p className="text-xs text-leaf-400 inline-flex items-center gap-1.5">
+            <IconCheck size={12} />
+            <span>Coords look correct for Lucknow.</span>{" "}
             <a
               href={`https://www.google.com/maps?q=${latNum},${lngNum}&z=18`}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline decoration-dotted underline-offset-4 hover:text-leaf-600/80"
+              className="underline decoration-dotted underline-offset-4 hover:text-leaf-400/80"
             >
               Preview on Google Maps ↗
             </a>

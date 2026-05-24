@@ -1,54 +1,52 @@
-/**
- * /admin/volunteer-submissions, moderation queue for the volunteer
- * programme.
- *
- * One row per VolunteerSubmission. Shows: volunteer code + name,
- * bhandara fields, photo+video preview grid, GPS pin (with distance
- * from address if both present), and 5 action buttons:
- *   APPROVE (₹50 + creates Bhandara+Spot)
- *   PARTIAL (₹25 + creates Bhandara+Spot)
- *   REJECT  (₹0)
- *   DUPE    (₹0, flagged)
- *   REOPEN  (flip back to NEW from any terminal status)
- *
- * Tabs: NEW (default) · APPROVED · PARTIAL · REJECTED · DUPLICATE · ALL
- *
- * Server-rendered with `dynamic = "force-dynamic"` so admins always
- * see the latest queue (no ISR staleness, submissions are bursty
- * around Bada Mangal mornings).
- */
-import { notFound, redirect } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import {
-  approveVolunteerSubmissionAction,
-  partialVolunteerSubmissionAction,
-  rejectVolunteerSubmissionAction,
-  markVolunteerSubmissionDuplicateAction,
-  reopenVolunteerSubmissionAction,
-  markAllVolunteerSubmissionsPaidAction,
-} from "@/app/admin/actions";
-import { submissionStatusLabel } from "@/lib/volunteer";
 import { isAdmin } from "@/lib/admin-auth";
+import { markAllVolunteerSubmissionsPaidAction } from "@/app/admin/actions";
+import AdminShell from "@/components/admin/AdminShell";
+import { getAdminNavCounts } from "@/lib/admin-nav-counts";
+import BotHeartbeat from "@/components/admin/BotHeartbeat";
+import ModerationQueue, {
+  type QueueTab,
+} from "@/components/admin/ModerationQueue";
+import VolunteerSubmissionRow, {
+  type SubmissionRow,
+} from "@/components/admin/VolunteerSubmissionRow";
+import SubmitButton from "@/components/admin/SubmitButton";
+import { IconCheck } from "@/components/admin/AdminIcons";
+
+export const metadata: Metadata = {
+  title: "Volunteer submissions · Admin · Bada Mangal",
+  robots: { index: false, follow: false },
+};
 
 export const dynamic = "force-dynamic";
-// Admin auth check moved to @/lib/admin-auth, see import above.
-// Was a local reimplementation (one of 12 in the codebase); the
-// single source means future auth changes (session expiry,
-// HMAC signing, IP allowlist) are a one-file edit.
 
 type PageProps = {
   searchParams: Promise<{ status?: string; q?: string }>;
 };
 
-export default async function VolunteerSubmissionsPage({ searchParams }: PageProps) {
+const STATUS_KEYS = [
+  "NEW",
+  "APPROVED",
+  "PARTIAL",
+  "DUPLICATE",
+  "REJECTED",
+  "ALL",
+] as const;
+type StatusKey = (typeof STATUS_KEYS)[number];
+
+export default async function AdminVolunteerSubmissionsPage({
+  searchParams,
+}: PageProps) {
   if (!(await isAdmin())) redirect("/admin");
   const sp = await searchParams;
   const tab = (sp.status ?? "NEW").toUpperCase();
-  const allowedTabs = ["NEW", "APPROVED", "PARTIAL", "REJECTED", "DUPLICATE", "ALL"] as const;
-  if (!(allowedTabs as readonly string[]).includes(tab)) notFound();
+  if (!(STATUS_KEYS as readonly string[]).includes(tab)) notFound();
+  const activeTab = tab as StatusKey;
 
-  const where = tab === "ALL" ? {} : { status: tab };
+  const where = activeTab === "ALL" ? {} : { status: activeTab };
 
   const [rows, counts, unpaidTotal] = await Promise.all([
     prisma.volunteerSubmission.findMany({
@@ -66,10 +64,7 @@ export default async function VolunteerSubmissionsPage({ searchParams }: PagePro
       _count: { _all: true },
     }),
     prisma.volunteerSubmission.aggregate({
-      where: {
-        status: { in: ["APPROVED", "PARTIAL"] },
-        paidAt: null,
-      },
+      where: { status: { in: ["APPROVED", "PARTIAL"] }, paidAt: null },
       _sum: { payoutAmount: true },
     }),
   ]);
@@ -77,351 +72,113 @@ export default async function VolunteerSubmissionsPage({ searchParams }: PagePro
   const countByStatus = Object.fromEntries(
     counts.map((c) => [c.status, c._count._all]),
   ) as Record<string, number>;
+  const totalAll = Object.values(countByStatus).reduce((a, b) => a + b, 0);
   const totalUnpaid = unpaidTotal._sum.payoutAmount ?? 0;
 
-  return (
-    <div className="mx-auto max-w-5xl px-4 sm:px-6 pb-24">
-      <header className="pt-8 pb-4 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-ink-600">Moderation</p>
-          <h1 className="font-fraunces text-3xl text-sindoor-700 mt-1">
-            Volunteer submissions
-          </h1>
-          <p className="mt-2 text-sm text-ink-600">
-            Review what volunteers submitted, approve to create a Bhandara + Spot
-            and unlock the ₹50 payout, or partial / reject as needed.
-          </p>
-        </div>
-        <Link
-          href="/admin"
-          className="text-sm rounded-full px-3 py-1.5 border border-gold-500/50 text-ink-900 hover:bg-cream-50"
-        >
-          ← Back to admin
-        </Link>
-      </header>
+  const tabs: QueueTab[] = [
+    { key: "NEW", label: "New", count: countByStatus.NEW ?? 0 },
+    { key: "APPROVED", label: "Approved", count: countByStatus.APPROVED ?? 0 },
+    { key: "PARTIAL", label: "Partial", count: countByStatus.PARTIAL ?? 0 },
+    { key: "DUPLICATE", label: "Duplicate", count: countByStatus.DUPLICATE ?? 0 },
+    { key: "REJECTED", label: "Rejected", count: countByStatus.REJECTED ?? 0 },
+    { key: "ALL", label: "All", count: totalAll },
+  ];
 
-      {/* Status tabs */}
-      <nav className="flex flex-wrap gap-2 mt-4">
-        {(["NEW", "APPROVED", "PARTIAL", "DUPLICATE", "REJECTED", "ALL"] as const).map(
-          (s) => {
-            const active = tab === s;
-            const n = s === "ALL" ? Object.values(countByStatus).reduce((a, b) => a + b, 0) : (countByStatus[s] ?? 0);
-            return (
-              <Link
-                key={s}
-                href={`?status=${s}`}
-                className={`text-sm rounded-full px-3 py-1.5 border transition-colors ${
-                  active
-                    ? "bg-saffron-600 border-saffron-600 text-cream-50"
-                    : "bg-white border-gold-500/50 text-ink-900 hover:bg-cream-50"
-                }`}
-              >
-                {s} {n > 0 ? <span className="ml-1 opacity-80">({n})</span> : null}
-              </Link>
-            );
-          },
-        )}
-      </nav>
-
-      {/* Payout summary + bulk-mark-paid */}
-      {totalUnpaid > 0 ? (
-        <div className="mt-4 rounded-2xl border border-saffron-600/40 bg-saffron-50 p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <p className="text-sm text-ink-900">
-              <strong>₹{totalUnpaid}</strong> owed to volunteers across all approved + partial submissions.
-            </p>
-            <p className="text-xs text-ink-600">
-              After you've bulk-paid via UPI in your banking app, click below to mark all as paid.
-            </p>
-          </div>
-          <form action={markAllVolunteerSubmissionsPaidAction}>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors"
-            >
-              ✓ Mark all paid
-            </button>
-          </form>
-        </div>
-      ) : null}
-
-      {/* Rows */}
-      <ul className="mt-6 grid gap-4">
-        {rows.length === 0 ? (
-          <li className="rounded-2xl border border-gold-500/40 bg-cream-50 p-8 text-center text-sm text-ink-600">
-            No submissions in this view.
-          </li>
-        ) : (
-          rows.map((r) => (
-            <SubmissionRow key={r.id} sub={r} />
-          ))
-        )}
-      </ul>
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────
-
-type SubmissionRowProps = {
-  sub: Awaited<ReturnType<typeof prisma.volunteerSubmission.findMany>>[number] & {
-    volunteer: { name: string; code: string | null; status: string; phone: string; upi: string };
-  };
-};
-
-function SubmissionRow({ sub }: SubmissionRowProps) {
-  const photoUrls = safeUrls(sub.photoUrls);
-  const videoUrls = safeUrls(sub.videoUrls);
-  const photoBundleOk = photoUrls.length >= 10;
-  const videoBundleOk = videoUrls.length >= 2;
-  const spotOk = Boolean(sub.spotPhotoUrl);
-  const fullBundle = photoBundleOk && videoBundleOk && spotOk;
-
-  const lbl = submissionStatusLabel(sub.status);
-  const created = new Date(sub.createdAt).toLocaleString("en-IN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-
-  // Approve/partial actions bound to id
-  const approve = approveVolunteerSubmissionAction.bind(null, sub.id);
-  const partial = partialVolunteerSubmissionAction.bind(null, sub.id);
-  const reject = rejectVolunteerSubmissionAction.bind(null, sub.id);
-  const dupe = markVolunteerSubmissionDuplicateAction.bind(null, sub.id);
-  const reopen = reopenVolunteerSubmissionAction.bind(null, sub.id);
-
-  const isTerminal = sub.status !== "NEW";
+  const totalInTab =
+    activeTab === "ALL"
+      ? totalAll
+      : (countByStatus[activeTab] ?? 0);
 
   return (
-    <li className="rounded-2xl border border-gold-500/40 bg-cream-50 p-4 sm:p-5">
-      {/* Header row: volunteer + status + payout */}
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <p className="text-sm text-ink-600">
-            <span className="font-fraunces text-base text-sindoor-700">{sub.bhandaraName}</span>
-            <span className="ml-2 text-ink-600">· {sub.area}</span>
-          </p>
-          <p className="text-xs text-ink-600 mt-0.5">
-            by{" "}
-            <Link
-              href={`/admin/volunteers#${sub.volunteer.code}`}
-              className="font-medium text-saffron-600 hover:underline"
-            >
-              {sub.volunteer.name}
-            </Link>{" "}
-            ({sub.volunteer.code}) · {created}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm">{lbl.emoji} {lbl.en}</span>
-          {sub.payoutAmount > 0 ? (
-            <span className="text-sm font-medium text-leaf-600">
-              ₹{sub.payoutAmount}
-              {sub.paidAt ? " · paid" : " · unpaid"}
-            </span>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Bundle status pills */}
-      <div className="mt-3 flex flex-wrap gap-2 text-xs">
-        <Pill ok={photoBundleOk} label={`📸 ${photoUrls.length}/10 photos`} />
-        <Pill ok={videoBundleOk} label={`🎥 ${videoUrls.length}/2 videos`} />
-        <Pill ok={spotOk} label="📍 spot photo" />
-        <Pill ok={Boolean(sub.gpsLat && sub.gpsLng)} label="🧭 GPS" />
-        {!fullBundle && sub.status === "NEW" ? (
-          <span className="px-2 py-0.5 rounded-full bg-saffron-50 text-ink-600">
-            partial bundle
-          </span>
-        ) : null}
-      </div>
-
-      {/* Details grid */}
-      <div className="mt-3 grid sm:grid-cols-2 gap-3 text-sm">
-        <Detail label="Address" value={sub.address} />
-        <Detail
-          label="Organizer"
-          value={
-            sub.organizerName
-              ? `${sub.organizerName}${sub.organizerPhone ? ` · ${sub.organizerPhone}` : ""}`
-              : "-"
-          }
-        />
-        <Detail label="Start time" value={sub.startTime ?? "-"} />
-        <Detail label="Menu" value={sub.menu ?? "-"} />
-        {sub.gpsLat && sub.gpsLng ? (
-          <Detail
-            label="GPS"
-            value={
-              <a
-                href={`https://www.google.com/maps?q=${sub.gpsLat},${sub.gpsLng}&z=18`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-saffron-600 hover:underline"
-              >
-                {sub.gpsLat.toFixed(5)}, {sub.gpsLng.toFixed(5)} ↗
-              </a>
-            }
-          />
-        ) : (
-          <Detail label="GPS" value="missing" />
-        )}
-        {sub.mapsUrl ? (
-          <Detail
-            label="Maps link"
-            value={
-              <a href={sub.mapsUrl} target="_blank" rel="noopener noreferrer" className="text-saffron-600 hover:underline">
-                Open ↗
-              </a>
-            }
-          />
-        ) : null}
-        {sub.volunteerNotes ? (
-          <Detail label="Volunteer notes" value={sub.volunteerNotes} />
-        ) : null}
-        {sub.resultingBhandaraId ? (
-          <Detail
-            label="Created Bhandara"
-            value={
-              <Link
-                href={`/admin/edit/${sub.resultingBhandaraId}`}
-                className="text-saffron-600 hover:underline"
-              >
-                Edit & publish →
-              </Link>
-            }
-          />
-        ) : null}
-      </div>
-
-      {/* Photo strip */}
-      {photoUrls.length > 0 ? (
-        <details className="mt-3 group">
-          <summary className="cursor-pointer text-sm text-ink-600 hover:text-saffron-600">
-            📸 Show {photoUrls.length} photos
-          </summary>
-          <ul className="mt-2 grid grid-cols-5 sm:grid-cols-10 gap-1">
-            {photoUrls.map((url) => (
-              <li key={url} className="aspect-square rounded border border-gold-500/40 overflow-hidden bg-cream-50">
-                <a href={url} target="_blank" rel="noopener noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt="" loading="lazy" className="w-full h-full object-cover" />
-                </a>
-              </li>
-            ))}
-          </ul>
-        </details>
-      ) : null}
-
-      {/* Spot + videos */}
-      {(sub.spotPhotoUrl || videoUrls.length > 0) ? (
-        <div className="mt-3 grid sm:grid-cols-3 gap-2">
-          {sub.spotPhotoUrl ? (
-            <a
-              href={sub.spotPhotoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block rounded border border-gold-500/40 overflow-hidden bg-cream-50"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={sub.spotPhotoUrl} alt="spot" className="w-full h-24 object-cover" />
-              <p className="text-xs text-ink-600 text-center py-1">📍 spot photo</p>
-            </a>
-          ) : null}
-          {videoUrls.map((url) => (
-            <video
-              key={url}
-              src={url}
-              controls
-              preload="metadata"
-              className="w-full h-24 rounded border border-gold-500/40 bg-cream-50 object-contain"
-            />
-          ))}
-        </div>
-      ) : null}
-
-      {/* Action buttons */}
-      <div className="mt-4 flex flex-wrap gap-2">
-        {!isTerminal ? (
+    <AdminShell navCounts={await getAdminNavCounts()} botHeartbeat={<BotHeartbeat />}>
+      <ModerationQueue
+        eyebrow="Volunteers · Submissions"
+        title="Volunteer submissions"
+        subtitle="Review what volunteers submitted, approve to create a Bhandara + Spot and unlock the ₹50 payout."
+        primaryAction={
           <>
-            <form action={approve}>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-1.5 rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors"
-              >
-                ✅ Approve · ₹50
-              </button>
-            </form>
-            <form action={partial}>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors"
-              >
-                🟡 Partial · ₹25
-              </button>
-            </form>
-            <form action={dupe}>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-1.5 rounded-full border border-gold-500/60 bg-white hover:bg-cream-50 text-ink-900 font-medium px-4 py-2 text-sm transition-colors"
-              >
-                ♻️ Duplicate
-              </button>
-            </form>
-            <form action={reject}>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-1.5 rounded-full border border-alert-500/40 text-alert-500 hover:bg-alert-500/10 font-medium px-4 py-2 text-sm transition-colors"
-              >
-                ❌ Reject
-              </button>
-            </form>
-          </>
-        ) : (
-          <form action={reopen}>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 rounded-full border border-gold-500/60 bg-white hover:bg-cream-50 text-ink-900 font-medium px-3 py-1.5 text-sm transition-colors"
+            <Link
+              href="/admin/volunteers"
+              prefetch={false}
+              className="inline-flex items-center gap-1.5 rounded-full border border-cream-50/15 hover:border-cream-50/30 hover:bg-cream-50/[0.05] px-3.5 py-2 text-sm text-cream-50/75 hover:text-cream-50 transition-colors"
             >
-              ↺ Reopen for review
-            </button>
-          </form>
+              Volunteers registry
+            </Link>
+            <Link
+              href="/admin/home"
+              prefetch={false}
+              className="inline-flex items-center gap-1.5 rounded-full border border-cream-50/15 hover:border-cream-50/30 hover:bg-cream-50/[0.05] px-3.5 py-2 text-sm text-cream-50/75 hover:text-cream-50 transition-colors"
+            >
+              ← Dashboard
+            </Link>
+          </>
+        }
+        tabs={tabs}
+        activeTab={activeTab}
+        showSearch={false}
+        shownCount={rows.length}
+        totalInTab={totalInTab}
+      >
+        {/* Payout summary banner */}
+        {totalUnpaid > 0 ? (
+          <div className="mb-4 rounded-2xl border border-saffron-500/40 bg-saffron-500/[0.06] backdrop-blur-sm p-4 flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm text-cream-50">
+                <span className="font-fraunces font-semibold text-saffron-500">
+                  ₹{totalUnpaid}
+                </span>{" "}
+                owed to volunteers across approved + partial submissions.
+              </p>
+              <p className="text-xs text-cream-50/55 mt-0.5">
+                After bulk-paying via UPI, click below to mark all as paid.
+              </p>
+            </div>
+            <form action={markAllVolunteerSubmissionsPaidAction}>
+              <SubmitButton
+                variant="primary-green"
+                pendingLabel="Marking…"
+                confirm={`Mark all unpaid submissions as paid? (₹${totalUnpaid})`}
+              >
+                <IconCheck size={14} />
+                <span>Mark all paid</span>
+              </SubmitButton>
+            </form>
+          </div>
+        ) : null}
+
+        {rows.length === 0 ? (
+          <EmptyState tab={activeTab} />
+        ) : (
+          <div className="space-y-3">
+            {rows.map((r, idx) => (
+              <VolunteerSubmissionRow
+                key={r.id}
+                sub={r as SubmissionRow}
+                index={idx}
+              />
+            ))}
+          </div>
         )}
+      </ModerationQueue>
+    </AdminShell>
+  );
+}
+
+function EmptyState({ tab }: { tab: StatusKey }) {
+  const messages: Record<StatusKey, string> = {
+    NEW: "No new submissions waiting for review.",
+    APPROVED: "No approved submissions yet.",
+    PARTIAL: "No partial-approval submissions.",
+    DUPLICATE: "No duplicates flagged.",
+    REJECTED: "No rejected submissions.",
+    ALL: "No submissions in the database yet.",
+  };
+  return (
+    <div className="rounded-2xl border border-cream-50/10 bg-cream-50/[0.03] p-12 text-center">
+      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-cream-50/[0.05] mb-4 text-3xl">
+        📥
       </div>
-    </li>
-  );
-}
-
-function Pill({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <span
-      className={`px-2 py-0.5 rounded-full ${
-        ok
-          ? "bg-leaf-600/10 text-leaf-600"
-          : "bg-alert-500/10 text-alert-500"
-      }`}
-    >
-      {ok ? "✓" : "✗"} {label}
-    </span>
-  );
-}
-
-function Detail({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-xs uppercase tracking-wider text-ink-600">{label}</p>
-      <p className="text-sm text-ink-900 mt-0.5">{value}</p>
+      <div className="font-fraunces text-cream-50 text-lg">{messages[tab]}</div>
     </div>
   );
-}
-
-function safeUrls(json: string | null | undefined): string[] {
-  if (!json) return [];
-  try {
-    const parsed = JSON.parse(json);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((x): x is string => typeof x === "string");
-  } catch {
-    return [];
-  }
 }

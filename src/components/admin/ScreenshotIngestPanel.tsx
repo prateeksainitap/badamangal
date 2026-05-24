@@ -42,6 +42,7 @@ import {
   type FormEvent,
 } from "react";
 import { useRouter } from "next/navigation";
+import { IconX } from "@/components/admin/AdminIcons";
 
 /** Server-side response shape (per file). Mirrors the route handler's
  *  return; kept in sync by convention. */
@@ -274,24 +275,24 @@ export default function ScreenshotIngestPanel() {
     .filter((p) => p.status === "created").length;
 
   return (
-    <section className="mt-6 rounded-2xl border border-saffron-600/40 bg-saffron-50/40">
+    <section className="mt-6 rounded-2xl border border-saffron-500/30 bg-saffron-500/[0.06]">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         className="w-full px-4 py-3 flex items-center justify-between gap-3 text-left"
         aria-expanded={expanded}
       >
-        <span className="font-medium text-sindoor-700 text-sm">
+        <span className="font-medium text-cream-50 text-sm">
           🧪 Test by screenshots — extract mentions from WhatsApp chat
           images (batch upload supported)
         </span>
-        <span className="text-xs text-ink-600">
+        <span className="text-xs text-cream-50/65">
           {expanded ? "Hide" : "Expand"}
         </span>
       </button>
       {expanded ? (
         <div className="px-4 pb-4 grid gap-4 border-t border-saffron-600/20 pt-4">
-          <p className="text-xs text-ink-600">
+          <p className="text-xs text-cream-50/65">
             Useful for validating the WhatsApp ingest pipeline without
             waiting for the OpenClaw agent. Pick one or more chat
             screenshots — they&apos;ll be auto-compressed in your
@@ -307,7 +308,7 @@ export default function ScreenshotIngestPanel() {
           <form onSubmit={onSubmit} className="grid gap-3">
             <div className="flex flex-wrap items-center gap-3">
               <label className="grid gap-1.5 flex-shrink-0">
-                <span className="text-sm text-ink-600">
+                <span className="text-sm text-cream-50/65">
                   Add screenshots (PNG / JPG / WebP, max 8 MB each)
                 </span>
                 <input
@@ -317,7 +318,7 @@ export default function ScreenshotIngestPanel() {
                   accept="image/png,image/jpeg,image/webp"
                   onChange={onFileChange}
                   disabled={running}
-                  className="text-sm file:mr-3 file:rounded-full file:border-0 file:bg-saffron-600 file:text-cream-50 file:px-3 file:py-1.5 file:cursor-pointer disabled:opacity-50"
+                  className="text-sm file:mr-3 file:rounded-full file:border-0 file:bg-cyan-500 file:text-cream-50 file:px-3 file:py-1.5 file:cursor-pointer disabled:opacity-50"
                 />
               </label>
               {files.length > 0 ? (
@@ -325,12 +326,12 @@ export default function ScreenshotIngestPanel() {
                   type="button"
                   onClick={clearAll}
                   disabled={running}
-                  className="text-xs rounded-full px-3 py-1 border border-gold-500/50 text-ink-900 hover:bg-cream-50 disabled:opacity-50"
+                  className="text-xs rounded-full px-3 py-1 border border-cyan-400/25 text-cream-50 hover:bg-cyan-400/[0.08] disabled:opacity-50"
                 >
                   Clear all
                 </button>
               ) : null}
-              <span className="text-xs text-ink-600">
+              <span className="text-xs text-cream-50/65">
                 {files.length === 0
                   ? "No files selected"
                   : `${files.length} file${files.length === 1 ? "" : "s"} · ${totalQueued} queued · ${totalDone} done · ${totalErrored} errored`}
@@ -356,9 +357,9 @@ export default function ScreenshotIngestPanel() {
             ) : null}
 
             <label className="grid gap-1.5">
-              <span className="text-sm text-ink-600">
+              <span className="text-sm text-cream-50/65">
                 Group name override{" "}
-                <span className="text-ink-600/70">
+                <span className="text-cream-50/50">
                   (optional — applies to every file in this batch)
                 </span>
               </span>
@@ -369,7 +370,7 @@ export default function ScreenshotIngestPanel() {
                 placeholder="Leave blank to let Gemini read it from each screenshot's header"
                 maxLength={80}
                 disabled={running}
-                className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600 text-sm disabled:opacity-50"
+                className="rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-sm text-cream-50 placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors text-sm disabled:opacity-50"
               />
             </label>
 
@@ -382,7 +383,7 @@ export default function ScreenshotIngestPanel() {
                     (f) => f.status === "queued" || f.status === "error",
                   ).length === 0
                 }
-                className="rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-5 py-2 text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                className="rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 border border-cyan-300/40 shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)] text-cream-50 font-medium px-5 py-2 text-sm shadow-sm disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
               >
                 {running ? (
                   <>
@@ -393,7 +394,7 @@ export default function ScreenshotIngestPanel() {
                   `Ingest ${files.filter((f) => f.status === "queued" || f.status === "error").length || ""} now`
                 )}
               </button>
-              <span className="text-xs text-ink-600">
+              <span className="text-xs text-cream-50/65">
                 Gemini Vision + classifier × N bubbles, per file. About
                 5-15s per screenshot.
               </span>
@@ -444,12 +445,12 @@ function FileRow({
       : null;
   return (
     <li
-      className={`rounded-xl border bg-white grid gap-2 p-2 ${
+      className={`rounded-xl border bg-[#0B0E16]/70 backdrop-blur-sm grid gap-2 p-2 ${
         active
           ? "border-saffron-600 shadow-sm"
           : item.status === "error"
             ? "border-alert-500/40"
-            : "border-gold-500/30"
+            : "border-cyan-400/15"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -457,16 +458,16 @@ function FileRow({
         <img
           src={item.preview}
           alt=""
-          className="w-14 h-14 object-cover rounded border border-gold-500/30 flex-shrink-0"
+          className="w-14 h-14 object-cover rounded border border-cyan-400/15 flex-shrink-0"
         />
         <div className="grid gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <StatusBadge status={item.status} />
-            <span className="text-xs text-ink-900 truncate font-mono">
+            <span className="text-xs text-cream-50 truncate font-mono">
               {item.file.name}
             </span>
           </div>
-          <div className="text-xs text-ink-600 flex gap-3 flex-wrap">
+          <div className="text-xs text-cream-50/65 flex gap-3 flex-wrap">
             <span>{formatBytes(item.originalBytes)} original</span>
             {typeof item.compressedBytes === "number" ? (
               <span>
@@ -485,10 +486,10 @@ function FileRow({
             type="button"
             onClick={onRemove}
             aria-label={`Remove ${item.file.name}`}
-            className="text-ink-600 hover:text-alert-500 text-lg px-1 leading-none flex-shrink-0"
+            className="inline-flex items-center justify-center w-7 h-7 rounded-md text-cream-50/65 hover:text-alert-500 hover:bg-alert-500/[0.10] leading-none flex-shrink-0 transition-colors"
             title="Remove from queue"
           >
-            ✕
+            <IconX size={14} />
           </button>
         ) : null}
       </div>
@@ -505,21 +506,21 @@ function FileResultSummary({ resp }: { resp: IngestResp }) {
   const [expanded, setExpanded] = useState<boolean>(false);
   return (
     <div className="grid gap-1.5 mt-1">
-      <div className="text-xs text-ink-900 flex flex-wrap items-center gap-2">
-        <strong className="text-sindoor-700">{resp.summary}</strong>
+      <div className="text-xs text-cream-50 flex flex-wrap items-center gap-2">
+        <strong className="text-cream-50">{resp.summary}</strong>
         {resp.groupName ? (
-          <span className="px-1.5 py-0.5 rounded-full bg-cream-50 text-ink-700 border border-gold-500/40 text-[10px]">
+          <span className="px-1.5 py-0.5 rounded-full bg-cyan-400/[0.08] text-cyan-200 border border-cyan-400/20 text-[10px]">
             {resp.groupName}
           </span>
         ) : null}
         {resp.runId ? (
-          <span className="px-1.5 py-0.5 rounded-full bg-cream-50 text-ink-700 border border-gold-500/40 text-[10px] font-mono">
+          <span className="px-1.5 py-0.5 rounded-full bg-cyan-400/[0.08] text-cyan-200 border border-cyan-400/20 text-[10px] font-mono">
             {resp.runId}
           </span>
         ) : null}
         {Object.entries(counts).map(([k, v]) => (
-          <span key={k} className="text-ink-600">
-            <strong className="text-ink-900">{v}</strong>{" "}
+          <span key={k} className="text-cream-50/65">
+            <strong className="text-cream-50">{v}</strong>{" "}
             {k.replace(/_/g, " ")}
           </span>
         ))}
@@ -534,13 +535,13 @@ function FileResultSummary({ resp }: { resp: IngestResp }) {
         ) : null}
       </div>
       {expanded ? (
-        <ul className="grid gap-1.5 max-h-[20rem] overflow-y-auto rounded-lg border border-gold-500/20 bg-cream-50/40 p-2">
+        <ul className="grid gap-1.5 max-h-[20rem] overflow-y-auto rounded-lg border border-cyan-400/10 bg-[#080A10]/50 p-2">
           {processed.map((p, i) => (
             <li key={i} className="text-[11px] grid gap-0.5">
               <div className="flex items-center gap-2 flex-wrap">
                 <MsgStatusBadge status={p.status} />
                 {p.intent ? (
-                  <span className="text-ink-600">
+                  <span className="text-cream-50/65">
                     {p.intent}
                     {typeof p.confidence === "number"
                       ? ` (${p.confidence.toFixed(2)})`
@@ -553,11 +554,11 @@ function FileResultSummary({ resp }: { resp: IngestResp }) {
                   </span>
                 ) : null}
                 {p.sender ? (
-                  <span className="text-ink-600">— {p.sender}</span>
+                  <span className="text-cream-50/65">— {p.sender}</span>
                 ) : null}
               </div>
-              <p className="text-ink-900 whitespace-pre-wrap break-words">
-                {p.text || <em className="text-ink-600">(empty)</em>}
+              <p className="text-cream-50 whitespace-pre-wrap break-words">
+                {p.text || <em className="text-cream-50/65">(empty)</em>}
               </p>
               {p.errorDetail ? (
                 <p className="text-alert-700">{p.errorDetail}</p>
@@ -576,22 +577,22 @@ function StatusBadge({ status }: { status: FileItem["status"] }) {
       case "queued":
         return {
           label: "queued",
-          cls: "bg-ink-100 text-ink-700 border-ink-300",
+          cls: "bg-ink-100 text-cream-50/75 border-ink-300",
         };
       case "compressing":
         return {
           label: "compressing",
-          cls: "bg-saffron-100 text-saffron-700 border-saffron-300",
+          cls: "bg-saffron-500/[0.14] text-saffron-300 border-saffron-500/35",
         };
       case "uploading":
         return {
           label: "uploading",
-          cls: "bg-saffron-100 text-saffron-700 border-saffron-300",
+          cls: "bg-saffron-500/[0.14] text-saffron-300 border-saffron-500/35",
         };
       case "done":
         return {
           label: "done",
-          cls: "bg-leaf-100 text-leaf-700 border-leaf-300",
+          cls: "bg-leaf-400/[0.14] text-leaf-300 border-leaf-400/35",
         };
       case "error":
         return {
@@ -601,7 +602,7 @@ function StatusBadge({ status }: { status: FileItem["status"] }) {
       case "skipped":
         return {
           label: "skipped",
-          cls: "bg-ink-100 text-ink-700 border-ink-300",
+          cls: "bg-ink-100 text-cream-50/75 border-ink-300",
         };
     }
   })();
@@ -620,22 +621,22 @@ function MsgStatusBadge({ status }: { status: ProcessedMessage["status"] }) {
       case "created":
         return {
           label: "created",
-          cls: "bg-leaf-100 text-leaf-700 border-leaf-300",
+          cls: "bg-leaf-400/[0.14] text-leaf-300 border-leaf-400/35",
         };
       case "skipped_unrelated":
         return {
           label: "unrelated",
-          cls: "bg-ink-100 text-ink-700 border-ink-300",
+          cls: "bg-ink-100 text-cream-50/75 border-ink-300",
         };
       case "skipped_low_confidence":
         return {
           label: "low conf",
-          cls: "bg-saffron-100 text-saffron-700 border-saffron-300",
+          cls: "bg-saffron-500/[0.14] text-saffron-300 border-saffron-500/35",
         };
       case "skipped_empty":
         return {
           label: "empty",
-          cls: "bg-ink-100 text-ink-700 border-ink-300",
+          cls: "bg-ink-100 text-cream-50/75 border-ink-300",
         };
       case "error":
         return {

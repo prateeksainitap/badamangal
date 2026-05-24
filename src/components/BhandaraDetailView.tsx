@@ -364,6 +364,14 @@ export default function BhandaraDetailView({ b, others }: Props) {
         </section>
       ) : null}
 
+      {/* SPONSOR / DONATE — full UPI deep-link donate card is parked
+          pending payments structure decision (Razorpay onboarding,
+          Section 8 / 80G registration). The mobile sticky bar still
+          surfaces an organiser-UPI fallback via `sponsorHref`, which
+          was already in production HEAD before this work began. The
+          big donate card lives at `src/components/SponsorBhandara.tsx`
+          and renders here once we ship that infrastructure. */}
+
       {/* DETAILS GRID */}
       <section className="mx-auto max-w-5xl px-4 sm:px-6 mt-12 grid gap-6 sm:grid-cols-2">
         <div className="rounded-2xl bg-cream-50 border border-gold-500/40 p-6">

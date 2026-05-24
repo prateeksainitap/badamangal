@@ -17,6 +17,7 @@ import {
   SITE_URL,
 } from "@/lib/seo";
 import { hasUpcomingDate } from "@/lib/dates";
+import { stripBotProvenance } from "@/lib/sanitize";
 
 // ISR. Was force-dynamic, every visit cold-started a Netlify Function
 // (3-4s lag when clicking a bhandara from the homepage). Now each slug
@@ -120,8 +121,22 @@ export async function generateMetadata({
   // area early, full address + organiser for long-tail uniqueness.
   // Keeping under 160 chars where possible, Google truncates at
   // ~155-160 in SERP previews.
+  //
+  // CRITICAL: pass `record.description` through `stripBotProvenance`
+  // before emitting into <meta description>, OpenGraph, or Twitter
+  // card. Bot-ingested rows carry a `[bot:whatsapp · from:…
+  // · in:<group> · msg:… · hash:…]` provenance tag inside the
+  // description column. Without stripping, that tag leaks the
+  // original WhatsApp sender name and source group/channel into
+  // Google SERP snippets and social-share previews. Every other
+  // public consumer of Bhandara.description goes through
+  // `toBhandara` (which strips), this metadata path is the only one
+  // that reads the raw column.
+  const cleanedDescription = stripBotProvenance(record.description);
   const description =
-    record.description ??
+    (cleanedDescription && cleanedDescription.length > 0
+      ? cleanedDescription
+      : null) ??
     `Free Bada Mangal bhandara in ${record.area}, Lucknow. ${record.organizerName}'s seva at ${record.address}. Serving ${time}${dateForTitle ? ` on ${dateForTitle}` : ""}.`;
   const ogImage = record.photoUrl ?? `${SITE_URL}/illustrations/hanuman-sitting.webp`;
   const ogAlt = `${record.name} bhandara in ${record.area}, Lucknow`;
