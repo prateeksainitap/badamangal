@@ -308,13 +308,20 @@ async function callGeminiVision(
             ],
             generationConfig: {
               temperature: 0.1,
-              // 4096 not 1200: Gemini in JSON mode writes more
-              // whitespace than Claude did, plus Devanagari runs ~2×
-              // the token count of English. The old 1200 cap truncated
-              // mid-string on banner-heavy invites → parser threw
-              // "Model returned non-JSON". 4096 covers every real-
-              // world invite we've tested.
-              maxOutputTokens: 4096,
+              // 8192 (was 4096, was 1200). gemini-2.5-flash supports
+              // up to 8192 output tokens by default and Devanagari
+              // invites can run that long when they include both
+              // English + Hindi field values, a chunky verbose
+              // description block, AND a multi-line address with
+              // landmarks. Bumped 2026-05-25 after the admin scan UI
+              // surfaced "Gemini hit the maxOutputTokens cap" on a
+              // text-heavy "Aamantran / Sri Madbhagavat Katha" invite
+              // — the parser hit MAX_TOKENS finish-reason and threw
+              // before the trailing JSON could close. JSON mode is
+              // still enabled below, so the model only emits the
+              // structured shape we ask for; the extra budget gives
+              // Devanagari + descriptions enough room to finish.
+              maxOutputTokens: 8192,
               // Native JSON mode, Gemini will (almost always) return a
               // clean JSON document without code fences. Still
               // defensive-parsed below.
@@ -505,7 +512,10 @@ async function callGeminiText(prompt: string): Promise<string> {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.1,
-          maxOutputTokens: 4096,
+          // Mirror callGeminiVision's bump: 4096 → 8192. Devanagari
+          // tokens are ~2× English; text-heavy outputs hit the old cap
+          // before closing the JSON document.
+          maxOutputTokens: 8192,
           responseMimeType: "application/json",
         },
       }),
