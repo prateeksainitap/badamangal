@@ -82,6 +82,13 @@ type FormState = {
   // Step 5
   organizerName: string;
   organizerPhone: string;
+  /** Optional UPI ID the organiser wants surfaced as a "Sponsor this
+   *  bhandara" deep-link on the public detail page. Plain text (e.g.
+   *  "rajesh@oksbi" / "9876543210@upi"). Persisted to Bhandara.upiId,
+   *  which already exists on the production schema, so no migration
+   *  is needed to support this field.
+   *  Empty string = donations disabled for this listing. */
+  upiId: string;
   // Step 6
   photoUrl: string;
 };
@@ -101,6 +108,7 @@ const INITIAL: FormState = {
   menuOtherDraft: "",
   organizerName: "",
   organizerPhone: "",
+  upiId: "",
   photoUrl: "",
 };
 
@@ -218,7 +226,12 @@ export default function BhandaraForm({
     if (initialValues) return;
     const blob = readAutosave();
     if (blob) {
-      setState(blob.state);
+      // Merge with INITIAL so drafts saved BEFORE a new optional field
+      // (e.g. upiId added 2026-05-25) was introduced don't hydrate as
+      // undefined — every field in FormState stays a defined value.
+      // Stale drafts keep all the data the organiser already typed;
+      // newly-added fields simply default to their INITIAL value.
+      setState({ ...INITIAL, ...blob.state });
       setStep(blob.step);
     }
   }, [initialValues]);
@@ -399,6 +412,10 @@ export default function BhandaraForm({
     const payload = {
       organizerName: state.organizerName,
       organizerPhone: state.organizerPhone,
+      // Optional UPI ID for the "Sponsor this bhandara" deep-link on
+      // the public detail page. Sent only when non-empty; the server
+      // route (/api/bhandaras POST) maps it to Bhandara.upiId.
+      upiId: state.upiId.trim() || undefined,
       name: nameValue,
       nameHi: nameValue,
       description: descriptionValue || undefined,
@@ -1175,6 +1192,45 @@ function Step5({ state, errors, setField }: StepProps) {
           />
         </Field>
 
+      </div>
+
+      {/* ── Donations (optional) ───────────────────────────────────
+          Surfaces on the public bhandara page as a "Sponsor this
+          bhandara" CTA that opens the donor's UPI app directly. Empty
+          = donations disabled for this listing; the platform-level
+          donate flow stays available regardless. Kept inside the
+          existing fieldset on a thin top-border so it reads as a
+          peer to "contact info", not a separate noisy section. */}
+      <div className="mt-5 pt-4 border-t border-gold-500/30">
+        <p className="text-[11px] uppercase tracking-[0.16em] text-sindoor-700 font-semibold">
+          {locale === "hi"
+            ? "दान सक्षम करें (वैकल्पिक)"
+            : "Enable donations (optional)"}
+        </p>
+        <p className="mt-1 text-sm text-ink-700/85 leading-relaxed">
+          {locale === "hi"
+            ? "अपनी UPI ID डालें ताकि लोग सीधे आपके बैंक खाते में सेवा-दान भेज सकें। आपके भंडारा पेज पर 'सहयोग करें' बटन दिखेगा। खाली छोड़ें तो दान बंद रहेगा।"
+            : "Add your UPI ID so people can send a seva contribution directly to your bank account. A 'Sponsor this bhandara' button will appear on your listing page. Leave blank to keep donations off."}
+        </p>
+        <div className="mt-3">
+          <Field hi="UPI ID" en="UPI ID">
+            <input
+              type="text"
+              autoComplete="off"
+              inputMode="email"
+              className={inputBase}
+              value={state.upiId}
+              onChange={(e) => setField("upiId", e.target.value)}
+              placeholder="rajesh@oksbi  ·  9876543210@upi"
+              maxLength={64}
+            />
+          </Field>
+          <p className="mt-1.5 text-xs text-ink-700/65">
+            {locale === "hi"
+              ? "टिप: अपनी UPI app में 'मेरी UPI ID' देखें — Google Pay / PhonePe / Paytm — और वहीं से कॉपी करके पेस्ट करें।"
+              : "Tip: open your UPI app (GPay / PhonePe / Paytm), tap your profile, copy the ID shown there, and paste it here."}
+          </p>
+        </div>
       </div>
     </div>
   );

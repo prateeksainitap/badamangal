@@ -924,13 +924,34 @@ function BhandaraReviewForm({
               />
             </div>
           </label>
-          <Field
-            label="UPI ID for sponsorship (optional)"
-            value={upiId}
-            onChange={setUpiId}
-            mono
-          />
         </div>
+
+        {/* ── Donations (optional) ─────────────────────────────
+            Bumped from a single inline "UPI ID for sponsorship"
+            row in the organiser-info grid up to its own section
+            header so operators reviewing a bhandara can SEE this
+            slot exists (the old layout buried it on row 3 and the
+            organiser interview rarely surfaced it). When the
+            field is populated, the public bhandara detail page
+            renders a 'Sponsor this bhandara' UPI deep-link. */}
+        <fieldset className="mt-5 rounded-xl border border-cyan-400/20 bg-cyan-400/[0.03] p-3">
+          <legend className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/85 font-mono px-1">
+            Enable donations (optional)
+          </legend>
+          <p className="text-xs text-cream-50/65 mt-1 leading-relaxed">
+            Drop the organiser&apos;s UPI ID here so the public bhandara
+            page surfaces a &quot;Sponsor this bhandara&quot; button. Leave
+            blank to keep donations off for this listing.
+          </p>
+          <div className="mt-2.5">
+            <Field
+              label="UPI ID"
+              value={upiId}
+              onChange={setUpiId}
+              mono
+            />
+          </div>
+        </fieldset>
 
         {/* Dates, preset Bada Mangal Tuesdays + Bada Shanivar
             Saturdays as quick-pick chips. Below them, a custom-date

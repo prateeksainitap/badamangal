@@ -291,12 +291,36 @@ export default async function AdminEditPage({ params }: PageProps) {
             name="organizerWhatsapp"
             defaultValue={b.organizerWhatsapp ?? ""}
           />
-          <Pair
-            label="UPI ID (optional)"
-            name="upiId"
-            defaultValue={b.upiId ?? ""}
-          />
         </div>
+
+        {/* ── Donations (optional) ────────────────────────────────────
+            Lifted the UPI input out of the WhatsApp / UPI grid into a
+            dedicated section. The old two-column treatment made UPI
+            look like contact metadata; operators routinely missed it
+            when an organiser wanted donations enabled. The fieldset
+            chrome mirrors the same block on ScanReview and the
+            wording on the public BhandaraForm so all three flows feel
+            like one feature. When the value is populated, the public
+            /bhandara/[slug] page renders a 'Sponsor this bhandara'
+            UPI deep-link. */}
+        <fieldset className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.03] p-3">
+          <legend className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/85 font-mono px-1">
+            Enable donations (optional)
+          </legend>
+          <p className="text-xs text-cream-50/65 mt-1 leading-relaxed">
+            Add the organiser&apos;s UPI ID so the public bhandara page
+            surfaces a &quot;Sponsor this bhandara&quot; button. Leave blank
+            to keep donations off for this listing.
+          </p>
+          <div className="mt-2.5">
+            <Pair
+              label="UPI ID"
+              name="upiId"
+              defaultValue={b.upiId ?? ""}
+              hint="e.g. rajesh@oksbi  ·  9876543210@upi"
+            />
+          </div>
+        </fieldset>
 
         {/* Photo URL field used to live here as a plain text input.
             Now handled by the AdminPhotoField at the top of the form,
