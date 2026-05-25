@@ -83,13 +83,27 @@ type SearchParams = Promise<{
  *  `[bot:gemini-2.5]`) still classify correctly. */
 const BOT_TAG = "[bot:";
 
-// Status tabs now include PAST. The five legacy tabs (All, Pending,
-// Live=UNVERIFIED, Verified, Rejected) only ever show ACTIVE items.
-// PAST is its own bucket holding past-dated rows across every status.
+// Status tabs now include PAST. The five active tabs (All, Pending,
+// Live, Verified, Rejected) only ever show ACTIVE items (an upcoming
+// service date). PAST is its own bucket holding past-dated rows
+// across every status.
+//
+// LIVE semantic: "anything currently visible on the public site",
+// which is APPROVED + has-upcoming-date — regardless of isVerified.
+// Verified bhandaras are a refinement of Live (still publicly live,
+// just with an extra trust pill) so they also surface under the LIVE
+// tab. Operator question — "show me everything live right now" — gets
+// the answer it expects, and the VERIFIED tab stays as the narrower
+// "manually trust-stamped" subset.
+//
+// (Earlier this tab keyed off the internal statusGroup "UNVERIFIED",
+// which made verified rows vanish from "Live" even though they were,
+// in fact, live publicly. /admin/spots already uses LIVE; this brings
+// bhandaras in line.)
 const TAB_KEYS = [
   "ALL",
   "PENDING",
-  "UNVERIFIED",
+  "LIVE",
   "VERIFIED",
   "REJECTED",
   "PAST",
@@ -130,10 +144,14 @@ export default async function AdminBhandarasPage({
   if (!(await isAdmin())) redirect("/admin");
 
   const sp = await searchParams;
-  const tab: TabKey = (
-    TAB_KEYS as readonly string[]
-  ).includes((sp.status ?? "").toUpperCase())
-    ? ((sp.status ?? "").toUpperCase() as TabKey)
+  // Back-compat: the LIVE tab key used to be UNVERIFIED. Old bookmarks
+  // (and the sidebar nav before the rename rolled out) may still link
+  // to ?status=UNVERIFIED — silently normalise so we don't 404 the
+  // operator into the ALL tab.
+  const rawStatus = (sp.status ?? "").toUpperCase();
+  const normalisedStatus = rawStatus === "UNVERIFIED" ? "LIVE" : rawStatus;
+  const tab: TabKey = (TAB_KEYS as readonly string[]).includes(normalisedStatus)
+    ? (normalisedStatus as TabKey)
     : "ALL";
   const q = (sp.q ?? "").trim();
   const source: SourceFilterValue =
@@ -230,9 +248,16 @@ export default async function AdminBhandarasPage({
   let activeHuman = 0;
   let activeBot = 0;
   // Status counts, scoped to current source selection.
+  //
+  // `countLive` is the union of UNVERIFIED + VERIFIED (anything
+  // currently visible on the public site). VERIFIED is a refinement
+  // of LIVE; verified rows are counted in both buckets on purpose so
+  // the operator question "how many bhandaras are live right now?"
+  // gets a count that doesn't shrink the moment we click Verify on
+  // one.
   let countAll = 0;
   let countPending = 0;
-  let countUnverified = 0;
+  let countLive = 0;
   let countVerified = 0;
   let countRejected = 0;
   let countPast = 0;
@@ -265,10 +290,16 @@ export default async function AdminBhandarasPage({
         countPending++;
         break;
       case "UNVERIFIED":
-        countUnverified++;
+        // Live but not yet trust-stamped.
+        countLive++;
         break;
       case "VERIFIED":
+        // Verified rows are ALSO live publicly, so they bump both
+        // counts. The VERIFIED tab is the narrower "trust-stamped"
+        // refinement; the LIVE tab is the broader "visible right now"
+        // view.
         countVerified++;
+        countLive++;
         break;
       case "REJECTED":
         countRejected++;
@@ -286,8 +317,13 @@ export default async function AdminBhandarasPage({
         return true;
       case "PENDING":
         return c.statusGroup === "PENDING";
-      case "UNVERIFIED":
-        return c.statusGroup === "UNVERIFIED";
+      case "LIVE":
+        // Live = anything visible on the public site = UNVERIFIED or
+        // VERIFIED. Verified rows surface in both LIVE and VERIFIED
+        // tabs by design (verified is a refinement, not a sibling).
+        return (
+          c.statusGroup === "UNVERIFIED" || c.statusGroup === "VERIFIED"
+        );
       case "VERIFIED":
         return c.statusGroup === "VERIFIED";
       case "REJECTED":
@@ -303,7 +339,7 @@ export default async function AdminBhandarasPage({
   const tabs: QueueTab[] = [
     { key: "ALL", label: "All", count: countAll },
     { key: "PENDING", label: "Pending", count: countPending },
-    { key: "UNVERIFIED", label: "Live", count: countUnverified },
+    { key: "LIVE", label: "Live", count: countLive },
     { key: "VERIFIED", label: "Verified", count: countVerified },
     { key: "REJECTED", label: "Rejected", count: countRejected },
     { key: "PAST", label: "Past", count: countPast },
@@ -312,8 +348,8 @@ export default async function AdminBhandarasPage({
   const totalInTab =
     tab === "PENDING"
       ? countPending
-      : tab === "UNVERIFIED"
-        ? countUnverified
+      : tab === "LIVE"
+        ? countLive
         : tab === "VERIFIED"
           ? countVerified
           : tab === "REJECTED"
@@ -451,10 +487,11 @@ export default async function AdminBhandarasPage({
 }
 
 /** Bulk-action set varies by tab — Verify + Approve only make sense
- *  on PENDING / REJECTED rows; on Live (UNVERIFIED) Verify still
- *  applies but Approve doesn't; on already-Verified rows nothing
- *  except Delete is meaningful. PAST is archive — Delete is the
- *  only meaningful bulk action (cleanup). */
+ *  on PENDING / REJECTED rows; on LIVE (the union of unverified +
+ *  verified) Verify still applies (it's a no-op on already-verified
+ *  rows server-side) but Approve doesn't; on the VERIFIED refinement
+ *  nothing except Delete is meaningful. PAST is archive — Delete is
+ *  the only meaningful bulk action (cleanup). */
 function bulkActionsForTab(tab: TabKey): BulkActionDef[] {
   const verify: BulkActionDef = {
     key: "verify",
@@ -489,7 +526,7 @@ function bulkActionsForTab(tab: TabKey): BulkActionDef[] {
   switch (tab) {
     case "PENDING":
       return [verify, approve, reject, del];
-    case "UNVERIFIED":
+    case "LIVE":
       return [verify, reject, del];
     case "VERIFIED":
       return [reject, del];
@@ -508,8 +545,8 @@ function EmptyState({ tab, query }: { tab: TabKey; query: string }) {
     ? `No bhandaras match “${query}”.`
     : tab === "PENDING"
       ? "Nothing pending right now. Inbox zero."
-      : tab === "UNVERIFIED"
-        ? "No unverified live bhandaras."
+      : tab === "LIVE"
+        ? "No bhandaras live on the public site right now."
         : tab === "VERIFIED"
           ? "No verified bhandaras yet."
           : tab === "REJECTED"
