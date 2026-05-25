@@ -332,6 +332,15 @@ export default function BhandaraDetailView({ b, others }: Props) {
         sponsorHref={upi ?? null}
         organizerPhone={b.organizerPhone}
         locale={locale}
+        // Audit-trail props. When the bhandara has a UPI ID, tapping
+        // Sponsor now fires a DonationIntent beacon to
+        // /api/donations/intent before opening the UPI app. The
+        // server-side row records bhandaraId + amount + recipient +
+        // ipHash + UA so we have a "who tapped to pay whom" audit
+        // trail. See model DonationIntent in prisma/schema.prisma.
+        bhandaraId={b.id}
+        recipientUpiId={b.upiId ?? undefined}
+        recipientName={b.organizerName}
       />
 
       {/* PHOTO / PAMPHLET, full-quality view of whatever the organizer

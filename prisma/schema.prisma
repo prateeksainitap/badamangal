@@ -56,6 +56,10 @@ model Bhandara {
   /// /api/uploads pipeline (sharp normalize + R2), so the URL is on
   /// cdn.badamangal.com just like photoUrl.
   upiQrUrl          String?
+  /// Reverse relation to DonationIntent — every sponsor tap on this
+  /// bhandara creates one row. NOT loaded by default on public reads;
+  /// the admin /admin/donations queue is the only consumer today.
+  donationIntents   DonationIntent[]
   // media
   photoUrl          String?
   // moderation
@@ -713,5 +717,79 @@ model BotIngestionLog {
   @@index([outcome, createdAt])
   @@index([msgId])
   @@index([imageHash])
+  @@index([createdAt])
+}
+
+/// Audit row for every "Sponsor this bhandara" tap. We capture the
+/// donor's INTENT to pay — bhandara, amount, recipient UPI, optional
+/// donor info — at the moment the user taps the button, BEFORE the
+/// UPI deep-link opens their bank app. The actual UPI transaction
+/// happens entirely between the donor's bank and the recipient's
+/// bank; we never see it. So this table is intent-tracking + audit
+/// trail, not payment confirmation:
+///
+///   • CLICKED (default)        — donor opened the UPI app via our link
+///   • DONOR_CONFIRMED          — donor came back, hit "Yes, I paid"
+///   • ORGANISER_CONFIRMED      — organiser separately confirmed receipt
+///   • DISPUTED                 — donor reported "didn't go through"
+///   • PG_CONFIRMED             — Razorpay/PG webhook fired (Phase 2)
+///
+/// Use cases:
+///   - Dispute resolution: "I paid ₹501 to <organiser> on <date>"
+///   - Analytics: which bhandaras get the most sponsor taps
+///   - Abuse detection: rate-limit by ipHash, spot click-bombing
+///   - Razorpay onramp: razorpayPaymentId unique-indexed, will hold
+///     the bank reference once webhook integration ships
+model DonationIntent {
+  id              String   @id @default(cuid())
+  bhandaraId      String
+  bhandara        Bhandara @relation(fields: [bhandaraId], references: [id], onDelete: Cascade)
+
+  /// Suggested INR amount we put in the UPI deep link's `am=` param.
+  /// User can override inside their UPI app — what they ACTUALLY pay
+  /// is between them and their bank. We just record what we asked for.
+  amount          Int
+
+  /// "organiser" — direct UPI to the bhandara organiser's VPA
+  /// "platform" — Through-Bada-Mangal mode (deferred until payments
+  /// structure is set up; see notes/07-pre-launch-report.md)
+  recipientType   String
+
+  /// VPA the deep-link targeted at click time. Captured as a snapshot
+  /// in case Bhandara.upiId is edited later — the audit row should
+  /// always reflect where the donor was actually sent.
+  recipientUpiId  String
+
+  /// Human-readable display name for the audit log
+  /// (organiser name OR "Bada Mangal" for platform mode).
+  recipientName   String?
+
+  /// Optional donor info — captured when present, never required.
+  /// Anonymous donations are first-class.
+  donorName       String?
+  donorPhone      String?
+  donorEmail      String?
+  donorMessage    String?
+
+  /// SHA-256 of donor's IP with a per-deploy salt — same pattern as
+  /// Spot.ipHash. Lets us detect abuse (one IP firing 100 intents/min)
+  /// without storing raw IPs.
+  ipHash          String?
+  /// Truncated UA string for browser/device hint.
+  userAgent       String?
+
+  status          String   @default("CLICKED")
+  donorConfirmedAt     DateTime?
+  organiserConfirmedAt DateTime?
+
+  /// Razorpay payment_id when the platform-mode webhook fires.
+  /// Unique so a duplicate webhook can't double-create rows.
+  razorpayPaymentId String? @unique
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  @@index([bhandaraId, createdAt])
+  @@index([status, createdAt])
   @@index([createdAt])
 }

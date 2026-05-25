@@ -12,6 +12,26 @@ type Props = {
   sponsorHref: string | null; // null when no upiId, fall back to phone tel:
   organizerPhone: string;
   locale: Locale;
+  /** Optional: when supplied, tapping Sponsor first POSTs to
+   *  /api/donations/intent (audit row with bhandaraId + amount +
+   *  recipient + ipHash + UA), THEN opens the UPI deep-link returned
+   *  by the server. The server rebuilds the deep-link canonically so
+   *  the audit row's `tn` field carries the intent id for later
+   *  reconciliation against organiser confirmation or a Razorpay
+   *  webhook. When omitted, the button keeps its original behaviour:
+   *  a plain href to `sponsorHref` (or a tel: fallback). */
+  bhandaraId?: string;
+  /** UPI VPA the donation goes to — only used when bhandaraId is set,
+   *  so the audit row records the actual recipient at click time
+   *  (organiser.upiId may be edited later). */
+  recipientUpiId?: string;
+  /** Human-readable recipient name for the audit row (organiser
+   *  display name). */
+  recipientName?: string;
+  /** Suggested INR amount for the deep-link `am=` param. Defaults
+   *  to ₹251 to match the pre-existing upi:// link builder in
+   *  BhandaraDetailView. Donors can override inside their UPI app. */
+  defaultAmount?: number;
 };
 
 const LABELS: Record<Locale, { dir: string; wa: string; sponsor: string; sponsorComing: string }> = {
@@ -31,10 +51,68 @@ export default function MobileStickyActions({
   sponsorHref,
   organizerPhone,
   locale,
+  bhandaraId,
+  recipientUpiId,
+  recipientName,
+  defaultAmount = 251,
 }: Props) {
   const [show, setShow] = useState(false);
   const labels = LABELS[locale];
   const sponsorHostRef = useRef<HTMLAnchorElement>(null);
+
+  // Audit-trail beacon for the Sponsor tap. When bhandaraId +
+  // recipientUpiId are wired, we POST a DonationIntent row to
+  // /api/donations/intent BEFORE opening the UPI app, then redirect
+  // window.location to the canonical deep-link the server returns.
+  // The server rebuild ensures the audit row's `tn` field carries
+  // the intent id, so a future Razorpay webhook or organiser-side
+  // reconciliation can correlate. If the API call fails (offline,
+  // 429, server down), we fall back to the original static
+  // sponsorHref so the donor's flow is never blocked by our
+  // telemetry layer.
+  const beaconAndOpen = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    burst();
+    // Without the intent-tracking props this is a plain link click —
+    // let the browser handle it.
+    if (!bhandaraId || !recipientUpiId || !sponsorHref) return;
+    // Prevent the default <a> navigation so we can fire the beacon
+    // first and then drive the redirect ourselves with the server-
+    // canonical deep-link.
+    e.preventDefault();
+    void (async () => {
+      const fallback = sponsorHref;
+      try {
+        const res = await fetch("/api/donations/intent", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          // keepalive lets the request survive the page unload we're
+          // about to trigger via window.location. Without this, mobile
+          // browsers cancel the fetch as soon as the UPI deep-link
+          // opens, losing the audit row.
+          keepalive: true,
+          body: JSON.stringify({
+            bhandaraId,
+            amount: defaultAmount,
+            recipientType: "organiser",
+            recipientUpiId,
+            recipientName: recipientName ?? null,
+          }),
+        });
+        if (!res.ok) {
+          window.location.href = fallback;
+          return;
+        }
+        const data = (await res.json().catch(() => null)) as {
+          upiDeepLink?: string;
+        } | null;
+        window.location.href = data?.upiDeepLink ?? fallback;
+      } catch {
+        // Network / CORS error — UX trumps telemetry. Always open
+        // the deep-link so the donor isn't stranded.
+        window.location.href = fallback;
+      }
+    })();
+  };
 
   useEffect(() => {
     const onScroll = () => setShow(window.scrollY > 280);
@@ -114,7 +192,7 @@ export default function MobileStickyActions({
           <a
             ref={sponsorHostRef}
             href={sponsorLink}
-            onClick={burst}
+            onClick={beaconAndOpen}
             data-ga="sticky_sponsor"
             data-ga-has-upi={sponsorHref ? "1" : "0"}
             className="marigold-host flex flex-col items-center gap-0.5 py-3 text-sindoor-700 hover:text-sindoor-700/80 min-h-[44px]"

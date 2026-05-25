@@ -84,6 +84,17 @@ const NAV: NavItem[] = [
     label: "Emails",
     icon: <IconEnvelope />,
   },
+  {
+    // Donation-intent audit. Every Sponsor-button tap on a public
+    // bhandara page lands here as a row recording who tapped (ip
+    // hash), the bhandara, suggested amount, recipient UPI, and the
+    // status of the claim. Intent-tracking only — see
+    // /admin/donations page header for the full disclaimer about
+    // UPI direct-to-organiser flows lacking server-side confirmation.
+    href: "/admin/donations",
+    label: "Donations",
+    icon: <IconRupee />,
+  },
 ];
 
 type Props = {
@@ -608,6 +619,19 @@ function IconEnvelope() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <rect x="3" y="5" width="18" height="14" rx="2" />
       <path d="M3 7 L12 13 L21 7" />
+    </svg>
+  );
+}
+/** Rupee glyph — used by the Donations sidebar item. Drawn rather
+ *  than relying on the literal "₹" character so weight + stroke line
+ *  up with the other line-art icons in the rail. */
+function IconRupee() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M7 4 H17" />
+      <path d="M7 8 H17" />
+      <path d="M7 12 H11 a4 4 0 0 0 0 -8" />
+      <path d="M7 12 L15 20" />
     </svg>
   );
 }
