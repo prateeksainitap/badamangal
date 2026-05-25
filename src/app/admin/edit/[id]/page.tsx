@@ -162,8 +162,12 @@ export default async function AdminEditPage({ params }: PageProps) {
           {/* RIGHT — scrollable form fields. Keeps the same dark
               card styling the old single-pane form had. */}
           <div className="lg:col-span-7 grid gap-5 rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm p-5 sm:p-7">
+        {/* Labels rendered in font-mono (see Pair component below), which
+            doesn't ship Devanagari glyphs, so Hindi characters used to
+            print as ???? boxes. Admin is English-only, so the parenthetical
+            "(Hindi)" is enough to identify the localised field. */}
         <Pair label="Name (English)" name="name" defaultValue={b.name} required />
-        <Pair label="Name (हिन्दी)" name="nameHi" defaultValue={b.nameHi ?? ""} />
+        <Pair label="Name (Hindi)" name="nameHi" defaultValue={b.nameHi ?? ""} />
 
         {/* Strip the WhatsApp-bot provenance tag from the textarea
             value so the admin doesn't have to delete "[bot:whatsapp …]"
@@ -181,7 +185,7 @@ export default async function AdminEditPage({ params }: PageProps) {
           defaultValue={stripBotProvenance(b.description) ?? ""}
         />
         <PairArea
-          label="विवरण (Hindi)"
+          label="Description (Hindi)"
           name="descriptionHi"
           defaultValue={stripBotProvenance(b.descriptionHi) ?? ""}
         />
@@ -197,7 +201,7 @@ export default async function AdminEditPage({ params }: PageProps) {
 
         <Pair label="Address" name="address" defaultValue={b.address} required />
         <Pair
-          label="पता (Hindi)"
+          label="Address (Hindi)"
           name="addressHi"
           defaultValue={b.addressHi ?? ""}
         />
@@ -299,26 +303,39 @@ export default async function AdminEditPage({ params }: PageProps) {
             which writes to a hidden <input name="photoUrl"> so the
             server action signature is unchanged. */}
 
-        <label className="flex items-center gap-2 text-sm text-cream-50/85 mt-2 font-mono">
+        {/* The text used to live as three sibling nodes inside the
+            flex container ("Mark as", <strong>...</strong>, "(hint)"),
+            which made each one its own flex item with `gap-2` visibly
+            stretching the words apart and forcing weird column-wraps
+            when the label was long. Wrapping the entire copy in a
+            single <span> makes it one flex item that wraps as normal
+            prose. `items-start` aligns the checkbox to the first line
+            of text instead of vertically centering against a wrapped
+            two-line block. */}
+        <label className="flex items-start gap-2 text-sm text-cream-50/85 mt-2 font-mono leading-relaxed">
           <input
             type="checkbox"
             name="isVerified"
             defaultChecked={b.isVerified}
-            className="h-4 w-4 accent-leaf-400"
+            className="h-4 w-4 mt-0.5 shrink-0 accent-leaf-400"
           />
-          Mark as <strong className="text-cream-50">Verified</strong>{" "}
-          (called &amp; confirmed by phone)
+          <span>
+            Mark as <strong className="text-cream-50">Verified</strong>{" "}
+            <span className="text-cream-50/55">(called &amp; confirmed by phone)</span>
+          </span>
         </label>
 
-        <label className="flex items-center gap-2 text-sm text-cream-50/85 mt-2 font-mono">
+        <label className="flex items-start gap-2 text-sm text-cream-50/85 mt-2 font-mono leading-relaxed">
           <input
             type="checkbox"
             name="isFeatured"
             defaultChecked={b.isFeatured}
-            className="h-4 w-4 accent-cyan-400"
+            className="h-4 w-4 mt-0.5 shrink-0 accent-cyan-400"
           />
-          Mark as <strong className="text-cream-50">Featured on homepage</strong>{" "}
-          (lands at the very top of the featured row)
+          <span>
+            Mark as <strong className="text-cream-50">Featured on homepage</strong>{" "}
+            <span className="text-cream-50/55">(lands at the very top of the featured row)</span>
+          </span>
         </label>
 
         <div className="flex items-center gap-3 mt-4">
