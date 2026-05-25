@@ -93,6 +93,11 @@ export const submitSchema = z
       }),
     organizerWhatsapp: optionalWhatsapp,
     upiId: optionalUpi,
+    /** Uploaded UPI QR-code image URL (R2 / Supabase). Optional
+     *  companion to upiId — see schema.prisma comment for context.
+     *  Validated as a URL only; the actual upload + sharp normalisation
+     *  happened at /api/uploads before the URL got plumbed here. */
+    upiQrUrl: optionalUrl,
     name: z.string().trim().min(2, "English name is required"),
     // Hindi name relaxed to optional in the schema. Originally
     // required, but GA4 showed the form was abandoned ~88% of the

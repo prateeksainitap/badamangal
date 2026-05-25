@@ -269,6 +269,7 @@ export function toBhandara(record: DbBhandara): Bhandara {
     organizerPhone: record.organizerPhone,
     organizerWhatsapp: record.organizerWhatsapp ?? undefined,
     upiId: record.upiId ?? undefined,
+    upiQrUrl: record.upiQrUrl ?? undefined,
     photoUrl: record.photoUrl ?? undefined,
     isSponsored: record.isSponsored,
     isVerified: record.isVerified,

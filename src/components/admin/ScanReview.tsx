@@ -20,6 +20,7 @@ import { useMemo, useRef, useState } from "react";
 import SeasonDatePicker from "@/components/SeasonDatePicker";
 import MapPasteResolver from "@/components/admin/MapPasteResolver";
 import PhoneInput from "@/components/PhoneInput";
+import UpiQrUpload from "@/components/UpiQrUpload";
 import { trackEvent } from "@/lib/ga";
 import { IconCheck } from "@/components/admin/AdminIcons";
 
@@ -689,6 +690,7 @@ function BhandaraReviewForm({
   const [organizerPhone, setOrganizerPhone] = useState(e.organizerPhone ?? "");
   const [organizerWhatsapp, setOrganizerWhatsapp] = useState("");
   const [upiId, setUpiId] = useState("");
+  const [upiQrUrl, setUpiQrUrl] = useState("");
   // The "verified" decision is now driven by which Publish button the
   // admin clicks (Publish vs. Called & confirmed, publish), mirroring
   // the row-level button cluster on /admin. We no longer carry an
@@ -997,12 +999,23 @@ function BhandaraReviewForm({
             page surfaces a &quot;Sponsor this bhandara&quot; button. Leave
             blank to keep donations off for this listing.
           </p>
-          <div className="mt-2.5">
+          <div className="mt-2.5 space-y-3">
             <Field
               label="UPI ID"
               value={upiId}
               onChange={setUpiId}
               mono
+            />
+            {/* Companion QR upload — covers the case where the
+                organiser has a printed UPI QR but doesn't know the
+                handle text underneath. Either field works on its
+                own; both is fine. SponsorBhandara on the public
+                page prefers upiQrUrl when present, falls back to
+                a client-generated QR from upiId otherwise. */}
+            <UpiQrUpload
+              value={upiQrUrl}
+              onChange={setUpiQrUrl}
+              theme="admin"
             />
           </div>
         </fieldset>
@@ -1150,6 +1163,7 @@ function BhandaraReviewForm({
               organizerPhone,
               organizerWhatsapp: organizerWhatsapp || undefined,
               upiId: upiId || undefined,
+              upiQrUrl: upiQrUrl || undefined,
               photoUrl: scan.photoUrl,
               isVerified: verified,
             });

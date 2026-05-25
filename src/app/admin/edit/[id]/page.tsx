@@ -23,6 +23,7 @@ import { stripBotProvenance } from "@/lib/sanitize";
 import { resolveBhandaraCoords } from "@/lib/geocodeFallback";
 import MapLocationInput from "@/components/admin/MapLocationInput";
 import SubmitButton from "@/components/admin/SubmitButton";
+import UpiQrUploadField from "@/components/UpiQrUploadField";
 import AdminPhotoField from "@/components/admin/AdminPhotoField";
 import PhoneInput from "@/components/PhoneInput";
 import AdminShell from "@/components/admin/AdminShell";
@@ -312,12 +313,22 @@ export default async function AdminEditPage({ params }: PageProps) {
             surfaces a &quot;Sponsor this bhandara&quot; button. Leave blank
             to keep donations off for this listing.
           </p>
-          <div className="mt-2.5">
+          <div className="mt-2.5 space-y-3">
             <Pair
               label="UPI ID"
               name="upiId"
               defaultValue={b.upiId ?? ""}
               hint="e.g. rajesh@oksbi  ·  9876543210@upi"
+            />
+            {/* Companion QR upload. Some organisers only know their
+                UPI as a printed QR; uploading it here lets the public
+                bhandara page render their custom QR (or a Razorpay
+                dynamic-amount QR for trust-registered organisers)
+                instead of falling back to a client-generated QR from
+                the upiId text. */}
+            <UpiQrUploadField
+              name="upiQrUrl"
+              defaultValue={b.upiQrUrl ?? ""}
             />
           </div>
         </fieldset>

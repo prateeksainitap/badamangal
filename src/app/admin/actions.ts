@@ -288,6 +288,7 @@ export async function editAndPublishAction(
       organizerPhone: str("organizerPhone"),
       organizerWhatsapp: str("organizerWhatsapp") || null,
       upiId: str("upiId") || null,
+      upiQrUrl: str("upiQrUrl") || null,
       photoUrl: photoForUpdate,
       googleMapsUrl: `https://www.google.com/maps?q=${num("lat")},${num("lng")}&z=18`,
       status: "APPROVED",
@@ -770,6 +771,7 @@ async function setVolunteerSubmissionStatus(
           organizerPhone: sub.organizerPhone ?? "",
           organizerWhatsapp: null,
           upiId: null,
+          upiQrUrl: null,
           photoUrl: heroPhoto,
           googleMapsUrl:
             sub.mapsUrl ||

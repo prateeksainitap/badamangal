@@ -13,6 +13,7 @@ import { useT } from "@/lib/useT";
 import FancySelect from "@/components/FancySelect";
 import TimeField from "@/components/TimeField";
 import PhoneInput from "@/components/PhoneInput";
+import UpiQrUpload from "@/components/UpiQrUpload";
 
 // Dynamic-import the heavy sub-components so the form's first paint
 // doesn't have to wait for them.
@@ -89,6 +90,12 @@ type FormState = {
    *  is needed to support this field.
    *  Empty string = donations disabled for this listing. */
   upiId: string;
+  /** Optional uploaded UPI QR image URL — companion to upiId. Some
+   *  organisers only know their UPI as a printed QR (no idea of the
+   *  text handle underneath); uploading the QR here lets us surface
+   *  their actual QR on the public page instead of a client-generated
+   *  one from the text. Either field alone, or both, is fine. */
+  upiQrUrl: string;
   // Step 6
   photoUrl: string;
 };
@@ -109,6 +116,7 @@ const INITIAL: FormState = {
   organizerName: "",
   organizerPhone: "",
   upiId: "",
+  upiQrUrl: "",
   photoUrl: "",
 };
 
@@ -412,10 +420,12 @@ export default function BhandaraForm({
     const payload = {
       organizerName: state.organizerName,
       organizerPhone: state.organizerPhone,
-      // Optional UPI ID for the "Sponsor this bhandara" deep-link on
-      // the public detail page. Sent only when non-empty; the server
-      // route (/api/bhandaras POST) maps it to Bhandara.upiId.
+      // Optional UPI ID + uploaded QR image for the "Sponsor this
+      // bhandara" deep-link on the public detail page. Sent only when
+      // non-empty; the server route (/api/bhandaras POST) maps them
+      // to Bhandara.upiId / Bhandara.upiQrUrl.
       upiId: state.upiId.trim() || undefined,
+      upiQrUrl: state.upiQrUrl.trim() || undefined,
       name: nameValue,
       nameHi: nameValue,
       description: descriptionValue || undefined,
@@ -1212,7 +1222,7 @@ function Step5({ state, errors, setField }: StepProps) {
             ? "अपनी UPI ID डालें ताकि लोग सीधे आपके बैंक खाते में सेवा-दान भेज सकें। आपके भंडारा पेज पर 'सहयोग करें' बटन दिखेगा। खाली छोड़ें तो दान बंद रहेगा।"
             : "Add your UPI ID so people can send a seva contribution directly to your bank account. A 'Sponsor this bhandara' button will appear on your listing page. Leave blank to keep donations off."}
         </p>
-        <div className="mt-3">
+        <div className="mt-3 space-y-3">
           <Field hi="UPI ID" en="UPI ID">
             <input
               type="text"
@@ -1225,11 +1235,20 @@ function Step5({ state, errors, setField }: StepProps) {
               maxLength={64}
             />
           </Field>
-          <p className="mt-1.5 text-xs text-ink-700/65">
+          <p className="text-xs text-ink-700/65">
             {locale === "hi"
               ? "टिप: अपनी UPI app में 'मेरी UPI ID' देखें — Google Pay / PhonePe / Paytm — और वहीं से कॉपी करके पेस्ट करें।"
               : "Tip: open your UPI app (GPay / PhonePe / Paytm), tap your profile, copy the ID shown there, and paste it here."}
           </p>
+          {/* Either the typed UPI ID above OR an uploaded QR image is
+              sufficient. Both is fine too. Public bhandara page prefers
+              the uploaded QR (if present) over a client-generated one
+              from the text. */}
+          <UpiQrUpload
+            value={state.upiQrUrl}
+            onChange={(next) => setField("upiQrUrl", next)}
+            theme="public"
+          />
         </div>
       </div>
     </div>

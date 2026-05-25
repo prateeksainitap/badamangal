@@ -47,6 +47,15 @@ model Bhandara {
   organizerPhone    String
   organizerWhatsapp String?
   upiId             String?
+  /// URL of an uploaded UPI QR-code image (R2 / Supabase). Optional
+  /// companion to `upiId` — some organisers only know their UPI as
+  /// a printed QR (no idea of the text VPA underneath), and a few
+  /// scan-and-publish cases want a custom QR (combo Razorpay /
+  /// dynamic-amount). Public render falls back to upiId-generated QR
+  /// when this column is null. Image is uploaded via the existing
+  /// /api/uploads pipeline (sharp normalize + R2), so the URL is on
+  /// cdn.badamangal.com just like photoUrl.
+  upiQrUrl          String?
   // media
   photoUrl          String?
   // moderation

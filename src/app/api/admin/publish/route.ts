@@ -73,6 +73,19 @@ const optionalUpi = z
   .or(z.literal(""))
   .transform((v) => (v === "" || v === undefined ? undefined : v));
 
+// Optional URL (for uploaded UPI QR images). Lenient on the admin
+// path — accept anything that looks URL-ish or an empty string.
+// The actual upload + image validation happened at /api/uploads
+// before this URL got plumbed here, so we don't re-validate the
+// asset itself.
+const optionalUrl = z
+  .string()
+  .trim()
+  .max(500)
+  .optional()
+  .or(z.literal(""))
+  .transform((v) => (v === "" || v === undefined ? undefined : v));
+
 const bhandaraInput = z.object({
   name: z.string().trim().min(2),
   nameHi: z.string().trim().min(1),
@@ -104,6 +117,9 @@ const bhandaraInput = z.object({
   // submission flow; here we trust the admin to enter sane values.
   organizerWhatsapp: optionalPhone,
   upiId: optionalUpi,
+  /** Uploaded UPI QR image URL — companion to upiId. See
+   *  Bhandara.upiQrUrl comment in schema.prisma for context. */
+  upiQrUrl: optionalUrl,
   photoUrl: z.string().trim().url(),
   isVerified: z.boolean().optional().default(false),
 });
@@ -188,6 +204,7 @@ export async function POST(req: NextRequest) {
         // blank if the invite didn't include them.
         organizerWhatsapp: d.organizerWhatsapp ?? null,
         upiId: d.upiId ?? null,
+        upiQrUrl: d.upiQrUrl ?? null,
         photoUrl: d.photoUrl,
         googleMapsUrl: `https://www.google.com/maps?q=${d.lat},${d.lng}&z=18`,
         status: "APPROVED",

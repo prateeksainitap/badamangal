@@ -126,6 +126,7 @@ export async function POST(req: NextRequest) {
       organizerPhone: data.organizerPhone,
       organizerWhatsapp: data.organizerWhatsapp ?? null,
       upiId: data.upiId ?? null,
+      upiQrUrl: data.upiQrUrl ?? null,
       photoUrl: data.photoUrl ?? null,
       googlePlaceId: data.googlePlaceId ?? null,
       geoNeighborhood: data.geoNeighborhood ?? null,
