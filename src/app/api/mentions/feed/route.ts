@@ -50,9 +50,16 @@ type PublicMention = {
   lat: number | null;
   lng: number | null;
   locationSource: string;
-  /** Mentions never carry a photo (they're text/location-share events). */
-  photoUrl: null;
-  /** Mentions never carry any photos. Always empty for kind="mention". */
+  /** Companion-image URL stitched onto the mention by the feed handler
+   *  when a WhatsApp forward arrived with both image AND text (the
+   *  image hits /api/bot/ingest → Bhandara, the text hits
+   *  /api/bot/message → BhandaraMention; the feed re-links them by
+   *  groupName + ±10-min time window). Null when no companion was
+   *  found — ASKING mentions, old mentions whose companion aged out,
+   *  or text-only chatter. */
+  photoUrl: string | null;
+  /** Mentions never carry their own photos array. Always empty for
+   *  kind="mention" — the optional companion is on `photoUrl`. */
   photoUrls: string[];
   /** When the WA message was a REPLY, the quoted message it's
    *  answering. The chat bubble renders this as a small indented
@@ -61,10 +68,12 @@ type PublicMention = {
    *  both null = not a reply. */
   quotedText: string | null;
   quotedSender: string | null;
-  /** Mentions never link to a specific bhandara slug yet (admin can
-   *  match in moderation; until then, null). */
-  bhandaraSlug: null;
-  bhandaraName: null;
+  /** Slug + display name of the companion Bhandara when the feed
+   *  handler stitches a mention to its image-ingest companion. Lets
+   *  the chat bubble tap-through to the full bhandara detail page.
+   *  Null when there's no companion. */
+  bhandaraSlug: string | null;
+  bhandaraName: string | null;
   /** WhatsApp pushName of the sender. EXPOSED on the public feed by
    *  design — the homepage chat panel shows usernames + avatars for
    *  live-chat feel. These are the same names the sender uses
@@ -198,6 +207,7 @@ export async function GET(req: NextRequest) {
         lng: true,
         locationSource: true,
         senderName: true,
+        groupName: true,
         createdAt: true,
         approvedAt: true,
         quotedText: true,
@@ -251,7 +261,111 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
-  const mentionItems: PublicMention[] = mentionRows.map((m) => ({
+  // ── Companion-Bhandara enrichment for mentions ─────────────────
+  // WhatsApp forwards with an image AND a text caption hit the bot
+  // as two separate messages. The image lands in /api/bot/ingest →
+  // creates a Bhandara row with a photoUrl. The caption lands in
+  // /api/bot/message → creates a BhandaraMention row with NO image.
+  // Without a stitch, the live chat panel showed only the text and
+  // the visitor never saw the invite poster the sender actually
+  // forwarded. Match each mention to its companion Bhandara by
+  // groupName + time-window, then surface the Bhandara's photoUrl /
+  // slug / name on the mention's feed entry so LiveChatterBoard
+  // renders the thumbnail (it already supports `photoUrl` on
+  // mention rows, just wasn't being populated).
+  const COMPANION_WINDOW_MS = 10 * 60 * 1000; // 10 min either side
+  const mentionGroups = Array.from(
+    new Set(mentionRows.map((m) => m.groupName).filter((g): g is string => !!g)),
+  );
+  type CompanionBh = {
+    id: string;
+    slug: string;
+    name: string;
+    photoUrl: string | null;
+    description: string | null;
+    createdAt: Date;
+  };
+  let companionBhandaras: CompanionBh[] = [];
+  if (mentionRows.length > 0 && mentionGroups.length > 0) {
+    const mentionTimes = mentionRows.map((m) => m.createdAt.getTime());
+    const earliest = new Date(Math.min(...mentionTimes) - COMPANION_WINDOW_MS);
+    const latest = new Date(Math.max(...mentionTimes) + COMPANION_WINDOW_MS);
+    companionBhandaras = await prisma.bhandara.findMany({
+      where: {
+        // Bot-ingested only — the [bot:whatsapp tag is the marker
+        // /api/bot/ingest stamps onto every description it writes.
+        description: { contains: "[bot:whatsapp" },
+        // Photo is the whole reason we're stitching — skip rows that
+        // never got one.
+        photoUrl: { not: null },
+        createdAt: { gte: earliest, lte: latest },
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        photoUrl: true,
+        description: true,
+        createdAt: true,
+      },
+      // Bounded list: 200 candidates per feed refresh is plenty even
+      // on the busiest Tuesday morning (bot averages 5–15 image
+      // ingests per hour).
+      take: 200,
+    });
+  }
+
+  // Parse the `[bot:whatsapp · in:<groupName>` fragment out of each
+  // Bhandara's description so we can match by groupName. The full bot
+  // tag is `[bot:whatsapp · from:<sender> · in:<group> · msg:… …]`
+  // and the in:<group> fragment may not exist on legacy ingests that
+  // pre-date task #110's groupName plumbing.
+  function parseBhandaraGroup(desc: string | null): string | null {
+    if (!desc) return null;
+    const m = desc.match(/\[bot:whatsapp[^\]]*?· in:([^·\]]+)/);
+    return m ? m[1].trim() : null;
+  }
+
+  // Build groupName → list of candidate Bhandaras (newest first).
+  const companionsByGroup = new Map<string, CompanionBh[]>();
+  for (const b of companionBhandaras) {
+    const g = parseBhandaraGroup(b.description);
+    if (!g) continue;
+    const arr = companionsByGroup.get(g) ?? [];
+    arr.push(b);
+    companionsByGroup.set(g, arr);
+  }
+  for (const arr of companionsByGroup.values()) {
+    arr.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  // For a given mention, find the closest-in-time companion within
+  // ±COMPANION_WINDOW_MS that came from the same WhatsApp group.
+  function findCompanion(
+    mention: { groupName: string | null; createdAt: Date },
+  ): CompanionBh | null {
+    if (!mention.groupName) return null;
+    const candidates = companionsByGroup.get(mention.groupName);
+    if (!candidates || candidates.length === 0) return null;
+    const tMention = mention.createdAt.getTime();
+    let best: CompanionBh | null = null;
+    let bestDelta = Infinity;
+    for (const c of candidates) {
+      const delta = Math.abs(c.createdAt.getTime() - tMention);
+      if (delta < bestDelta && delta <= COMPANION_WINDOW_MS) {
+        best = c;
+        bestDelta = delta;
+      }
+    }
+    return best;
+  }
+
+  const mentionItems: PublicMention[] = mentionRows.map((m) => {
+    const companion = findCompanion({
+      groupName: m.groupName,
+      createdAt: m.createdAt,
+    });
+    return {
     id: `mention:${m.id}`,
     kind: "mention",
     // `cleanedText` is PII-redacted + bot-tag-stripped. The fallback
@@ -273,17 +387,25 @@ export async function GET(req: NextRequest) {
     lat: m.lat,
     lng: m.lng,
     locationSource: m.locationSource,
-    photoUrl: null,
+    // Companion image — surfaces the invite poster the sender forwarded
+    // alongside this caption. Null when there's no Bhandara in the
+    // ±10-min window from the same group, which is the right behavior
+    // for ASKING mentions ("kab tak chalega bhandara?") and for old
+    // mentions whose companion ingest has aged out.
+    photoUrl: companion?.photoUrl ?? null,
     photoUrls: [],
     quotedText: m.quotedText,
     quotedSender: m.quotedSender,
-    bhandaraSlug: null,
-    bhandaraName: null,
+    // Same source as photoUrl — let visitors tap through to the full
+    // bhandara detail page when the mention is matched.
+    bhandaraSlug: companion?.slug ?? null,
+    bhandaraName: companion?.name ?? null,
     senderName: m.senderName,
     // Use approvedAt as the "appears on feed at" timestamp so the
     // chat-bubble's relative time matches what the polling logic uses.
     createdAt: (m.approvedAt ?? m.createdAt).toISOString(),
-  }));
+    };
+  });
 
   const spotItems: PublicSpot[] = spotRows.map((s) => {
     // Build the photo list: primary first, then up to 4 extras from
