@@ -81,7 +81,22 @@ type IngestionOutcome =
 
 /** Fire-and-forget audit-row write. Wrapped in try/catch so a log
  *  write failure NEVER crashes the actual ingest — losing one audit
- *  row is acceptable; losing a real Bhandara/Spot create is not. */
+ *  row is acceptable; losing a real Bhandara/Spot create is not.
+ *
+ *  Diagnostic counters added 2026-05-25 after we noticed BotIngestionLog
+ *  staying empty in production despite Bhandara/Spot rows being created.
+ *  Three SiteCounter rows now bump alongside this function so the
+ *  failure mode is visible from a single SQL query, no Vercel log
+ *  trawling required:
+ *    • bot_log_attempts  — every time logIngestion is called
+ *    • bot_log_successes — every successful insert
+ *    • bot_log_failures  — every caught error
+ *  attempts === successes + failures should always hold; if it doesn't,
+ *  some other layer (Next runtime cold start, Prisma client init) is
+ *  silently dropping the call. The most recent error message is also
+ *  written to `bot_log_last_error` as a row description (count column
+ *  is just a placeholder bump) so the actual Prisma error text is
+ *  retrievable. */
 async function logIngestion(args: {
   outcome: IngestionOutcome;
   senderName?: string | null;
@@ -93,6 +108,19 @@ async function logIngestion(args: {
   imageHash?: string | null;
   extractedName?: string | null;
 }): Promise<void> {
+  // Bump the attempts counter FIRST so even a runtime crash in the
+  // try block leaves a trace. Wrapped in its own try so a SiteCounter
+  // hiccup never affects the real ingest path.
+  try {
+    await prisma.siteCounter.upsert({
+      where: { id: "bot_log_attempts" },
+      update: { count: { increment: 1 } },
+      create: { id: "bot_log_attempts", count: 1 },
+    });
+  } catch {
+    /* counter write failed; downstream is still attempted */
+  }
+
   try {
     await prisma.botIngestionLog.create({
       data: {
@@ -107,11 +135,43 @@ async function logIngestion(args: {
         extractedName: args.extractedName?.slice(0, 200) ?? null,
       },
     });
+    // Success path: bump success counter so the ratio
+    // (successes / attempts) is observable.
+    try {
+      await prisma.siteCounter.upsert({
+        where: { id: "bot_log_successes" },
+        update: { count: { increment: 1 } },
+        create: { id: "bot_log_successes", count: 1 },
+      });
+    } catch {
+      /* ignore */
+    }
   } catch (err) {
-    // Don't let logging failures cascade. Log to stderr so a missing
-    // table / schema drift is still visible to the operator via
-    // server logs.
-    console.warn("[bot/ingest] logIngestion failed", err);
+    // Loud + structured: console.error survives Vercel filtering
+    // better than console.warn, and the JSON shape is greppable from
+    // function logs.
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const errName = err instanceof Error ? err.name : "Unknown";
+    console.error(
+      "[bot/ingest] logIngestion FAILED",
+      JSON.stringify({
+        errName,
+        errMsg,
+        outcome: args.outcome,
+        senderName: args.senderName?.slice(0, 40),
+        groupName: args.groupName?.slice(0, 40),
+        msgId: args.msgId?.slice(0, 40),
+      }),
+    );
+    try {
+      await prisma.siteCounter.upsert({
+        where: { id: "bot_log_failures" },
+        update: { count: { increment: 1 } },
+        create: { id: "bot_log_failures", count: 1 },
+      });
+    } catch {
+      /* counter write failed too; we've lost all observability for this */
+    }
   }
 }
 
