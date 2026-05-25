@@ -399,20 +399,21 @@ export default async function AdminDashboardPage() {
           </Link>
         </div>
 
-        {/* Body — two columns on lg, stacked on smaller screens.
-            Left ~60% (map), right ~40% (chronological stream). The
-            vertical divider only appears on lg (where the columns
-            are side-by-side); on mobile each column gets its own
-            section header so the stack still reads as one panel. */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 lg:divide-x lg:divide-cyan-400/[0.10]">
-          {/* LEFT — map. Plain block container (no flex-1 chain) so
+        {/* Body — map full-width on top, chronological stream below.
+            Was previously a two-column lg:grid-cols-5 (3 + 2) split
+            with a vertical divider, but the right-column chat felt
+            cramped at narrow widths and the map lost canvas width
+            it could use for label density. New stacking treatment
+            gives the map the full row so it reads as the dashboard's
+            primary "city right now" canvas, then the stream sits
+            beneath it as a continuous chronological tail. The
+            horizontal divider on the stream replaces the old
+            vertical lg:divide-x. */}
+        <div className="grid grid-cols-1">
+          {/* TOP — map. Plain block container (no flex-1 chain) so
               AdminOlaMap's own h-[22rem] sm:h-[24rem] lg:h-[28rem]
-              dimensions are what actually drive the canvas size. The
-              prior `flex-1 min-h-[20rem]` setup looked right but the
-              `flex-1` percentage-basis chain didn't always propagate
-              a definite height through to the WebGL container,
-              causing the canvas to silently fail. */}
-          <div className="lg:col-span-3 relative">
+              dimensions are what actually drive the canvas size. */}
+          <div className="relative">
             {/* Map data lives inside this Suspense boundary so the
                 3 `findMany`s no longer block the KPI tile paint
                 above. While the queries run, the skeleton renders at
@@ -448,13 +449,18 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* RIGHT — chronological activity stream. Wrapped in Suspense
-              so the four `findMany` queries that populate it never
-              block the dashboard's KPI/hero paint. ActivityFeed runs
-              in `bare` mode (no inner border / no inner header), the
-              wrapping panel here owns those. */}
-          <div className="lg:col-span-2 flex flex-col min-h-[22rem] lg:max-h-[34rem]">
-            <div className="px-5 sm:px-6 pt-4 pb-2 flex items-center justify-between gap-2 border-b border-cyan-400/[0.08] lg:border-b-0">
+          {/* BOTTOM — chronological activity stream. Wrapped in
+              Suspense so the four `findMany` queries that populate it
+              never block the dashboard's KPI/hero paint. ActivityFeed
+              runs in `bare` mode (no inner border / no inner header),
+              the wrapping panel here owns those. With the new stacked
+              layout, the stream gets the full row width and can show
+              more rows before scrolling — bumped max-h from 34rem
+              (the old side-by-side cap) to 40rem so a busy Tuesday
+              chats list doesn't get cramped. Border-top replaces the
+              old vertical lg:divide-x between the two columns. */}
+          <div className="flex flex-col min-h-[22rem] max-h-[40rem] border-t border-cyan-400/[0.10]">
+            <div className="px-5 sm:px-6 pt-4 pb-2 flex items-center justify-between gap-2 border-b border-cyan-400/[0.08]">
               <div className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/85 font-mono">
                 Stream
               </div>
