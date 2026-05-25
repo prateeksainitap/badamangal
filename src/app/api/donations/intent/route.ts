@@ -37,10 +37,15 @@ export const dynamic = "force-dynamic";
  */
 const intentSchema = z.object({
   bhandaraId: z.string().min(1).max(40),
-  /** Suggested INR amount. Capped at ₹1,00,000 — well above any real
-   *  Bada Mangal donation and low enough to keep accidental typos
-   *  from creating absurd audit rows. */
-  amount: z.number().int().min(1).max(100_000),
+  /** INR amount we put in the UPI deep link's `am=` param.
+   *  0 = "no amount suggested, donor types whatever they want in
+   *  their UPI app". We dropped the auto-suggested ₹251 because the
+   *  organiser felt it was steering the donor toward a specific
+   *  number; we'd rather they donate whatever feels right.
+   *  Capped at ₹1,00,000 — well above any real Bada Mangal donation
+   *  and low enough to keep accidental typos from creating absurd
+   *  audit rows. */
+  amount: z.number().int().min(0).max(100_000),
   recipientType: z.enum(["organiser", "platform"]),
   recipientUpiId: z.string().min(3).max(80),
   recipientName: z.string().max(120).optional(),
@@ -119,13 +124,18 @@ export async function POST(req: NextRequest) {
   // can't smuggle a different recipient VPA into the redirect. The
   // tn (transaction note) carries our intent id so a future Razorpay
   // webhook OR a manual reconciliation can correlate.
+  //
+  // amount = 0 means "no suggested amount" — we OMIT `am` from the
+  // deep link entirely so the donor's UPI app opens with an empty
+  // amount field they can fill in. (Sending `am=0` lands as a
+  // ₹0 prefill in some UPI apps, which is worse UX than no prefill.)
   const params = new URLSearchParams({
     pa: d.recipientUpiId,
     pn: d.recipientName ?? "Bada Mangal seva",
-    am: String(d.amount),
     cu: "INR",
     tn: `Bada Mangal seva · ref ${created.id.slice(-8)}`,
   });
+  if (d.amount > 0) params.set("am", String(d.amount));
   const upiDeepLink = `upi://pay?${params.toString()}`;
 
   return NextResponse.json(

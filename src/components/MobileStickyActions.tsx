@@ -28,10 +28,6 @@ type Props = {
   /** Human-readable recipient name for the audit row (organiser
    *  display name). */
   recipientName?: string;
-  /** Suggested INR amount for the deep-link `am=` param. Defaults
-   *  to ₹251 to match the pre-existing upi:// link builder in
-   *  BhandaraDetailView. Donors can override inside their UPI app. */
-  defaultAmount?: number;
 };
 
 const LABELS: Record<Locale, { dir: string; wa: string; sponsor: string; sponsorComing: string }> = {
@@ -54,7 +50,6 @@ export default function MobileStickyActions({
   bhandaraId,
   recipientUpiId,
   recipientName,
-  defaultAmount = 251,
 }: Props) {
   const [show, setShow] = useState(false);
   const labels = LABELS[locale];
@@ -91,8 +86,14 @@ export default function MobileStickyActions({
           // opens, losing the audit row.
           keepalive: true,
           body: JSON.stringify({
+            // amount: 0 = "no suggested amount". The server omits
+            // `am` from the canonical deep link it returns, so the
+            // donor's UPI app opens with an empty amount field
+            // they can fill in themselves. We dropped the
+            // auto-suggested ₹251 because organisers felt it was
+            // steering donors toward a fixed number.
             bhandaraId,
-            amount: defaultAmount,
+            amount: 0,
             recipientType: "organiser",
             recipientUpiId,
             recipientName: recipientName ?? null,

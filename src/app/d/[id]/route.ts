@@ -87,17 +87,23 @@ export async function GET(
   }
 
   const userAgent = (req.headers.get("user-agent") ?? "").slice(0, 240);
-  const defaultAmount = 251;
 
   // Record the scan. Best-effort: if the insert hiccups (rare
   // pooler blip), we still issue the redirect so the donor's flow
   // isn't blocked by our telemetry. Same posture as the in-page
   // beacon over at /api/donations/intent.
+  //
+  // amount = 0 is our sentinel for "no suggested amount" — the donor
+  // types whatever feels right in their UPI app. Earlier we baked
+  // ₹251 into both the deep link and the audit row; the organiser
+  // felt the prefilled number was steering donors. /admin/donations
+  // now shows ₹0 for these rows, which the operator reads as "donor
+  // chose their own amount".
   try {
     await prisma.donationIntent.create({
       data: {
         bhandaraId: bh.id,
-        amount: defaultAmount,
+        amount: 0,
         recipientType: "organiser",
         recipientUpiId: bh.upiId,
         recipientName: bh.organizerName,
@@ -119,11 +125,11 @@ export async function GET(
   // button uses, so the donor lands on a familiar payment screen.
   // The `tn` field carries a short reference so the organiser can
   // correlate a payment they receive back to a scan event in our
-  // audit table.
+  // audit table. We intentionally omit `am` so the donor's UPI app
+  // opens with an empty amount field they can fill in.
   const params = new URLSearchParams({
     pa: bh.upiId,
     pn: bh.organizerName,
-    am: String(defaultAmount),
     cu: "INR",
     tn: `Bada Mangal seva for ${bh.name}`.slice(0, 60),
   });
