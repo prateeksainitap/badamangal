@@ -161,12 +161,19 @@ export function bhandaraShareText(b: Bhandara, locale: Locale): string {
   // who don't know what a "Bada Mangal bhandara" is should still get
   // an immediate sense of "I'm being welcomed to a community meal."
   const intro = isHi
-    ? "बड़ा मंगल भंडारा में आप सभी का सादर आमंत्रण है। प्रसाद ग्रहण कीजिए, सेवा का पुण्य लीजिए।"
-    : "You're warmly invited to a Bada Mangal bhandara. Prasad, sangat, and seva for all.";
+    ? "बड़ा मंगल भंडारा में आप सभी का सादर आमंत्रण है। प्रसाद ग्रहण कीजिए, सेवा का पुण्य लीजिए। 🙏"
+    : "You're warmly invited to a Bada Mangal bhandara. Prasad, sangat, and seva for all. 🙏";
 
   // Closer, both Ram and Hanuman invocations, separated by the
   // Devanagari danda (Hindi sentence ender) or a full stop (English).
-  const closer = isHi ? "जय श्री राम। जय हनुमान।" : "Jai Shri Ram. Jai Hanuman.";
+  // 🚩 trailing emoji is the saffron flag the Hanuman bhakti tradition
+  // hoists at mandirs and bhandara venues during Bada Mangal — small
+  // visual anchor at the end of every share that ties the message
+  // back to the festival's iconography. Paired with the 🙏 on the
+  // intro line so the invite reads "open palms in, flag of devotion
+  // out" — exact treatment requested by the operator (see ticket
+  // screenshot of the WhatsApp share preview, 2026-05-25).
+  const closer = isHi ? "जय श्री राम। जय हनुमान। 🚩" : "Jai Shri Ram. Jai Hanuman. 🚩";
 
   // Header line is the strongest visual anchor, wrap the entire
   // "Bada Mangal Bhandara: <Name>" in bold so it stands out as the
@@ -304,8 +311,8 @@ export function spotShareText(s: ShareableSpot, locale: Locale): string {
     : null;
 
   const intro = isHi
-    ? "लखनऊ में अभी एक बड़ा मंगल भंडारा चल रहा है! प्रसाद ग्रहण कीजिए, सेवा का पुण्य लीजिए।"
-    : "A Bada Mangal bhandara is being served in Lucknow right now. Come for prasad.";
+    ? "लखनऊ में अभी एक बड़ा मंगल भंडारा चल रहा है! प्रसाद ग्रहण कीजिए, सेवा का पुण्य लीजिए। 🙏"
+    : "A Bada Mangal bhandara is being served in Lucknow right now. Come for prasad. 🙏";
 
   const mapsLabel = isHi ? "*मानचित्र पर देखें:*" : "*Open in Maps:*";
   const siteLabel = s.bhandaraSlug
@@ -316,7 +323,10 @@ export function spotShareText(s: ShareableSpot, locale: Locale): string {
       ? "*भंडारा मानचित्र पर:*"
       : "*Bhandara map:*";
 
-  const closer = isHi ? "जय श्री राम। जय हनुमान।" : "Jai Shri Ram. Jai Hanuman.";
+  // Matching closer to bhandaraShareText — saffron-flag 🚩 anchor at
+  // the end of every share so listed-bhandara and live-spot messages
+  // feel like one branded voice in a group thread.
+  const closer = isHi ? "जय श्री राम। जय हनुमान। 🚩" : "Jai Shri Ram. Jai Hanuman. 🚩";
 
   // Link order, BadaMangal link first, Google Maps second.
   // Rationale: every paste should land on our site for the receiver
