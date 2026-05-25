@@ -21,6 +21,7 @@ import SeasonDatePicker from "@/components/SeasonDatePicker";
 import MapPasteResolver from "@/components/admin/MapPasteResolver";
 import PhoneInput from "@/components/PhoneInput";
 import UpiQrUpload from "@/components/UpiQrUpload";
+import AdminListbox from "@/components/admin/AdminListbox";
 import { trackEvent } from "@/lib/ga";
 import { IconCheck } from "@/components/admin/AdminIcons";
 
@@ -841,13 +842,19 @@ function BhandaraReviewForm({
           />
           {/* Area picker, supports curated list + free-text "Other".
               Same pattern as the public BhandaraForm so admin and
-              organiser have one mental model. */}
+              organiser have one mental model.
+              Replaced the native <select> (system font + OS menu
+              chrome that broke out of the admin AI theme) with the
+              shared AdminListbox — same dark cyan trigger + popover
+              every other admin select uses. The custom-area free-text
+              mode keeps its own eyebrow + escape-hatch button so
+              admins who picked "Other" by accident can revert. */}
           <div>
-            <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
-              Area *
-            </span>
             {customAreaMode ? (
-              <div className="mt-1 space-y-1.5">
+              <div className="space-y-1.5">
+                <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
+                  Area *
+                </span>
                 <input
                   value={area}
                   onChange={(ev) => setArea(ev.target.value)}
@@ -868,10 +875,11 @@ function BhandaraReviewForm({
                 </button>
               </div>
             ) : (
-              <select
+              <AdminListbox
+                name=""
+                label="Area *"
                 value={area}
-                onChange={(ev) => {
-                  const v = ev.target.value;
+                onChange={(v) => {
                   if (v === "__custom__") {
                     setArea("");
                     setCustomAreaMode(true);
@@ -879,16 +887,13 @@ function BhandaraReviewForm({
                   }
                   setArea(v);
                 }}
-                className="mt-1 w-full rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-sm text-cream-50 placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
-              >
-                <option value="">Select…</option>
-                {areas.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-                <option value="__custom__">Other, type your own…</option>
-              </select>
+                className="w-full block"
+                options={[
+                  { value: "", label: "Select…" },
+                  ...areas.map((o) => ({ value: o, label: o })),
+                  { value: "__custom__", label: "Other, type your own…" },
+                ]}
+              />
             )}
           </div>
           <Field label="Landmark" value={landmark} onChange={setLandmark} />
@@ -1479,25 +1484,24 @@ function SelectField({
   options: string[];
   required?: boolean;
 }) {
+  // Was a native <select> (broke out of the admin AI theme — OS menu
+  // chrome, system font, no keyboard niceties). Swapped to AdminListbox
+  // so this helper matches the rest of the admin form. The external
+  // <label> + eyebrow are dropped because AdminListbox now owns its
+  // own inset label inside the trigger pill, which is how every other
+  // admin Listbox renders.
   return (
-    <label className="block">
-      <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
-        {label}
-        {required ? " *" : ""}
-      </span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1.5 w-full rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-sm text-cream-50 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
-      >
-        <option value="">Select…</option>
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-    </label>
+    <AdminListbox
+      name=""
+      label={`${label}${required ? " *" : ""}`}
+      value={value}
+      onChange={onChange}
+      className="w-full block"
+      options={[
+        { value: "", label: "Select…" },
+        ...options.map((o) => ({ value: o, label: o })),
+      ]}
+    />
   );
 }
 
