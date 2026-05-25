@@ -51,15 +51,30 @@ import { resolveBhandaraCoords } from "@/lib/geocodeFallback";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// 25s matches the existing tier used by admin/scan, pamphlet, and
-// public/scan-bhandara so we don't spawn a new Vercel function group
-// (Hobby caps total functions per deployment, and each unique
-// maxDuration becomes a separate group). Realistic Gemini retry
-// budget: 3 fast-503 attempts return in ~7s; only a Gemini outright
-// hang on every attempt could exceed 25s, which is rare enough that
-// a truncated retry chain is an acceptable trade for keeping the
-// function count under the cap.
-export const maxDuration = 25;
+// 60s = Vercel Pro maximum. Bumped from 25s on 2026-05-25 (the eve
+// of the season's first Bada Mangal Tuesday) after the bot started
+// surfacing "Ingest failed (504)" for forwarded pamphlets. Root
+// cause: a single Gemini Vision call times out at 22s; classify +
+// extract back-to-back plus a slow R2 upload was tipping total
+// request time past the old 25s cap → Vercel killed the function
+// before the audit row was written, so the photo was lost.
+//
+// 60s gives us roughly:
+//   • ~2s image download from the bot URL
+//   • ~5s sharp normalisation + R2 upload
+//   • ~22s classify (worst case timeout)
+//   • ~22s extract  (worst case timeout)
+//   • ~9s overhead, DB writes, and the fallback PENDING save below
+//
+// Even if BOTH Gemini calls time out, we still finish under the cap
+// and at least land a PENDING row with the photo, so the operator
+// can manually fix details from /admin/bhandaras?status=PENDING.
+//
+// The bigger picture: this should be replaced with a queued
+// background-job pattern (return 202 immediately, run vision out of
+// band) before next year's season. For now, 60s + a graceful
+// fallback is the right size of fix.
+export const maxDuration = 60;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB before normalisation
@@ -503,15 +518,85 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       console.error("[bot/ingest] gemini bhandara extract failed", detail);
+
+      // EXTRACT-FAILURE FALLBACK (added 2026-05-25 ahead of the
+      // season's first Bada Mangal Tuesday).
+      //
+      // When Gemini Vision is slow / overloaded, the structured
+      // extract throws and previously we just 502'd back to the bot,
+      // losing the photo. On a high-traffic Tuesday that's the worst
+      // possible outcome — pamphlets vanish off the map.
+      //
+      // Instead, save a PENDING Bhandara with just the photo + the
+      // bot provenance tag. The classify call already returned
+      // "bhandara" (we know it's a pamphlet, just couldn't parse
+      // the fields). The operator sees these in /admin/bhandaras?
+      // status=PENDING with a distinctive "(needs review)" name and
+      // fills in details by opening the photo. Better than nothing.
+      //
+      // Byte-hash dedup ran earlier in the route, so re-forwards of
+      // the SAME image bytes won't create N pending duplicates.
+      // Cross-group re-forwards (different bytes) can still create
+      // duplicates — the operator merges in admin if needed.
+      let fallbackId: string | null = null;
+      try {
+        const pendingSlug = await ensureUniqueSlug(`pending-${Date.now().toString(36)}`);
+        const fallbackName = `(needs review${groupName ? ` · ${groupName.slice(0, 30)}` : ""})`;
+        const fallbackRow = await prisma.bhandara.create({
+          data: {
+            name: fallbackName,
+            nameHi: fallbackName,
+            slug: pendingSlug,
+            status: "PENDING",
+            isVerified: false,
+            area: "Lucknow",
+            address: "",
+            addressHi: "",
+            lat: 0,
+            lng: 0,
+            timeStart: "12:00",
+            timeEnd: "",
+            tuesdayDates: "[]",
+            menu: "[]",
+            menuHi: "[]",
+            organizerName: senderName ?? "Unknown",
+            organizerPhone: "",
+            photoUrl,
+            description: `${tag}\n[bot:extract-failed · ${detail.slice(0, 200)}]`,
+          },
+          select: { id: true },
+        });
+        fallbackId = fallbackRow.id;
+      } catch (fallbackErr) {
+        console.error(
+          "[bot/ingest] extract-failure fallback insert failed",
+          fallbackErr,
+        );
+      }
+
       await logIngestion({
         outcome: "FAILED_EXTRACT",
         senderName,
         groupName,
         msgId,
         imageHash,
-        reason: `Gemini bhandara extract: ${detail.slice(0, 380)}`,
+        resultRowId: fallbackId,
+        resultRowKind: fallbackId ? "bhandara" : null,
+        reason: `Gemini bhandara extract: ${detail.slice(0, 300)}${fallbackId ? ` · saved PENDING ${fallbackId}` : " · NO FALLBACK"}`,
       });
-      return jsonError(502, "extract_failed", { detail, photoUrl });
+
+      // Tell the bot "we handled it" so it doesn't retry / surface a
+      // failure message back to the WhatsApp group. The audit row +
+      // PENDING bhandara are the operator's signal that this image
+      // needs hand-classification.
+      return NextResponse.json({
+        ok: true,
+        kind: "bhandara",
+        status: "pending_needs_review",
+        bhandaraId: fallbackId,
+        photoUrl,
+        warning: "Gemini extract failed; row saved as PENDING for manual review.",
+      });
     }
 
     // ── Content-based dedup ────────────────────────────────────────
@@ -749,15 +834,66 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("[bot/ingest] gemini spot extract failed", detail);
+
+    // EXTRACT-FAILURE FALLBACK for live spot photos (added 2026-05-25).
+    // Same posture as the bhandara branch above: when Gemini extract
+    // throws (timeout / overload), still land the photo as an
+    // APPROVED Spot with the sender's caption (if any) and the bot
+    // provenance tag. Spots are time-boxed (8h TTL) and tolerate
+    // missing extract data — area/address are nice-to-have, not
+    // required for the live chat panel to render. Losing the photo
+    // outright is the worse outcome.
+    const senderCaptionFallback = (body.caption ?? "").trim().slice(0, 400);
+    const captionFallback = [senderCaptionFallback, tag].filter(Boolean).join("\n\n");
+    const expiresAtFallback = new Date(Date.now() + SPOT_TTL_HOURS * 60 * 60 * 1000);
+    let fallbackSpotId: string | null = null;
+    try {
+      const fallbackSpot = await prisma.spot.create({
+        data: {
+          lat: 0,
+          lng: 0,
+          area: null,
+          address: null,
+          photoUrl,
+          caption: captionFallback,
+          language: "mixed",
+          reporterName: senderName,
+          reporterPhoneHash: null,
+          status: "APPROVED",
+          expiresAt: expiresAtFallback,
+          ipHash: "bot:whatsapp",
+          userAgent: "openclaw/ingest-spot · extract-fallback",
+          extraPhotoUrls: "[]",
+        },
+        select: { id: true },
+      });
+      fallbackSpotId = fallbackSpot.id;
+    } catch (fallbackErr) {
+      console.error(
+        "[bot/ingest] spot extract-failure fallback insert failed",
+        fallbackErr,
+      );
+    }
+
     await logIngestion({
       outcome: "FAILED_EXTRACT",
       senderName,
       groupName,
       msgId,
       imageHash,
-      reason: `Gemini spot extract: ${detail.slice(0, 380)}`,
+      resultRowId: fallbackSpotId,
+      resultRowKind: fallbackSpotId ? "spot" : null,
+      reason: `Gemini spot extract: ${detail.slice(0, 300)}${fallbackSpotId ? ` · saved fallback spot ${fallbackSpotId}` : " · NO FALLBACK"}`,
     });
-    return jsonError(502, "extract_failed", { detail, photoUrl });
+
+    return NextResponse.json({
+      ok: true,
+      kind: "spot",
+      status: "approved_with_minimal_data",
+      spotId: fallbackSpotId,
+      photoUrl,
+      warning: "Gemini extract failed; spot saved with sender caption only.",
+    });
   }
 
   // Caption priority:
