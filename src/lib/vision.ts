@@ -255,18 +255,32 @@ async function callGeminiVision(
   // and a hung Gemini connection would burn the Vercel function to
   // its full timeout before failing.
   //
-  // Why 3 attempts not 2: a single Gemini 503 overload spike commonly
-  // lasts 5–10 seconds. Two attempts 1.5s apart fall entirely inside
-  // that spike → photo lost (real incident: AMAN's "Virat chauraha"
-  // crowd photo dropped because both attempts hit the same 5s overload
-  // window). Three attempts with exponential-ish backoff (1.5s, 4s)
-  // covers spikes up to ~7s wall clock, which catches most real
-  // overloads while keeping total budget bounded under bot/ingest's
-  // 50s maxDuration.
+  // 5xx retries: 3 attempts not 2 — a single Gemini 503 overload spike
+  // commonly lasts 5–10 seconds. Two attempts 1.5s apart fall entirely
+  // inside that spike → photo lost. Three attempts with backoff (1.5s,
+  // 4s) covers spikes up to ~7s wall clock.
+  //
+  // Timeouts: do NOT retry. Bumped 2026-05-25 after the admin scan UI
+  // surfaced "The operation was aborted due to timeout" three attempts
+  // in a row on a slow Gemini day. The previous behaviour retried
+  // timeouts too, which meant 3 × 12s = 36s of the function budget
+  // burned on the same hung connection — and "auto" mode actually
+  // calls vision TWICE (classify + extract), so a hung Gemini could
+  // chew through 72s before the function even noticed. Now a hard
+  // throw on AbortError surfaces a clean 502 to the UI within one
+  // VISION_TIMEOUT_MS window so the operator can retry the whole
+  // flow with a fresh budget instead of waiting for cascading retries.
+  //
+  // Per-attempt timeout bumped 12s → 22s. The Vercel function now has
+  // 60s (was 25s for Netlify), and a single vision call legitimately
+  // takes 8–18s on a busy Gemini day; 12s was killing real responses.
+  // 22s leaves room for both classify + extract within 60s even in
+  // worst-case wall-clock (22 + 22 = 44s, plus image normalize / R2
+  // upload / geocode / DB write < 10s).
   const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
   const MAX_ATTEMPTS = 3;
   const RETRY_DELAYS_MS = [1500, 4000];
-  const VISION_TIMEOUT_MS = 12_000;
+  const VISION_TIMEOUT_MS = 22_000;
 
   let resp: Response | null = null;
   let lastErrText = "";
@@ -310,13 +324,15 @@ async function callGeminiVision(
         },
       );
     } catch (err) {
-      // AbortError = timeout. Treat as retryable for the same reason
-      // we retry 5xx — Gemini occasionally just hangs.
+      // AbortError = the 22s per-attempt timer fired. Used to retry;
+      // now we throw immediately. A hung Gemini connection doesn't
+      // get faster on retry — it's the same backend instance the load
+      // balancer routed us to, and burning another 22s × 2 attempts
+      // just chews through the Vercel function budget. The admin UI
+      // catches the 502 we surface and prompts the operator to retry,
+      // which gives them a fresh function invocation (different
+      // load-balancer route → almost always different Gemini instance).
       lastErrText = err instanceof Error ? err.message : String(err);
-      if (attempt < MAX_ATTEMPTS) {
-        await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt - 1] ?? 1500));
-        continue;
-      }
       throw new Error(`Gemini vision fetch failed: ${lastErrText}`);
     }
     if (resp.ok) break;
