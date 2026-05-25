@@ -4,16 +4,11 @@ import { useState } from "react";
 import { useLocaleFromContext } from "@/lib/locale-context";
 
 type Props = {
-  /** Bhandara row id — for the DonationIntent beacon. */
-  bhandaraId: string;
-  /** Bhandara display name — appears in the UPI deep-link `tn` field
-   *  so the organiser can correlate the bank receipt. */
-  bhandaraName: string;
   /** Recipient VPA (e.g. `9235374707@barodampay`). Required — the
    *  block self-hides when this is missing. */
   upiId: string;
-  /** Organiser name on file. Surfaced as `pn` in the deep-link
-   *  (what the donor sees as the payee in their UPI app). */
+  /** Organiser name on file. Surfaced in the panel copy and the
+   *  QR alt-text. */
   organizerName: string;
   /** Public URL to the bank-issued QR PNG (Supabase Storage / R2). */
   upiQrUrl: string;
@@ -35,17 +30,8 @@ type Props = {
  *   • The bank-issued QR carries the organiser's name + masked
  *     account on its face, which adds a layer of donor trust we
  *     can't fake in a runtime QR.
- *
- * Tap behaviour mirrors `MobileStickyActions.beaconAndOpen`:
- * fire-and-forget POST to `/api/donations/intent` with `keepalive`
- * before navigating to the `upi://pay?…` deep link, so we get the
- * audit row regardless of whether the user comes back. The QR image
- * is the desktop / "scan with another phone" path; the button is the
- * "I'm already on my phone" path.
  */
 export default function OrganiserUpiBlock({
-  bhandaraId,
-  bhandaraName,
   upiId,
   organizerName,
   upiQrUrl,
@@ -58,50 +44,6 @@ export default function OrganiserUpiBlock({
   // guards on this, but defending here lets us drop the block into
   // any future bhandara surface without an extra check.
   if (!upiId || !upiQrUrl) return null;
-
-  // No suggested amount: we OMIT `am` from the deep link entirely so
-  // the donor's UPI app opens with an empty amount field they can fill
-  // in with whatever feels right. Earlier we prefilled ₹251 but
-  // organisers felt it was steering donors toward a specific number;
-  // the QR is now a "pay any amount" code, identical in spirit to a
-  // donation box.
-  const upiDeepLink = (() => {
-    const params = new URLSearchParams({
-      pa: upiId,
-      pn: organizerName,
-      cu: "INR",
-      tn: `Bada Mangal seva for ${bhandaraName}`.slice(0, 60),
-    });
-    return `upi://pay?${params.toString()}`;
-  })();
-
-  async function beaconAndOpen() {
-    try {
-      // `keepalive` lets the POST survive the immediate page nav. If
-      // the API fails we still issue the redirect; the donor's flow
-      // is never blocked by our telemetry. Mirrors the posture in
-      // MobileStickyActions + /d/[id] route.
-      //
-      // `amount: 0` is our sentinel for "no suggested amount" — the
-      // intent endpoint accepts it and omits `am` from the canonical
-      // deep link it returns. Audit rows show ₹0 in /admin/donations
-      // which the operator reads as "donor decided their own amount".
-      await fetch("/api/donations/intent", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        keepalive: true,
-        body: JSON.stringify({
-          bhandaraId,
-          amount: 0,
-          recipientType: "organiser",
-          recipientUpiId: upiId,
-          recipientName: organizerName,
-        }),
-      }).catch(() => {});
-    } finally {
-      window.location.href = upiDeepLink;
-    }
-  }
 
   async function copyUpiId() {
     try {
@@ -164,8 +106,8 @@ export default function OrganiserUpiBlock({
             </div>
             <h2 className="mt-2 font-fraunces text-2xl sm:text-[28px] text-sindoor-700 leading-tight">
               {t(
-                "Sponsor a thali, scan or tap.",
-                "एक थाली प्रायोजित करें — स्कैन या टैप करें।",
+                "Sponsor a thali, scan the QR.",
+                "एक थाली प्रायोजित करें, QR स्कैन करें।",
               )}
             </h2>
             <p className="mt-2 text-sm text-ink-600 leading-relaxed">
@@ -192,36 +134,6 @@ export default function OrganiserUpiBlock({
               </button>
             </div>
 
-            {/* Primary tap-to-pay. Uses beaconAndOpen so every tap
-                lands a DonationIntent row before the UPI app opens.
-                Button copy stays amount-free — once the UPI app
-                takes over, the donor types whatever feels right. */}
-            <div className="mt-5 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={beaconAndOpen}
-                className="inline-flex items-center gap-2 rounded-full bg-sindoor-700 hover:bg-sindoor-900 text-cream-50 font-semibold px-5 py-2.5 text-sm transition-colors shadow-[0_8px_20px_-10px_rgba(156,42,42,0.6)]"
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                >
-                  <path d="M21 12a9 9 0 1 1-3.51-7.12" />
-                  <path d="m13 3 4 4-4 4" />
-                </svg>
-                {t("Donate via UPI", "UPI से दान करें")}
-              </button>
-              <span className="text-[11px] text-ink-600/70 self-center font-mono uppercase tracking-[0.14em]">
-                {t("enter any amount", "कोई भी राशि")}
-              </span>
-            </div>
           </div>
         </div>
       </div>

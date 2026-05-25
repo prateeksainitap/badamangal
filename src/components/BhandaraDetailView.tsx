@@ -6,6 +6,7 @@ import BhandaraCard from "@/components/BhandaraCard";
 import BhandaraMap from "@/components/BhandaraMap";
 import CopyButton from "@/components/CopyButton";
 import MobileStickyActions from "@/components/MobileStickyActions";
+import OrganiserUpiBlock from "@/components/OrganiserUpiBlock";
 import { JaliCorner } from "@/components/ornaments";
 import { strings } from "@/content/strings";
 import { formatEnglishDate, formatHindiDate, istTodayIso } from "@/lib/dates";
@@ -373,13 +374,24 @@ export default function BhandaraDetailView({ b, others }: Props) {
         </section>
       ) : null}
 
-      {/* SPONSOR / DONATE — full UPI deep-link donate card is parked
-          pending payments structure decision (Razorpay onboarding,
-          Section 8 / 80G registration). The mobile sticky bar still
-          surfaces an organiser-UPI fallback via `sponsorHref`, which
-          was already in production HEAD before this work began. The
-          big donate card lives at `src/components/SponsorBhandara.tsx`
-          and renders here once we ship that infrastructure. */}
+      {/* SPONSOR / DONATE — organiser-direct UPI block.
+          Renders only when the bhandara has BOTH a UPI ID and an
+          uploaded bank-issued QR (b.upiQrUrl). The mobile sticky bar
+          continues to carry the secondary "Sponsor" tap; this block
+          is the primary in-page surface.
+
+          A second, fuller donate card (the parked SponsorBhandara
+          component with self-generated QR + amount selector) is
+          still on the bench pending the Razorpay onboarding +
+          Section 8 / 80G registration decision. Until that ships,
+          this block carries the donation surface end-to-end. */}
+      {b.upiId && b.upiQrUrl ? (
+        <OrganiserUpiBlock
+          upiId={b.upiId}
+          organizerName={b.organizerName}
+          upiQrUrl={b.upiQrUrl}
+        />
+      ) : null}
 
       {/* DETAILS GRID */}
       <section className="mx-auto max-w-5xl px-4 sm:px-6 mt-12 grid gap-6 sm:grid-cols-2">
