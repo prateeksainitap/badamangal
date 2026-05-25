@@ -23,6 +23,7 @@ import HomeCardsEmpty from "@/components/HomeCardsEmpty";
 // Times entries are parked commented-out, uncomment them there as
 // each outlet's piece runs.
 import MediaCoverage from "@/components/MediaCoverage";
+import HomeTestimonials from "@/components/HomeTestimonials";
 import HomeClosingBenediction from "@/components/HomeClosingBenediction";
 import HomeHero from "@/components/HomeHero";
 import HomeHistoryTeaser from "@/components/HomeHistoryTeaser";
@@ -760,6 +761,15 @@ export default async function HomePage() {
           src/components/MediaCoverage.tsx for how to add Times of
           India / Navbharat Times when those stories land. */}
       <MediaCoverage />
+
+      {/* TESTIMONIALS, "Lucknow is liking us" — community feedback
+          band. Sits right after press coverage so the flow reads as
+          "newspapers are talking about us → here's what individual
+          Lucknow folks said back" before resources / history /
+          benediction. Currently seeded with one real testimonial
+          from the contact form; the array in HomeTestimonials.tsx
+          grows as more come in. */}
+      <HomeTestimonials />
 
       {/* RESOURCES TEASER, extracted into a client component so the
           card titles + bodies localise from the LocaleProvider context

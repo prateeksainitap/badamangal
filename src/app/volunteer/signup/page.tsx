@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Sign up as a BadaMangal volunteer | Lucknow",
   description:
-    "30-second signup. Get your volunteer code, earn ₹50 per documented bhandara on Tuesdays + Saturdays this Bada Mangal season.",
+    "30-second signup. Get your volunteer code, join our WhatsApp group for the full 8-Tuesday Bada Mangal season. Pure seva, no fee, no payment. Delivery riders, cab drivers, students, anyone welcome.",
   alternates: { canonical: `${SITE_URL}/volunteer/signup` },
   robots: { index: false, follow: true },
 };

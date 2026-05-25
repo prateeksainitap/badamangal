@@ -39,6 +39,250 @@ import {
 } from "@/lib/volunteer";
 import { resizeImageForUpload } from "@/lib/image-resize";
 import { olaReverseGeocode } from "@/lib/geocode";
+import { useLocaleFromContext } from "@/lib/locale-context";
+
+/** Single-language copy bundle. Same pattern + same intent as
+ *  VolunteerSignupForm's COPY — earlier this form interleaved Hindi
+ *  and English in every label / hint / button, which got noisy fast.
+ *  Now the LangToggle in the header picks one language and the
+ *  entire form (legends, field labels, helper text, Drive
+ *  instructions, success card) renders in that language alone. */
+const COPY = {
+  hi: {
+    header: {
+      eyebrow: "🚩 भण्डारा भेजें",
+      h1: "भण्डारा भेजें",
+      sub1: "10 तस्वीरें + 2 video + 1 live spot।",
+      sub2: "पूरी गाइड देखें",
+    },
+    code: {
+      submittingAs: "✓ भेज रहे हैं",
+      notYou: "आप नहीं?",
+      pastePrompt: "अपना volunteer code पेस्ट करें (जैसे: BM-LKO-X7K2M9)",
+      useCode: "Code लगाएँ",
+      dontHave: "नहीं है?",
+      signupHere: "यहाँ signup करें →",
+    },
+    gps: {
+      pending: "आपकी location ली जा रही है…",
+      capturedPrefix: "📍 Location मिल गई · accuracy",
+      recapture: "फिर से लें",
+      denied:
+        "⚠️ Location permission बंद है। Browser settings में चालू करें + reload करें। बिना GPS की submissions अस्वीकृत हो सकती हैं।",
+      errorPrefix: "⚠️ GPS error:",
+      retry: "फिर कोशिश करें",
+    },
+    section1: {
+      legend: "1. भण्डारे की जानकारी",
+      bhandaraName: "भण्डारे का नाम",
+      bhandaraNamePh: "जैसे: द्वितीय विशाल भण्डारा",
+      area: "क्षेत्र / मोहल्ला",
+      areaPh: "जैसे: हजरतगंज, अलीगंज",
+      autoFilledArea: "📍 GPS से अपने आप भर गया। ज़रूरत हो तो बदलें।",
+      startTime: "समय",
+      startTimePh: "जैसे: सुबह 9:00",
+      fullAddress: "पूरा पता",
+      fullAddressPh:
+        "गली + पास का landmark + क्षेत्र, जैसे: Swati-Krutika Apartment Gate, CG City, Ansal API",
+      autoFilledAddress: "📍 GPS से अपने आप भर गया। श्रद्धालुओं को पहुँचने में मदद हो तो landmark जोड़ें।",
+      organizerName: "आयोजक का नाम",
+      organizerNamePh: "जैसे banner पर लिखा है",
+      organizerPhone: "आयोजक का फ़ोन",
+      optional: "(ज़रूरी नहीं)",
+      menu: "मेन्यू",
+      menuPh: "comma से अलग करें, जैसे: पूड़ी, सब्ज़ी, हलवा, प्रसाद",
+      mapsUrl: "Google Maps लिंक",
+      mapsUrlPh: "अपनी exact location का Maps link पेस्ट करें",
+      mapsHint: "Maps खोलें → नीला dot दबाएँ → Share → Copy link",
+    },
+    section2: {
+      legend: (n: number, ok: boolean) =>
+        ok ? "2. 10 तस्वीरें ✅" : `2. 10 तस्वीरें (${n}/10)`,
+      help: (
+        <>
+          2-3 हर category की: <strong>स्थान</strong> (pandal, decoration) ·{" "}
+          <strong>लोग</strong> (devotees, organizers, queue) ·{" "}
+          <strong>भोजन</strong> (पूड़ी, सब्ज़ी, प्रसाद, serving) ·{" "}
+          <strong>बैनर</strong> (निमंत्रण का पोस्टर)
+        </>
+      ),
+      uploading: "Uploading…",
+      addPhotos: (remaining: number) => `📸 तस्वीरें जोड़ें (${remaining} और)`,
+      openCamera: "📷 कैमरा खोलें",
+    },
+    section3: {
+      legendOk: "3. 2 videos ✅",
+      legendPending: "3. 2 videos (Google Drive से)",
+      help:
+        "हर video 10-30 second की हो। एक pandal का pan, एक प्रसाद serve करने का moment। हमारे shared Google Drive folder में upload करें (videos यहाँ direct upload करने के लिए बहुत बड़ी हैं)।",
+      step1: "1. Drive folder खोलिए",
+      openDriveBtn: "📂 Google Drive folder खोलें ↗",
+      step2: "2. File का नाम इस तरह रखें",
+      filenameHint1: (code: string) =>
+        `अपना volunteer code "${code}" file के नाम के शुरू में लगाएँ ताकि हम आपकी video को submission से match कर सकें।`,
+      checkboxStrong: "✅ मैंने अपनी 2 videos Drive folder में upload कर दी हैं",
+      checkboxSub: "filename के शुरू में volunteer code लगा हुआ है।",
+    },
+    section4: {
+      legendOk: "4. Live spot photo ✅",
+      legendPending: "4. Live spot photo (0/1)",
+      help:
+        "एक photo जो आप अभी जहाँ खड़े हैं वहीं ले रहे हैं। 8 घंटे तक live शहर के नक्शे पर दिखेगी।",
+      uploading: "Uploading…",
+      replace: "📸 spot photo बदलें",
+      take: "📸 spot photo लें",
+    },
+    section5: {
+      legend: "5. और कुछ? (ज़रूरी नहीं)",
+      notesLabel: "BadaMangal team के लिए नोट्स",
+      notesPh:
+        "कुछ बताना चाहते हैं? भण्डारा जल्दी ख़त्म हुआ? बैनर ख़राब था? Duplicate listing?",
+    },
+    submit: {
+      incompleteStrong: "⚠️ Bundle अधूरा है।",
+      incompleteText:
+        "पूरा bundle = 10 तस्वीरें + 2 videos + 1 spot photo। अधूरे submissions admin की मर्ज़ी पर accept होंगे।",
+      ready: "✅ पूरा bundle तैयार है। 🙏",
+      submitting: "भेज रहे हैं…",
+      submit: "🙏 भण्डारा भेजें",
+      confirm:
+        "Submit करने पर आप पुष्टि करते हैं कि सभी photos + videos आज इसी भण्डारे पर लिए गए हैं।",
+      uploadErrorPrefix: "Upload error:",
+    },
+    success: {
+      heading: "हो गया! 🙏",
+      body:
+        "हम 24 घंटे के अंदर review करेंगे। Approve होते ही आपका भण्डारा public directory + शहर के नक्शे पर live हो जाएगा। आपकी सेवा के लिए धन्यवाद 🙏",
+      idPrefix: "ID:",
+      submitAnother: "📸 एक और भण्डारा भेजें",
+      backHome: "🏠 BadaMangal home",
+    },
+    errors: {
+      networkFail: "Network में दिक्कत। फिर कोशिश करें।",
+      uploadFail: "Upload नहीं हो पाया। फिर कोशिश करें।",
+      genericSubmit: "कुछ गड़बड़ी हुई। फिर कोशिश करें।",
+    },
+    seeFullGuide: "पूरी गाइड देखें",
+  },
+  en: {
+    header: {
+      eyebrow: "🚩 Submit a bhandara",
+      h1: "Submit a bhandara",
+      sub1: "Take 10 photos + 2 videos + 1 live spot.",
+      sub2: "See full guide",
+    },
+    code: {
+      submittingAs: "✓ Submitting as",
+      notYou: "Not you?",
+      pastePrompt: "Paste your volunteer code (e.g. BM-LKO-X7K2M9)",
+      useCode: "Use code",
+      dontHave: "Don't have one?",
+      signupHere: "Sign up here →",
+    },
+    gps: {
+      pending: "Getting your location…",
+      capturedPrefix: "📍 Location captured · accuracy",
+      recapture: "Re-capture",
+      denied:
+        "⚠️ Location permission denied. Please enable location in your browser settings + reload. Submissions without GPS may be rejected.",
+      errorPrefix: "⚠️ GPS error:",
+      retry: "Retry",
+    },
+    section1: {
+      legend: "1. Bhandara details",
+      bhandaraName: "Bhandara name",
+      bhandaraNamePh: "e.g. Dwitiya Vishal Bhandara",
+      area: "Area / mohalla",
+      areaPh: "e.g. Hazratganj, Aliganj",
+      autoFilledArea: "📍 Auto-filled from GPS. Edit if needed.",
+      startTime: "Start time",
+      startTimePh: "e.g. 9:00 AM",
+      fullAddress: "Full address",
+      fullAddressPh:
+        "Street + landmark + area, e.g. Swati-Krutika Apartment Gate, CG City, Ansal API",
+      autoFilledAddress:
+        "📍 Auto-filled from GPS. Edit / add landmark if it helps devotees find the spot.",
+      organizerName: "Organizer name",
+      organizerNamePh: "As written on banner",
+      organizerPhone: "Organizer phone",
+      optional: "(optional)",
+      menu: "Menu",
+      menuPh: "Comma-separated, e.g. puri, sabzi, halwa, prasad",
+      mapsUrl: "Google Maps link (optional)",
+      mapsUrlPh: "Paste Maps link of your exact location",
+      mapsHint: "Open Maps → tap blue dot → Share → Copy link",
+    },
+    section2: {
+      legend: (n: number, ok: boolean) =>
+        ok ? "2. 10 photos ✅" : `2. 10 photos (${n}/10)`,
+      help: (
+        <>
+          2-3 each: <strong>VENUE</strong> (pandal, decoration) ·{" "}
+          <strong>PEOPLE</strong> (devotees, organizers, queue) ·{" "}
+          <strong>FOOD</strong> (puri, sabzi, prasad, serving) ·{" "}
+          <strong>BANNER</strong> (the invite poster)
+        </>
+      ),
+      uploading: "Uploading…",
+      addPhotos: (remaining: number) => `📸 Add photos (${remaining} more)`,
+      openCamera: "📷 Open camera",
+    },
+    section3: {
+      legendOk: "3. 2 videos ✅",
+      legendPending: "3. 2 videos (via Google Drive)",
+      help:
+        "10-30 sec each. One pandal pan, one prasad-serving moment. Upload them to our shared Google Drive folder (phone videos are too large to upload here directly).",
+      step1: "1. Open the Drive folder",
+      openDriveBtn: "📂 Open Google Drive folder ↗",
+      step2: "2. Name your files like",
+      filenameHint1: (code: string) =>
+        `Prefix every video file with your code "${code}" so we can match your Drive uploads to this submission.`,
+      checkboxStrong:
+        "✅ I've uploaded my 2 videos to the Google Drive folder",
+      checkboxSub: "with my volunteer code as the filename prefix.",
+    },
+    section4: {
+      legendOk: "4. Live spot photo ✅",
+      legendPending: "4. Live spot photo (0/1)",
+      help:
+        "ONE photo taken right now where you're standing. Goes on the live city map for 8 hours.",
+      uploading: "Uploading…",
+      replace: "📸 Replace spot photo",
+      take: "📸 Take spot photo",
+    },
+    section5: {
+      legend: "5. Anything else? (optional)",
+      notesLabel: "Notes for the BadaMangal team",
+      notesPh:
+        "Anything we should know? Bhandara closed early? Banner damaged? Duplicate listing?",
+    },
+    submit: {
+      incompleteStrong: "⚠️ Bundle incomplete.",
+      incompleteText:
+        "Full bundle is 10 photos + 2 videos + 1 spot photo. Partial submissions may or may not be accepted at admin's discretion.",
+      ready: "✅ Full bundle ready to submit. 🙏",
+      submitting: "Submitting…",
+      submit: "🙏 Submit bhandara",
+      confirm:
+        "By submitting you confirm all photos + videos were taken at this bhandara today.",
+      uploadErrorPrefix: "Upload error:",
+    },
+    success: {
+      heading: "Submitted! 🙏",
+      body:
+        "We'll review within 24 hours. Once approved, your bhandara goes live on the public directory + city map. Thank you for your seva 🙏",
+      idPrefix: "ID:",
+      submitAnother: "📸 Submit another bhandara",
+      backHome: "🏠 BadaMangal home",
+    },
+    errors: {
+      networkFail: "Network error. Please try again.",
+      uploadFail: "Upload failed. Please try again.",
+      genericSubmit: "Something went wrong. Please try again.",
+    },
+    seeFullGuide: "See full guide",
+  },
+};
 
 type UploadedMedia = {
   url: string;
@@ -65,6 +309,13 @@ export default function VolunteerSubmitForm({
 }: {
   initialCode: string;
 }) {
+  // Locale-aware copy bundle. Toggling the header LangToggle pill
+  // re-renders the whole form (legends, labels, hints, success
+  // card, error banners) in the chosen language.
+  const locale = useLocaleFromContext();
+  const isHi = locale === "hi";
+  const t = COPY[isHi ? "hi" : "en"];
+
   // ─── State ────────────────────────────────────────────────────
   const [code, setCode] = useState<string>(initialCode);
   const [codeLocked, setCodeLocked] = useState<boolean>(false);
@@ -351,7 +602,7 @@ export default function VolunteerSubmitForm({
 
   // ─── SUCCESS STATE ────────────────────────────────────────────
   if (phase.kind === "success") {
-    return <SuccessCard submissionId={phase.id} code={code} />;
+    return <SuccessCard submissionId={phase.id} code={code} t={t.success} />;
   }
 
   // ─── FORM STATE ───────────────────────────────────────────────
@@ -386,10 +637,11 @@ export default function VolunteerSubmitForm({
             setCodeLocked(true);
           }
         }}
+        t={t.code}
       />
 
       {/* GPS banner, silently captures on mount. Shows status + re-capture. */}
-      <GpsBanner gps={gps} onRecapture={recaptureGps} />
+      <GpsBanner gps={gps} onRecapture={recaptureGps} t={t.gps} />
 
       {/* Errors */}
       {phase.kind === "error" ? (
@@ -399,36 +651,30 @@ export default function VolunteerSubmitForm({
       ) : null}
       {uploadError ? (
         <div className="rounded-xl border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-sm text-alert-500">
-          Upload error: {uploadError}
+          {t.submit.uploadErrorPrefix} {uploadError}
         </div>
       ) : null}
 
       {/* ─── Section 1: Bhandara details ─── */}
       <fieldset className="grid gap-4">
         <legend className="font-fraunces text-lg text-sindoor-700">
-          1. भण्डारे की जानकारी · Bhandara details
+          {t.section1.legend}
         </legend>
 
         <Field
-          label="Bhandara name"
-          labelHi="भण्डारे का नाम"
+          label={t.section1.bhandaraName}
           name="bhandaraName"
           required
-          placeholder="e.g. Dwitiya Vishal Bhandara"
+          placeholder={t.section1.bhandaraNamePh}
           error={fieldErrors.bhandaraName}
         />
 
         <div className="grid sm:grid-cols-2 gap-4">
           {/* Area + address are controlled so the reverse-geocoder
-              (effect on gps state above) can pre-fill them from the
-              captured GPS coords. Volunteer can edit anything that
-              landed; once they touch a field, userTouchedRef flips
-              and a later GPS re-capture won't overwrite their
-              changes. */}
+              can pre-fill them from the captured GPS coords. */}
           <label className="grid gap-1.5">
             <span className="text-sm text-ink-600">
-              Area / mohalla
-              <span className="ml-1 text-ink-600">· क्षेत्र / मोहल्ला</span>
+              {t.section1.area}
               <span className="text-sindoor-700"> *</span>
             </span>
             <input
@@ -441,13 +687,13 @@ export default function VolunteerSubmitForm({
                 setAutoFilled((p) => ({ ...p, area: false }));
                 setAreaValue(e.target.value);
               }}
-              placeholder="e.g. Hazratganj, Aliganj"
+              placeholder={t.section1.areaPh}
               list="vol-area-suggestions"
               className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
             />
             {autoFilled.area ? (
               <span className="text-xs text-leaf-600">
-                📍 Auto-filled from GPS. Edit if needed.
+                {t.section1.autoFilledArea}
               </span>
             ) : null}
             {fieldErrors.area ? (
@@ -460,18 +706,16 @@ export default function VolunteerSubmitForm({
             ))}
           </datalist>
           <Field
-            label="Start time"
-            labelHi="समय"
+            label={t.section1.startTime}
             name="startTime"
-            placeholder="e.g. 9:00 AM"
+            placeholder={t.section1.startTimePh}
             error={fieldErrors.startTime}
           />
         </div>
 
         <label className="grid gap-1.5">
           <span className="text-sm text-ink-600">
-            Full address
-            <span className="ml-1 text-ink-600">· पूरा पता</span>
+            {t.section1.fullAddress}
             <span className="text-sindoor-700"> *</span>
           </span>
           <textarea
@@ -484,12 +728,12 @@ export default function VolunteerSubmitForm({
               setAutoFilled((p) => ({ ...p, address: false }));
               setAddressValue(e.target.value);
             }}
-            placeholder="Street + landmark + area, e.g. Swati-Krutika Apartment Gate, CG City, Ansal API"
+            placeholder={t.section1.fullAddressPh}
             className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
           />
           {autoFilled.address ? (
             <span className="text-xs text-leaf-600">
-              📍 Auto-filled from GPS. Edit / add landmark if it helps devotees find the spot.
+              {t.section1.autoFilledAddress}
             </span>
           ) : null}
           {fieldErrors.address ? (
@@ -499,15 +743,15 @@ export default function VolunteerSubmitForm({
 
         <div className="grid sm:grid-cols-2 gap-4">
           <Field
-            label="Organizer name"
-            labelHi="आयोजक का नाम"
+            label={t.section1.organizerName}
             name="organizerName"
-            placeholder="As written on banner"
+            placeholder={t.section1.organizerNamePh}
             error={fieldErrors.organizerName}
           />
           <label className="grid gap-1.5">
             <span className="text-sm text-ink-600">
-              Organizer phone <span className="text-xs">(optional)</span>
+              {t.section1.organizerPhone}{" "}
+              <span className="text-xs">{t.section1.optional}</span>
             </span>
             <PhoneInput name="organizerPhone" />
             {fieldErrors.organizerPhone ? (
@@ -517,32 +761,25 @@ export default function VolunteerSubmitForm({
         </div>
 
         <Field
-          label="Menu"
-          labelHi="मेन्यू"
+          label={t.section1.menu}
           name="menu"
-          placeholder="Comma-separated, e.g. puri, sabzi, halwa, prasad"
+          placeholder={t.section1.menuPh}
         />
 
         <Field
-          label="Google Maps link (optional)"
-          labelHi="Google Maps लिंक"
+          label={t.section1.mapsUrl}
           name="mapsUrl"
-          placeholder="Paste Maps link of your exact location"
-          hint="Open Maps → tap blue dot → Share → Copy link"
+          placeholder={t.section1.mapsUrlPh}
+          hint={t.section1.mapsHint}
         />
       </fieldset>
 
       {/* ─── Section 2: Photos ─── */}
       <fieldset className="grid gap-3">
         <legend className="font-fraunces text-lg text-sindoor-700">
-          2. 10 photos {photoBundleOk ? "✅" : `(${photos.length}/10)`}
+          {t.section2.legend(photos.length, photoBundleOk)}
         </legend>
-        <p className="text-xs text-ink-600">
-          2-3 each: <strong>VENUE</strong> (pandal, decoration) ·{" "}
-          <strong>PEOPLE</strong> (devotees, organizers, queue) ·{" "}
-          <strong>FOOD</strong> (puri, sabzi, prasad, serving) ·{" "}
-          <strong>BANNER</strong> (the invite poster)
-        </p>
+        <p className="text-xs text-ink-600">{t.section2.help}</p>
 
         <input
           ref={photoInputRef}
@@ -576,17 +813,17 @@ export default function VolunteerSubmitForm({
           >
             {photoUploading > 0 ? (
               <>
-                <Spinner /> Uploading…
+                <Spinner /> {t.section2.uploading}
               </>
             ) : (
-              <>📸 Add photos ({10 - photos.length} more)</>
+              <>{t.section2.addPhotos(10 - photos.length)}</>
             )}
           </button>
           <label
             htmlFor="vol-photo-camera"
             className={`inline-flex items-center gap-1.5 rounded-full border border-gold-500/50 bg-white hover:bg-saffron-50 text-ink-900 font-medium px-4 py-2 text-sm transition-colors cursor-pointer ${photos.length >= 10 || photoUploading > 0 ? "opacity-50 pointer-events-none" : ""}`}
           >
-            📷 Open camera
+            {t.section2.openCamera}
           </label>
         </div>
 
@@ -627,20 +864,14 @@ export default function VolunteerSubmitForm({
           during moderation. */}
       <fieldset className="grid gap-3">
         <legend className="font-fraunces text-lg text-sindoor-700">
-          3. 2 videos {videoBundleOk ? "✅" : "(via Google Drive)"}
+          {videoBundleOk ? t.section3.legendOk : t.section3.legendPending}
         </legend>
-        <p className="text-xs text-ink-600">
-          10-30 sec each. One pandal pan, one prasad-serving moment.
-          Upload them to our shared Google Drive folder (phone
-          videos are too large to upload here directly).
-        </p>
+        <p className="text-xs text-ink-600">{t.section3.help}</p>
 
         <div className="mt-1 rounded-2xl border border-gold-500/45 bg-cream-50 p-4 space-y-3">
           {/* Step A: open the Drive folder in a new tab */}
           <div>
-            <p className="text-sm font-medium text-ink-900">
-              1. Drive folder खोलिए · Open the Drive folder
-            </p>
+            <p className="text-sm font-medium text-ink-900">{t.section3.step1}</p>
             <a
               href={VOLUNTEER_VIDEO_DRIVE_URL}
               target="_blank"
@@ -648,25 +879,18 @@ export default function VolunteerSubmitForm({
               data-ga="volunteer_open_drive_folder"
               className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors"
             >
-              📂 Open Google Drive folder ↗
+              {t.section3.openDriveBtn}
             </a>
           </div>
 
           {/* Step B: naming convention with the volunteer's code */}
           <div>
-            <p className="text-sm font-medium text-ink-900">
-              2. File का नाम इस तरह रखें · Name your files like
-            </p>
+            <p className="text-sm font-medium text-ink-900">{t.section3.step2}</p>
             <p className="mt-1.5 text-sm font-mono text-sindoor-700 bg-saffron-50 inline-block px-2.5 py-1 rounded border border-saffron-600/35">
               {code || "BM-LKO-XXXXXX"}_bhandara-name.mp4
             </p>
             <p className="mt-1.5 text-xs text-ink-600">
-              आपका volunteer code <strong>{code || ","}</strong> file
-              के नाम के शुरू में लगाएं ताकि हम आपकी video पहचान सकें।
-            </p>
-            <p className="text-xs text-ink-600">
-              Prefix every video file with your code so we can match
-              your Drive uploads to this submission.
+              {t.section3.filenameHint1(code || "BM-LKO-XXXXXX")}
             </p>
           </div>
 
@@ -684,13 +908,10 @@ export default function VolunteerSubmitForm({
               className="mt-1 h-4 w-4 accent-saffron-600 shrink-0"
             />
             <span className="text-sm text-ink-900">
-              <strong>
-                ✅ मैंने अपनी videos Drive folder में upload कर दी हैं
-              </strong>
+              <strong>{t.section3.checkboxStrong}</strong>
               <br />
               <span className="text-xs text-ink-600">
-                I've uploaded my 2 videos to the Google Drive folder,
-                with my volunteer code as the filename prefix.
+                {t.section3.checkboxSub}
               </span>
             </span>
           </label>
@@ -700,11 +921,9 @@ export default function VolunteerSubmitForm({
       {/* ─── Section 4: Live spot photo ─── */}
       <fieldset className="grid gap-3">
         <legend className="font-fraunces text-lg text-sindoor-700">
-          4. Live spot photo {spotOk ? "✅" : "(0/1)"}
+          {spotOk ? t.section4.legendOk : t.section4.legendPending}
         </legend>
-        <p className="text-xs text-ink-600">
-          ONE photo taken right now where you're standing. Goes on the live city map for 8 hours.
-        </p>
+        <p className="text-xs text-ink-600">{t.section4.help}</p>
 
         <input
           ref={spotInputRef}
@@ -726,12 +945,12 @@ export default function VolunteerSubmitForm({
         >
           {spotUploading ? (
             <>
-              <Spinner /> Uploading…
+              <Spinner /> {t.section4.uploading}
             </>
           ) : spotOk ? (
-            <>📸 Replace spot photo</>
+            <>{t.section4.replace}</>
           ) : (
-            <>📸 Take spot photo</>
+            <>{t.section4.take}</>
           )}
         </button>
 
@@ -750,13 +969,12 @@ export default function VolunteerSubmitForm({
       {/* ─── Section 5: Notes (optional) ─── */}
       <fieldset className="grid gap-3">
         <legend className="font-fraunces text-lg text-sindoor-700">
-          5. Anything else? (optional)
+          {t.section5.legend}
         </legend>
         <FieldArea
-          label="Notes for the BadaMangal team"
-          labelHi="नोट्स"
+          label={t.section5.notesLabel}
           name="volunteerNotes"
-          placeholder="Anything we should know? Bhandara closed early? Banner damaged? Duplicate listing?"
+          placeholder={t.section5.notesPh}
         />
       </fieldset>
 
@@ -764,11 +982,11 @@ export default function VolunteerSubmitForm({
       <div className="mt-2 grid gap-3">
         {!fullBundle ? (
           <div className="rounded-xl border border-saffron-600/40 bg-saffron-50 px-3 py-2 text-sm text-ink-900">
-            ⚠️ <strong>Bundle incomplete.</strong> Full bundle is 10 photos + 2 videos + 1 spot photo. Partial submissions may or may not be accepted at admin's discretion.
+            <strong>{t.submit.incompleteStrong}</strong> {t.submit.incompleteText}
           </div>
         ) : (
           <div className="rounded-xl border border-leaf-600/40 bg-leaf-600/5 px-3 py-2 text-sm text-ink-900">
-            ✅ Full bundle ready to submit. 🙏
+            {t.submit.ready}
           </div>
         )}
         <button
@@ -782,15 +1000,13 @@ export default function VolunteerSubmitForm({
         >
           {submitting ? (
             <>
-              <Spinner /> Submitting...
+              <Spinner /> {t.submit.submitting}
             </>
           ) : (
-            <>🙏 Submit bhandara</>
+            <>{t.submit.submit}</>
           )}
         </button>
-        <p className="text-center text-xs text-ink-600">
-          By submitting you confirm all photos + videos were taken at this bhandara today.
-        </p>
+        <p className="text-center text-xs text-ink-600">{t.submit.confirm}</p>
       </div>
     </form>
   );
@@ -803,23 +1019,26 @@ function CodeBanner({
   locked,
   onChange,
   onLock,
+  t,
 }: {
   code: string;
   locked: boolean;
   onChange: (v: string) => void;
   onLock: () => void;
+  t: (typeof COPY)["en"]["code"];
 }) {
   if (locked && isValidVolunteerCodeShape(code)) {
     return (
       <div className="rounded-xl border border-leaf-600/40 bg-leaf-600/5 px-3 py-2 flex items-center justify-between gap-2">
         <span className="text-sm text-ink-900">
-          ✓ Submitting as <strong className="font-fraunces">{code}</strong>
+          {t.submittingAs}{" "}
+          <strong className="font-fraunces">{code}</strong>
         </span>
         <Link
           href="/volunteer/signup"
           className="text-xs text-ink-600 underline hover:text-saffron-600"
         >
-          Not you?
+          {t.notYou}
         </Link>
       </div>
     );
@@ -827,9 +1046,7 @@ function CodeBanner({
   return (
     <div className="rounded-xl border border-saffron-600/40 bg-saffron-50/60 p-3">
       <label className="grid gap-1.5">
-        <span className="text-sm text-ink-900">
-          Paste your volunteer code (e.g. BM-LKO-X7K2M9)
-        </span>
+        <span className="text-sm text-ink-900">{t.pastePrompt}</span>
         <div className="flex gap-2">
           <input
             type="text"
@@ -846,13 +1063,13 @@ function CodeBanner({
             disabled={!isValidVolunteerCodeShape(code)}
             className="shrink-0 inline-flex items-center justify-center rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Use code
+            {t.useCode}
           </button>
         </div>
         <span className="text-xs text-ink-600">
-          Don't have one?{" "}
+          {t.dontHave}{" "}
           <Link href="/volunteer/signup" className="underline hover:text-saffron-600">
-            Sign up here →
+            {t.signupHere}
           </Link>
         </span>
       </label>
@@ -863,14 +1080,16 @@ function CodeBanner({
 function GpsBanner({
   gps,
   onRecapture,
+  t,
 }: {
   gps: GpsState;
   onRecapture: () => void;
+  t: (typeof COPY)["en"]["gps"];
 }) {
   if (gps.kind === "pending") {
     return (
       <div className="rounded-xl border border-gold-500/40 bg-cream-50 px-3 py-2 text-sm text-ink-600 flex items-center gap-2">
-        <Spinner /> Getting your location…
+        <Spinner /> {t.pending}
       </div>
     );
   }
@@ -878,14 +1097,14 @@ function GpsBanner({
     return (
       <div className="rounded-xl border border-leaf-600/40 bg-leaf-600/5 px-3 py-2 flex items-center justify-between gap-2">
         <span className="text-sm text-ink-900">
-          📍 Location captured · accuracy {Math.round(gps.accuracy)}m
+          {t.capturedPrefix} {Math.round(gps.accuracy)}m
         </span>
         <button
           type="button"
           onClick={onRecapture}
           className="text-xs text-ink-600 underline hover:text-saffron-600"
         >
-          Re-capture
+          {t.recapture}
         </button>
       </div>
     );
@@ -893,27 +1112,34 @@ function GpsBanner({
   if (gps.kind === "denied") {
     return (
       <div className="rounded-xl border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-sm text-alert-500">
-        ⚠️ Location permission denied. Please enable location in your browser settings + reload. Submissions without GPS may be rejected.
+        {t.denied}
       </div>
     );
   }
   return (
     <div className="rounded-xl border border-alert-500/40 bg-alert-500/10 px-3 py-2 flex items-center justify-between gap-2">
-      <span className="text-sm text-alert-500">⚠️ GPS error: {gps.message}</span>
+      <span className="text-sm text-alert-500">
+        {t.errorPrefix} {gps.message}
+      </span>
       <button
         type="button"
         onClick={onRecapture}
         className="text-xs text-alert-500 underline hover:text-alert-500/80"
       >
-        Retry
+        {t.retry}
       </button>
     </div>
   );
 }
 
+// Field/FieldArea: labelHi prop removed 2026-05-26. Caller now
+// passes a single locale-aware label string (computed from the
+// locale-keyed COPY bundle in the parent component). The previous
+// "english label · hindi label" interleave is what made the form
+// confusing to scan, and reading both alternatives slows down
+// everyone, devotional context or not.
 function Field({
   label,
-  labelHi,
   name,
   required,
   placeholder,
@@ -922,7 +1148,6 @@ function Field({
   list,
 }: {
   label: string;
-  labelHi?: string;
   name: string;
   required?: boolean;
   placeholder?: string;
@@ -934,7 +1159,6 @@ function Field({
     <label className="grid gap-1.5">
       <span className="text-sm text-ink-600">
         {label}
-        {labelHi ? <span className="ml-1 text-ink-600">· {labelHi}</span> : null}
         {required ? <span className="text-sindoor-700"> *</span> : null}
       </span>
       <input
@@ -953,14 +1177,12 @@ function Field({
 
 function FieldArea({
   label,
-  labelHi,
   name,
   required,
   placeholder,
   error,
 }: {
   label: string;
-  labelHi?: string;
   name: string;
   required?: boolean;
   placeholder?: string;
@@ -970,7 +1192,6 @@ function FieldArea({
     <label className="grid gap-1.5">
       <span className="text-sm text-ink-600">
         {label}
-        {labelHi ? <span className="ml-1 text-ink-600">· {labelHi}</span> : null}
         {required ? <span className="text-sindoor-700"> *</span> : null}
       </span>
       <textarea
@@ -988,24 +1209,22 @@ function FieldArea({
 function SuccessCard({
   submissionId,
   code,
+  t,
 }: {
   submissionId: string;
   code: string;
+  t: (typeof COPY)["en"]["success"];
 }) {
   return (
     <div className="grid gap-5 text-center">
       <p className="text-4xl">✅</p>
       <div>
         <h2 className="font-fraunces text-2xl sm:text-3xl text-sindoor-700">
-          Submitted! 🙏
+          {t.heading}
         </h2>
-        <p className="mt-2 text-sm text-ink-600">
-          We'll review within 24 hours. Once approved, your bhandara
-          goes live on the public directory + city map. Thank you
-          for your seva 🙏
-        </p>
+        <p className="mt-2 text-sm text-ink-600">{t.body}</p>
         <p className="mt-1 text-xs text-ink-600 font-mono">
-          ID: {submissionId.slice(0, 12)}…
+          {t.idPrefix} {submissionId.slice(0, 12)}…
         </p>
       </div>
 
@@ -1014,13 +1233,13 @@ function SuccessCard({
           href={`/volunteer/submit?code=${code}`}
           className="inline-flex items-center justify-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-6 py-3 text-base shadow-sm transition-colors"
         >
-          📸 Submit another bhandara
+          {t.submitAnother}
         </Link>
         <Link
           href="/"
           className="inline-flex items-center justify-center gap-2 rounded-full border border-gold-500/60 bg-white hover:bg-cream-50 text-ink-900 font-medium px-6 py-3 text-base transition-colors"
         >
-          🏠 Back to BadaMangal
+          {t.backHome}
         </Link>
       </div>
     </div>

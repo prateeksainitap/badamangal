@@ -126,6 +126,7 @@ export default function OrganiserUpiBlock({
               <button
                 type="button"
                 onClick={copyUpiId}
+                data-ga="donate_copy_upi"
                 className="text-xs font-semibold text-sindoor-700 hover:text-sindoor-900 underline decoration-dotted underline-offset-4"
               >
                 {copied

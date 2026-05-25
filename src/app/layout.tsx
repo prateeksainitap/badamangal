@@ -11,6 +11,7 @@ import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import GAPageview from "@/components/GAPageview";
 import GAScripts from "@/components/GAScripts";
+import GAClickTracker from "@/components/GAClickTracker";
 import GAClickDelegate from "@/components/GAClickDelegate";
 import SpotFloatingCta from "@/components/SpotFloatingCta";
 import FirstVisitGreeting from "@/components/FirstVisitGreeting";
@@ -296,6 +297,11 @@ export default async function RootLayout({
                 disallows). See components/GAScripts.tsx for the why. */}
             <GAScripts gaId={gaId} />
             <GAPageview id={gaId} />
+            {/* Delegated click handler that turns every
+                data-ga="..." attribute in the app into an actual
+                GA4 event. Added 2026-05-26 after the audit found
+                100+ data-ga attrs and zero listener reading them. */}
+            <GAClickTracker />
           </>
         ) : null}
       </body>
