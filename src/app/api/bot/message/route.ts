@@ -278,7 +278,7 @@ export async function POST(req: NextRequest) {
         ok: true,
         kind: "duplicate",
         duplicateOf: existing.id,
-        reviewUrl: `${SITE_URL}/admin?type=mentions#${existing.id}`,
+        reviewUrl: `${SITE_URL}/admin/mentions`,
         message: "This msgId was already ingested.",
       });
     }
@@ -747,7 +747,7 @@ export async function POST(req: NextRequest) {
         id: updated.id,
         mergedInto: recent.id,
         spotId: mergedSpotId,
-        reviewUrl: `${SITE_URL}/admin?type=mentions#${updated.id}`,
+        reviewUrl: `${SITE_URL}/admin/mentions`,
       });
     }
   }
@@ -874,7 +874,7 @@ export async function POST(req: NextRequest) {
     intent,
     confidence,
     locations: locations.length,
-    reviewUrl: `${SITE_URL}/admin?type=mentions#${createdRows[0].id}`,
+    reviewUrl: `${SITE_URL}/admin/mentions`,
   });
 }
 

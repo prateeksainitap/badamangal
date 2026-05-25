@@ -393,9 +393,21 @@ export async function POST(req: NextRequest) {
       ok: true,
       kind: "duplicate",
       duplicateOf: dupBhandara?.id ?? dupSpot?.id,
+      // Updated 2026-05-25: was the pre-redesign /admin?type=whatsapp
+      // legacy URL which now just lands on the admin login (the new
+      // /admin route is the AdminLoginForm). Bot reply messages were
+      // posting these stale links into the WhatsApp ingest group, so
+      // tapping "review" from a bhandara forward dead-ended on the
+      // login page. New URL goes straight to the row's edit screen
+      // under the redesigned admin shell (/admin/edit/<id> or
+      // /admin/edit-spot/<id>). When the admin isn't already signed
+      // in, the page-level `requireAdmin()` gate redirects to /admin
+      // and they re-enter from there, same as before.
       reviewUrl: dupBhandara
-        ? `${SITE_URL}/admin?type=whatsapp#${dupBhandara.id}`
-        : `${SITE_URL}/admin?type=whatsapp&status=spot#${dupSpot?.id ?? ""}`,
+        ? `${SITE_URL}/admin/edit/${dupBhandara.id}`
+        : dupSpot
+          ? `${SITE_URL}/admin/edit-spot/${dupSpot.id}`
+          : `${SITE_URL}/admin/bhandaras?source=bot&status=PENDING`,
       message:
         "This exact image was already ingested. No new row created.",
     });
@@ -583,7 +595,12 @@ export async function POST(req: NextRequest) {
           ok: true,
           kind: "duplicate",
           duplicateOf: contentDup.id,
-          reviewUrl: `${SITE_URL}/admin?type=whatsapp#${contentDup.id}`,
+          // See note at the earlier dup-hash reviewUrl: bot's
+          // "Already ingested (cross-group)" reply messages used to
+          // post legacy /admin?type=whatsapp#<id> URLs which dead-end
+          // on the new login page. Point at the canonical row's edit
+          // screen directly.
+          reviewUrl: `${SITE_URL}/admin/edit/${contentDup.id}`,
           message:
             "Content-dedup: same bhandara (name + first date) was already ingested. Re-forward note appended to the canonical row.",
         });
@@ -711,7 +728,11 @@ export async function POST(req: NextRequest) {
       kind: "bhandara",
       id: row.id,
       slug: row.slug,
-      reviewUrl: `${SITE_URL}/admin#${row.id}`,
+      // Same legacy → new admin path swap as the dup branches above.
+      // /admin#<id> would have land-paged on the login screen with the
+      // hash dropped on redirect; /admin/edit/<id> opens straight on
+      // the row's review form.
+      reviewUrl: `${SITE_URL}/admin/edit/${row.id}`,
     });
   }
 
@@ -799,6 +820,9 @@ export async function POST(req: NextRequest) {
      *  the caption is already on the public Spot row, no need to
      *  also create a duplicate text mention. */
     captionUsedInSpot: senderCaption.length > 0,
-    reviewUrl: `${SITE_URL}/admin#spot:${spot.id}`,
+    // Spot opens straight on its edit page under the new admin shell.
+    // Old `/admin#spot:<id>` hash was a pre-redesign hash-anchor on the
+    // monolithic admin home; it no longer resolves anywhere useful.
+    reviewUrl: `${SITE_URL}/admin/edit-spot/${spot.id}`,
   });
 }
