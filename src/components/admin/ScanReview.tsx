@@ -247,23 +247,77 @@ export default function ScanReview({
         method: "POST",
         body: form,
       });
-      const data = await res.json();
+
+      // Defensive parse. When the upstream Gemini call exceeds the
+      // function's maxDuration, Vercel returns a 504 with an HTML
+      // error page ("An error occurred with your deployment"). We
+      // used to call `res.json()` directly here, which threw
+      // SyntaxError("Unexpected token 'A', \"An error o\"... is not
+      // valid JSON") and surfaced that cryptic message to the
+      // operator. Now we read the response body once as text, try to
+      // JSON-parse it (so the success path stays unchanged), and
+      // fall through to a status-aware human message if parsing
+      // fails or the response body isn't JSON.
+      const raw = await res.text();
+      let parsed: unknown = null;
+      try {
+        parsed = raw ? JSON.parse(raw) : null;
+      } catch {
+        /* non-JSON body (Vercel HTML error page, network proxy, etc.) */
+      }
+      const errBody =
+        parsed && typeof parsed === "object"
+          ? (parsed as { error?: unknown; detail?: unknown })
+          : null;
+
       if (!res.ok) {
-        // 502 path keeps the saved photoUrl so we don't waste the upload.
-        setError(
-          data?.error ??
-            "Scan failed. Check the server logs for the Gemini error.",
-        );
-        if (typeof data?.detail === "string" && data.detail.length > 0) {
-          setErrorDetail(data.detail);
+        const friendly =
+          res.status === 504
+            ? "Scan timed out. Gemini took longer than 60 seconds — usually a busy moment on Google's side. Click 'Scan with Gemini' again; the upload is already saved."
+            : res.status === 502
+              ? "Gemini failed to read this image. Try a sharper or higher-resolution upload, or scan again — the upload is already saved."
+              : res.status === 429
+                ? "Too many scans in a short window. Wait a minute and try again."
+                : res.status === 401
+                  ? "Session expired. Refresh the page and log in again."
+                  : `Scan failed (HTTP ${res.status}). Try again — the upload is already saved.`;
+        const errMsg =
+          errBody && typeof errBody.error === "string"
+            ? errBody.error
+            : friendly;
+        setError(errMsg);
+        if (
+          errBody &&
+          typeof errBody.detail === "string" &&
+          errBody.detail.length > 0
+        ) {
+          setErrorDetail(errBody.detail);
         }
         setPhase("idle");
         return;
       }
-      setScan(data as ScanResponse);
+
+      // Happy path: we expect a JSON ScanResponse. If parse failed
+      // on a 200 (shouldn't happen but defensive), treat it as an
+      // unknown error rather than crashing the component.
+      if (!parsed) {
+        setError("Got an empty response from the scan endpoint. Try again.");
+        setPhase("idle");
+        return;
+      }
+      setScan(parsed as ScanResponse);
       setPhase("review");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown scan error.");
+      // Network-level failure (offline, DNS, CORS). Distinct from
+      // an HTTP-error response; surface that distinction so the
+      // operator knows whether to retry or check connectivity.
+      const networkMsg =
+        err instanceof Error
+          ? err.message.toLowerCase().includes("fetch")
+            ? "Network error. Check your connection and try again."
+            : err.message
+          : "Unknown scan error.";
+      setError(networkMsg);
       setPhase("idle");
     }
   }

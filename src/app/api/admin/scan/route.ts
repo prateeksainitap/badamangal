@@ -41,9 +41,17 @@ import { ipHash, readClientIp } from "@/lib/crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Claude vision can take 6–15s on a complex banner; bump the function
-// timeout above the default. Netlify caps at 26s, leaving us headroom.
-export const maxDuration = 25;
+// Gemini classify + extract + R2 upload + Ola Maps geocode together
+// can take 12–25s on a complex pamphlet, and we were intermittently
+// hitting Vercel's gateway and returning a 504 with an HTML error
+// page (which the client tried to parse as JSON, producing the
+// "Unexpected token 'A', \"An error o...\"" failure mode in the UI).
+// Bumped 25 → 60 now that the platform is Vercel (Pro plan allows up
+// to 60s on serverless functions; the 25-second ceiling was a
+// Netlify-era cap, see the older comment that referenced "Netlify
+// caps at 26s"). Gives Gemini room to retry on slow days without
+// the function being killed mid-extract.
+export const maxDuration = 60;
 
 const MAX_INPUT_BYTES = 8 * 1024 * 1024; // 8 MB before sharp re-encode
 const MAX_DIMENSION = 2000;
