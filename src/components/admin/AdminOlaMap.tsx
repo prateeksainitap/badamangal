@@ -285,10 +285,19 @@ export default function AdminOlaMap({
         role="region"
       />
 
-      {/* Top-right legend */}
+      {/* Top-LEFT legend.
+          Was top-right but it collided with two things: Ola Maps'
+          default navigation controls (zoom +/− land at top-right
+          unless re-anchored), and the map's place-name labels
+          ("Industrial Area" / "Vrindavan Township" etc. that the
+          tile layer draws around the visible canvas — they cluster
+          toward the right edge for Lucknow's typical centered
+          framing). Top-left is clear on both counts: Ola attribution
+          sits at bottom-left, zoom at top-right, this stays out of
+          the way of both. */}
       <div
         aria-hidden
-        className="absolute top-3 right-3 z-10 font-mono text-[9.5px] text-cream-50/65 tracking-wide leading-tight space-y-0.5 bg-[#0B0E16]/85 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-cyan-400/15"
+        className="absolute top-3 left-3 z-10 font-mono text-[9.5px] text-cream-50/65 tracking-wide leading-tight space-y-0.5 bg-[#0B0E16]/85 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-cyan-400/15"
       >
         <div className="flex items-center justify-end gap-1.5">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400" />
@@ -304,10 +313,17 @@ export default function AdminOlaMap({
         </div>
       </div>
 
-      {/* Bottom-right count badge */}
+      {/* Bottom-CENTER count badge.
+          Moved from bottom-right because: (a) it overlapped the Ola
+          zoom controls at narrow viewport widths, (b) the bottom-left
+          carries the Ola Maps attribution which we can't reposition.
+          Bottom-center via left-1/2 + -translate-x-1/2 keeps the
+          pill visually anchored to the map's horizontal centerline,
+          which doubles as a soft "primary CTA" cue ("tap a pin"
+          reads like a sentence under the city). */}
       <div
         aria-hidden
-        className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-cyan-400/25 bg-[#0B0E16]/85 backdrop-blur-sm px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-cyan-300/85"
+        className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 inline-flex items-center gap-1.5 rounded-full border border-cyan-400/25 bg-[#0B0E16]/85 backdrop-blur-sm px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-cyan-300/85"
       >
         <span className="relative inline-flex h-1.5 w-1.5">
           <span className="absolute inset-0 rounded-full bg-cyan-400/70 motion-safe:animate-ping" />
