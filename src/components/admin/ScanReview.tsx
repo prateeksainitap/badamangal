@@ -706,12 +706,28 @@ function BhandaraReviewForm({
           combo as /admin/edit + /admin/edit-spot. */}
       {!blank ? (
         <div className="lg:sticky lg:top-20 lg:self-start">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={scan.photoUrl}
-            alt="uploaded invite"
-            className="w-full aspect-[3/4] object-contain bg-[#080A10]/70 rounded-2xl border border-cyan-400/25"
-          />
+          {/* Wrapped in an <a target="_blank"> so the operator can pop
+              the full-resolution invite open in a new tab when the
+              thumbnail is too small to read a phone number or a
+              hand-written venue line. Same affordance AdminPhotoField
+              + /admin/edit-spot already provide; ScanReview was the
+              one review surface that still rendered a static <img>.
+              cursor-zoom-in gives the visual cue that the image
+              expands; focus-visible ring keeps keyboard nav obvious. */}
+          <a
+            href={scan.photoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open full image in a new tab"
+            className="group block rounded-2xl overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/55"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={scan.photoUrl}
+              alt="uploaded invite"
+              className="w-full aspect-[3/4] object-contain bg-[#080A10]/70 rounded-2xl border border-cyan-400/25 cursor-zoom-in transition-colors group-hover:border-cyan-400/55"
+            />
+          </a>
           <p className="mt-2 text-[10px] text-cream-50/45 font-mono break-all">
             {scan.photoUrl}
           </p>
@@ -1175,12 +1191,24 @@ function SpotReviewForm({
       {!blank ? (
         // Sticky on lg+ — same rationale as BhandaraReviewForm above.
         <div className="lg:sticky lg:top-20 lg:self-start">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={scan.photoUrl}
-            alt="uploaded spot"
-            className="w-full aspect-square object-cover bg-[#080A10]/70 rounded-2xl border border-cyan-400/25"
-          />
+          {/* Click the preview to open full-resolution in a new tab.
+              Live-spot photos are often phone-camera shots of a busy
+              prasad line; the operator needs to zoom in to read the
+              venue board or the queue size. */}
+          <a
+            href={scan.photoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open full image in a new tab"
+            className="group block rounded-2xl overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/55"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={scan.photoUrl}
+              alt="uploaded spot"
+              className="w-full aspect-square object-cover bg-[#080A10]/70 rounded-2xl border border-cyan-400/25 cursor-zoom-in transition-colors group-hover:border-cyan-400/55"
+            />
+          </a>
           <p className="mt-2 text-[11px] text-cream-50/65 break-all">{scan.photoUrl}</p>
           {scan.geocode ? (
             <div className="mt-3 rounded-xl border border-leaf-400/35 bg-leaf-400/[0.08] p-3 text-xs">
