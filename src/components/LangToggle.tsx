@@ -18,12 +18,23 @@ export default function LangToggle() {
   // a cold-start Prisma fetch.
   const [, startTransition] = useTransition();
 
-  // Cookie-derived locale comes from server context (no document.cookie read
-  // on the client → no hydration mismatch). URL still overrides.
-  const ctxLocale = useLocaleFromContext();
-  const urlLang = params.get("lang");
-  const lang: Locale =
-    urlLang === "en" ? "en" : urlLang === "hi" ? "hi" : ctxLocale;
+  // Locale comes from the LocaleProvider context, which is the single
+  // source of truth the rest of the app reads from. The provider
+  // already does the URL → cookie → SSR-default merge, so trusting
+  // it here keeps the toggle's visible state in sync with the page
+  // content it's labelling.
+  //
+  // Earlier this component did its own URL+cookie merge via
+  // `params.get("lang")`. That looked symmetric with the provider but
+  // introduced a race on every click: router.replace() updates the
+  // browser URL synchronously via History API, while useSearchParams
+  // (which is what `params` resolves to) hands out a snapshot that
+  // doesn't refresh until React's next commit cycle. Result: cookie
+  // = "hi", context = "hi", page content rendered in Hindi, but
+  // params.get("lang") still returned the old "en" for one tick, and
+  // the toggle stayed on "English" for 100–300ms after every swap.
+  // Reading context only eliminates the snapshot read and the race.
+  const lang: Locale = useLocaleFromContext();
 
   const setLang = useCallback(
     (next: "hi" | "en") => {
