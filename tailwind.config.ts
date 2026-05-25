@@ -37,6 +37,27 @@ const config: Config = {
         deva:      ["var(--font-noto-deva)", "var(--font-mukta)", "sans-serif"],
         // Display sans for big numerals (countdown, stats, visitor counter).
         numerals:  ["var(--font-numerals)", "ui-sans-serif", "system-ui", "sans-serif"],
+        // Override Tailwind's default mono stack so admin form inputs
+        // and other `font-mono` surfaces can RENDER Devanagari. Browser
+        // font fallback is per-character: Latin/ASCII glyphs come from
+        // the monospace fonts at the front of the stack (so labels like
+        // `scan_and_publish()` keep the console aesthetic); Devanagari
+        // codepoints fall through to Mukta — which is already loaded
+        // site-wide via --font-mukta on <body> — instead of hitting
+        // the OS's missing-glyph "?" tofu box. Net result: a Hindi
+        // bhandara name typed into the nameHi input on /admin/edit
+        // renders crisply instead of as a row of squares.
+        mono: [
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          "Liberation Mono",
+          "Courier New",
+          "var(--font-mukta)",
+          "monospace",
+        ],
       },
       fontSize: {
         // Editorial scale per design-system-v2 §2
