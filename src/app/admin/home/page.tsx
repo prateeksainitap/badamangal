@@ -623,10 +623,11 @@ function QuickAction({
     <Link
       href={href}
       className={[
-        // Sleeker chrome — reduced padding so the label has more
-        // horizontal room. With 6 tiles in a row at lg, every pixel
-        // of icon/padding/chip we shave goes to the label.
-        "group relative rounded-2xl px-3 py-2.5 transition-all duration-300 overflow-hidden border border-cream-50/15 hover:-translate-y-0.5",
+        // Bumped vertical padding so the bigger / bolder label has
+        // breathing room above and below. Horizontal padding stays
+        // tight (px-3.5) so the label keeps as much width as possible
+        // in the 6-up grid at lg.
+        "group relative rounded-2xl px-3.5 py-3 transition-all duration-300 overflow-hidden border border-cream-50/15 hover:-translate-y-0.5",
         a.surface,
       ].join(" ")}
     >
@@ -636,13 +637,13 @@ function QuickAction({
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cream-50/40 to-transparent"
       />
-      <div className="relative flex items-center gap-2.5">
+      <div className="relative flex items-center gap-3">
         <div
           className={[
-            // 36×36 icon plate (was 44) — small enough that the
-            // label gets ~24px more breathing room without losing
-            // the icon as the primary visual handle.
-            "shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg",
+            // 40×40 icon plate (was 36) — matches the bolder type
+            // weight so the icon doesn't look small next to the new
+            // heading size.
+            "shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-lg",
             a.iconWrap,
           ].join(" ")}
         >
@@ -651,11 +652,11 @@ function QuickAction({
         <div className="flex-1 min-w-0">
           <div
             className={[
-              // text-[13px] (was text-sm/14px) + tracking-tight so
-              // long labels like "scan_and_publish" fit without
-              // truncating at lg. font-mono is unchanged — that's
-              // the "console terminal" voice we keep across admin.
-              "font-mono text-[13px] tracking-tight truncate font-semibold",
+              // Heading bump: text-[13px]/semibold → text-[15px]/bold,
+              // and leading-tight so the bigger glyphs don't stretch
+              // the row. tracking-tight still helps long labels like
+              // "scan_and_publish" hold their ground before truncating.
+              "font-mono text-[15px] leading-tight tracking-tight truncate font-bold",
               a.label,
             ].join(" ")}
           >
@@ -664,7 +665,10 @@ function QuickAction({
           </div>
           <div
             className={[
-              "text-[11px] mt-0.5 truncate font-mono",
+              // Subtitle bumped 11px → 12px so the hierarchy stays
+              // proportional to the bigger heading. Still distinctly
+              // secondary to the label.
+              "text-[12px] mt-1 truncate font-mono",
               a.sub,
             ].join(" ")}
           >
@@ -674,8 +678,10 @@ function QuickAction({
         {shortcut ? (
           <div
             className={[
-              // Smaller shortcut chip — 1.25rem min vs 1.6rem.
-              "shrink-0 inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-md font-mono text-[10px] font-bold uppercase tracking-[0.08em]",
+              // Shortcut chip nudged up to match the heavier heading
+              // — 1.4rem min, 5.5 height. Still distinctly secondary
+              // to the now-bolder label.
+              "shrink-0 inline-flex items-center justify-center min-w-[1.4rem] h-[1.4rem] px-1 rounded-md font-mono text-[10.5px] font-bold uppercase tracking-[0.08em]",
               a.chip,
             ].join(" ")}
             aria-hidden
