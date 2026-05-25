@@ -95,6 +95,19 @@ const NAV: NavItem[] = [
     label: "Donations",
     icon: <IconRupee />,
   },
+  {
+    // Bot-ingest audit. Surfaces every /api/bot/ingest outcome
+    // (success / duplicate / ignored / failed) so the operator can
+    // answer "I forwarded that poster — what did the bot do with
+    // it?" from the sidebar without hunting URLs. Added 2026-05-25
+    // after a debug session where the user couldn't tell that the
+    // bot was actually working (3 dedupes had landed but no new
+    // rows were created, leaving an "is it broken?" question with
+    // no obvious path to the audit log).
+    href: "/admin/bot-log",
+    label: "Bot log",
+    icon: <IconClipboard />,
+  },
 ];
 
 type Props = {

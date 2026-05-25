@@ -197,15 +197,61 @@ async function logIngestion(args: {
  *  characters left — caller treats "" as "not enough signal to dedup".
  *  Conservative on purpose: a generic "Bhandara" or "श्री राम" name
  *  shouldn't match every other generic poster in the queue. */
+/**
+ * Normalise a bhandara name down to its DISTINCTIVE component — the
+ * part that's unique to a specific event, after stripping out the
+ * boilerplate "Bada Mangal Bhandara" framing every poster has.
+ *
+ * Returns "" when the name has no distinctive component (i.e. the
+ * entire name was just generic Bada Mangal framing). Callers MUST
+ * treat empty as "do not dedup against this" — comparing two empty
+ * strings would false-match every generic-named row.
+ *
+ * Why this matters (real production bug, 2026-05-25):
+ *   The original normaliser only stripped the trailing "Bhandara"
+ *   suffix. A pamphlet titled "Bada Mangal Bhandara" reduced to
+ *   "bada mangal" (11 chars, passed the >= 3 length gate). Then the
+ *   dedup substring-match `normName.includes(candNorm)` was true for
+ *   ANY pamphlet whose name happened to start with "Bada Mangal …".
+ *   Result: distinct bhandaras (Brajesh's Para event + Amit Kapoor's
+ *   Chowk event, both saved by humans as plain "Bada Mangal Bhandara"
+ *   in the admin form) acted as honeypots that ate every forwarded
+ *   pamphlet via false dedup. The bot looked busy in the audit log
+ *   (DUPLICATE_CONTENT rows) but no new rows ever landed.
+ *
+ * Distinctive-name extraction: strip BOTH the boilerplate framing AND
+ * the "Bhandara" suffix. What's left is the specific identifier.
+ *   "Bada Mangal Bhandara"                  → "" (no dedup possible)
+ *   "Bada Mangal Prasad Distribution Program" → "prasad distribution program"
+ *   "Jetking Lucknow Bada Mangal Bhandara"  → "jetking lucknow"
+ *   "Vishal Bhandara — Hotel ANR"           → "vishal hotel anr"
+ *   "हम और आप वाला बड़ा मंगल भंडारा"        → "हम और आप वाला"
+ */
 function normaliseBhandaraName(s: string | null | undefined): string {
   if (!s) return "";
-  const cleaned = s
+  let cleaned = s
     .toLowerCase()
     .trim()
     .replace(/\s+/g, " ")
-    .replace(/^(shri|sri|श्री)\s+/i, "")
-    .replace(/\s+(bhandara|bhandare|भंडारा|भंडारे)\s*$/i, "")
+    .replace(/^(shri|sri|श्री|जय)\s+/i, "")
+    // Strip the "Bhandara"/"भंडारा" suffix or word from anywhere in
+    // the name (not just the end) — some posters write "Vishal
+    // Bhandara at Hotel ANR" or "Bhandara by Pandey Family".
+    .replace(/\b(bhandara|bhandare|bhandaara|भंडारा|भंडारे|भण्डारा)\b/gi, "")
+    // Strip the "Bada Mangal"/"बड़ा मंगल" framing from any position.
+    // English + Hinglish variants + Devanagari variants.
+    .replace(/\b(bada|bade|badaa|bara|barre)\s+(mangal|mangle|mangaL)\b/gi, "")
+    .replace(/(बड़ा|बड़े|बडा|बडे|बारा|बारे)\s*(मंगल|मंगले|मंगलवार)/g, "")
+    // Strip ordinal prefixes that vary per event ("Fourth", "8th",
+    // "चतुर्थ") — they're not stable across re-forwards.
+    .replace(/\b(first|second|third|fourth|fifth|sixth|seventh|eighth)\b/gi, "")
+    .replace(/\b\d+(st|nd|rd|th)?\b/g, "")
+    .replace(/\b(प्रथम|द्वितीय|तृतीय|चतुर्थ|पंचम|षष्ठ|सप्तम|अष्टम)\b/g, "")
+    // Collapse the resulting whitespace.
+    .replace(/\s+/g, " ")
     .trim();
+  // 3-char minimum filters out leftover junk like a stray punctuation
+  // mark or single-word common framing ("का", "एवं").
   return cleaned.length >= 3 ? cleaned : "";
 }
 
