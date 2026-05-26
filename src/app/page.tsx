@@ -406,7 +406,29 @@ export default async function HomePage() {
   // This is the contract every public surface (map, card grid, area
   // chips, /api/bhandaras GET, stats panel) MUST share, otherwise
   // headline counts diverge from the cards / pins below them.
-  const listings = records.map(toBhandara).filter((b) => hasUpcomingDate(b));
+  // Filter out any row whose coords are 0,0 OR fall outside the
+  // Lucknow bbox (26.7-27.0 lat, 80.7-81.2 lng). A bhandara at 0,0
+  // would render in the Atlantic Ocean / off Africa coast — the
+  // operator literally saw a pin "near Madagascar" today after a
+  // recovery sweep promoted PENDING rows without fixing their
+  // bot-fallback coords. The spots array already has the same
+  // filter (see liveSpotsWithCoords below); bhandaras need it too.
+  // This is a defence-in-depth guard: ingest paths should set real
+  // coords, the geocode-fallback chain should bridge any gaps, and
+  // this filter is the last-mile safety net on the way to the map.
+  function hasValidLucknowCoords(b: ReturnType<typeof toBhandara>): boolean {
+    return (
+      typeof b.lat === "number" &&
+      typeof b.lng === "number" &&
+      b.lat >= 26.7 &&
+      b.lat <= 27.0 &&
+      b.lng >= 80.7 &&
+      b.lng <= 81.2
+    );
+  }
+  const listings = records
+    .map(toBhandara)
+    .filter((b) => hasUpcomingDate(b) && hasValidLucknowCoords(b));
   const stats = statsRaw;
 
   // Live "spots", crowd-sourced sightings of bhandaras happening right
