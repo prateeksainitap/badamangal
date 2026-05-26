@@ -104,12 +104,16 @@ type FeedResp = {
 
 const POLL_MS = 12_000;
 const TIME_TICK_MS = 15_000;
-// 200 covers a full Bada Mangal day's chatter (peak Tuesday tops out
-// around 150-250 mentions across 14 WhatsApp groups). The 24h TTL on
-// mention rows naturally bounds the upper end, so the panel never
-// grows past one day even on long-running tabs. Previously 24, which
-// truncated the panel to the last ~2 hours of activity on busy days.
-const MAX_CARDS = 200;
+// 500 covers a peak Tuesday with plenty of headroom. Empirically the
+// 4th Bada Mangal of 2026 produced 244+ live signals (listed + spots
+// + mentions) within the first 12 hours, plus 14 WhatsApp groups
+// feeding the bot. 200 (the previous cap) was truncating the panel
+// after about a half-day of activity on busy Tuesdays — operators
+// scrolling for earlier context lost rows mid-conversation.
+// The 24h TTL on mention rows still bounds the natural upper end.
+// 500 cards is comfortable for modern mobile browsers (no virtualisation
+// needed at this size; React's keyed re-render handles it fine).
+const MAX_CARDS = 500;
 const NEW_GLOW_MS = 6_000;
 const AUTOSCROLL_THRESHOLD_PX = 80;
 const COUNTUP_DURATION_MS = 1200;

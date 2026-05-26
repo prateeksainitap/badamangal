@@ -150,10 +150,12 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const sinceParam = url.searchParams.get("since");
   const limitParam = url.searchParams.get("limit");
-  // Default 200 covers a full Bada Mangal day's chatter; max 300 leaves
-  // headroom for unusually busy peaks. Previously 30/60 which truncated
-  // the chat panel to ~2 hours of activity on busy days.
-  const limitN = Math.max(1, Math.min(300, Number(limitParam ?? "200") || 200));
+  // Default 500 + max 500 covers a peak Tuesday with full headroom.
+  // Bumped from default 200 / max 300 after Bada Mangal #4 of 2026
+  // hit 244+ live signals in the first 12 hours and operators saw
+  // the chat panel cap out. The 24h TTL on mention rows still bounds
+  // the absolute upper end so this never grows unbounded.
+  const limitN = Math.max(1, Math.min(500, Number(limitParam ?? "500") || 500));
   /** When `withCoords=1` is passed, restrict the feed to items with
    *  non-null lat/lng. The heatmap component uses this to skip the
    *  no-location text-only mentions it can't render. */

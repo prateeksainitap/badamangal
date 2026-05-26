@@ -271,10 +271,10 @@ export default async function HomePage() {
     }),
     // APPROVED, non-expired BhandaraMention rows for the new homepage
     // LiveChatterBoard (WhatsApp text-message ingest, fed by
-    // /api/bot/message + classified by Gemini). Cap at 200 to cover
-    // an entire Bada Mangal day's chatter — the 24h TTL on
-    // expiresAt naturally bounds the upper end and a peak Tuesday
-    // tops out around 150-250 mentions across all groups. Matches
+    // /api/bot/message + classified by Gemini). Cap at 500 to cover
+    // a peak Tuesday with full headroom (Bada Mangal #4 of 2026
+    // logged 244+ live signals in the first 12 hours alone). 24h
+    // TTL on expiresAt still bounds the natural upper end. Matches
     // the section's client-side MAX_CARDS so SSR and the polling
     // loop converge on the same ceiling.
     // `expiresAt: { gt: now }` mirrors the public /api/mentions/feed
@@ -292,7 +292,7 @@ export default async function HomePage() {
         approvedAt: { not: null },
       },
       orderBy: { approvedAt: "desc" },
-      take: 200,
+      take: 500,
       select: {
         id: true,
         cleanedText: true,
@@ -606,13 +606,13 @@ export default async function HomePage() {
     .sort((a, b) =>
       a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0,
     )
-    // 200 matches LiveChatterBoard's MAX_CARDS so the SSR payload
-    // covers a full day's chatter. Previously .slice(0, 30) silently
-    // truncated mentionsInitial regardless of the take: 200 above,
-    // which made the chat panel land at exactly 30 mentions even
-    // when the DB had 60+. This was the actual bug behind the
-    // "messages getting cropped" report.
-    .slice(0, 200);
+    // 500 matches LiveChatterBoard's MAX_CARDS so the SSR payload
+    // covers a peak Tuesday with headroom. Previously .slice(0, 30)
+    // silently truncated mentionsInitial regardless of the take cap
+    // above, which made the chat panel land at exactly 30 mentions
+    // even when the DB had 60+. Then bumped to 200, hit the cap on
+    // Bada Mangal #4 (244+ signals in 12h). Now 500.
+    .slice(0, 500);
 
   // Homepage gallery items: combine admin-curated GalleryPhoto rows
   // with spot photos (primary + extras). Admin items first so the
