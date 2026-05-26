@@ -56,6 +56,31 @@ import { getHomepageStats } from "@/lib/stats";
 // VisitorBeacon below.
 export const revalidate = 60;
 
+/**
+ * Module-level "last known good" cache for the homepage's 7 parallel
+ * Prisma queries. Lives per Lambda instance.
+ *
+ * Why this exists: on Tuesday-1 of Adhik Mas 2026 the Supabase pooler
+ * hit EMAXCONN (200/200 connections) under traffic spike. The
+ * Promise.allSettled fallback in the data-fetch section below would
+ * normally return empty arrays for failed queries, so the public
+ * homepage suddenly rendered as "All 0 Bada Mangal bhandaras in
+ * Lucknow" — a catastrophic UX regression on the season's biggest
+ * day. With this cache the failure mode degrades to "all data is
+ * 1-5 minutes stale" instead, which is invisible to the visitor.
+ *
+ * Stored value is opaque (each key is keyed off the unwrap label).
+ * Eviction is by TTL only — we never evict on count, since the
+ * working set is exactly 7 entries (one per Prisma query). Each
+ * Lambda warms its own cache from successful queries; cold-start
+ * Lambdas start empty and the fallback shape kicks in.
+ */
+const lastGood: Record<string, { value: unknown; at: number }> = {};
+/** Stale tolerance for last-good fallback. 5 min is short enough that
+ *  visitors don't ever see truly-stale data, long enough to cover
+ *  the typical pool-saturation window (~30s to ~2 min). */
+const LAST_GOOD_TTL_MS = 5 * 60 * 1000;
+
 // Homepage metadata, tuned to the queries Search Console is ACTUALLY
 // showing us impressions for, not the queries we wish we ranked for.
 //
@@ -296,16 +321,44 @@ export default async function HomePage() {
     }),
   ]);
 
-  // Unwrap each settled result with a safe per-query fallback. Errors
-  // log to Vercel function logs so partial failures are still loud in
-  // ops — they just don't black out the visitor's experience.
+  // Unwrap each settled result with a TWO-LAYER fallback so a DB
+  // failure degrades gracefully instead of catastrophically.
+  //
+  // Layer A (fresh-success): query succeeded — store the result in
+  // the module-level lastGood cache so future failures can reuse it.
+  //
+  // Layer B (recent-cached): query failed but we have a successful
+  // result from less than LAST_GOOD_TTL_MS ago. Serve that. This
+  // covers the EMAXCONN window during a Vercel cold-start storm —
+  // the homepage stays populated with the most recent known data
+  // while the pool recovers. The 5-min TTL is short enough that
+  // genuinely stale data doesn't linger; long enough to cover the
+  // typical pool-saturation event.
+  //
+  // Layer C (empty fallback): no recent cache either. Return the
+  // empty-shape fallback the page's downstream code already handles.
+  // This is the "first request after Lambda cold-start, while the
+  // pool is also down" worst case.
+  //
+  // Errors are still console.error-ed in every case so Vercel
+  // function logs show the underlying failure.
   function unwrap<T>(
     result: PromiseSettledResult<T>,
     fallback: T,
     label: string,
   ): T {
-    if (result.status === "fulfilled") return result.value;
+    if (result.status === "fulfilled") {
+      lastGood[label] = { value: result.value, at: Date.now() };
+      return result.value;
+    }
     console.error(`[homepage] data fetch failed for ${label}:`, result.reason);
+    const cached = lastGood[label];
+    if (cached && Date.now() - cached.at < LAST_GOOD_TTL_MS) {
+      console.warn(
+        `[homepage] serving last-good ${label} (age: ${Math.round((Date.now() - cached.at) / 1000)}s)`,
+      );
+      return cached.value as T;
+    }
     return fallback;
   }
   const records = unwrap(recordsResult, [], "bhandaras");
