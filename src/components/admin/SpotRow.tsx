@@ -113,12 +113,13 @@ export default function SpotRow({ spot: s, now, index }: Props) {
       // feel for the visible block above the fold without leaving
       // a long tail of empty space.
       style={{ ["--i" as string]: Math.min(index, 6) }}
-      // `has-[details[open]]:z-30` lifts this row's stacking context
-      // above the next one when the kebab-menu is open. backdrop-blur
-      // below creates a stacking context per row, which the inner
-      // <details open:z-30> can't escape; without this the popover
-      // gets clipped by the next row painting over it.
-      className="admin-row-in relative has-[details[open]]:z-30 rounded-2xl border border-cyan-400/15 bg-[#0B0E16]/85 backdrop-blur-sm p-4 sm:p-5 transition-all hover:border-cyan-400/35"
+      // No backdrop-blur on the row card. backdrop-filter creates a
+      // new stacking context, which was trapping the kebab-menu
+      // popover inside the row. Bg is 85% opaque against a near-
+      // identical dark page, so the blur was visually null. The
+      // arbitrary-variant z-30 below is a belt-and-suspenders lift
+      // for any future child that re-introduces a stacking context.
+      className="admin-row-in relative [&:has(details[open])]:z-30 rounded-2xl border border-cyan-400/15 bg-[#0B0E16]/85 p-4 sm:p-5 transition-all hover:border-cyan-400/35"
     >
       <div className="flex gap-3 sm:gap-4">
         <RowCheckbox id={s.id} label={cleanCaption ?? "Spot"} />

@@ -114,15 +114,16 @@ export default function BhandaraRow({ bhandara: b, index }: Props) {
       // rationale (uncapped 45ms × 141 rows = 6+ second tail).
       style={{ ["--i" as string]: Math.min(index, 6) }}
       className={[
-        // `has-[details[open]]:z-30` lifts the WHOLE row's stacking
-        // context above the next row when any kebab-menu inside is
-        // open. Needed because backdrop-blur-sm below creates a new
-        // stacking context per row — without this, the open popover
-        // gets painted over by the next row (also backdrop-blurred,
-        // same z, later in DOM = wins). The `open:z-30` on the inner
-        // <details> only orders within this row's own context, which
-        // is why the popover was being clipped by the next row.
-        "admin-row-in relative has-[details[open]]:z-30 rounded-2xl border bg-[#0B0E16]/85 backdrop-blur-sm p-4 sm:p-5 transition-all",
+        // No backdrop-blur on the row card. backdrop-filter creates a
+        // new stacking context, which trapped the kebab-menu popover
+        // inside the row (next row's own context, equal strength,
+        // later in DOM, paints over the popover). The bg is already
+        // 85% opaque against an equally-dark page background, so the
+        // blur was contributing essentially nothing visually anyway.
+        // Plus a defensive arbitrary-variant z-lift on the article
+        // whenever a <details> inside is open, in case any future
+        // child re-introduces a stacking context.
+        "admin-row-in relative [&:has(details[open])]:z-30 rounded-2xl border bg-[#0B0E16]/85 p-4 sm:p-5 transition-all",
         fromBot
           ? "border-violet-400/30 hover:border-violet-400/55"
           : "border-cyan-400/15 hover:border-cyan-400/35",
