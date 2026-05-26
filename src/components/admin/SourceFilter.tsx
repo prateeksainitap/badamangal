@@ -13,20 +13,26 @@ import { LinkPendingBadge } from "@/components/admin/LinkPending";
  *   • "secondary" — the older lighter pill row (kept for back-compat
  *                   with any caller that still wants the inline look).
  *
- * Three exclusive states:
+ * Four exclusive states:
  *   • "all"   — no filter (default)
  *   • "human" — manually listed via form / phone / Prateek
  *   • "bot"   — captured by the WhatsApp ingest bot
+ *   • "auto"  — bot-ingested AND auto-published (the bot's new default
+ *               since 2026-05-26). This is a refinement of "bot" — the
+ *               same rows minus any pre-auto-publish bot ingests still
+ *               sitting in PENDING. Lets the operator review what the
+ *               bot pushed live without manual approval.
  *
  * Source is detected upstream by the presence of the `[bot:…]`
  * provenance tag in the row's text column (Bhandara.description,
- * Spot.caption). This component is UI only; the page passes the
- * filtered counts in.
+ * Spot.caption). The `auto-publish` flag inside the same tag marks
+ * the auto-published subset. This component is UI only; the page
+ * passes the filtered counts in.
  *
  * The chip group preserves any other active query params (`status`,
  * `q`) so flipping source doesn't drop the operator's tab/search.
  */
-export type SourceFilterValue = "all" | "human" | "bot";
+export type SourceFilterValue = "all" | "human" | "bot" | "auto";
 
 type Props = {
   /** Currently-active source filter. */
@@ -34,8 +40,12 @@ type Props = {
   /** Counts shown as the small badge inside each chip. The page
    *  controls what "all" means — for the source-primary IA it's the
    *  active total (excluding past), so the source strip is the
-   *  current-working-surface filter, not an all-time tally. */
-  counts: { all: number; human: number; bot: number };
+   *  current-working-surface filter, not an all-time tally. `auto`
+   *  is the auto-published subset of `bot`; OMIT it on surfaces
+   *  where auto-publish has no distinct meaning (e.g. Spots, where
+   *  every row already auto-publishes by default). The Auto chip
+   *  hides entirely when this field is undefined. */
+  counts: { all: number; human: number; bot: number; auto?: number };
   /** Other query params (status, q) that must be preserved across
    *  source-filter clicks. The component appends `source=…` to this. */
   preserveParams?: Record<string, string | undefined>;
@@ -54,6 +64,7 @@ const OPTIONS: Array<{
   { key: "all", label: "All sources", icon: "◍" },
   { key: "human", label: "Human", icon: "✋" },
   { key: "bot", label: "Bot", icon: "🤖" },
+  { key: "auto", label: "Auto posted", icon: "⚡" },
 ];
 
 export default function SourceFilter({
@@ -62,6 +73,15 @@ export default function SourceFilter({
   preserveParams,
   variant = "primary",
 }: Props) {
+  // Hide the "Auto posted" option on surfaces that don't expose an
+  // auto count (Spots — every row auto-publishes by design, so the
+  // filter would be a no-op). Bhandaras passes a real number, even
+  // 0, and the chip stays visible so the operator's filter set is
+  // stable across deploys.
+  const options = OPTIONS.filter(
+    (opt) => opt.key !== "auto" || counts.auto !== undefined,
+  );
+
   function hrefFor(key: SourceFilterValue): string {
     const params = new URLSearchParams();
     if (preserveParams) {
@@ -81,14 +101,16 @@ export default function SourceFilter({
         aria-label="Filter by source"
         className="inline-flex items-center gap-1 p-1 rounded-full bg-[#0B0E16]/85 border border-cyan-400/15 backdrop-blur-sm"
       >
-        {OPTIONS.map((opt) => {
+        {options.map((opt) => {
           const active = opt.key === current;
           const count =
             opt.key === "all"
               ? counts.all
               : opt.key === "human"
                 ? counts.human
-                : counts.bot;
+                : opt.key === "bot"
+                  ? counts.bot
+                  : (counts.auto ?? 0);
           return (
             <Link
               key={opt.key}
@@ -142,7 +164,7 @@ export default function SourceFilter({
       >
         Source
       </span>
-      {OPTIONS.map((opt) => {
+      {options.map((opt) => {
         const active = opt.key === current;
         const count =
           opt.key === "all"

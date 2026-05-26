@@ -83,6 +83,12 @@ type SearchParams = Promise<{
  *  `[bot:gemini-2.5]`) still classify correctly. */
 const BOT_TAG = "[bot:";
 
+/** Auto-published bhandaras (since 2026-05-26) carry an additional
+ *  `· auto-publish]` token inside their `[bot:…]` tag. We detect
+ *  the subset via plain substring match so the filter chip can
+ *  pivot to "rows the bot pushed live without manual review". */
+const AUTO_PUBLISH_TAG = "auto-publish";
+
 // Status tabs now include PAST. The five active tabs (All, Pending,
 // Live, Verified, Rejected) only ever show ACTIVE items (an upcoming
 // service date). PAST is its own bucket holding past-dated rows
@@ -155,7 +161,11 @@ export default async function AdminBhandarasPage({
     : "ALL";
   const q = (sp.q ?? "").trim();
   const source: SourceFilterValue =
-    sp.source === "bot" || sp.source === "human" ? sp.source : "all";
+    sp.source === "bot" ||
+    sp.source === "human" ||
+    sp.source === "auto"
+      ? sp.source
+      : "all";
 
   const todayIso = istTodayIso();
 
@@ -206,18 +216,28 @@ export default async function AdminBhandarasPage({
   });
 
   // Classify each row once: past flag, status group, source.
+  // `isAuto` is the auto-published subset of `isBot` — bot rows whose
+  // provenance tag carries the `auto-publish` flag added 2026-05-26.
+  // Older bot rows ingested before auto-publish (back when every
+  // forward landed PENDING) are bot-but-not-auto.
   type Classified = {
     row: (typeof allMatching)[number];
     isPast: boolean;
     statusGroup: StatusGroup;
     isBot: boolean;
+    isAuto: boolean;
   };
-  const classified: Classified[] = allMatching.map((b) => ({
-    row: b,
-    isPast: isPastBhandara(b.tuesdayDates, todayIso),
-    statusGroup: statusGroupOf(b),
-    isBot: (b.description ?? "").includes(BOT_TAG),
-  }));
+  const classified: Classified[] = allMatching.map((b) => {
+    const desc = b.description ?? "";
+    const isBot = desc.includes(BOT_TAG);
+    return {
+      row: b,
+      isPast: isPastBhandara(b.tuesdayDates, todayIso),
+      statusGroup: statusGroupOf(b),
+      isBot,
+      isAuto: isBot && desc.includes(AUTO_PUBLISH_TAG),
+    };
+  });
 
   // ── Count derivation under the new source-primary IA ────────────
   //
@@ -247,6 +267,10 @@ export default async function AdminBhandarasPage({
   let activeAll = 0;
   let activeHuman = 0;
   let activeBot = 0;
+  // `activeAuto` is the count of currently-active rows that were
+  // auto-published by the bot. Drives the new "Auto posted" chip
+  // count + the active-tab review filter.
+  let activeAuto = 0;
   // Status counts, scoped to current source selection.
   //
   // `countLive` is the union of UNVERIFIED + VERIFIED (anything
@@ -265,6 +289,7 @@ export default async function AdminBhandarasPage({
   function matchesSource(c: Classified): boolean {
     if (source === "all") return true;
     if (source === "human") return !c.isBot;
+    if (source === "auto") return c.isAuto;
     return c.isBot;
   }
 
@@ -277,6 +302,7 @@ export default async function AdminBhandarasPage({
       activeAll++;
       if (c.isBot) activeBot++;
       else activeHuman++;
+      if (c.isAuto) activeAuto++;
     }
     // Status-tab counts scoped to current source.
     if (!matchesSource(c)) continue;
@@ -456,6 +482,8 @@ export default async function AdminBhandarasPage({
               all: activeAll,
               human: activeHuman,
               bot: activeBot,
+              // `auto` is a subset of `bot` — same active-only scope.
+              auto: activeAuto,
             }}
             preserveParams={{
               status: tab !== "ALL" ? tab : undefined,

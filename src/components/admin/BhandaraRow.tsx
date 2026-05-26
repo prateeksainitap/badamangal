@@ -70,11 +70,17 @@ type Props = {
 };
 
 export default function BhandaraRow({ bhandara: b, index }: Props) {
-  const fromBot = (b.description ?? "").includes("[bot:");
+  const desc = b.description ?? "";
+  const fromBot = desc.includes("[bot:");
   // Group / channel name extracted from the [bot:…] provenance tag.
   // Null for older rows ingested before `groupName` was plumbed
   // through /api/bot/ingest — those still show just the BOT pill.
   const botGroupName = fromBot ? parseBotGroupName(b.description) : null;
+  // Auto-published flag (bot ingest, no admin review). The token is
+  // written into the provenance tag by /api/bot/ingest since
+  // 2026-05-26. Drives the saffron "AUTO" pill next to the Bot pill
+  // so the operator can spot un-reviewed bot pushes at a glance.
+  const isAutoPublished = fromBot && desc.includes("auto-publish");
   const isPending = b.status === "PENDING";
   const isApproved = b.status === "APPROVED";
   const isRejected = b.status === "REJECTED";
@@ -158,6 +164,22 @@ export default function BhandaraRow({ bhandara: b, index }: Props) {
                 <span className="inline-flex items-center gap-1 rounded-full bg-saffron-500/[0.14] border border-saffron-500/30 text-saffron-500 text-[10px] font-semibold uppercase tracking-[0.12em] px-2 py-0.5">
                   <span aria-hidden>📱</span> Bot
                 </span>
+              ) : null}
+              {/* AUTO pill — auto-published rows the bot pushed live
+                  without a manual approval step. Clicking pivots to
+                  /admin/bhandaras?source=auto so the operator can
+                  batch-review every auto-publish at once. Distinct
+                  amber/gold treatment to read as "needs your eyes
+                  even though it's already live". */}
+              {isAutoPublished ? (
+                <Link
+                  href="/admin/bhandaras?source=auto"
+                  prefetch={false}
+                  title="Auto-published by the bot — open the Auto posted filter"
+                  className="inline-flex items-center gap-1 rounded-full bg-amber-400/[0.14] border border-amber-400/40 text-amber-300 hover:bg-amber-400/[0.22] hover:border-amber-400/65 hover:text-amber-200 text-[10px] font-semibold uppercase tracking-[0.12em] px-2 py-0.5 transition-colors"
+                >
+                  <span aria-hidden>⚡</span> Auto
+                </Link>
               ) : null}
               {botGroupName ? (
                 // Clickable channel chip — pivots to /admin/bot-log
