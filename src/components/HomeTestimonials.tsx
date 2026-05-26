@@ -288,11 +288,19 @@ export default function HomeTestimonials() {
           }`}
         >
           <span>{t.h1}</span>
-          {/* Hand-drawn saffron heart flourish. SVG (not emoji) so
-              the colour matches the brand palette exactly + scales
-              cleanly with the heading. The aria-hidden span keeps
-              screen readers from reading "heart", the H1 already
-              communicates the sentiment. */}
+          {/* Saffron heart flourish. SVG (not emoji) so the colour
+              matches the brand palette exactly + scales cleanly with
+              the heading. The aria-hidden span keeps screen readers
+              from reading "heart", the H1 already communicates the
+              sentiment.
+
+              Path geometry uses the standard Material-Icons heart
+              shape (perfectly mirrored left/right lobes around the
+              x=12 axis). The previous hand-drawn path had asymmetric
+              control points so the left lobe rendered slightly
+              higher + narrower than the right; visible enough that
+              the operator flagged it. This path is mirror-symmetric
+              by construction. */}
           <span aria-hidden className="inline-flex items-center">
             <svg
               viewBox="0 0 24 24"
@@ -302,7 +310,7 @@ export default function HomeTestimonials() {
               fill="currentColor"
               style={{ color: "#F2944C" }}
             >
-              <path d="M12 21s-7.2-4.35-9.6-9.05C.84 8.7 2.3 5 5.55 5c1.95 0 3.4 1.05 4.45 2.65C11.05 6.05 12.5 5 14.45 5c3.25 0 4.71 3.7 3.15 6.95C19.2 16.65 12 21 12 21z" />
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
             </svg>
           </span>
         </h2>
