@@ -31,17 +31,14 @@ import { prisma } from "@/lib/db";
 
 export type AdminNavCounts = Partial<Record<string, number>>;
 
-/** Raw count fetch — one round-trip per queue, all in parallel. */
+/** Raw count fetch — one round-trip per queue, all in parallel.
+ *  Promise.allSettled so a transient EMAXCONN on any single count
+ *  doesn't take down the whole AdminShell sidebar (and with it the
+ *  entire admin tree). Failed counts fall back to 0 so the badge
+ *  silently hides; the rest of the sidebar still renders. */
 async function _fetchNavCounts(): Promise<AdminNavCounts> {
   const now = new Date();
-  const [
-    pendingBhandaras,
-    liveSpots,
-    pendingMentions,
-    newOrganise,
-    pendingVolunteers,
-    newEmails,
-  ] = await Promise.all([
+  const settled = await Promise.allSettled([
     prisma.bhandara.count({ where: { status: "PENDING" } }),
     prisma.spot.count({
       where: { status: "APPROVED", expiresAt: { gt: now } },
@@ -51,14 +48,24 @@ async function _fetchNavCounts(): Promise<AdminNavCounts> {
     prisma.volunteer.count({ where: { status: "PENDING" } }),
     prisma.contactMessage.count({ where: { status: "NEW" } }),
   ]);
-
+  const pick = (idx: number): number => {
+    const r = settled[idx];
+    if (r && r.status === "fulfilled") return r.value;
+    if (r && r.status === "rejected") {
+      console.error(
+        `[admin-nav-counts] query ${idx} rejected:`,
+        r.reason instanceof Error ? r.reason.message : r.reason,
+      );
+    }
+    return 0;
+  };
   return {
-    "/admin/bhandaras": pendingBhandaras,
-    "/admin/spots": liveSpots,
-    "/admin/mentions": pendingMentions,
-    "/admin/organise": newOrganise,
-    "/admin/volunteers": pendingVolunteers,
-    "/admin/emails": newEmails,
+    "/admin/bhandaras": pick(0),
+    "/admin/spots": pick(1),
+    "/admin/mentions": pick(2),
+    "/admin/organise": pick(3),
+    "/admin/volunteers": pick(4),
+    "/admin/emails": pick(5),
   };
 }
 

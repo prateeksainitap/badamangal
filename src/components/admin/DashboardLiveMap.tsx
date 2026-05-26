@@ -35,7 +35,12 @@ export default async function DashboardLiveMap({
   const now = new Date();
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-  const [liveSpotsForMap, bhandarasForMap, mentionsForMap] = await Promise.all([
+  // Promise.allSettled so a single EMAXCONN doesn't take down the
+  // whole map (which would bubble through Suspense to the admin
+  // error.tsx and replace the entire dashboard with the error UI).
+  // Each rejected query falls back to [] — the surviving layers
+  // still render. The "X live spots" count comes from the parent.
+  const settled = await Promise.allSettled([
     prisma.spot.findMany({
       where: { status: "APPROVED", expiresAt: { gt: now } },
       orderBy: { createdAt: "desc" },
@@ -84,6 +89,20 @@ export default async function DashboardLiveMap({
       },
     }),
   ]);
+  const safe = <T,>(idx: number): T[] => {
+    const r = settled[idx];
+    if (r && r.status === "fulfilled") return r.value as T[];
+    if (r && r.status === "rejected") {
+      console.error(
+        `[DashboardLiveMap] query ${idx} rejected:`,
+        r.reason instanceof Error ? r.reason.message : r.reason,
+      );
+    }
+    return [];
+  };
+  const liveSpotsForMap = safe<{ id: string; lat: number; lng: number; area: string | null; caption: string | null; createdAt: Date }>(0);
+  const bhandarasForMap = safe<{ id: string; slug: string; name: string; area: string; lat: number; lng: number; isVerified: boolean }>(1);
+  const mentionsForMap = safe<{ id: string; cleanedText: string | null; originalText: string; senderName: string | null; locationLabel: string | null; lat: number | null; lng: number | null; createdAt: Date }>(2);
 
   return (
     <AdminOlaMap

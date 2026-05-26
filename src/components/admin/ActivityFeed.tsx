@@ -94,7 +94,12 @@ const fetchRecentActivity = unstable_cache(
     const now = new Date();
     const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-    const [bhandaras, spots, mentions, volunteers] = await Promise.all([
+    // Promise.allSettled so a transient EMAXCONN on one of these 4
+    // queries doesn't abort the whole activity feed (and through it
+    // the entire /admin/home render — Suspense doesn't catch render
+    // errors, they bubble to admin/error.tsx). Each rejected query
+    // falls back to [] so the feed shows the surviving streams.
+    const settled = await Promise.allSettled([
       prisma.bhandara.findMany({
         where: { createdAt: { gt: dayAgo } },
         orderBy: { createdAt: "desc" },
@@ -157,6 +162,21 @@ const fetchRecentActivity = unstable_cache(
         },
       }),
     ]);
+    const safe = <T,>(idx: number): T[] => {
+      const r = settled[idx];
+      if (r && r.status === "fulfilled") return r.value as T[];
+      if (r && r.status === "rejected") {
+        console.error(
+          `[ActivityFeed] query ${idx} rejected:`,
+          r.reason instanceof Error ? r.reason.message : r.reason,
+        );
+      }
+      return [];
+    };
+    const bhandaras = safe<{ id: string; slug: string; name: string; area: string; timeStart: string; tuesdayDates: string; organizerName: string; status: string; createdAt: Date }>(0);
+    const spots = safe<{ id: string; area: string | null; address: string | null; caption: string | null; reporterName: string | null; createdAt: Date; status: string }>(1);
+    const mentions = safe<{ id: string; cleanedText: string | null; originalText: string; senderName: string | null; locationLabel: string | null; createdAt: Date }>(2);
+    const volunteers = safe<{ id: string; name: string; status: string; createdAt: Date }>(3);
 
     // Normalise every Date → ISO string BEFORE returning so the
     // downstream `.map` callers can always read `createdAt` as a

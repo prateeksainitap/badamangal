@@ -75,15 +75,14 @@ export default async function AdminDashboardPage() {
   // shaves a Prisma round-trip off every dashboard load. Tags allow
   // `revalidateTag("community-counter")` from the bot's stats route
   // to punch through immediately when fresh data lands.
-  const [
-    pendingBhandaras,
-    liveSpotsCount,
-    mentions24hCount,
-    communityMembers,
-    visitorCount,
-    pendingVolunteers,
-    newEmailsCount,
-  ] = await Promise.all([
+  // Promise.allSettled (not Promise.all) so a single transient
+  // EMAXCONN doesn't take down the whole dashboard. Each query
+  // resolves independently; if one rejects, that single tile shows
+  // a zero/dash while the rest of the page still paints. The error
+  // boundary catching one bad count() was the actual bug behind
+  // the "Something tripped while rendering this page." regression
+  // on Tuesday-1 peak traffic.
+  const settled = await Promise.allSettled([
     prisma.bhandara.count({ where: { status: "PENDING" } }),
     prisma.spot.count({
       where: { status: "APPROVED", expiresAt: { gt: now } },
@@ -98,6 +97,24 @@ export default async function AdminDashboardPage() {
     // Fast — `status` is indexed via @@index([status, createdAt]).
     prisma.contactMessage.count({ where: { status: "NEW" } }),
   ]);
+  const unwrap = <T,>(idx: number, fallback: T): T => {
+    const r = settled[idx];
+    if (r && r.status === "fulfilled") return r.value as T;
+    if (r && r.status === "rejected") {
+      console.error(
+        `[admin/home] query ${idx} rejected:`,
+        r.reason instanceof Error ? r.reason.message : r.reason,
+      );
+    }
+    return fallback;
+  };
+  const pendingBhandaras = unwrap<number>(0, 0);
+  const liveSpotsCount = unwrap<number>(1, 0);
+  const mentions24hCount = unwrap<number>(2, 0);
+  const communityMembers = unwrap<number>(3, 0);
+  const visitorCount = unwrap<number>(4, 0);
+  const pendingVolunteers = unwrap<number>(5, 0);
+  const newEmailsCount = unwrap<number>(6, 0);
 
   // "Total reach" = WhatsApp community members + cumulative website
   // visitor count. The KPI tile shows the sum (a single big number
