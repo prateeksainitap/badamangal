@@ -70,17 +70,33 @@ function isTransientConnectionError(err: unknown): boolean {
   //   • PrismaClientInitializationError — "Can't reach database server"
   //   • P1001 / P1002 / P1008 / P1017 codes — connection-layer issues
   //   • "Server has closed the connection" — pgbouncer recycling
+  //   • "max client connections reached" (EMAXCONN) — pooler saturated
+  //     under traffic spikes. Added 2026-05-26 after Tuesday-1 of
+  //     Adhik Mas blew the 200-connection pool ceiling and admin
+  //     pages started 500'ing instead of slow-retrying. The error
+  //     resolves itself as other Lambdas release connections, but
+  //     only if we keep retrying.
   return (
     /Can't reach database server/i.test(msg) ||
     /Server has closed the connection/i.test(msg) ||
     /Timed out fetching a new connection/i.test(msg) ||
     /Connection terminated unexpectedly/i.test(msg) ||
+    /max client connections reached/i.test(msg) ||
+    /EMAXCONN/i.test(msg) ||
     code === "P1001" ||
     code === "P1002" ||
     code === "P1008" ||
     code === "P1017"
   );
 }
+
+/** Jittered backoff sequence for the retry loop. Each entry is a
+ *  base delay in milliseconds; the actual sleep is `base ± 50%` so
+ *  N concurrent retries from N saturated Lambdas don't all wake at
+ *  the same instant and re-storm the pool. Total worst-case extra
+ *  latency across all three retries: ~2.3s, well inside Vercel's
+ *  function timeout. */
+const RETRY_BACKOFFS_MS = [200, 600, 1500];
 
 function createPrismaWithRetry(): PrismaClient {
   const client = new PrismaClient();
@@ -91,24 +107,33 @@ function createPrismaWithRetry(): PrismaClient {
     try {
       return await next(params);
     } catch (err) {
-      if (isTransientConnectionError(err)) {
-        // Brief backoff — long enough for the pool to recycle, short
-        // enough that the user doesn't notice. One retry only;
-        // hammering past that just delays surfacing a real outage.
-        await new Promise((resolve) => setTimeout(resolve, 250));
+      if (!isTransientConnectionError(err)) throw err;
+      // Multi-attempt jittered retry. Bumped 2026-05-26 from a single
+      // 250ms retry to three (200/600/1500 ms ± 50% jitter) after the
+      // Supabase pooler hit EMAXCONN on Tuesday-1 traffic. Single-
+      // attempt with a short delay isn't enough when the pool needs
+      // a few seconds to free up under sustained load.
+      let lastErr = err;
+      for (let attempt = 0; attempt < RETRY_BACKOFFS_MS.length; attempt++) {
+        const base = RETRY_BACKOFFS_MS[attempt];
+        const jitter = base * (0.5 + Math.random()); // 50%..150% of base
+        await new Promise((resolve) => setTimeout(resolve, jitter));
         try {
           return await next(params);
         } catch (retryErr) {
-          // Annotate the retry-failure for the admin error boundary
-          // so a persistent outage is distinguishable from a single
-          // blip in the logs.
-          if (retryErr instanceof Error) {
-            retryErr.message = `${retryErr.message} (after 1 retry)`;
-          }
-          throw retryErr;
+          lastErr = retryErr;
+          // Only keep retrying if it's still a transient connection
+          // problem; a fresh non-transient error (validation, etc.)
+          // should surface immediately.
+          if (!isTransientConnectionError(retryErr)) break;
         }
       }
-      throw err;
+      // Annotate the final error so the admin error boundary can tell
+      // a persistent pool outage from a single blip in the logs.
+      if (lastErr instanceof Error) {
+        lastErr.message = `${lastErr.message} (after ${RETRY_BACKOFFS_MS.length} retries)`;
+      }
+      throw lastErr;
     }
   });
   return client;
