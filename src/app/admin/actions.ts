@@ -1492,94 +1492,112 @@ export async function bulkDelistSpotsAction(
 }
 
 /**
- * Merge exactly TWO Spot rows into one. Designed for the very common
- * WhatsApp ingest case where a sender drops:
+ * Merge N Spot rows (2 or more) into one. Designed for the WhatsApp
+ * ingest case where a sender drops:
  *
- *   1. A photo of the pandal / food / crowd  →  Spot A (has photo,
- *      no coords because WhatsApp strips EXIF GPS)
- *   2. A separate "share location" message    →  Spot B (has lat/lng
- *      + area + address, no photo)
+ *   • photo(s) of the pandal / food / crowd  →  N Spot rows with
+ *     photos, no coords (WhatsApp strips EXIF GPS)
+ *   • a "share location" message              →  Spot with lat/lng +
+ *     area + address, no photo
  *
- * The bot creates two rows; both are correct in isolation, but they
- * describe ONE bhandara. This action folds them into a single row so
- * the public map + chat panel render one tile instead of two.
+ * The bot creates separate rows for each; they all describe ONE
+ * bhandara. This action folds them into a single row so the public
+ * map + chat panel render one tile.
  *
- * Primary-row selection:
- *   - The row with a `photoUrl` wins (it carries the harder-to-replace
- *     payload — the visual context). When both have or neither has a
- *     photo, the OLDER row wins (more established context, earlier
- *     reporter timestamp).
+ * Primary selection (the row that survives):
+ *   1. Highest count of total photos (primary photoUrl + extras) —
+ *      since a photo-rich row is the visual anchor we want to keep.
+ *   2. Tie-break by has-photo (any photoUrl beats no photoUrl).
+ *   3. Tie-break by has-coords (any non-zero lat/lng wins).
+ *   4. Final tie-break by oldest createdAt (most established).
  *
- * Field merge:
- *   - lat/lng: primary's values kept unless they're 0,0 (the bot's
- *     no-EXIF fallback), in which case secondary's coords win.
- *   - area / address: primary's value kept unless null/empty, else
- *     fall through to secondary.
- *   - caption: primary's text kept if non-empty, else secondary's
- *     becomes the caption.
- *   - extraPhotoUrls: union of primary.extras + secondary.photoUrl +
- *     secondary.extras (de-duplicated, capped at 5 per the schema).
+ * Field merge (across ALL secondaries):
+ *   • lat/lng — primary's kept unless 0,0; else first secondary with
+ *     non-zero coords wins.
+ *   • area / address — primary's kept if non-empty; else first
+ *     secondary with a non-empty value.
+ *   • caption — primary's kept if non-empty; else first secondary
+ *     with content.
+ *   • extraPhotoUrls — union of primary.extras + every secondary's
+ *     photoUrl + every secondary's extras (de-duped against
+ *     primary.photoUrl, capped at 5 per schema).
  *
- * Secondary delete:
- *   - Hard-delete the secondary row.
- *   - DO NOT R2-evict its photoUrl / extraPhotoUrls — those URLs were
- *     just transferred onto primary's row and are still in use.
- *   - This is the divergence from deleteSpotAction (which always
- *     evicts); calling deleteSpotAction here would orphan the photos
- *     we just folded in.
+ * Secondary disposal:
+ *   • Hard-delete each secondary row.
+ *   • DO NOT R2-evict — photo URLs were transferred onto primary.
+ *   • Wrapped in a transaction so a mid-flight failure can't leave a
+ *     half-merged primary + orphaned secondaries still on the map.
  *
- * Caller guarantees exactly 2 ids. If not, we throw — the UI confirm
- * prompt warns the operator that merge requires two selections.
+ * Caller can pass 2+ ids. < 2 throws (no-op merge).
  */
 export async function bulkMergeSpotsAction(
   formData: FormData,
 ): Promise<void> {
   await requireAdmin();
   const ids = parseIds(formData);
-  if (ids.length !== 2) {
+  if (ids.length < 2) {
     throw new Error(
-      `Merge requires exactly 2 spots selected; received ${ids.length}. Select two rows and try again.`,
+      `Merge needs at least 2 spots selected; received ${ids.length}. Select 2 or more rows and try again.`,
     );
   }
 
   const rows = await prisma.spot.findMany({
     where: { id: { in: ids } },
   });
-  if (rows.length !== 2) {
+  if (rows.length < 2) {
     throw new Error(
-      "One or both selected spots could not be found. They may have already been deleted; reload the page.",
+      "Some selected spots could not be found. They may have already been merged or deleted; reload the page.",
     );
   }
 
-  // Primary selection: photo-bearing wins; ties broken by older-first.
-  const [a, b] = rows as [(typeof rows)[number], (typeof rows)[number]];
-  const aHasPhoto = Boolean(a.photoUrl);
-  const bHasPhoto = Boolean(b.photoUrl);
-  let primary: typeof a;
-  let secondary: typeof a;
-  if (aHasPhoto && !bHasPhoto) {
-    primary = a;
-    secondary = b;
-  } else if (bHasPhoto && !aHasPhoto) {
-    primary = b;
-    secondary = a;
-  } else {
-    primary = a.createdAt <= b.createdAt ? a : b;
-    secondary = a.createdAt <= b.createdAt ? b : a;
+  // Count total photos (primary + extras) per row for ranking. A
+  // row with 2 photos beats a row with 1 even if both have photoUrl.
+  function totalPhotoCount(r: (typeof rows)[number]): number {
+    let n = r.photoUrl ? 1 : 0;
+    try {
+      const arr = JSON.parse(r.extraPhotoUrls || "[]");
+      if (Array.isArray(arr)) {
+        n += arr.filter((u) => typeof u === "string" && u.length > 0).length;
+      }
+    } catch {
+      /* malformed — count 0 extras */
+    }
+    return n;
+  }
+  function hasCoords(r: (typeof rows)[number]): boolean {
+    return r.lat !== 0 || r.lng !== 0;
   }
 
-  // Field-by-field merge.
-  const mergedLat =
-    primary.lat === 0 && secondary.lat !== 0 ? secondary.lat : primary.lat;
-  const mergedLng =
-    primary.lng === 0 && secondary.lng !== 0 ? secondary.lng : primary.lng;
-  const mergedArea = primary.area?.trim() || secondary.area || null;
-  const mergedAddress = primary.address?.trim() || secondary.address || null;
-  const mergedCaption = primary.caption?.trim() || secondary.caption || null;
+  // Rank by photo-count DESC → has-photo DESC → has-coords DESC →
+  // createdAt ASC. The top row becomes primary.
+  const ranked = [...rows].sort((x, y) => {
+    const dPhotos = totalPhotoCount(y) - totalPhotoCount(x);
+    if (dPhotos !== 0) return dPhotos;
+    const dHasPhoto = (y.photoUrl ? 1 : 0) - (x.photoUrl ? 1 : 0);
+    if (dHasPhoto !== 0) return dHasPhoto;
+    const dHasCoords = (hasCoords(y) ? 1 : 0) - (hasCoords(x) ? 1 : 0);
+    if (dHasCoords !== 0) return dHasCoords;
+    return x.createdAt.getTime() - y.createdAt.getTime();
+  });
+  const primary = ranked[0];
+  const secondaries = ranked.slice(1);
 
-  // Extras: union of primary.extras + secondary.photoUrl + secondary.extras,
-  // de-duped against primary.photoUrl (we don't want primary's own
-  // photoUrl appearing as an extra of itself). Capped at 5.
+  // Field-by-field merge across all secondaries.
+  let mergedLat = primary.lat;
+  let mergedLng = primary.lng;
+  let mergedArea = primary.area?.trim() || null;
+  let mergedAddress = primary.address?.trim() || null;
+  let mergedCaption = primary.caption?.trim() || null;
+  for (const s of secondaries) {
+    if (mergedLat === 0 && s.lat !== 0) mergedLat = s.lat;
+    if (mergedLng === 0 && s.lng !== 0) mergedLng = s.lng;
+    if (!mergedArea && s.area) mergedArea = s.area;
+    if (!mergedAddress && s.address) mergedAddress = s.address;
+    if (!mergedCaption && s.caption) mergedCaption = s.caption;
+  }
+
+  // Extras: union of primary.extras + each secondary.photoUrl + each
+  // secondary.extras, de-duped against primary.photoUrl. Capped at 5.
   const extraSet = new Set<string>();
   function addExtras(jsonStr: string | null | undefined) {
     if (!jsonStr) return;
@@ -1597,15 +1615,16 @@ export async function bulkMergeSpotsAction(
     }
   }
   addExtras(primary.extraPhotoUrls);
-  if (secondary.photoUrl && secondary.photoUrl !== primary.photoUrl) {
-    extraSet.add(secondary.photoUrl);
+  for (const s of secondaries) {
+    if (s.photoUrl && s.photoUrl !== primary.photoUrl) {
+      extraSet.add(s.photoUrl);
+    }
+    addExtras(s.extraPhotoUrls);
   }
-  addExtras(secondary.extraPhotoUrls);
   const mergedExtras = JSON.stringify([...extraSet].slice(0, 5));
 
-  // Apply the merge in a transaction so a mid-flight failure can't
-  // leave us with a half-merged primary + an orphaned secondary still
-  // visible on the map.
+  // Apply the merge in a single transaction. Update primary + delete
+  // every secondary. R2 photos stay live — they're attached to primary.
   await prisma.$transaction([
     prisma.spot.update({
       where: { id: primary.id },
@@ -1618,9 +1637,9 @@ export async function bulkMergeSpotsAction(
         extraPhotoUrls: mergedExtras,
       },
     }),
-    // Hard-delete secondary. R2 photos are now attached to primary —
-    // do NOT evict from R2 here.
-    prisma.spot.delete({ where: { id: secondary.id } }),
+    ...secondaries.map((s) =>
+      prisma.spot.delete({ where: { id: s.id } }),
+    ),
   ]);
 
   revalidatePath("/admin", "layout");

@@ -395,7 +395,7 @@ export default async function AdminSpotsPage({
                   variant: "primary-green",
                   pendingLabel: "Merging…",
                   confirm:
-                    "Merge {n} spot(s)? Select EXACTLY 2 — the photo-bearing row becomes primary; the location-share row folds its coords + area in, then is deleted.",
+                    "Merge {n} spots into one row? The most photo-rich row becomes primary; every other row's photos + coords + area fold into it, then those rows are deleted.",
                   action: bulkMergeSpotsAction,
                 },
                 {
