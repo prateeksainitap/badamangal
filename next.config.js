@@ -15,7 +15,10 @@
 const cspReportOnly = [
   "default-src 'self'",
   // Map tiles + marker sprites + WebGL textures come from api.olamaps.io.
-  "img-src 'self' data: blob: https://*.supabase.co https://api.olamaps.io https://www.google-analytics.com",
+  // cdn.badamangal.com is our R2-backed photo CDN where bot-ingested
+  // spot images live; without it every WhatsApp-forwarded photo tripped
+  // a CSP report on every page that renders a spot card.
+  "img-src 'self' data: blob: https://*.supabase.co https://cdn.badamangal.com https://api.olamaps.io https://www.google-analytics.com",
   "media-src 'self' blob:",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com",
   // 'unsafe-eval' is required by MapLibre GL for its WebGL shader compilation

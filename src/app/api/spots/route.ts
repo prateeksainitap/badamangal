@@ -138,18 +138,34 @@ export async function GET(req: NextRequest) {
   );
   const area = url.searchParams.get("area") ?? undefined;
 
-  const records = await prisma.spot.findMany({
-    where: {
-      status: "APPROVED",
-      expiresAt: { gt: new Date() },
-      ...(area ? { area } : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-    include: {
-      bhandara: { select: { slug: true, name: true, nameHi: true } },
-    },
-  });
+  // Try/catch around the DB read so a transient EMAXCONN at Tuesday
+  // peak doesn't 500 the homepage poll. HappeningNow fires this every
+  // 15s; one 500 in a poll cycle is invisible (the next tick succeeds),
+  // but the user saw `net::ERR_ABORTED 500` red banners in console
+  // every time the pool tightened. Returning an empty list with 200 is
+  // the right degradation: the client merges (not replaces) on each
+  // poll, so an empty payload just means "no new spots since last
+  // tick", same as a quiet 5-second window.
+  let records: Awaited<ReturnType<typeof prisma.spot.findMany>> = [];
+  try {
+    records = await prisma.spot.findMany({
+      where: {
+        status: "APPROVED",
+        expiresAt: { gt: new Date() },
+        ...(area ? { area } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      include: {
+        bhandara: { select: { slug: true, name: true, nameHi: true } },
+      },
+    });
+  } catch (err) {
+    console.error(
+      "[api/spots] DB read failed, serving empty:",
+      err instanceof Error ? err.message : err,
+    );
+  }
 
   const spots = records.map((s) => {
     // Parse the extraPhotoUrls JSON-string column defensively. We

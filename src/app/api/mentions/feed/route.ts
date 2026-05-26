@@ -185,7 +185,13 @@ export async function GET(req: NextRequest) {
   // collapses it.
   const serverNow = new Date();
   const now = serverNow;
-  const [mentionRows, spotRows] = await Promise.all([
+  // Promise.allSettled (not Promise.all) so a single EMAXCONN on one
+  // table doesn't 500 the entire homepage poll. The chat panel polls
+  // this every 12s; serving an empty bucket for the failed half and
+  // the live bucket for the surviving half is invisible to the user
+  // — next tick recovers. Was throwing `net::ERR_ABORTED 500` red
+  // banners in browser console under peak Tuesday load.
+  const settled = await Promise.allSettled([
     prisma.bhandaraMention.findMany({
       where: {
         status: "APPROVED",
@@ -260,6 +266,29 @@ export async function GET(req: NextRequest) {
       },
     }),
   ]);
+  // Unwrap each settled result with a safe empty fallback. Logged so
+  // we can spot real outages in Vercel logs, but the route still
+  // returns 200 with whatever survived.
+  const mentionRows =
+    settled[0].status === "fulfilled"
+      ? settled[0].value
+      : (console.error(
+          "[api/mentions/feed] mentions query failed:",
+          settled[0].reason instanceof Error
+            ? settled[0].reason.message
+            : settled[0].reason,
+        ),
+        [] as Awaited<ReturnType<typeof prisma.bhandaraMention.findMany>>);
+  const spotRows =
+    settled[1].status === "fulfilled"
+      ? settled[1].value
+      : (console.error(
+          "[api/mentions/feed] spots query failed:",
+          settled[1].reason instanceof Error
+            ? settled[1].reason.message
+            : settled[1].reason,
+        ),
+        [] as Awaited<ReturnType<typeof prisma.spot.findMany>>);
 
   // ── Companion-Bhandara enrichment for mentions ─────────────────
   // WhatsApp forwards with an image AND a text caption hit the bot
@@ -290,7 +319,8 @@ export async function GET(req: NextRequest) {
     const mentionTimes = mentionRows.map((m) => m.createdAt.getTime());
     const earliest = new Date(Math.min(...mentionTimes) - COMPANION_WINDOW_MS);
     const latest = new Date(Math.max(...mentionTimes) + COMPANION_WINDOW_MS);
-    companionBhandaras = await prisma.bhandara.findMany({
+    try {
+      companionBhandaras = await prisma.bhandara.findMany({
       where: {
         // Bot-ingested only — the [bot:whatsapp tag is the marker
         // /api/bot/ingest stamps onto every description it writes.
@@ -312,7 +342,15 @@ export async function GET(req: NextRequest) {
       // on the busiest Tuesday morning (bot averages 5–15 image
       // ingests per hour).
       take: 200,
-    });
+      });
+    } catch (err) {
+      console.error(
+        "[api/mentions/feed] companion-bhandara enrichment failed:",
+        err instanceof Error ? err.message : err,
+      );
+      // Keep companionBhandaras as []. The mention rows still ship
+      // unenriched; photo-stitching just doesn't happen this tick.
+    }
   }
 
   // Parse the `[bot:whatsapp · in:<groupName>` fragment out of each
