@@ -633,6 +633,13 @@ export default function LiveChatterBoard({
   // renders the full precise locationLabel so the reader sees the
   // actual venue inside the message; only the section-level summary
   // collapses to the area.
+  //
+  // No top-N cap: every area that has at least one mention surfaces
+  // a chip. We used to slice to top-8 by count, which silently dropped
+  // genuinely-active neighbourhoods (Rajajipuram, etc.) the moment
+  // they fell behind a single bigger area. The wrap layout below
+  // handles overflow naturally — busy Tuesday days flow to two or
+  // three rows of chips instead of hiding signal.
   const areaCounts = useMemo(() => {
     const counts = new Map<
       string,
@@ -647,7 +654,12 @@ export default function LiveChatterBoard({
       const segments = full.split(",").map((s) => s.trim()).filter(Boolean);
       const area = segments.length > 0 ? segments[segments.length - 1] : full;
       if (!area) continue;
-      const k = area.toLowerCase();
+      // Whitespace-insensitive dedupe key so "Rajaji Puram" + "Rajajipuram"
+      // and "Gomti Nagar" + "Gomtinagar" roll up into a single chip
+      // with the combined count. Without this normalisation, the same
+      // neighbourhood would appear twice (each below the threshold to
+      // even feature visibly) and the operator misses the real signal.
+      const k = area.toLowerCase().replace(/\s+/g, "");
       const ts = new Date(m.createdAt).getTime();
       const existing = counts.get(k);
       if (existing) {
@@ -657,9 +669,9 @@ export default function LiveChatterBoard({
         counts.set(k, { display: area, count: 1, mostRecent: ts });
       }
     }
-    return Array.from(counts.values())
-      .sort((a, b) => b.count - a.count || b.mostRecent - a.mostRecent)
-      .slice(0, 8);
+    return Array.from(counts.values()).sort(
+      (a, b) => b.count - a.count || b.mostRecent - a.mostRecent,
+    );
   }, [mentions]);
 
   const spotCount = useMemo(
@@ -689,12 +701,15 @@ export default function LiveChatterBoard({
   const scrollToArea = useCallback((displayLabel: string) => {
     const body = chatBodyRef.current;
     if (!body) return;
-    // Slugify the same way the bubbles do — spaces become hyphens so
-    // multi-word areas ("Kuris Road Near Rama Hospital", "Vrindavan
-    // Colony", "LU New Campus") survive the `~=` attribute-match
-    // selector, which splits on whitespace and would never find a
-    // phrase containing spaces.
-    const key = displayLabel.toLowerCase().trim().replace(/\s+/g, "-");
+    // Slugify the same way the bubbles do — whitespace is COLLAPSED
+    // (not hyphenated) so "Rajaji Puram" and "Rajajipuram" both
+    // resolve to the same key ("rajajipuram") and a click on the
+    // merged chip finds bubbles tagged with either spelling.
+    // Multi-word areas like "Vrindavan Yojna" become "vrindavanyojna"
+    // — ugly as a slug but invisible to the user; it just has to
+    // match the bubble's data-areas value exactly via the `~=`
+    // selector below, which splits on whitespace.
+    const key = displayLabel.toLowerCase().trim().replace(/\s+/g, "");
     if (!key) return;
     // Reset the "new since scroll-away" badge so the user doesn't
     // see a stale "5 new" pill after landing on the matching row.
@@ -1704,11 +1719,12 @@ function ChatBubble({
   // Oyo townhouse" pattern) emit multiple areas separated by
   // spaces so a `[data-areas~="aashiyana"]` selector matches.
   //
-  // Each area name is slugified (spaces → hyphens) before joining,
+  // Each area name is slugified (whitespace COLLAPSED) before joining,
   // because the CSS `[attr~="value"]` selector splits on whitespace
-  // and would never match a phrase containing spaces. So
-  // "Vrindavan Colony" becomes "vrindavan-colony", and the chip
-  // handler slugifies its key the same way before querying.
+  // and would never match a phrase containing spaces. Collapsing
+  // (not hyphenating) also means "Rajaji Puram" and "Rajajipuram"
+  // both slug to "rajajipuram" so the merged chip's click finds
+  // either spelling. Match-side (scrollToArea) does the same.
   const dataAreas = (() => {
     const labels =
       mention.locationLabels && mention.locationLabels.length > 0
@@ -1723,7 +1739,7 @@ function ChatBubble({
           .map((s) => s.trim())
           .filter(Boolean);
         const area = segs.length > 0 ? segs[segs.length - 1] : l;
-        return area.toLowerCase().replace(/\s+/g, "-");
+        return area.toLowerCase().replace(/\s+/g, "");
       })
       .filter(Boolean);
     return Array.from(new Set(areas)).join(" ");
