@@ -399,12 +399,45 @@ export async function POST(req: NextRequest) {
   // later extract from, slightly more accurate than classifying the
   // raw upload and then re-encoding.
   const base64Webp = webp.toString("base64");
+
+  // Trusted-channel allowlist (added 2026-05-26 mid-Tuesday-1): some
+  // WhatsApp groups are operator-curated forwarding channels rather
+  // than open community chats. The operator drops images into them
+  // *because* they're already-vetted bhandara content. Gemini's
+  // off-topic classifier sometimes false-rejects real bhandara
+  // photos as "other" — newspaper-style framing, low light, weird
+  // crops, etc. For these channels we skip classification entirely
+  // and treat every image as a spot, since the operator's curation
+  // upstream is the real filter.
+  //
+  // Group-name prefix match (case-insensitive) so the operator can
+  // add new sibling channels — "BM Ingest 3", "BM Curated", etc.
+  // — without a code change. The bot agent's chat.name field is
+  // what we match against.
+  const TRUSTED_CHANNEL_PREFIXES = ["BM Ingest", "BM Curated"];
+  const isTrustedChannel =
+    !!groupName &&
+    TRUSTED_CHANNEL_PREFIXES.some((p) =>
+      groupName.toLowerCase().startsWith(p.toLowerCase()),
+    );
+
   let classified: "bhandara" | "spot" | "other";
   try {
-    classified =
-      requestedKind === "auto"
-        ? await classifyImage(base64Webp, "image/webp")
-        : requestedKind;
+    if (requestedKind !== "auto") {
+      classified = requestedKind;
+    } else if (isTrustedChannel) {
+      // Bypass Gemini classify. Treat as spot — the typical content
+      // in BM Ingest channels is live-photo forwards (pandal,
+      // food, crowd shots), not invite pamphlets. If a pamphlet
+      // does land here, the operator can flip the resulting Spot
+      // to a Bhandara via /admin/edit-spot → "Promote to listing"
+      // (or recreate manually). Spot is the safer default because
+      // it auto-publishes; a wrong-typed Bhandara would sit
+      // PENDING forever otherwise.
+      classified = "spot";
+    } else {
+      classified = await classifyImage(base64Webp, "image/webp");
+    }
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("[bot/ingest] gemini classify failed", detail);
