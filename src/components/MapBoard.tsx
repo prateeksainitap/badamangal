@@ -69,6 +69,17 @@ type Props = {
    *  #live-chat. 0 hides the chip entirely so the section header
    *  stays clean while we're bootstrapping the counter. */
   communityMembers?: number;
+  /** Season-cumulative totals from getHomepageStats. Used for the
+   *  "All N Bada Mangal bhandaras..." section heading so the number
+   *  reflects the FULL season scope (every APPROVED bhandara + every
+   *  APPROVED spot ever recorded), not just the currently-on-map
+   *  subset. Without these, the heading silently shrinks every time
+   *  bhandaras drop off the upcoming-only filter or spots roll past
+   *  their 8h TTL — visitor reads it as the season getting smaller
+   *  even though the city keeps adding. Falls back to the on-map
+   *  arrays if either prop is missing so old callers don't break. */
+  totalListed?: number;
+  totalSpotted?: number;
 };
 
 /**
@@ -83,6 +94,8 @@ export default function MapBoard({
   listings,
   liveSpots,
   communityMembers = 0,
+  totalListed,
+  totalSpotted,
 }: Props) {
   // Locale + every locale-derived string comes from the client-side
   // context so SSR can render English and we still respect the
@@ -97,10 +110,19 @@ export default function MapBoard({
   // community-count + WhatsApp link in the header chip but drop the
   // green LIVE pill so the chrome doesn't lie about being on air.
   const chatLive = isLiveChatOpenToday();
-  // Total bhandaras on the map = listed bhandaras + live spots.
-  // Matches the "All N" count the filter chip strip already shows
-  // (single source of truth: both derive from the same prop arrays).
-  const totalCount = listings.length + liveSpots.length;
+  // Section-heading count — prefer the season-cumulative totals
+  // (every APPROVED bhandara + every APPROVED spot ever) so the
+  // headline reflects what the project has TRACKED this season, not
+  // just what's pinned on the map right now. The on-map subset
+  // shrinks as past-dated bhandaras drop off `hasUpcomingDate` and
+  // spots roll past their 8h TTL, but those are still real bhandaras
+  // the community fed into the directory — they should count toward
+  // the "All N" headline. Falls back to the on-map array lengths so
+  // older callers / SSR paths without stats still render a number.
+  const totalCount =
+    typeof totalListed === "number" && typeof totalSpotted === "number"
+      ? totalListed + totalSpotted
+      : listings.length + liveSpots.length;
   const heading = t.map.sectionHeading(totalCount);
   const body = t.map.sectionBody;
   const listBhandaraLabel = t.cta.listBhandara;

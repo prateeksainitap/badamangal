@@ -808,6 +808,15 @@ export default async function HomePage() {
         communityMembers={
           communityCounterRows.find((r) => r.id === "community_total_members")?.count ?? 0
         }
+        // Season-cumulative totals for the "All N Bada Mangal
+        // bhandaras..." headline. Sourced from getHomepageStats
+        // (every APPROVED bhandara + every APPROVED spot ever)
+        // so the headline reflects what the project has TRACKED
+        // this season, not just what's pinned on the map this
+        // moment. The map + tab chips still derive from the
+        // on-map slice; only the headline number lifts.
+        totalListed={stats.bhandarasListed}
+        totalSpotted={stats.bhandarasSpotted}
       />
 
       {/* HAPPENING NOW, crowd-sourced live spots, sits right under
