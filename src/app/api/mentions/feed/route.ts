@@ -268,27 +268,20 @@ export async function GET(req: NextRequest) {
   ]);
   // Unwrap each settled result with a safe empty fallback. Logged so
   // we can spot real outages in Vercel logs, but the route still
-  // returns 200 with whatever survived.
-  const mentionRows =
-    settled[0].status === "fulfilled"
-      ? settled[0].value
-      : (console.error(
-          "[api/mentions/feed] mentions query failed:",
-          settled[0].reason instanceof Error
-            ? settled[0].reason.message
-            : settled[0].reason,
-        ),
-        [] as Awaited<ReturnType<typeof prisma.bhandaraMention.findMany>>);
-  const spotRows =
-    settled[1].status === "fulfilled"
-      ? settled[1].value
-      : (console.error(
-          "[api/mentions/feed] spots query failed:",
-          settled[1].reason instanceof Error
-            ? settled[1].reason.message
-            : settled[1].reason,
-        ),
-        [] as Awaited<ReturnType<typeof prisma.spot.findMany>>);
+  // returns 200 with whatever survived. The generic helper preserves
+  // the include-augmented row type (e.g. spotRows[].bhandara) that
+  // would be lost with `[] as Awaited<ReturnType<typeof prisma...>>`
+  // — that bare-type assertion was what broke the build.
+  function unwrap<T>(r: PromiseSettledResult<T[]>, label: string): T[] {
+    if (r.status === "fulfilled") return r.value;
+    console.error(
+      `[api/mentions/feed] ${label} query failed:`,
+      r.reason instanceof Error ? r.reason.message : r.reason,
+    );
+    return [];
+  }
+  const mentionRows = unwrap(settled[0], "mentions");
+  const spotRows = unwrap(settled[1], "spots");
 
   // ── Companion-Bhandara enrichment for mentions ─────────────────
   // WhatsApp forwards with an image AND a text caption hit the bot

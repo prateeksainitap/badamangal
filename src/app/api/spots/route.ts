@@ -146,9 +146,15 @@ export async function GET(req: NextRequest) {
   // the right degradation: the client merges (not replaces) on each
   // poll, so an empty payload just means "no new spots since last
   // tick", same as a quiet 5-second window.
-  let records: Awaited<ReturnType<typeof prisma.spot.findMany>> = [];
-  try {
-    records = await prisma.spot.findMany({
+  //
+  // .catch returns an empty array on rejection. TypeScript infers
+  // `records` as the include-augmented row type | never[], with the
+  // `s.bhandara?` chain in the .map below staying type-safe. (An
+  // earlier `let records: Awaited<ReturnType<...>> = []` pre-declared
+  // a BARE-typed variable that lost the include shape and broke the
+  // build at s.bhandara.)
+  const records = await prisma.spot
+    .findMany({
       where: {
         status: "APPROVED",
         expiresAt: { gt: new Date() },
@@ -159,13 +165,14 @@ export async function GET(req: NextRequest) {
       include: {
         bhandara: { select: { slug: true, name: true, nameHi: true } },
       },
+    })
+    .catch((err: unknown) => {
+      console.error(
+        "[api/spots] DB read failed, serving empty:",
+        err instanceof Error ? err.message : err,
+      );
+      return [];
     });
-  } catch (err) {
-    console.error(
-      "[api/spots] DB read failed, serving empty:",
-      err instanceof Error ? err.message : err,
-    );
-  }
 
   const spots = records.map((s) => {
     // Parse the extraPhotoUrls JSON-string column defensively. We
