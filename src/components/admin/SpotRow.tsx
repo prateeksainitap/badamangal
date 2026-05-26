@@ -113,7 +113,12 @@ export default function SpotRow({ spot: s, now, index }: Props) {
       // feel for the visible block above the fold without leaving
       // a long tail of empty space.
       style={{ ["--i" as string]: Math.min(index, 6) }}
-      className="admin-row-in relative rounded-2xl border border-cyan-400/15 bg-[#0B0E16]/85 backdrop-blur-sm p-4 sm:p-5 transition-all hover:border-cyan-400/35"
+      // `has-[details[open]]:z-30` lifts this row's stacking context
+      // above the next one when the kebab-menu is open. backdrop-blur
+      // below creates a stacking context per row, which the inner
+      // <details open:z-30> can't escape; without this the popover
+      // gets clipped by the next row painting over it.
+      className="admin-row-in relative has-[details[open]]:z-30 rounded-2xl border border-cyan-400/15 bg-[#0B0E16]/85 backdrop-blur-sm p-4 sm:p-5 transition-all hover:border-cyan-400/35"
     >
       <div className="flex gap-3 sm:gap-4">
         <RowCheckbox id={s.id} label={cleanCaption ?? "Spot"} />

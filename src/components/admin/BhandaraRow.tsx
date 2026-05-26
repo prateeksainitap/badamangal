@@ -114,7 +114,15 @@ export default function BhandaraRow({ bhandara: b, index }: Props) {
       // rationale (uncapped 45ms × 141 rows = 6+ second tail).
       style={{ ["--i" as string]: Math.min(index, 6) }}
       className={[
-        "admin-row-in relative rounded-2xl border bg-[#0B0E16]/85 backdrop-blur-sm p-4 sm:p-5 transition-all",
+        // `has-[details[open]]:z-30` lifts the WHOLE row's stacking
+        // context above the next row when any kebab-menu inside is
+        // open. Needed because backdrop-blur-sm below creates a new
+        // stacking context per row — without this, the open popover
+        // gets painted over by the next row (also backdrop-blurred,
+        // same z, later in DOM = wins). The `open:z-30` on the inner
+        // <details> only orders within this row's own context, which
+        // is why the popover was being clipped by the next row.
+        "admin-row-in relative has-[details[open]]:z-30 rounded-2xl border bg-[#0B0E16]/85 backdrop-blur-sm p-4 sm:p-5 transition-all",
         fromBot
           ? "border-violet-400/30 hover:border-violet-400/55"
           : "border-cyan-400/15 hover:border-cyan-400/35",
