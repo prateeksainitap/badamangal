@@ -224,8 +224,20 @@ async function logIngestion(args: {
  *   "Bada Mangal Bhandara"                  → "" (no dedup possible)
  *   "Bada Mangal Prasad Distribution Program" → "prasad distribution program"
  *   "Jetking Lucknow Bada Mangal Bhandara"  → "jetking lucknow"
- *   "Vishal Bhandara — Hotel ANR"           → "vishal hotel anr"
+ *   "Vishal Bhandara Invitation"            → "" (no dedup possible)
+ *   "Bada Mangal Vishal Bhandara"           → "" (no dedup possible)
+ *   "Vishal Bhandara — Hotel ANR"           → "hotel anr"
  *   "हम और आप वाला बड़ा मंगल भंडारा"        → "हम और आप वाला"
+ *
+ * 2026-05-26 expansion: added "vishal/विशाल" (means "grand", just an
+ * adjective) and "invitation/आमंत्रण" (just the document type) to the
+ * strip list after a real production false-dedup. Two distinct
+ * pamphlets — a Hanumangarhi (Vinay Khand) event and a Shri Ram Tower
+ * (Hazratganj) event — were both saved as "Vishal Bhandara …". The
+ * old normaliser reduced them to "vishal hotel anr" vs "vishal" and
+ * the fuzzy substring match (`candNorm.includes(normName)`) merged
+ * them. Stripping "vishal" pushes the distinctive component to the
+ * actual venue/organiser tokens, where it belongs.
  */
 function normaliseBhandaraName(s: string | null | undefined): string {
   if (!s) return "";
@@ -234,19 +246,37 @@ function normaliseBhandaraName(s: string | null | undefined): string {
     .trim()
     .replace(/\s+/g, " ")
     .replace(/^(shri|sri|श्री|जय)\s+/i, "")
-    // Strip the "Bhandara"/"भंडारा" suffix or word from anywhere in
-    // the name (not just the end) — some posters write "Vishal
-    // Bhandara at Hotel ANR" or "Bhandara by Pandey Family".
-    .replace(/\b(bhandara|bhandare|bhandaara|भंडारा|भंडारे|भण्डारा)\b/gi, "")
+    // Strip "Bhandara" (Latin) — word-boundary anchored.
+    .replace(/\b(bhandara|bhandare|bhandaara)\b/gi, "")
+    // Strip "भंडारा" (Devanagari) — NO \b anchor. JS \b only fires at
+    // the boundary between [A-Za-z0-9_] and non-word; Devanagari is
+    // already a non-word char by that definition, so \b…भंडारा…\b
+    // never matched. Surrounding-whitespace dance below + the final
+    // whitespace collapse handle the in-line case cleanly. Match all
+    // common spellings (नुक्ता variant included).
+    .replace(/(भंडारा|भंडारे|भण्डारा|भण्डारे)/g, " ")
     // Strip the "Bada Mangal"/"बड़ा मंगल" framing from any position.
-    // English + Hinglish variants + Devanagari variants.
     .replace(/\b(bada|bade|badaa|bara|barre)\s+(mangal|mangle|mangaL)\b/gi, "")
     .replace(/(बड़ा|बड़े|बडा|बडे|बारा|बारे)\s*(मंगल|मंगले|मंगलवार)/g, "")
+    // Strip generic devotional/scale adjectives that pamphlets stamp
+    // on every event — "Vishal" ("grand"), "Bhavya" ("majestic"),
+    // "Maha" ("great") — plus the document-type word "Invitation /
+    // आमंत्रण". None of these distinguish one event from another.
+    .replace(/\b(vishal|bhavya|maha|mahaan|grand)\b/gi, "")
+    .replace(/(विशाल|भव्य|महा|महान)/g, " ")
+    .replace(/\b(invitation|aamantran|aamantra|nimantran)\b/gi, "")
+    .replace(/(आमंत्रण|आमन्त्रण|निमंत्रण|निमन्त्रण)/g, " ")
     // Strip ordinal prefixes that vary per event ("Fourth", "8th",
     // "चतुर्थ") — they're not stable across re-forwards.
     .replace(/\b(first|second|third|fourth|fifth|sixth|seventh|eighth)\b/gi, "")
     .replace(/\b\d+(st|nd|rd|th)?\b/g, "")
-    .replace(/\b(प्रथम|द्वितीय|तृतीय|चतुर्थ|पंचम|षष्ठ|सप्तम|अष्टम)\b/g, "")
+    .replace(/(प्रथम|द्वितीय|तृतीय|चतुर्थ|पंचम|षष्ठ|सप्तम|अष्टम)/g, " ")
+    // Strip stray punctuation left behind by the substitutions above
+    // (em-dashes, hyphens, slashes, "|"). Without this, "Vishal
+    // Bhandara — Hotel ANR" reduces to "— hotel anr" and the leading
+    // em-dash defeats substring equality with another "hotel anr"
+    // row. Keep alphanumerics + Devanagari + whitespace; drop the rest.
+    .replace(/[—–\-/|,.;:()[\]{}"'`~!@#$%^&*+=<>?]/g, " ")
     // Collapse the resulting whitespace.
     .replace(/\s+/g, " ")
     .trim();

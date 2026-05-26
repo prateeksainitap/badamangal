@@ -99,10 +99,12 @@ export default function HomeHero() {
 
       {/* Hero CTAs, both pinned to the same min-width so the
           primary sindoor pill and the secondary ghost pill read
-          as a balanced pair. Each carries a leading glyph that
-          matches its action (magnifier for find, plus-circle
-          for add). On mobile the row stays centred and the
-          buttons keep equal width via `w-[240px]` so they
+          as a balanced pair. The find CTA carries a magnifier
+          glyph; the add CTA is intentionally text-only (the +
+          icon was dropped 2026-05-26 — the pill reads cleaner
+          without a duplicate "add" signal when the label
+          already says it). On mobile the row stays centred and
+          the buttons keep equal width via `w-[240px]` so they
           align in a single column when wrap kicks in. */}
       <div className="mt-7 sm:mt-8 flex flex-wrap gap-3 justify-center lg:justify-start">
         <Link
@@ -129,25 +131,10 @@ export default function HomeHero() {
         </Link>
         <Link
           href={`/list-bhandara${isHi ? "" : "?lang=en"}`}
-          className="btn btn-ghost btn-lg w-[240px] justify-center gap-2"
+          className="btn btn-ghost btn-lg w-[240px] justify-center"
           data-ga="cta_hero_list_bhandara"
           data-ga-source="hero"
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <circle cx="12" cy="12" r="9" />
-            <path d="M12 8v8" />
-            <path d="M8 12h8" />
-          </svg>
           {t.cta.listBhandara}
         </Link>
       </div>
