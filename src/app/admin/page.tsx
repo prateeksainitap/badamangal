@@ -210,18 +210,15 @@ export default async function AdminPage({
       }
     : statusWhere;
 
-  // Fan out the list query + every tab count in ONE Promise.all so
-  // the supabase pooler does one parallel batch instead of two serial
-  // round-trips. On a cold function this is the difference between
-  // ~600ms and ~1200ms of pure DB latency before any HTML can stream.
-  const [
-    records,
-    pendingCount,
-    unverifiedCount,
-    verifiedCount,
-    rejectedCount,
-    allCount,
-  ] = await Promise.all([
+  // Fan out the list query + every tab count in ONE Promise.allSettled
+  // so the supabase pooler does one parallel batch instead of two
+  // serial round-trips. On a cold function this is the difference
+  // between ~600ms and ~1200ms of pure DB latency before any HTML can
+  // stream. allSettled (not allSettled's predecessor `all`) so a
+  // transient EMAXCONN on any single count doesn't 500 the entire
+  // legacy admin queue, surfacing the segment error boundary on the
+  // whole moderation surface.
+  const settled = await Promise.allSettled([
     prisma.bhandara.findMany({
       where,
       orderBy: { createdAt: "desc" },
@@ -236,6 +233,26 @@ export default async function AdminPage({
     prisma.bhandara.count({ where: { status: "REJECTED" } }),
     prisma.bhandara.count({}),
   ]);
+  const pickQ = <T,>(idx: number, fallback: T): T => {
+    const r = settled[idx];
+    if (r && r.status === "fulfilled") return r.value as T;
+    if (r && r.status === "rejected") {
+      console.error(
+        `[admin/page] query ${idx} rejected:`,
+        r.reason instanceof Error ? r.reason.message : r.reason,
+      );
+    }
+    return fallback;
+  };
+  const records = pickQ<Awaited<ReturnType<typeof prisma.bhandara.findMany>>>(
+    0,
+    [],
+  );
+  const pendingCount = pickQ<number>(1, 0);
+  const unverifiedCount = pickQ<number>(2, 0);
+  const verifiedCount = pickQ<number>(3, 0);
+  const rejectedCount = pickQ<number>(4, 0);
+  const allCount = pickQ<number>(5, 0);
   // Pair each public-shape Bhandara with the raw DB record so the
   // admin view can still read `status` (which is intentionally
   // stripped from the public Bhandara type, moderation state isn't
@@ -732,15 +749,12 @@ export default async function AdminPage({
  */
 const getAdminTabCounts = cache(async () => {
   const now = new Date();
-  const [
-    bhandaraPending,
-    spotLive,
-    whatsappBot,
-    organiseNew,
-    volunteerNew,
-    volunteerPending,
-    mentionsPending,
-  ] = await Promise.all([
+  // Promise.allSettled (not Promise.all) so a transient EMAXCONN on
+  // any single count doesn't take down the entire admin tab strip
+  // (which lives in the legacy /admin shell wrapped by an error
+  // boundary that surfaces the segment error on failure). Failed
+  // counts default to 0 so the chip silently hides.
+  const settled = await Promise.allSettled([
     prisma.bhandara.count({ where: { status: "PENDING" } }),
     prisma.spot.count({
       where: { status: "APPROVED", expiresAt: { gt: now } },
@@ -765,14 +779,25 @@ const getAdminTabCounts = cache(async () => {
     // not a tab on /admin).
     prisma.bhandaraMention.count({ where: { status: "PENDING" } }),
   ]);
+  const pickN = (idx: number): number => {
+    const r = settled[idx];
+    if (r && r.status === "fulfilled") return r.value;
+    if (r && r.status === "rejected") {
+      console.error(
+        `[admin/page tabCounts] query ${idx} rejected:`,
+        r.reason instanceof Error ? r.reason.message : r.reason,
+      );
+    }
+    return 0;
+  };
   return {
-    bhandaraPending,
-    spotLive,
-    whatsappBot,
-    organiseNew,
-    volunteerNew,
-    volunteerPending,
-    mentionsPending,
+    bhandaraPending: pickN(0),
+    spotLive: pickN(1),
+    whatsappBot: pickN(2),
+    organiseNew: pickN(3),
+    volunteerNew: pickN(4),
+    volunteerPending: pickN(5),
+    mentionsPending: pickN(6),
   };
 });
 
@@ -1020,24 +1045,44 @@ async function SpotsView({
     : statusWhere;
 
   // Single parallel batch, same speed-up as the Bhandaras view.
-  const [spots, liveCount, expiredCount, rejectedCount, allCount] =
-    await Promise.all([
-      prisma.spot.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        include: {
-          bhandara: { select: { slug: true, name: true, nameHi: true } },
-        },
-      }),
-      prisma.spot.count({
-        where: { status: "APPROVED", expiresAt: { gt: now } },
-      }),
-      prisma.spot.count({
-        where: { status: "APPROVED", expiresAt: { lte: now } },
-      }),
-      prisma.spot.count({ where: { status: "REJECTED" } }),
-      prisma.spot.count({}),
-    ]);
+  // Promise.allSettled so a transient EMAXCONN on a single count
+  // doesn't 500 the legacy /admin spots tab. Failed queries default
+  // to empty list / 0 so the page paints regardless.
+  const spotsSettled = await Promise.allSettled([
+    prisma.spot.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: {
+        bhandara: { select: { slug: true, name: true, nameHi: true } },
+      },
+    }),
+    prisma.spot.count({
+      where: { status: "APPROVED", expiresAt: { gt: now } },
+    }),
+    prisma.spot.count({
+      where: { status: "APPROVED", expiresAt: { lte: now } },
+    }),
+    prisma.spot.count({ where: { status: "REJECTED" } }),
+    prisma.spot.count({}),
+  ]);
+  const pickS = <T,>(idx: number, fallback: T): T => {
+    const r = spotsSettled[idx];
+    if (r && r.status === "fulfilled") return r.value as T;
+    if (r && r.status === "rejected") {
+      console.error(
+        `[admin/page spotsView] query ${idx} rejected:`,
+        r.reason instanceof Error ? r.reason.message : r.reason,
+      );
+    }
+    return fallback;
+  };
+  const spots = pickS<
+    Awaited<ReturnType<typeof prisma.spot.findMany>>
+  >(0, []);
+  const liveCount = pickS<number>(1, 0);
+  const expiredCount = pickS<number>(2, 0);
+  const rejectedCount = pickS<number>(3, 0);
+  const allCount = pickS<number>(4, 0);
   const countOf = (s: string) =>
     s === "LIVE"
       ? liveCount
@@ -1465,7 +1510,10 @@ async function WhatsAppBotView({
       }
     : { ipHash: "bot:whatsapp" };
 
-  const [bhandaraRows, spotRows, bhandaraTotal, spotTotal] = await Promise.all([
+  // Promise.allSettled so a transient EMAXCONN on one of these four
+  // doesn't crash the WhatsApp queue view. Each falls back to empty
+  // list / 0 so the page paints regardless.
+  const botSettled = await Promise.allSettled([
     prisma.bhandara.findMany({
       where: bhandaraWhere,
       orderBy: { createdAt: "desc" },
@@ -1477,6 +1525,26 @@ async function WhatsAppBotView({
     prisma.bhandara.count({ where: { description: { contains: "[bot:" } } }),
     prisma.spot.count({ where: { ipHash: "bot:whatsapp" } }),
   ]);
+  const pickB = <T,>(idx: number, fallback: T): T => {
+    const r = botSettled[idx];
+    if (r && r.status === "fulfilled") return r.value as T;
+    if (r && r.status === "rejected") {
+      console.error(
+        `[admin/page botView] query ${idx} rejected:`,
+        r.reason instanceof Error ? r.reason.message : r.reason,
+      );
+    }
+    return fallback;
+  };
+  const bhandaraRows = pickB<
+    Awaited<ReturnType<typeof prisma.bhandara.findMany>>
+  >(0, []);
+  const spotRows = pickB<Awaited<ReturnType<typeof prisma.spot.findMany>>>(
+    1,
+    [],
+  );
+  const bhandaraTotal = pickB<number>(2, 0);
+  const spotTotal = pickB<number>(3, 0);
 
   // Decode the bot tag once per row so render-time stays cheap.
   const bhandaras: BotBhandara[] = bhandaraRows.map((r) => ({

@@ -132,10 +132,17 @@ const bodySchema = z
  */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
-  const limit = Math.max(
-    1,
-    Math.min(500, Number(url.searchParams.get("limit") ?? "60") || 60),
-  );
+  const rawLimit = Number(url.searchParams.get("limit") ?? "60") || 60;
+  const limit = Math.max(1, Math.min(500, rawLimit));
+  if (rawLimit > 500) {
+    // Cap-hit instrumentation. Surfaces in Vercel logs when a real
+    // client requests beyond the 500 ceiling, so a future Tuesday
+    // with more in-flight spots than 500 is visible (rather than
+    // silently truncating the homepage map).
+    console.warn(
+      `[api/spots] cap hit: client requested limit=${rawLimit}, clamped to 500.`,
+    );
+  }
   const area = url.searchParams.get("area") ?? undefined;
 
   // Try/catch around the DB read so a transient EMAXCONN at Tuesday

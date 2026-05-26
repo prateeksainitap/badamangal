@@ -462,6 +462,16 @@ export default function LiveChatterBoard({
         if (!userAtTop && fresh.length > 0) {
           setNewSinceScrollAway((n) => n + fresh.length);
         }
+        // Cap-hit instrumentation: log when the slice truncates so a
+        // future Tuesday where MAX_CARDS is too tight shows up in
+        // browser console + Vercel client logs instead of silently
+        // dropping the tail. Logged once per merge tick (not per row).
+        const combinedLen = fresh.length + merged.length;
+        if (combinedLen > MAX_CARDS) {
+          console.warn(
+            `[LiveChatterBoard] cap hit: ${combinedLen} merged rows clamped to ${MAX_CARDS} (consider bumping MAX_CARDS).`,
+          );
+        }
         return [...fresh, ...merged].slice(0, MAX_CARDS);
       });
     } catch {

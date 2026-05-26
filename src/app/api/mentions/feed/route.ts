@@ -155,7 +155,14 @@ export async function GET(req: NextRequest) {
   // hit 244+ live signals in the first 12 hours and operators saw
   // the chat panel cap out. The 24h TTL on mention rows still bounds
   // the absolute upper end so this never grows unbounded.
-  const limitN = Math.max(1, Math.min(500, Number(limitParam ?? "500") || 500));
+  const rawLimit = Number(limitParam ?? "500") || 500;
+  const limitN = Math.max(1, Math.min(500, rawLimit));
+  if (rawLimit > 500) {
+    console.warn(
+      `[api/mentions/feed] cap hit: client requested limit=${rawLimit}, clamped to 500. ` +
+        `Bump the 500 ceiling above if real demand exceeds this.`,
+    );
+  }
   /** When `withCoords=1` is passed, restrict the feed to items with
    *  non-null lat/lng. The heatmap component uses this to skip the
    *  no-location text-only mentions it can't render. */
@@ -482,6 +489,18 @@ export async function GET(req: NextRequest) {
   // Merge + sort by createdAt desc, then trim to limitN. We over-fetch
   // (limitN from EACH source) so the merge can fairly pick the most
   // recent across both. Worst case wastes a row read; trivial.
+  const combinedLen = mentionItems.length + spotItems.length;
+  if (combinedLen > limitN) {
+    // Cap-hit: real available signal exceeded the client's limit
+    // request. Surfacing the gap so a future Tuesday where the cap
+    // is too tight is visible in Vercel logs rather than silently
+    // truncating the chat panel.
+    console.warn(
+      `[api/mentions/feed] cap hit: ${combinedLen} combined items trimmed to ${limitN} ` +
+        `(mentions=${mentionItems.length}, spots=${spotItems.length}). ` +
+        `Older rows dropped from this response.`,
+    );
+  }
   const merged: PublicItem[] = [...mentionItems, ...spotItems]
     .sort((a, b) =>
       a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0,
