@@ -802,14 +802,62 @@ export async function POST(req: NextRequest) {
       (r) => r.cleanedText && normaliseForDedup(r.cleanedText) === target,
     );
     if (dup) {
+      // Before returning the duplicate response, check if a recent
+      // photo Spot from the same sender is sitting at lat=0/lng=0
+      // and still inside the photo-burst-bind window. If yes, bind
+      // these coords onto it. This recovers the race condition where
+      // a location pin arrives microseconds BEFORE its companion
+      // photo, so the bind block above (line ~498) found no spot to
+      // attach to and fell through here. Without this rescue, the
+      // photo lands without coords AND the location lands as a dup-
+      // rejected mention, so the spot stays at null-island until an
+      // admin fixes it manually — exactly the bug user just hit.
+      let boundSpotId: string | null = null;
+      if (senderName && lat !== null && lng !== null) {
+        const PHOTO_BURST_BIND_WINDOW_MS = 5 * 60 * 1000;
+        const recentPhotoSpot = await prisma.spot.findFirst({
+          where: {
+            reporterName: senderName,
+            ipHash: "bot:whatsapp",
+            status: "APPROVED",
+            lat: 0,
+            lng: 0,
+            createdAt: {
+              gte: new Date(Date.now() - PHOTO_BURST_BIND_WINDOW_MS),
+            },
+          },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, area: true, address: true },
+        });
+        if (recentPhotoSpot) {
+          await prisma.spot.update({
+            where: { id: recentPhotoSpot.id },
+            data: {
+              lat,
+              lng,
+              area: recentPhotoSpot.area || locationLabel || null,
+              address: recentPhotoSpot.address || locationLabel || null,
+            },
+          });
+          boundSpotId = recentPhotoSpot.id;
+          invalidateHomepageStatsCache();
+          revalidatePath("/admin", "layout");
+          revalidatePath("/");
+        }
+      }
       return NextResponse.json({
         ok: true,
-        kind: "duplicate",
+        kind: boundSpotId ? "duplicate-rescued" : "duplicate",
         duplicateOf: dup.id,
-        reason: "cross_group_forward",
-        message: `Same content from "${senderName}" already ingested${
-          dup.groupName ? ` (first seen in "${dup.groupName}")` : ""
-        }; suppressing this re-forward.`,
+        reason: boundSpotId
+          ? "cross_group_forward_with_photo_bind"
+          : "cross_group_forward",
+        boundSpotId,
+        message: boundSpotId
+          ? `Re-forwarded location bound to recent photo Spot ${boundSpotId} from "${senderName}"; mention itself suppressed as dup.`
+          : `Same content from "${senderName}" already ingested${
+              dup.groupName ? ` (first seen in "${dup.groupName}")` : ""
+            }; suppressing this re-forward.`,
       });
     }
   }
