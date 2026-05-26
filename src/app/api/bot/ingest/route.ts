@@ -1062,38 +1062,49 @@ export async function POST(req: NextRequest) {
   const caption = [captionBody, tag].filter(Boolean).join("\n\n");
   const expiresAt = new Date(Date.now() + SPOT_TTL_HOURS * 60 * 60 * 1000);
 
-  // ── Multi-image burst grouping ─────────────────────────────────
-  // Pattern (added 2026-05-26): WhatsApp delivers a multi-image album
-  // as N separate messages on the wire. Without grouping, our bot ends
-  // up creating N Spot rows that are visually identical — same sender,
-  // same minute, same bhandara — which clutters /admin/spots and the
-  // public chat panel with duplicates.
+  // ── Multi-image burst grouping (BIDIRECTIONAL) ─────────────────
+  // Two complementary patterns this block solves:
   //
-  // Fix: if the same WA sender posted another bot Spot within the last
-  // 5 minutes, fold this image into THAT row's extras carousel (cap
-  // 5 per the schema) instead of creating a new Spot. The grouping
-  // window is short on purpose — long enough to absorb the 5-10
-  // seconds it takes WhatsApp to deliver a 4-photo album, short
-  // enough that the sender's NEXT unrelated bhandara photo later in
-  // the day doesn't accidentally fold into this one.
+  // (A) Multi-image album: WhatsApp delivers a 4-photo album as 4
+  //     separate messages on the wire. Without grouping we'd land 4
+  //     duplicate Spot rows for the same bhandara.
   //
-  // Scope: only applies to bot-ingested rows (ipHash="bot:whatsapp")
-  // and only to APPROVED ones (PENDING extract-failure fallbacks
-  // don't have enough signal to fold into anyway). senderName match
-  // is exact — if the sender's display name changes mid-day, no
-  // grouping, which is the safe default.
+  // (B) Location-first → photo-after: the WA sender drops a location
+  //     pin BEFORE forwarding the photos. /api/bot/message already
+  //     creates a photo-less Spot for that pin. Then the photo
+  //     arrives here. Without this block we'd create a SEPARATE
+  //     photo Spot, leaving the operator with the same row twice
+  //     (one with coords + no photo, one with photo + no coords).
+  //     Real production complaint Tuesday-1: operator had to
+  //     manually merge every such pair.
   //
-  // False-positive recovery: if two photos in the same window were
-  // actually different bhandaras and got grouped wrongly, the
-  // operator can split via /admin/edit-spot/<id> + a fresh manual
-  // create. The /admin/spots Merge bulk action covers the inverse
-  // (separate rows that should be one).
+  // Resolution: look for ANY recent same-sender Spot from either
+  // ingest path (bot:whatsapp image OR bot:whatsapp:text location
+  // share). If found, fold this image into it. If the existing row
+  // has no photoUrl yet (case B), this image becomes its primary
+  // photo + coords/area are kept from the location share. If the
+  // existing row already has a photo (case A), this image becomes
+  // an extra in the carousel.
+  //
+  // 5-minute window is short enough to skip unrelated photos later
+  // in the day, long enough to absorb the typical 5-10 s WA album
+  // delivery + the 30-60 s gap between a location share and the
+  // follow-up photo. Match is exact on senderName.
+  //
+  // False-positive recovery: bulkMergeSpotsAction on /admin/spots
+  // handles the inverse (separate rows the bot didn't auto-pair).
   const GROUP_WINDOW_MS = 5 * 60 * 1000;
   const recentSameSender = senderName
     ? await prisma.spot.findFirst({
         where: {
           reporterName: senderName,
-          ipHash: "bot:whatsapp",
+          // Match BOTH ipHashes — the image ingest path
+          // ("bot:whatsapp") and the location-share-as-Spot path
+          // from /api/bot/message ("bot:whatsapp:text"). Without
+          // the OR, a location-first → photo-after sequence
+          // creates two rows that the operator has to merge by
+          // hand.
+          ipHash: { in: ["bot:whatsapp", "bot:whatsapp:text"] },
           status: "APPROVED",
           createdAt: { gte: new Date(Date.now() - GROUP_WINDOW_MS) },
         },
@@ -1124,18 +1135,50 @@ export async function POST(req: NextRequest) {
     const alreadyPresent =
       photoUrl === recentSameSender.photoUrl || extras.includes(photoUrl);
     if (!alreadyPresent) {
-      extras.push(photoUrl);
-      const cappedExtras = extras.slice(0, 5);
+      // Branch based on whether the existing row already has a
+      // primary photo or not:
+      //
+      //   • Has photoUrl (case A — multi-image album):
+      //     append THIS image to extras. Carousel grows.
+      //
+      //   • No photoUrl (case B — location-first row from
+      //     /api/bot/message): set THIS image as the primary
+      //     photoUrl. The row now has both coords (from the
+      //     earlier location share) and a photo. One clean Spot
+      //     instead of two fragments the operator had to merge.
+      const existingHasPhoto = !!recentSameSender.photoUrl;
+      const updateData: {
+        photoUrl?: string;
+        extraPhotoUrls: string;
+        expiresAt: Date;
+        // Caption swap is intentional only when the existing row's
+        // caption is the auto-generated "Shared a location near …"
+        // placeholder from /api/bot/message. We want the photo's
+        // caption (Gemini extract / sender's WA caption) to take
+        // over once a real image lands. Operator-edited captions
+        // are preserved because they wouldn't match the synthetic
+        // template.
+        caption?: string;
+      } = {
+        // Roll the TTL forward so the whole burst expires together
+        // — otherwise photo 1 expires 8h after it landed but the
+        // freshly-folded photo 4 should still be live, leaving a
+        // half-stale carousel.
+        expiresAt,
+        extraPhotoUrls: existingHasPhoto
+          ? JSON.stringify(extras.concat(photoUrl).slice(0, 5))
+          : JSON.stringify(extras.slice(0, 5)),
+      };
+      if (!existingHasPhoto) {
+        updateData.photoUrl = photoUrl;
+        // Swap the synthetic "Shared a location near X" caption for
+        // the real photo caption. The original location row's
+        // bot:whatsapp-text provenance tag stays intact below it.
+        updateData.caption = caption;
+      }
       await prisma.spot.update({
         where: { id: recentSameSender.id },
-        data: {
-          extraPhotoUrls: JSON.stringify(cappedExtras),
-          // Roll the TTL forward so the whole burst expires together —
-          // otherwise photo 1 expires 8h after it landed but the
-          // freshly-folded photo 4 should still be live, leaving a
-          // half-stale carousel.
-          expiresAt,
-        },
+        data: updateData,
       });
       await logIngestion({
         outcome: "SUCCESS_SPOT",
@@ -1145,7 +1188,9 @@ export async function POST(req: NextRequest) {
         imageHash,
         resultRowId: recentSameSender.id,
         resultRowKind: "spot",
-        reason: `Grouped into existing Spot ${recentSameSender.id} from same sender within ${GROUP_WINDOW_MS / 1000}s window (multi-image burst).`,
+        reason: existingHasPhoto
+          ? `Grouped into existing Spot ${recentSameSender.id} from same sender within ${GROUP_WINDOW_MS / 1000}s window (multi-image burst).`
+          : `Folded photo into location-first Spot ${recentSameSender.id} from same sender within ${GROUP_WINDOW_MS / 1000}s window (photo arrived after the location pin).`,
       });
       return NextResponse.json({
         ok: true,
