@@ -356,6 +356,71 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.warn("[bot/message] reverse-geocode error:", err);
     }
+
+    // ── Photo-burst location binding ───────────────────────────────
+    // Pattern (added 2026-05-26): the WhatsApp sender just posted a
+    // batch of photos to /api/bot/ingest, then sent a location pin
+    // here as the SAME bhandara's coords. Without binding, we end up
+    // with one photo Spot at lat=0 (WhatsApp strips EXIF GPS from
+    // imageMessage) plus one separate text Mention with the coords.
+    // The chat panel + heatmap show them as two unrelated entries.
+    //
+    // Fix: if the same WA sender posted a bot Spot in the last 5
+    // minutes that still lacks coords (lat===0 && lng===0, the
+    // bot's no-EXIF fallback), bind THESE coords + area + address
+    // onto that Spot and skip creating a separate Mention. The
+    // multi-image burst grouping in /api/bot/ingest will already
+    // have folded any additional photos into the same row, so this
+    // single update closes the loop: one row, full carousel + real
+    // pin, no duplicate Mention.
+    //
+    // If no recent photo Spot matches, fall through to the normal
+    // Mention-creation path below — the pin still lands as a chat
+    // mention, just unbound, same as today.
+    const PHOTO_BURST_BIND_WINDOW_MS = 5 * 60 * 1000;
+    if (senderName && lat !== null && lng !== null) {
+      const recentPhotoSpot = await prisma.spot.findFirst({
+        where: {
+          reporterName: senderName,
+          ipHash: "bot:whatsapp",
+          status: "APPROVED",
+          lat: 0,
+          lng: 0,
+          createdAt: {
+            gte: new Date(Date.now() - PHOTO_BURST_BIND_WINDOW_MS),
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { id: true, area: true, address: true },
+      });
+      if (recentPhotoSpot) {
+        await prisma.spot.update({
+          where: { id: recentPhotoSpot.id },
+          data: {
+            lat,
+            lng,
+            area: recentPhotoSpot.area || locationLabel || null,
+            address: recentPhotoSpot.address || locationLabel || null,
+          },
+        });
+        // Mention is NOT created — this pin became the photo Spot's
+        // coords. The homepage chat panel will show one row (the
+        // photo Spot, now with a real map pin) instead of one photo
+        // card + one location-share card.
+        invalidateHomepageStatsCache();
+        revalidatePath("/admin", "layout");
+        revalidatePath("/");
+        return NextResponse.json({
+          ok: true,
+          kind: "spot-location-bound",
+          spotId: recentPhotoSpot.id,
+          lat,
+          lng,
+          area: locationLabel ?? null,
+          message: `Location pin folded into recent photo Spot ${recentPhotoSpot.id} from same sender (${PHOTO_BURST_BIND_WINDOW_MS / 1000}s window).`,
+        });
+      }
+    }
   }
 
   // ── 6. Classify via Gemini (text-only path) ─────────────────────

@@ -1022,6 +1022,103 @@ export async function POST(req: NextRequest) {
   const caption = [captionBody, tag].filter(Boolean).join("\n\n");
   const expiresAt = new Date(Date.now() + SPOT_TTL_HOURS * 60 * 60 * 1000);
 
+  // ── Multi-image burst grouping ─────────────────────────────────
+  // Pattern (added 2026-05-26): WhatsApp delivers a multi-image album
+  // as N separate messages on the wire. Without grouping, our bot ends
+  // up creating N Spot rows that are visually identical — same sender,
+  // same minute, same bhandara — which clutters /admin/spots and the
+  // public chat panel with duplicates.
+  //
+  // Fix: if the same WA sender posted another bot Spot within the last
+  // 5 minutes, fold this image into THAT row's extras carousel (cap
+  // 5 per the schema) instead of creating a new Spot. The grouping
+  // window is short on purpose — long enough to absorb the 5-10
+  // seconds it takes WhatsApp to deliver a 4-photo album, short
+  // enough that the sender's NEXT unrelated bhandara photo later in
+  // the day doesn't accidentally fold into this one.
+  //
+  // Scope: only applies to bot-ingested rows (ipHash="bot:whatsapp")
+  // and only to APPROVED ones (PENDING extract-failure fallbacks
+  // don't have enough signal to fold into anyway). senderName match
+  // is exact — if the sender's display name changes mid-day, no
+  // grouping, which is the safe default.
+  //
+  // False-positive recovery: if two photos in the same window were
+  // actually different bhandaras and got grouped wrongly, the
+  // operator can split via /admin/edit-spot/<id> + a fresh manual
+  // create. The /admin/spots Merge bulk action covers the inverse
+  // (separate rows that should be one).
+  const GROUP_WINDOW_MS = 5 * 60 * 1000;
+  const recentSameSender = senderName
+    ? await prisma.spot.findFirst({
+        where: {
+          reporterName: senderName,
+          ipHash: "bot:whatsapp",
+          status: "APPROVED",
+          createdAt: { gte: new Date(Date.now() - GROUP_WINDOW_MS) },
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          photoUrl: true,
+          extraPhotoUrls: true,
+        },
+      })
+    : null;
+
+  if (recentSameSender && photoUrl) {
+    let extras: string[] = [];
+    try {
+      const arr = JSON.parse(recentSameSender.extraPhotoUrls || "[]") as unknown;
+      if (Array.isArray(arr)) {
+        extras = arr.filter(
+          (u): u is string => typeof u === "string" && u.length > 0,
+        );
+      }
+    } catch {
+      /* malformed JSON, treat as no extras */
+    }
+    // Skip if this image is already in the carousel (defensive — the
+    // image-hash dedup earlier in this route should already prevent
+    // exact re-forwards, but a parallel race could slip past).
+    const alreadyPresent =
+      photoUrl === recentSameSender.photoUrl || extras.includes(photoUrl);
+    if (!alreadyPresent) {
+      extras.push(photoUrl);
+      const cappedExtras = extras.slice(0, 5);
+      await prisma.spot.update({
+        where: { id: recentSameSender.id },
+        data: {
+          extraPhotoUrls: JSON.stringify(cappedExtras),
+          // Roll the TTL forward so the whole burst expires together —
+          // otherwise photo 1 expires 8h after it landed but the
+          // freshly-folded photo 4 should still be live, leaving a
+          // half-stale carousel.
+          expiresAt,
+        },
+      });
+      await logIngestion({
+        outcome: "SUCCESS_SPOT",
+        senderName,
+        groupName,
+        msgId,
+        imageHash,
+        resultRowId: recentSameSender.id,
+        resultRowKind: "spot",
+        reason: `Grouped into existing Spot ${recentSameSender.id} from same sender within ${GROUP_WINDOW_MS / 1000}s window (multi-image burst).`,
+      });
+      return NextResponse.json({
+        ok: true,
+        kind: "spot",
+        id: recentSameSender.id,
+        grouped: true,
+        reviewUrl: `${SITE_URL}/admin/edit-spot/${recentSameSender.id}`,
+      });
+    }
+    // If alreadyPresent, fall through and let the normal create path
+    // run — but the image-hash dedup earlier should have caught it.
+  }
+
   const spot = await prisma.spot.create({
     data: {
       lat: 0,
