@@ -408,15 +408,57 @@ export default function LiveChatterBoard({
       const body = chatBodyRef.current;
       const userAtTop = body ? body.scrollTop <= AUTOSCROLL_THRESHOLD_PX : true;
       setMentions((prev) => {
-        const seen = new Set(prev.map((m) => m.id));
-        const fresh = data.mentions.filter((m) => !seen.has(m.id));
-        if (fresh.length === 0) return prev;
+        // Merge polled payload with the existing list in TWO ways:
+        //   1. New ids (not in prev)        → prepend to the head
+        //   2. Existing ids with new values → update in place
+        //
+        // The old logic only handled case 1, which meant an admin
+        // edit to a spot's caption/area/photo never propagated to
+        // the chat panel (the polled object had the new fields but
+        // was filtered out by `seen` and discarded). Real production
+        // complaint Tuesday-1: operator fixed a spot caption in
+        // /admin/edit-spot, but the same row in the public live-chat
+        // kept showing Gemini's verbose original until the row
+        // expired out of the 200-card window. Now updates flow.
+        const polledById = new Map(
+          data.mentions.map((m) => [m.id, m] as const),
+        );
+        const fresh = data.mentions.filter(
+          (m) => !prev.some((p) => p.id === m.id),
+        );
+        // Field-by-field equality check so we only re-render when a
+        // polled entry genuinely differs from the cached one. Avoids
+        // a wholesale state replace + DOM reconcile every 12 s on
+        // an idle feed.
+        function sameShape(a: ChatterMention, b: ChatterMention): boolean {
+          return (
+            a.text === b.text &&
+            a.locationLabel === b.locationLabel &&
+            a.photoUrl === b.photoUrl &&
+            a.senderName === b.senderName &&
+            a.intent === b.intent &&
+            (a.lat ?? null) === (b.lat ?? null) &&
+            (a.lng ?? null) === (b.lng ?? null) &&
+            (a.bhandaraSlug ?? null) === (b.bhandaraSlug ?? null) &&
+            (a.bhandaraName ?? null) === (b.bhandaraName ?? null) &&
+            JSON.stringify(a.photoUrls ?? []) ===
+              JSON.stringify(b.photoUrls ?? [])
+          );
+        }
+        let updateCount = 0;
+        const merged = prev.map((existing) => {
+          const polled = polledById.get(existing.id);
+          if (!polled || sameShape(existing, polled)) return existing;
+          updateCount++;
+          return polled;
+        });
+        if (fresh.length === 0 && updateCount === 0) return prev;
         const now = Date.now();
         for (const f of fresh) firstSeenRef.current.set(f.id, now);
-        if (!userAtTop) {
+        if (!userAtTop && fresh.length > 0) {
           setNewSinceScrollAway((n) => n + fresh.length);
         }
-        return [...fresh, ...prev].slice(0, MAX_CARDS);
+        return [...fresh, ...merged].slice(0, MAX_CARDS);
       });
     } catch {
       // Silent retry next tick.
