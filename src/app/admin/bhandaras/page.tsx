@@ -35,6 +35,7 @@ import BhandaraRow, {
 import {
   QueueSelectionProvider,
   BulkActionBar,
+  QueueRow,
   type BulkActionDef,
 } from "@/components/admin/QueueSelection";
 
@@ -497,11 +498,12 @@ export default async function AdminBhandarasPage({
         ) : (
           <QueueSelectionProvider total={rows.length}>
             {rows.map((b, idx) => (
-              <BhandaraRow
-                key={b.id}
-                bhandara={b as BhandaraQueueRow}
-                index={idx}
-              />
+              <QueueRow key={b.id} id={b.id}>
+                <BhandaraRow
+                  bhandara={b as BhandaraQueueRow}
+                  index={idx}
+                />
+              </QueueRow>
             ))}
             <BulkActionBar
               allRowIds={rows.map((r) => r.id)}

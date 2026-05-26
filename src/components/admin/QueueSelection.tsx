@@ -40,6 +40,15 @@ type SelectionContext = {
    *  inside the bar. The provider doesn't track this itself; it's
    *  set by the page via the `total` prop. */
   total: number;
+  /** Optimistic in-flight set: row ids whose bulk action just fired
+   *  and we're still waiting for the server-side revalidate to land.
+   *  <QueueRow> reads this to dim+freeze the affected rows so the
+   *  operator sees instant feedback instead of "did anything
+   *  happen?" for the 3-5 s revalidate window. Cleared
+   *  automatically by BulkActionBar after a buffer post-action. */
+  pendingIds: ReadonlySet<string>;
+  markPending: (ids: string[]) => void;
+  unmarkPending: (ids: string[]) => void;
 };
 
 const Ctx = createContext<SelectionContext | null>(null);
@@ -52,6 +61,7 @@ export function QueueSelectionProvider({
   children: ReactNode;
 }) {
   const [ids, setIds] = useState<ReadonlySet<string>>(new Set());
+  const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
 
   const toggle = useCallback((id: string) => {
     setIds((prev) => {
@@ -68,9 +78,43 @@ export function QueueSelectionProvider({
     setIds(new Set(rowIds));
   }, []);
 
+  const markPending = useCallback((rowIds: string[]) => {
+    setPendingIds((prev) => {
+      const next = new Set(prev);
+      for (const id of rowIds) next.add(id);
+      return next;
+    });
+  }, []);
+
+  const unmarkPending = useCallback((rowIds: string[]) => {
+    setPendingIds((prev) => {
+      const next = new Set(prev);
+      for (const id of rowIds) next.delete(id);
+      return next;
+    });
+  }, []);
+
   const value = useMemo(
-    () => ({ ids, toggle, clear, selectAll, total }),
-    [ids, toggle, clear, selectAll, total],
+    () => ({
+      ids,
+      toggle,
+      clear,
+      selectAll,
+      total,
+      pendingIds,
+      markPending,
+      unmarkPending,
+    }),
+    [
+      ids,
+      toggle,
+      clear,
+      selectAll,
+      total,
+      pendingIds,
+      markPending,
+      unmarkPending,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
@@ -125,6 +169,69 @@ export function RowCheckbox({
   );
 }
 
+/* ────────────────────── QueueRow (optimistic dim) ─────────────── */
+
+/**
+ * Per-row wrapper that dims itself when its id is in the context's
+ * pendingIds set. The selected rows fade the instant the operator
+ * clicks a bulk action; they stay faded through the 3-5 s
+ * revalidate window so the change "looks instant" instead of
+ * leaving stale rows on screen until Next's data cache catches up.
+ *
+ * Usage on a queue page:
+ *
+ *   <QueueSelectionProvider total={spots.length}>
+ *     {spots.map((s, idx) => (
+ *       <QueueRow key={s.id} id={s.id}>
+ *         <SpotRow spot={s} index={idx} />
+ *       </QueueRow>
+ *     ))}
+ *     <BulkActionBar ... />
+ *   </QueueSelectionProvider>
+ *
+ * Pointer-events are blocked while pending so the operator can't
+ * double-fire actions on the same row mid-flight. aria-busy goes
+ * up so screen readers announce the loading state.
+ */
+export function QueueRow({
+  id,
+  children,
+}: {
+  id: string;
+  children: ReactNode;
+}) {
+  const { pendingIds } = useQueueSelection();
+  const isPending = pendingIds.has(id);
+  return (
+    <div
+      className={[
+        "relative transition-opacity duration-200",
+        isPending ? "opacity-40 pointer-events-none" : "opacity-100",
+      ].join(" ")}
+      aria-busy={isPending || undefined}
+    >
+      {children}
+      {isPending ? (
+        // Subtle overlay spinner so the operator sees the row is
+        // mid-action, not just dimmed. Pinned top-right so it
+        // doesn't fight the row's own action cluster.
+        <div className="absolute top-3 right-3 pointer-events-none">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-400/[0.12] border border-cyan-400/35 text-cyan-200 text-[10px] font-mono uppercase tracking-[0.14em] px-2 py-0.5 backdrop-blur-sm">
+            <span
+              aria-hidden
+              className="relative inline-flex h-1.5 w-1.5"
+            >
+              <span className="absolute inset-0 rounded-full bg-cyan-400/70 motion-safe:animate-ping" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-cyan-400" />
+            </span>
+            Updating…
+          </span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /* ────────────────────── BulkActionBar ─────────────────────────── */
 
 export type BulkActionDef = {
@@ -159,7 +266,8 @@ export function BulkActionBar({
   actions: BulkActionDef[];
   allRowIds?: string[];
 }) {
-  const { ids, clear, selectAll, total } = useQueueSelection();
+  const { ids, clear, selectAll, total, markPending, unmarkPending } =
+    useQueueSelection();
   const selectedIds = Array.from(ids);
   const count = selectedIds.length;
 
@@ -216,11 +324,36 @@ export function BulkActionBar({
             client state we own is the selection set. */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
           {actions.map((a) => {
+            // Snapshot the ids that go into this submission so the
+            // post-action cleanup can unmark exactly that set, even
+            // if the operator's selection has changed by then.
+            const snapshot = [...selectedIds];
             const wrappedAction = async (formData: FormData) => {
+              // Optimistic dim: mark these rows as in-flight BEFORE
+              // the action runs. <QueueRow> reads pendingIds and
+              // fades the affected rows immediately so the operator
+              // sees instant feedback instead of waiting 3-5 s for
+              // the server-side revalidate to land. Selection
+              // clears as soon as the action returns; the pending
+              // state lingers a beat longer to cover the revalidate
+              // gap (rows that were merged/deleted just disappear
+              // from the re-rendered page; rows that were edited
+              // come back with their new content and the dim
+              // fades).
+              markPending(snapshot);
               try {
                 await a.action(formData);
               } finally {
                 clear();
+                // 5 s buffer covers the typical Next revalidate
+                // window. If the re-render comes faster, the rows
+                // are already gone (merged/deleted) or have new
+                // data (edited) — the lingering pending mark on
+                // those ids is harmless because the rendered row
+                // tree no longer contains them. If the re-render
+                // is slower than 5 s, we surface the actual page
+                // state which is the right thing to do.
+                window.setTimeout(() => unmarkPending(snapshot), 5000);
               }
             };
             return (

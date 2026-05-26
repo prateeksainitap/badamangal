@@ -29,6 +29,7 @@ import SpotRow, { type SpotQueueRow } from "@/components/admin/SpotRow";
 import {
   QueueSelectionProvider,
   BulkActionBar,
+  QueueRow,
 } from "@/components/admin/QueueSelection";
 
 /**
@@ -370,12 +371,13 @@ export default async function AdminSpotsPage({
         ) : (
           <QueueSelectionProvider total={spots.length}>
             {spots.map((s, idx) => (
-              <SpotRow
-                key={s.id}
-                spot={s as SpotQueueRow}
-                now={now}
-                index={idx}
-              />
+              <QueueRow key={s.id} id={s.id}>
+                <SpotRow
+                  spot={s as SpotQueueRow}
+                  now={now}
+                  index={idx}
+                />
+              </QueueRow>
             ))}
             <BulkActionBar
               allRowIds={spots.map((s) => s.id)}
