@@ -178,15 +178,36 @@ export default function ModerationQueue({
         </div>
       ) : null}
 
-      {/* ── Primary filter row (source) ────────────────────────── */}
-      {primaryFilter ? (
-        <div className="mb-3 flex items-center gap-2 flex-wrap">
-          {primaryFilter}
-        </div>
-      ) : null}
+      {/* ── Sticky filter bar ──────────────────────────────────
+          Pins below the AdminShell header (h-14 = 56px) so the
+          operator never has to scroll back up to flip a source,
+          retry a search, or jump tabs. We wrap BOTH the primary
+          filter row and the status-tab strip in one sticky shell
+          with a shared frosted background, so the two rows read
+          as a single floating control surface.
 
-      {/* ── Status tabs + inline extras + search ──────────────── */}
-      <div className="mb-5 flex items-center gap-3 flex-wrap">
+          z-10 sits under the AdminShell header (z-20) so the
+          page-level top bar always wins. The backdrop-blur +
+          translucent fill let the scrolling rows show faintly
+          through, signalling "this is hovering, content is
+          scrolling underneath" without going opaque.
+
+          mb-5 on the wrapper preserves the spacing the status
+          tabs row used to provide; the per-row mb-* values are
+          dropped because they would compound the sticky height.
+
+          NOTE: position:sticky requires NO ancestor on the
+          scrolling path to have overflow!=visible (besides the
+          window). AdminShell uses overflow-clip on the shell and
+          overflow-x-clip on <main> specifically so this stays
+          working — don't change those. */}
+      <div className="sticky top-14 z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 mb-5 bg-[#080A10]/90 backdrop-blur-md border-b border-cyan-400/[0.08]">
+        {primaryFilter ? (
+          <div className="pt-3 flex items-center gap-2 flex-wrap">
+            {primaryFilter}
+          </div>
+        ) : null}
+        <div className={`${primaryFilter ? "mt-3" : "pt-3"} pb-3 flex items-center gap-3 flex-wrap`}>
         <div
           role="tablist"
           aria-label="Filter"
@@ -231,6 +252,7 @@ export default function ModerationQueue({
         </div>
         {extraFilters ? extraFilters : null}
         {showSearch ? <AdminSearchInput placeholder={searchPlaceholder} /> : null}
+        </div>
       </div>
 
       {/* ── Result summary ─────────────────────────────────────── */}
