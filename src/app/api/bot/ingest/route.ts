@@ -440,6 +440,13 @@ export async function POST(req: NextRequest) {
       reason: "non_bhandara_image",
       message:
         "Gemini classified the image as off-topic (news clipping / recipe / generic poster / etc). No Bhandara or Spot row created.",
+      // Fresh review URL so a future bot.mjs daemon build can drop
+      // the legacy "/admin?type=whatsapp" hardcode and pick this up
+      // from the response. The current bot's WhatsApp auto-reply
+      // hardcodes the legacy URL; until bot.mjs ships an update,
+      // the middleware redirect in src/middleware.ts converts that
+      // legacy URL to /admin/bot-log on click.
+      reviewUrl: `${SITE_URL}/admin/bot-log?outcome=IGNORED_NON_BHANDARA`,
     });
   }
   const kind: "bhandara" | "spot" = classified;

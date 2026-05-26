@@ -35,6 +35,38 @@ function withPathHeader(req: NextRequest, base?: NextResponse): NextResponse {
 export function middleware(req: NextRequest) {
   const url = req.nextUrl;
 
+  // Legacy admin reroute: the Baileys bot daemon (bot.mjs, lives on
+  // a separate MacBook) hardcodes "/admin?type=whatsapp[&status=...]"
+  // into its WhatsApp auto-reply templates ("Ingested ignored from
+  // X · review: …"). Those URLs were valid pre-redesign but in the
+  // new admin shell they dead-end on /admin (login). Until bot.mjs
+  // is updated to read `reviewUrl` from the API response, redirect
+  // the legacy shapes here so clicks from old replies land on the
+  // right surface.
+  //
+  // Mapping:
+  //   ?type=whatsapp                       → /admin/bot-log
+  //   ?type=whatsapp&status=spot           → /admin/spots?source=bot
+  //   ?type=whatsapp&status=bhandara       → /admin/bhandaras?source=bot
+  //   ?type=whatsapp#<id>                  → /admin/bot-log (hash is lost
+  //                                          on redirect; bot-log shows
+  //                                          recent ingests by default)
+  if (url.pathname === "/admin" && url.searchParams.get("type") === "whatsapp") {
+    const status = url.searchParams.get("status");
+    const target = url.clone();
+    target.search = ""; // strip the legacy params
+    if (status === "spot") {
+      target.pathname = "/admin/spots";
+      target.searchParams.set("source", "bot");
+    } else if (status === "bhandara") {
+      target.pathname = "/admin/bhandaras";
+      target.searchParams.set("source", "bot");
+    } else {
+      target.pathname = "/admin/bot-log";
+    }
+    return NextResponse.redirect(target, 308);
+  }
+
   // The actual bug: when the URL is e.g. "/spot?lang=en?lang=en",
   // standard URL parsing treats the whole tail as the query and
   // gives us `lang === "en?lang=en"`. We detect by looking for a
