@@ -16,15 +16,20 @@ export type SiteStats = {
    *  to /spot. Includes both currently-live spots and ones whose 8-hour
    *  window has expired (they still count toward "the city did this"). */
   bhandarasSpotted: number;
-  /** Cumulative count of standalone APPROVED BhandaraMention rows (text
-   *  messages from the WhatsApp community where someone declared a
-   *  bhandara is happening — `intent: "SHARING"`). Restricted to
-   *  mentions NOT already linked to an existing Bhandara row
-   *  (`bhandaraId IS NULL`) to avoid double-counting events that exist
-   *  in both surfaces. These are unverified text signals, so they read
-   *  as a softer "mentioned in chat" source alongside the harder
-   *  "listed" + "spotted" tiles — but the operator's intent is to
-   *  reflect that we tracked them. */
+  /** Cumulative count of standalone APPROVED BhandaraMention rows —
+   *  every text/location signal from the WhatsApp community that an
+   *  admin has confirmed (status=APPROVED). Includes:
+   *   • SHARING declarations ("Aliganj sector E me ho raha hai")
+   *   • MENTIONING chatter (photos, thanks, follow-ups)
+   *   • ASKING messages with location intent ("Aashiyana me kahi?")
+   *   • Mentions carrying a structured location (WhatsApp share,
+   *     Google Maps URL, extracted address)
+   *  Restricted to mentions NOT already linked to an existing Bhandara
+   *  row (`bhandaraId IS NULL`) so events that exist in both surfaces
+   *  count once (under `bhandarasListed`). The intent filter was
+   *  dropped 2026-05-26 — the operator wanted the headline number to
+   *  reflect every confirmed signal tracked from the chat, not just
+   *  the narrower "declared a new bhandara" subset. */
   bhandarasMentioned: number;
   /** Distinct curated `area` values that have at least one approved listing. */
   areasCovered: number;
@@ -133,14 +138,22 @@ async function computeHomepageStats(): Promise<SiteStats> {
   // pool. visitorCounter + communityCounter are both 1-row lookups by
   // primary key (cheap); the other three do the work.
   //
-  // `mentionedCount` (added 2026-05-26): APPROVED BhandaraMention rows
-  // where intent=SHARING and bhandaraId IS NULL. SHARING isolates
-  // declarations of new bhandaras (vs ASKING / general MENTIONING
-  // chatter), and the bhandaraId=null gate ensures mentions already
-  // pinned to a Bhandara row don't double-count against the listed
-  // tile. We deliberately don't filter expiresAt — same lens as
-  // bhandara + spot, which both keep expired/past rows in the
-  // cumulative "so far" tally.
+  // `mentionedCount` (added 2026-05-26, broadened later same day):
+  // APPROVED BhandaraMention rows where bhandaraId IS NULL.
+  //
+  // We deliberately do NOT filter on `intent` here. The headline
+  // number is a "city did this" count, and every confirmed chat
+  // signal — declarations (SHARING), location shares + photos
+  // (MENTIONING), and even location-anchored questions (ASKING in
+  // "Alambagh me kahi bhandara h kya?") — represents one tracked
+  // bhandara that flowed through the platform. Admin's APPROVE step
+  // is the trust gate; if it cleared that, it's real signal.
+  //
+  // The bhandaraId=null gate stays: mentions pinned to a Bhandara
+  // row would otherwise double-count against `bhandarasListed`.
+  // expiresAt is also unfiltered — same lens as bhandara + spot,
+  // which both keep expired/past rows in the cumulative "so far"
+  // tally.
   const [counter, communityCounter, records, spottedCount, mentionedCount] =
     await Promise.all([
       prisma.siteCounter.findUnique({
@@ -159,7 +172,6 @@ async function computeHomepageStats(): Promise<SiteStats> {
       prisma.bhandaraMention.count({
         where: {
           status: "APPROVED",
-          intent: "SHARING",
           bhandaraId: null,
         },
       }),
