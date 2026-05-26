@@ -105,6 +105,11 @@ export default function MapBoard({
   const body = t.map.sectionBody;
   const listBhandaraLabel = t.cta.listBhandara;
   const [filter, setFilter] = useState<Filter>("all");
+  // Search query — matches against name / nameHi / area / address /
+  // landmark / organizerName for listings, and caption / area /
+  // bhandaraName for spots. Lower-cased on use so the comparison is
+  // case-insensitive. Empty string means "no search filter".
+  const [query, setQuery] = useState("");
   // Near-me state lives at the board level so the trigger button can sit
   // in the top toolbar (next to the filter pills) while still controlling
   // the side list's distance filter.
@@ -113,13 +118,55 @@ export default function MapBoard({
     coords: null,
   });
 
+  const normQuery = query.trim().toLowerCase();
+
+  // Search-only filter (filter chip NOT applied) — drives tab counts so
+  // the chips reflect "how many in each bucket match the search". The
+  // map + side list further narrow by the filter chip below.
+  const searchedListings = useMemo(() => {
+    if (!normQuery) return listings;
+    return listings.filter((b) => {
+      const haystack = [
+        b.name,
+        b.nameHi,
+        b.area,
+        b.address,
+        b.addressHi,
+        b.landmark,
+        b.organizerName,
+        b.description,
+        b.descriptionHi,
+      ]
+        .filter((v): v is string => typeof v === "string" && v.length > 0)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normQuery);
+    });
+  }, [listings, normQuery]);
+
+  const searchedSpots = useMemo(() => {
+    if (!normQuery) return liveSpots;
+    return liveSpots.filter((s) => {
+      const haystack = [
+        s.caption,
+        s.area,
+        s.bhandaraName,
+        s.bhandaraNameHi,
+      ]
+        .filter((v): v is string => typeof v === "string" && v.length > 0)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(normQuery);
+    });
+  }, [liveSpots, normQuery]);
+
   const filteredListings = useMemo(
-    () => (filter === "spotted" ? [] : listings),
-    [filter, listings],
+    () => (filter === "spotted" ? [] : searchedListings),
+    [filter, searchedListings],
   );
   const filteredSpots = useMemo(
-    () => (filter === "listed" ? [] : liveSpots),
-    [filter, liveSpots],
+    () => (filter === "listed" ? [] : searchedSpots),
+    [filter, searchedSpots],
   );
 
   /**
@@ -148,22 +195,26 @@ export default function MapBoard({
   );
 
   // Pills in the filter strip; counts shown so users see how many of each
-  // exist before clicking.
+  // exist before clicking. Counts derive from the SEARCH-filtered set
+  // (not the raw totals) so when the visitor types "aliganj" the chips
+  // collapse from "All 109 · Listed 47 · Spotted 62" to e.g. "All 7 ·
+  // Listed 4 · Spotted 3" — the chips become a live drill-down of the
+  // current search rather than lying about the unfiltered totals.
   const tabs: { key: Filter; label: string; count: number }[] = [
     {
       key: "all",
       label: isHi ? "सब" : "All",
-      count: listings.length + liveSpots.length,
+      count: searchedListings.length + searchedSpots.length,
     },
     {
       key: "listed",
       label: isHi ? "लिस्टेड" : "Listed",
-      count: listings.length,
+      count: searchedListings.length,
     },
     {
       key: "spotted",
       label: isHi ? "स्पॉट" : "Spotted",
-      count: liveSpots.length,
+      count: searchedSpots.length,
     },
   ];
 
@@ -240,6 +291,79 @@ export default function MapBoard({
           ) : null}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Search input. Filters listings + spots in real time on
+              every keystroke. Matches case-insensitive substring across
+              name (en + hi), area, address, landmark, organizer name
+              for listings; caption + area + linked-bhandara name for
+              spots. The chip strip and the side list both react to
+              this filter immediately, so the visitor can drill from
+              "All 109" down to "Aliganj" or "Hanuman Mandir" without
+              a page reload. */}
+          <label className="relative inline-flex items-center">
+            <span className="sr-only">
+              {isHi ? "भंडारा खोजें" : "Search bhandaras"}
+            </span>
+            <svg
+              aria-hidden
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-600/65 pointer-events-none"
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                // Fire once when query crosses 3+ chars so GA can see
+                // search adoption; throttled by GA debounce so live
+                // typing isn't 30 events per word.
+                if (e.target.value.trim().length >= 3) {
+                  trackEvent("map_search", {
+                    query_len: e.target.value.trim().length,
+                  });
+                }
+              }}
+              placeholder={
+                isHi
+                  ? "नाम, इलाक़ा, आयोजक..."
+                  : "Search name, area, organizer..."
+              }
+              className="w-[180px] sm:w-[220px] pl-9 pr-8 py-1.5 text-xs rounded-full bg-cream-50 border border-gold-500/40 text-ink-900 placeholder:text-ink-600/55 focus:outline-none focus:border-saffron-500/65 focus:ring-2 focus:ring-saffron-500/25 transition-colors"
+              aria-label={isHi ? "भंडारा खोजें" : "Search bhandaras"}
+              data-ga="map_search_input"
+            />
+            {query.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label={isHi ? "खोज साफ़ करें" : "Clear search"}
+                className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-5 w-5 items-center justify-center rounded-full text-ink-600/70 hover:bg-ink-900/10 hover:text-ink-900 transition-colors"
+              >
+                <svg
+                  aria-hidden
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            ) : null}
+          </label>
           <div
             role="tablist"
             aria-label={isHi ? "नक़्शा फ़िल्टर" : "Map filter"}
