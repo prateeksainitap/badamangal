@@ -85,7 +85,19 @@ let homepageStatsPromise: Promise<SiteStats> | null = null;
  */
 export function getHomepageStats(opts?: { fresh?: boolean }): Promise<SiteStats> {
   if (opts?.fresh || !homepageStatsPromise) {
-    homepageStatsPromise = computeHomepageStats();
+    // Self-invalidating cache: if the underlying compute rejects
+    // (transient Supabase pooler blip during cold start, etc.), we
+    // clear the memoised promise so the next caller retries instead
+    // of being stuck with a permanently-rejected promise for the
+    // lifetime of the Lambda. The .catch() attaches a no-op handler
+    // only for the invalidation side-effect — the rejection is
+    // re-thrown via the returned promise so callers still see it
+    // and can degrade locally (see page.tsx Promise.allSettled).
+    const p = computeHomepageStats();
+    p.catch(() => {
+      if (homepageStatsPromise === p) homepageStatsPromise = null;
+    });
+    homepageStatsPromise = p;
   }
   return homepageStatsPromise;
 }

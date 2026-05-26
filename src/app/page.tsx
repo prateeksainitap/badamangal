@@ -135,12 +135,39 @@ export default async function HomePage() {
   // English, so visitors saw the toggle pill animate but the text
   // never changed. Hence this refactor.
 
-  // Fire all three DB reads in parallel. Previously they were awaited
-  // sequentially (bhandaras → stats → spots) which serialised three
-  // round-trips through the Supabase pooler, ~600-900ms of pure wait
-  // on cold-start cold-pool. Running them together cuts that to one
-  // round-trip's worth of latency.
-  const [records, statsRaw, spotRecords, galleryAdmin, gallerySpotPhotos, mentionRows, communityCounterRows] = await Promise.all([
+  // Fire every DB read in parallel via Promise.allSettled (NOT
+  // Promise.all). This is the survival switch for the homepage:
+  //
+  // Previously we used Promise.all, so if ANY single Prisma query
+  // rejected (transient Supabase pooler drop, cold-start connection
+  // saturation right after a Vercel deploy swap, a momentary
+  // pgbouncer recycle), the whole homepage SSR threw and visitors
+  // saw the alarming "Something stopped working" global error page.
+  // That happened in production at ~05:00 IST on 26 May 2026 — the
+  // morning of Tuesday 1 of the Adhik Mas season — and the digest
+  // bubbled all the way up because there was no segment error.tsx
+  // catching it either.
+  //
+  // The Prisma client already retries each individual query once on
+  // a known transient error (250ms backoff, see lib/db.ts). What
+  // this layer adds is a second line of defence: if the retry also
+  // fails, that single section degrades to its safe-fallback shape
+  // and the rest of the page still renders. The cards/map/feed/etc
+  // each independently tolerate empty arrays / zero stats, so the
+  // visitor sees a slightly thinner homepage instead of a broken
+  // one. Within 60 s the next revalidate pass refreshes the data.
+  //
+  // Errors are console.error-ed so they're still visible in Vercel
+  // function logs — we don't want partial failure to be silent.
+  const [
+    recordsResult,
+    statsResult,
+    spotRecordsResult,
+    galleryAdminResult,
+    gallerySpotPhotosResult,
+    mentionRowsResult,
+    communityCounterRowsResult,
+  ] = await Promise.allSettled([
     prisma.bhandara.findMany({
       where: { status: "APPROVED" },
       orderBy: [{ isSponsored: "desc" }, { createdAt: "asc" }],
@@ -268,6 +295,47 @@ export default async function HomePage() {
       select: { id: true, count: true },
     }),
   ]);
+
+  // Unwrap each settled result with a safe per-query fallback. Errors
+  // log to Vercel function logs so partial failures are still loud in
+  // ops — they just don't black out the visitor's experience.
+  function unwrap<T>(
+    result: PromiseSettledResult<T>,
+    fallback: T,
+    label: string,
+  ): T {
+    if (result.status === "fulfilled") return result.value;
+    console.error(`[homepage] data fetch failed for ${label}:`, result.reason);
+    return fallback;
+  }
+  const records = unwrap(recordsResult, [], "bhandaras");
+  const statsRaw = unwrap(
+    statsResult,
+    {
+      visitorNumber: 0,
+      bhandarasTotal: 0,
+      bhandarasListed: 0,
+      bhandarasSpotted: 0,
+      areasCovered: 0,
+      areasTotal: 0,
+      tuesdaysSoFar: 0,
+      communityMembers: 0,
+    },
+    "stats",
+  );
+  const spotRecords = unwrap(spotRecordsResult, [], "spots");
+  const galleryAdmin = unwrap(galleryAdminResult, [], "galleryAdmin");
+  const gallerySpotPhotos = unwrap(
+    gallerySpotPhotosResult,
+    [],
+    "gallerySpotPhotos",
+  );
+  const mentionRows = unwrap(mentionRowsResult, [], "mentions");
+  const communityCounterRows = unwrap(
+    communityCounterRowsResult,
+    [],
+    "communityCounters",
+  );
 
   // Auto-delist bhandaras whose every service date has already passed
   // (IST calendar). The DB row stays APPROVED so admins still see it
