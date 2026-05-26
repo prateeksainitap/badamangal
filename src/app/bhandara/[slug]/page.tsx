@@ -30,12 +30,31 @@ export const revalidate = 300;
 export const dynamicParams = true;
 
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  // Best-effort pre-generation. Wrapped in try/catch since a build
+  // running mid-day on Adhik Mas Tuesday-1 had this throw EMAXCONN
+  // when the production Supabase pool was saturated by traffic
+  // (build instance couldn't get a connection through pgbouncer
+  // even after the 3-retry middleware exhausted). When we can't
+  // enumerate slugs at build time we return an empty list: Next
+  // skips pre-rendering and `dynamicParams = true` above means the
+  // first visit to any slug renders on-demand + caches under the
+  // 5-min ISR window. Net effect of a build-time DB miss is a tiny
+  // first-visit latency hit on each slug — not a deployment outage.
+  //
   // Reuse the build-time-deduped query so this call shares a single
   // findMany with the 36 area pages instead of opening yet another
   // connection. See lib/db.ts → getAllApprovedBhandaras for the
   // motivation (the P2024 connection-pool failure on Wave 5).
-  const rows = await getAllApprovedBhandaras();
-  return rows.map((r) => ({ slug: r.slug }));
+  try {
+    const rows = await getAllApprovedBhandaras();
+    return rows.map((r) => ({ slug: r.slug }));
+  } catch (err) {
+    console.warn(
+      "[bhandara/[slug]] generateStaticParams failed; falling back to on-demand. Error:",
+      err instanceof Error ? err.message : String(err),
+    );
+    return [];
+  }
 }
 
 type RouteParams = Promise<{ slug: string }>;
