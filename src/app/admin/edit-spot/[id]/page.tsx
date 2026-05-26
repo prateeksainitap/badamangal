@@ -12,12 +12,12 @@
  *     so a freshly-reviewed spot gets a full window on the city map
  *     even if the upload sat in PENDING for a few hours.
  *
- * Save → status APPROVED + the action redirects back to THIS edit page
- * so the operator can keep iterating without losing context. The
- * matching revalidatePath calls invalidate the admin layout + the
- * public homepage / detail pages so the new state is visible
- * immediately. Form is server-rendered with plain inputs; no JS
- * required.
+ * Save → status APPROVED + the action redirects back to the spots
+ * queue (/admin/spots) so the operator can grab the next row to
+ * review. The matching revalidatePath calls invalidate the admin
+ * layout + the public homepage / detail pages so the new state is
+ * visible immediately. Form is server-rendered with plain inputs;
+ * no JS required.
  */
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";

@@ -308,13 +308,15 @@ export async function editAndPublishAction(
   revalidatePath("/admin", "layout");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
-  // Stay on the same edit page so the operator can keep iterating
-  // without losing their place in the queue (revised 2026-05-26 from
-  // a redirect to /admin which sent the operator to the dashboard
-  // every time they hit Save). The redirect re-mounts the page with
-  // the freshly-saved data, so the form shows the new values rather
-  // than the pre-save state.
-  redirect(`/admin/edit/${id}`);
+  // Send the operator back to the bhandaras queue after save (revised
+  // again 2026-05-26 from /admin/edit/<id> — the briefly-shipped
+  // "stay on the same edit page" behaviour broke the moderation
+  // flow, since the queue is what the operator wants to return to
+  // after approving one row. The earlier complaint that triggered
+  // the first revision was about landing on /admin (dashboard home),
+  // not about landing on the edit page; /admin/bhandaras is the
+  // correct destination for both).
+  redirect(`/admin/bhandaras`);
 }
 
 /**
@@ -405,14 +407,14 @@ export async function editAndApproveSpotAction(
 
   revalidatePath("/admin", "layout");
   revalidatePath("/");
-  // Stay on the spot edit page so the operator can keep iterating
-  // (revised 2026-05-26 from a redirect to the legacy
-  // `/admin?type=whatsapp&status=spot` URL — that route falls back
-  // to /admin home in the redesigned shell, which kicked the
-  // operator off this row every time they hit Save). The redirect
-  // re-mounts this page with the freshly-saved data so the form
-  // reflects the new values.
-  redirect(`/admin/edit-spot/${id}`);
+  // Send the operator back to the spots queue after save (revised
+  // again 2026-05-26 from /admin/edit-spot/<id> — staying on the
+  // same row broke the moderation flow since the operator wants to
+  // jump straight to the next pending row after approving one. The
+  // earlier complaint that triggered the first revision was about
+  // landing on legacy `/admin?type=whatsapp&status=spot` which now
+  // dead-ends; /admin/spots is the correct destination).
+  redirect(`/admin/spots`);
 }
 
 /**
