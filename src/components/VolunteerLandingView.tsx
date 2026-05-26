@@ -38,6 +38,15 @@ type StringsBlock = {
   stepsHeading: string;
   stepsSub: string;
   steps: { num: string; emoji: string; title: string; body: string }[];
+  /** Roles beyond field-volunteering (phone outreach, moderation,
+   *  content, tech). The 3-step "How your seva flows" block above
+   *  covers the field-volunteer path; this block opens up the rest
+   *  of the contribution surface for people who can't do field work
+   *  but want to help in other ways. */
+  contributionsHeading: string;
+  contributionsSub: string;
+  contributions: { emoji: string; title: string; body: string }[];
+  contributionsFooter: string;
   formEyebrow: string;
   formHeading: string;
   formHelper: string;
@@ -89,6 +98,37 @@ const COPY: Record<Locale, StringsBlock> = {
         body: "हम review करके public directory + लाइव शहरी नक्शे पर publish करते हैं। हज़ारों श्रद्धालु अब इसे ढूँढ सकते हैं।",
       },
     ],
+    contributionsHeading: "और तरीक़े जिनसे सेवा दे सकते हैं",
+    contributionsSub: "Field volunteering के अलावा भी, मिशन के पीछे बहुत हाथ चाहिए।",
+    contributions: [
+      {
+        emoji: "📸",
+        title: "Field volunteer",
+        body: "अपने इलाक़े के भंडारे की photo + location WhatsApp group में share करना।",
+      },
+      {
+        emoji: "📞",
+        title: "Phone seva",
+        body: "आयोजकों से call करके timings और address confirm करना।",
+      },
+      {
+        emoji: "🛡️",
+        title: "Moderator",
+        body: "Community groups को साफ़-सुथरा और on-topic रखना, spam हटाना।",
+      },
+      {
+        emoji: "✏️",
+        title: "Content writer",
+        body: "Hindi / English में posts लिखना, social media पर share करना।",
+      },
+      {
+        emoji: "💻",
+        title: "Tech contributor",
+        body: "Website में features बनाना, tools में help करना, day-to-day brainstorming।",
+      },
+    ],
+    contributionsFooter:
+      "कोई भी skill, थोड़ा भी समय, मन से जो भी contribute कर सकते हैं, sab welcome है।",
     formEyebrow: "अभी जुड़ें",
     formHeading: "30 seconds का form",
     formHelper:
@@ -160,6 +200,38 @@ const COPY: Record<Locale, StringsBlock> = {
         body: "We review and publish on the public directory + the live city map. Thousands of devotees can now find it.",
       },
     ],
+    contributionsHeading: "Other ways to contribute",
+    contributionsSub:
+      "Field volunteering isn't the only path. The mission needs many hands.",
+    contributions: [
+      {
+        emoji: "📸",
+        title: "Field volunteer",
+        body: "Share photos + locations of bhandaras in your area to our WhatsApp group.",
+      },
+      {
+        emoji: "📞",
+        title: "Phone seva",
+        body: "Call organizers to confirm timings and address.",
+      },
+      {
+        emoji: "🛡️",
+        title: "Moderator",
+        body: "Keep the community groups clean and on-topic, remove spam.",
+      },
+      {
+        emoji: "✏️",
+        title: "Content writer",
+        body: "Write posts in Hindi or English, help with social media.",
+      },
+      {
+        emoji: "💻",
+        title: "Tech contributor",
+        body: "Build features for the website, help with tools, day-to-day brainstorming.",
+      },
+    ],
+    contributionsFooter:
+      "Any skill, any amount of time, anything you can offer is welcome.",
     formEyebrow: "Sign up",
     formHeading: "30-second form",
     formHelper:
@@ -309,6 +381,63 @@ export default function VolunteerLandingView() {
                 </li>
               ))}
             </ol>
+          </div>
+
+          {/* "Other ways to contribute" — opens up the contribution
+              surface beyond field volunteering. Field path is the
+              hero; this section answers "what if I can't go to a
+              bhandara but still want to help?" with 5 specific roles
+              (phone, moderation, content, tech, plus field as #1
+              for the visitor scanning quickly). Footer line reads
+              as the warm catch-all that closes the door on
+              "I don't think I have anything to offer" objections. */}
+          <div className="mt-10 sm:mt-12">
+            <div className="flex items-center gap-3">
+              <span aria-hidden className="h-px flex-1 bg-gold-500/40" />
+              <span className="text-[11px] uppercase tracking-[0.18em] text-gold-500 font-mono font-semibold whitespace-nowrap">
+                {t.contributionsHeading}
+              </span>
+              <span aria-hidden className="h-px flex-1 bg-gold-500/40" />
+            </div>
+            <p className="mt-2 text-center text-xs sm:text-sm text-ink-600">
+              {t.contributionsSub}
+            </p>
+
+            <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-2 text-left">
+              {t.contributions.map((c) => (
+                <li
+                  key={c.title}
+                  className="rounded-2xl border border-gold-500/40 bg-cream-50 p-4 sm:p-5 shadow-sm"
+                >
+                  <div className="flex items-start gap-3">
+                    <span
+                      aria-hidden
+                      className="inline-flex items-center justify-center shrink-0 w-10 h-10 rounded-full bg-saffron-500/10 text-2xl"
+                    >
+                      {c.emoji}
+                    </span>
+                    <div className="min-w-0">
+                      <h3
+                        className={`text-base text-sindoor-700 ${
+                          isHi
+                            ? "font-mukta font-bold"
+                            : "font-fraunces font-semibold"
+                        }`}
+                      >
+                        {c.title}
+                      </h3>
+                      <p className="mt-1 text-sm text-ink-600 leading-relaxed">
+                        {c.body}
+                      </p>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <p className="mt-5 text-center text-sm text-ink-900/85 leading-relaxed italic">
+              {t.contributionsFooter}
+            </p>
           </div>
         </div>
 
