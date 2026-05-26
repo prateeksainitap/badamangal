@@ -166,40 +166,158 @@ function jsonError(
 }
 
 /**
- * Extract the first Google Maps URL from a chat message and pull
- * coordinates out of it. Mirrors the subset of extraction patterns in
- * /api/admin/resolve-coords#extractFromUrl, kept inline here so the
- * bot endpoint doesn't have a dependency on the admin route.
- *
- * Returns null on no URL, malformed URL, or no recognised coord pattern.
- * Only handles full URLs (`@LAT,LNG` or `!3dLAT!4dLNG`); short
- * `maps.app.goo.gl` URLs aren't followed here because the bot endpoint
- * is a hot path and shouldn't issue outbound HTTP for every chatty
- * group message. If admins consistently see short-URL mentions land
- * without coords, we can promote that resolution to a background job
- * later.
+ * Pull lat/lng out of a Google Maps URL (any common shape Google
+ * serves). Tries every known coord pattern in turn:
+ *   • `!3dLAT!4dLNG`    — canonical "place pin"
+ *   • `/@LAT,LNG`        — viewport / map-center
+ *   • `?q=LAT,LNG`       — bare-query share
+ *   • `?ll=LAT,LNG`      — legacy embed style
+ *   • `/search/LAT,LNG`  — search-link form
+ * Returns null on no match.
  */
-function extractCoordsFromMessage(
-  text: string,
+function parseCoordsFromMapsUrl(
+  url: string,
 ): { lat: number; lng: number } | null {
-  // Find the first URL that looks like a Google Maps share.
-  const urlMatch = text.match(/https?:\/\/[^\s]*(?:google\.[^\s/]+\/maps|maps\.google)[^\s]*/i);
+  const patterns: RegExp[] = [
+    /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,
+    /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
+    /[?&](?:q|ll|destination|center)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/,
+    /\/search\/(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/,
+  ];
+  for (const re of patterns) {
+    const m = url.match(re);
+    if (m) {
+      const lat = Number(m[1]);
+      const lng = Number(m[2]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+    }
+  }
+  return null;
+}
+
+/** Short-URL expansion cache. Short Google Maps links (maps.app.goo.gl)
+ *  redirect to a long form that contains coords; we only need to follow
+ *  the redirect once per unique URL. In-memory map keeps the hot path
+ *  fast on bursty traffic where the same link gets re-forwarded across
+ *  groups. Capped to 500 entries so a long-lived Lambda doesn't grow
+ *  unbounded. */
+const SHORT_URL_CACHE = new Map<string, string>();
+const SHORT_URL_CACHE_MAX = 500;
+
+/**
+ * Extract the first Google Maps URL from a chat message and pull
+ * coordinates out of it.
+ *
+ * Handles BOTH full URLs and short share-links (`maps.app.goo.gl`,
+ * `goo.gl/maps`). Short URLs are expanded via a single HEAD request
+ * with a tight 3 s timeout — the bot endpoint is a hot path, but
+ * losing a coord-bearing share to a "we don't follow short URLs"
+ * shortcut was the bigger UX cost (real production complaint, Tuesday
+ * 1 of Adhik Mas 2026). Expanded URLs are cached in-memory so the same
+ * short-link forwarded across multiple groups only round-trips once.
+ *
+ * Returns null on:
+ *   • no URL in the message
+ *   • short URL that timed out or 4xx'd on expansion
+ *   • expanded URL with no recognised coord pattern
+ */
+async function extractCoordsFromMessage(
+  text: string,
+): Promise<{ lat: number; lng: number } | null> {
+  // Match BOTH long-form and short-form Maps URLs.
+  const urlMatch = text.match(
+    /https?:\/\/[^\s]*(?:google\.[^\s/]+\/maps|maps\.google|maps\.app\.goo\.gl|goo\.gl\/maps)[^\s]*/i,
+  );
   if (!urlMatch) return null;
-  const url = urlMatch[0];
-  // !3dLAT!4dLNG: the canonical "place pin" pattern
-  const place = url.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
-  if (place) {
-    const lat = Number(place[1]);
-    const lng = Number(place[2]);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+  let url = urlMatch[0];
+
+  // Short URLs: follow the redirect once. We try the in-memory cache
+  // first so a popular share that 20 different people forward only
+  // hits Google's redirector once per Lambda instance.
+  const isShort = /maps\.app\.goo\.gl|goo\.gl\/maps/i.test(url);
+  if (isShort) {
+    const cached = SHORT_URL_CACHE.get(url);
+    if (cached) {
+      url = cached;
+    } else {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 3000);
+      try {
+        // HEAD with redirect:follow returns the final URL on .url.
+        // Some short-link variants 405 on HEAD; fall through to GET
+        // if HEAD fails so we still get the redirect chain.
+        let resp: Response | null = null;
+        try {
+          resp = await fetch(url, {
+            method: "HEAD",
+            redirect: "follow",
+            signal: controller.signal,
+          });
+        } catch {
+          resp = await fetch(url, {
+            method: "GET",
+            redirect: "follow",
+            signal: controller.signal,
+          });
+        }
+        if (resp && resp.url && resp.url !== url) {
+          // Trim oldest entry when at cap (cheap FIFO; small set
+          // means this is rare and the LRU complexity isn't worth it).
+          if (SHORT_URL_CACHE.size >= SHORT_URL_CACHE_MAX) {
+            const firstKey = SHORT_URL_CACHE.keys().next().value;
+            if (firstKey !== undefined) SHORT_URL_CACHE.delete(firstKey);
+          }
+          SHORT_URL_CACHE.set(url, resp.url);
+          url = resp.url;
+        }
+      } catch (err) {
+        // Timeout, network error, or DNS hiccup. Leave url as-is and
+        // fall through to the coord-pattern matcher — most short
+        // URLs have no coords on their own anyway, so we return null
+        // and the caller falls back to address-extraction.
+        console.warn(
+          "[bot/message] short maps URL expand failed:",
+          err instanceof Error ? err.message : String(err),
+        );
+      } finally {
+        clearTimeout(timer);
+      }
+    }
   }
-  // /@LAT,LNG: viewport / map-center pattern
-  const at = url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-  if (at) {
-    const lat = Number(at[1]);
-    const lng = Number(at[2]);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
+
+  // 1) Try explicit coord patterns first — cheap, no network.
+  const direct = parseCoordsFromMapsUrl(url);
+  if (direct) return direct;
+
+  // 2) Fallback: when the expanded URL has a `/place/NAME/` segment
+  //    but no @lat,lng (Google's place-ID share form), pull the place
+  //    name out and forward-geocode it. Most short-link shares land
+  //    in this branch, not the coord-pattern branch — Google strips
+  //    explicit coords from the share-card link in favour of the
+  //    1s<placeID>:0x<feature> data payload.
+  const placeMatch = url.match(/\/place\/([^/?#]+)/);
+  if (placeMatch) {
+    let placeName = "";
+    try {
+      placeName = decodeURIComponent(placeMatch[1]).replace(/\+/g, " ").trim();
+    } catch {
+      placeName = placeMatch[1].replace(/\+/g, " ").trim();
+    }
+    if (placeName.length >= 3) {
+      try {
+        const hit = await geocodeLucknow(placeName);
+        if (hit && inLucknow(hit.lat, hit.lng)) {
+          return { lat: hit.lat, lng: hit.lng };
+        }
+      } catch (err) {
+        console.warn(
+          "[bot/message] geocode of place-name from maps URL failed:",
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
   }
+
   return null;
 }
 
@@ -530,7 +648,7 @@ export async function POST(req: NextRequest) {
           ? [classified.locationLabel]
           : [];
 
-    const fromUrl = extractCoordsFromMessage(text);
+    const fromUrl = await extractCoordsFromMessage(text);
     let urlClaimed = false;
 
     if (addresses.length === 0) {
