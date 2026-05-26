@@ -10,7 +10,7 @@
  *
  * Layout:
  *   1. A small "social-proof strip" up top with the Reddit
- *      r/lucknow post's stats (9.2K views / 133 upvotes / 30
+ *      r/lucknow post's stats (9.4K views / 133 upvotes / 30
  *      comments), pulled from the May-26 Reddit insights screenshot.
  *      Sets the credibility frame before any single voice speaks.
  *   2. One featured wide card (Shashwat's email, longest + most
@@ -55,8 +55,9 @@ type Testimonial = {
 /** Reddit r/lucknow post metrics (May 26 screenshot). Surfaces as
  *  a small social-proof strip at the top of the section so a first-
  *  time visitor sees external validation before a single quote. */
+// Updated 2026-05-26 evening: views ticked 9.2K, 9.4K.
 const REDDIT_STATS = {
-  views: "9.2K",
+  views: "9.4K",
   upvotes: "133",
   comments: "30",
   community: "r/lucknow",
