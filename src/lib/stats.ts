@@ -16,20 +16,24 @@ export type SiteStats = {
    *  to /spot. Includes both currently-live spots and ones whose 8-hour
    *  window has expired (they still count toward "the city did this"). */
   bhandarasSpotted: number;
-  /** Cumulative count of standalone APPROVED BhandaraMention rows —
-   *  every text/location signal from the WhatsApp community that an
-   *  admin has confirmed (status=APPROVED). Includes:
+  /** Cumulative count of standalone APPROVED BhandaraMention rows
+   *  that represent a CONFIRMED bhandara — every text/location signal
+   *  from the WhatsApp community where someone declared or referenced
+   *  a bhandara that exists. Includes:
    *   • SHARING declarations ("Aliganj sector E me ho raha hai")
-   *   • MENTIONING chatter (photos, thanks, follow-ups)
-   *   • ASKING messages with location intent ("Aashiyana me kahi?")
+   *   • MENTIONING chatter (photos, thanks, follow-ups about a
+   *     real ongoing bhandara)
    *   • Mentions carrying a structured location (WhatsApp share,
    *     Google Maps URL, extracted address)
-   *  Restricted to mentions NOT already linked to an existing Bhandara
-   *  row (`bhandaraId IS NULL`) so events that exist in both surfaces
-   *  count once (under `bhandarasListed`). The intent filter was
-   *  dropped 2026-05-26 — the operator wanted the headline number to
-   *  reflect every confirmed signal tracked from the chat, not just
-   *  the narrower "declared a new bhandara" subset. */
+   *
+   *  Explicitly EXCLUDES `intent: "ASKING"` — those are questions
+   *  ("Alambagh me kahi bhandara h kya?"), which are demand-signal,
+   *  not supply. A question about whether a bhandara exists is not
+   *  a confirmation that one does (2026-05-26 operator correction).
+   *
+   *  Restricted to mentions NOT already linked to an existing
+   *  Bhandara row (`bhandaraId IS NULL`) so events that exist in
+   *  both surfaces count once (under `bhandarasListed`). */
   bhandarasMentioned: number;
   /** Distinct curated `area` values that have at least one approved listing. */
   areasCovered: number;
@@ -138,16 +142,13 @@ async function computeHomepageStats(): Promise<SiteStats> {
   // pool. visitorCounter + communityCounter are both 1-row lookups by
   // primary key (cheap); the other three do the work.
   //
-  // `mentionedCount` (added 2026-05-26, broadened later same day):
-  // APPROVED BhandaraMention rows where bhandaraId IS NULL.
-  //
-  // We deliberately do NOT filter on `intent` here. The headline
-  // number is a "city did this" count, and every confirmed chat
-  // signal — declarations (SHARING), location shares + photos
-  // (MENTIONING), and even location-anchored questions (ASKING in
-  // "Alambagh me kahi bhandara h kya?") — represents one tracked
-  // bhandara that flowed through the platform. Admin's APPROVE step
-  // is the trust gate; if it cleared that, it's real signal.
+  // `mentionedCount` — APPROVED BhandaraMention rows where the
+  // mention CONFIRMS a bhandara exists. SHARING (declarations) +
+  // MENTIONING (chatter / photos / thanks). ASKING is excluded:
+  // "Alambagh me kahi bhandara h kya?" is a question about supply,
+  // not a confirmation of it. (2026-05-26 operator correction;
+  // we'd briefly broadened to include ASKING earlier in the day on
+  // a wider read of "every tracked signal".)
   //
   // The bhandaraId=null gate stays: mentions pinned to a Bhandara
   // row would otherwise double-count against `bhandarasListed`.
@@ -173,6 +174,7 @@ async function computeHomepageStats(): Promise<SiteStats> {
         where: {
           status: "APPROVED",
           bhandaraId: null,
+          intent: { not: "ASKING" },
         },
       }),
     ]);
