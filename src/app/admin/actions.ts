@@ -308,7 +308,13 @@ export async function editAndPublishAction(
   revalidatePath("/admin", "layout");
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
-  redirect("/admin");
+  // Stay on the same edit page so the operator can keep iterating
+  // without losing their place in the queue (revised 2026-05-26 from
+  // a redirect to /admin which sent the operator to the dashboard
+  // every time they hit Save). The redirect re-mounts the page with
+  // the freshly-saved data, so the form shows the new values rather
+  // than the pre-save state.
+  redirect(`/admin/edit/${id}`);
 }
 
 /**
@@ -399,7 +405,14 @@ export async function editAndApproveSpotAction(
 
   revalidatePath("/admin", "layout");
   revalidatePath("/");
-  redirect("/admin?type=whatsapp&status=spot");
+  // Stay on the spot edit page so the operator can keep iterating
+  // (revised 2026-05-26 from a redirect to the legacy
+  // `/admin?type=whatsapp&status=spot` URL — that route falls back
+  // to /admin home in the redesigned shell, which kicked the
+  // operator off this row every time they hit Save). The redirect
+  // re-mounts this page with the freshly-saved data so the form
+  // reflects the new values.
+  redirect(`/admin/edit-spot/${id}`);
 }
 
 /**
