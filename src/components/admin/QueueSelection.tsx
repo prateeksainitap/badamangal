@@ -198,26 +198,50 @@ export function BulkActionBar({
 
         {/* Action buttons — each is its own form with the selected
             ids serialised as multiple <input name="ids" value=…>
-            hidden inputs. */}
+            hidden inputs.
+
+            The action callback is wrapped so the selection clears
+            once the server action finishes. Without this, rows stay
+            visually "selected" (orange checkboxes ticked) after the
+            operator hits Delist / Merge / Verify in bulk, even
+            though the server-side mutation completed and the page
+            data refreshed. The bar would also linger because
+            `count > 0`. Real complaint from /admin/spots — after
+            clicking Delist 2 the same 2 rows kept their tick marks.
+
+            Wrapped in try/finally so clear() runs even when the
+            server action throws (e.g. Next's NEXT_REDIRECT control-
+            flow throw from `redirect()`, or a validation error). The
+            page already revalidates on the server side; the only
+            client state we own is the selection set. */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-          {actions.map((a) => (
-            <form key={a.key} action={a.action}>
-              {selectedIds.map((id) => (
-                <input key={id} type="hidden" name="ids" value={id} />
-              ))}
-              <SubmitButton
-                variant={a.variant ?? "outline-saffron"}
-                pendingLabel={a.pendingLabel ?? "Working…"}
-                confirm={
-                  a.confirm
-                    ? a.confirm.replace("{n}", String(count))
-                    : undefined
-                }
-              >
-                {a.label.replace("{n}", String(count))}
-              </SubmitButton>
-            </form>
-          ))}
+          {actions.map((a) => {
+            const wrappedAction = async (formData: FormData) => {
+              try {
+                await a.action(formData);
+              } finally {
+                clear();
+              }
+            };
+            return (
+              <form key={a.key} action={wrappedAction}>
+                {selectedIds.map((id) => (
+                  <input key={id} type="hidden" name="ids" value={id} />
+                ))}
+                <SubmitButton
+                  variant={a.variant ?? "outline-saffron"}
+                  pendingLabel={a.pendingLabel ?? "Working…"}
+                  confirm={
+                    a.confirm
+                      ? a.confirm.replace("{n}", String(count))
+                      : undefined
+                  }
+                >
+                  {a.label.replace("{n}", String(count))}
+                </SubmitButton>
+              </form>
+            );
+          })}
         </div>
 
         {/* Dismiss / clear selection */}
