@@ -262,23 +262,12 @@ export async function getAllApprovedBhandarasMapped(opts?: {
  */
 export function invalidateBhandaraQueryCache(): void {
   allApprovedBhandarasPromise = null;
-  // Also bust the persistent edge cache used by the public homepage
-  // (src/lib/public-cache.ts → getCachedApprovedBhandaras). That
-  // cache is backed by Vercel's data layer and survives across
-  // Lambda instances, so without an explicit tag invalidation it
-  // would keep serving up to 60-second-stale data to other Lambdas
-  // even though our local module-level cache here is cleared.
-  // Import is lazy + try/catch to avoid coupling the lib module to
-  // Next's runtime APIs in any environment that imports lib/db.ts
-  // outside of a Next request (e.g. the one-off seed scripts that
-  // load only the Prisma client).
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { revalidateTag } = require("next/cache") as typeof import("next/cache");
-    revalidateTag("public-bhandaras");
-  } catch {
-    /* not in a Next request context — safe to skip */
-  }
+  // Earlier in the day this also called revalidateTag(
+  // "public-bhandaras") to bust an edge-shared unstable_cache layer
+  // wrapping the homepage's bhandara query. That cache turned out
+  // to JSON-serialize Date columns into strings, breaking downstream
+  // .toISOString() calls and 500'ing the SSR. The cache was reverted
+  // in the same commit batch; this tag-bust call went with it.
 }
 
 export function toBhandara(record: DbBhandara): Bhandara {
