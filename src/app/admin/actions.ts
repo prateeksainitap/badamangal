@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { prisma, invalidateBhandaraQueryCache } from "@/lib/db";
 import { slugify, ensureUniqueSlug } from "@/lib/slugify";
 import { generateVolunteerCode } from "@/lib/volunteer-server";
@@ -407,6 +407,13 @@ export async function editAndApproveSpotAction(
 
   revalidatePath("/admin", "layout");
   revalidatePath("/");
+  // Bust the persistent edge cache used by the public homepage
+  // (lib/public-cache.ts → getCachedLiveSpots). Without this the
+  // edited spot keeps rendering with its pre-save caption / coords
+  // for up to 60s on any Lambda still holding the cached value, plus
+  // the LiveChatterBoard's poll lag on top. With the tag bust, the
+  // next public render hits the DB fresh.
+  revalidateTag("public-spots");
   // Send the operator back to the spots queue after save (revised
   // again 2026-05-26 from /admin/edit-spot/<id> — staying on the
   // same row broke the moderation flow since the operator wants to
@@ -479,6 +486,7 @@ export async function delistSpotAction(
   });
   revalidatePath("/admin", "layout");
   revalidatePath("/");
+  revalidateTag("public-spots");
 }
 
 /** Flip a REJECTED spot back to APPROVED. Note: if its `expiresAt` has
@@ -495,6 +503,7 @@ export async function approveSpotAction(
   });
   revalidatePath("/admin", "layout");
   revalidatePath("/");
+  revalidateTag("public-spots");
 }
 
 /** Push the spot's `expiresAt` 8 hours into the future from *now*
@@ -1479,6 +1488,7 @@ export async function bulkDelistSpotsAction(
   });
   revalidatePath("/admin", "layout");
   revalidatePath("/");
+  revalidateTag("public-spots");
 }
 
 /**
@@ -1615,6 +1625,7 @@ export async function bulkMergeSpotsAction(
 
   revalidatePath("/admin", "layout");
   revalidatePath("/");
+  revalidateTag("public-spots");
 }
 
 /** Bulk approve mentions. Mirrors per-row approveMentionAction. */

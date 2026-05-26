@@ -48,6 +48,10 @@ import { prisma, toBhandara } from "@/lib/db";
 import { areaToSlug } from "@/lib/areaSlug";
 import { hasUpcomingDate } from "@/lib/dates";
 import { getHomepageStats } from "@/lib/stats";
+import {
+  getCachedApprovedBhandaras,
+  getCachedLiveSpots,
+} from "@/lib/public-cache";
 
 // True ISR, the page no longer reads cookies() or searchParams, so
 // Next can prerender it once and serve cached HTML from the edge.
@@ -193,10 +197,13 @@ export default async function HomePage() {
     mentionRowsResult,
     communityCounterRowsResult,
   ] = await Promise.allSettled([
-    prisma.bhandara.findMany({
-      where: { status: "APPROVED" },
-      orderBy: [{ isSponsored: "desc" }, { createdAt: "asc" }],
-    }),
+    // Wrapped in unstable_cache via getCachedApprovedBhandaras so
+    // cold-start Lambdas during a DB blip can still serve the most
+    // recent successful snapshot from Vercel's edge cache — instead
+    // of falling through to the empty-array shape that rendered
+    // "All 0 Bada Mangal bhandaras" today during the Tuesday-1 pool
+    // storm. Admin edit actions bust this via revalidateTag.
+    getCachedApprovedBhandaras(),
     getHomepageStats(),
     // Pull ALL currently-live spots, not a capped slice. The previous
     // `take: 24` was originally sized for the HappeningNow feed (which
@@ -212,14 +219,11 @@ export default async function HomePage() {
     // so this is naturally bounded by activity-in-the-last-8h. A safety
     // ceiling of 500 protects the wire payload (~300 KB worst case) in
     // case a future bug pushes expiresAt unusually far out.
-    prisma.spot.findMany({
-      where: { status: "APPROVED", expiresAt: { gt: new Date() } },
-      orderBy: { createdAt: "desc" },
-      take: 500,
-      include: {
-        bhandara: { select: { slug: true, name: true, nameHi: true } },
-      },
-    }),
+    // Same edge-cache treatment as bhandaras above. The spot list
+    // is the live chat + heatmap source — losing it on cold-start
+    // = empty chat panel + missing map pins, which the operator
+    // would notice immediately.
+    getCachedLiveSpots(),
     // Admin-curated gallery photos (visible only). Newest pinned-
     // first via displayOrder, then by createdAt desc. Capped at 60
     // since the gallery section is meant to be browsable, not
