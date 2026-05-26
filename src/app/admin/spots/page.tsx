@@ -4,7 +4,10 @@ import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { isAdmin } from "@/lib/admin-auth";
-import { bulkDelistSpotsAction } from "@/app/admin/actions";
+import {
+  bulkDelistSpotsAction,
+  bulkMergeSpotsAction,
+} from "@/app/admin/actions";
 import AdminShell from "@/components/admin/AdminShell";
 import { getAdminNavCounts } from "@/lib/admin-nav-counts";
 import BotHeartbeat from "@/components/admin/BotHeartbeat";
@@ -377,6 +380,22 @@ export default async function AdminSpotsPage({
             <BulkActionBar
               allRowIds={spots.map((s) => s.id)}
               actions={[
+                {
+                  // Merge appears alongside Delist so the operator can
+                  // resolve the very common "photo arrived as one spot,
+                  // location share arrived as another" bot-ingest split
+                  // without leaving the queue. The action validates
+                  // exactly-2 server-side; the confirm copy steers the
+                  // operator to pick precisely two rows. See
+                  // bulkMergeSpotsAction for the field-merge rules.
+                  key: "merge",
+                  label: "Merge {n}",
+                  variant: "primary-green",
+                  pendingLabel: "Merging…",
+                  confirm:
+                    "Merge {n} spot(s)? Select EXACTLY 2 — the photo-bearing row becomes primary; the location-share row folds its coords + area in, then is deleted.",
+                  action: bulkMergeSpotsAction,
+                },
                 {
                   key: "delist",
                   label: "Delist {n}",

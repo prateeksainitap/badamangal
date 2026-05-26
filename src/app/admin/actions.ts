@@ -1466,6 +1466,142 @@ export async function bulkDelistSpotsAction(
   revalidatePath("/");
 }
 
+/**
+ * Merge exactly TWO Spot rows into one. Designed for the very common
+ * WhatsApp ingest case where a sender drops:
+ *
+ *   1. A photo of the pandal / food / crowd  →  Spot A (has photo,
+ *      no coords because WhatsApp strips EXIF GPS)
+ *   2. A separate "share location" message    →  Spot B (has lat/lng
+ *      + area + address, no photo)
+ *
+ * The bot creates two rows; both are correct in isolation, but they
+ * describe ONE bhandara. This action folds them into a single row so
+ * the public map + chat panel render one tile instead of two.
+ *
+ * Primary-row selection:
+ *   - The row with a `photoUrl` wins (it carries the harder-to-replace
+ *     payload — the visual context). When both have or neither has a
+ *     photo, the OLDER row wins (more established context, earlier
+ *     reporter timestamp).
+ *
+ * Field merge:
+ *   - lat/lng: primary's values kept unless they're 0,0 (the bot's
+ *     no-EXIF fallback), in which case secondary's coords win.
+ *   - area / address: primary's value kept unless null/empty, else
+ *     fall through to secondary.
+ *   - caption: primary's text kept if non-empty, else secondary's
+ *     becomes the caption.
+ *   - extraPhotoUrls: union of primary.extras + secondary.photoUrl +
+ *     secondary.extras (de-duplicated, capped at 5 per the schema).
+ *
+ * Secondary delete:
+ *   - Hard-delete the secondary row.
+ *   - DO NOT R2-evict its photoUrl / extraPhotoUrls — those URLs were
+ *     just transferred onto primary's row and are still in use.
+ *   - This is the divergence from deleteSpotAction (which always
+ *     evicts); calling deleteSpotAction here would orphan the photos
+ *     we just folded in.
+ *
+ * Caller guarantees exactly 2 ids. If not, we throw — the UI confirm
+ * prompt warns the operator that merge requires two selections.
+ */
+export async function bulkMergeSpotsAction(
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const ids = parseIds(formData);
+  if (ids.length !== 2) {
+    throw new Error(
+      `Merge requires exactly 2 spots selected; received ${ids.length}. Select two rows and try again.`,
+    );
+  }
+
+  const rows = await prisma.spot.findMany({
+    where: { id: { in: ids } },
+  });
+  if (rows.length !== 2) {
+    throw new Error(
+      "One or both selected spots could not be found. They may have already been deleted; reload the page.",
+    );
+  }
+
+  // Primary selection: photo-bearing wins; ties broken by older-first.
+  const [a, b] = rows as [(typeof rows)[number], (typeof rows)[number]];
+  const aHasPhoto = Boolean(a.photoUrl);
+  const bHasPhoto = Boolean(b.photoUrl);
+  let primary: typeof a;
+  let secondary: typeof a;
+  if (aHasPhoto && !bHasPhoto) {
+    primary = a;
+    secondary = b;
+  } else if (bHasPhoto && !aHasPhoto) {
+    primary = b;
+    secondary = a;
+  } else {
+    primary = a.createdAt <= b.createdAt ? a : b;
+    secondary = a.createdAt <= b.createdAt ? b : a;
+  }
+
+  // Field-by-field merge.
+  const mergedLat =
+    primary.lat === 0 && secondary.lat !== 0 ? secondary.lat : primary.lat;
+  const mergedLng =
+    primary.lng === 0 && secondary.lng !== 0 ? secondary.lng : primary.lng;
+  const mergedArea = primary.area?.trim() || secondary.area || null;
+  const mergedAddress = primary.address?.trim() || secondary.address || null;
+  const mergedCaption = primary.caption?.trim() || secondary.caption || null;
+
+  // Extras: union of primary.extras + secondary.photoUrl + secondary.extras,
+  // de-duped against primary.photoUrl (we don't want primary's own
+  // photoUrl appearing as an extra of itself). Capped at 5.
+  const extraSet = new Set<string>();
+  function addExtras(jsonStr: string | null | undefined) {
+    if (!jsonStr) return;
+    try {
+      const arr = JSON.parse(jsonStr);
+      if (Array.isArray(arr)) {
+        for (const u of arr) {
+          if (typeof u === "string" && u.length > 0 && u !== primary.photoUrl) {
+            extraSet.add(u);
+          }
+        }
+      }
+    } catch {
+      /* malformed — skip */
+    }
+  }
+  addExtras(primary.extraPhotoUrls);
+  if (secondary.photoUrl && secondary.photoUrl !== primary.photoUrl) {
+    extraSet.add(secondary.photoUrl);
+  }
+  addExtras(secondary.extraPhotoUrls);
+  const mergedExtras = JSON.stringify([...extraSet].slice(0, 5));
+
+  // Apply the merge in a transaction so a mid-flight failure can't
+  // leave us with a half-merged primary + an orphaned secondary still
+  // visible on the map.
+  await prisma.$transaction([
+    prisma.spot.update({
+      where: { id: primary.id },
+      data: {
+        lat: mergedLat,
+        lng: mergedLng,
+        area: mergedArea,
+        address: mergedAddress,
+        caption: mergedCaption,
+        extraPhotoUrls: mergedExtras,
+      },
+    }),
+    // Hard-delete secondary. R2 photos are now attached to primary —
+    // do NOT evict from R2 here.
+    prisma.spot.delete({ where: { id: secondary.id } }),
+  ]);
+
+  revalidatePath("/admin", "layout");
+  revalidatePath("/");
+}
+
 /** Bulk approve mentions. Mirrors per-row approveMentionAction. */
 export async function bulkApproveMentionsAction(
   formData: FormData,
