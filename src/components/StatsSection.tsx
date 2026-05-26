@@ -114,14 +114,27 @@ export default function StatsSection({ stats }: Props) {
         </div>
 
         {/* Stats grid. Tiles whose underlying number is 0 are hidden so
-            the panel never reads as "nothing is happening". Five-tile
-            roster (Listed · Spotted · Areas · Tuesdays · Community)
-            uses a responsive grid: 2 cols on mobile, 3 on tablet,
-            5 across on desktop so the row never leaves an orphan tile
-            on its own line. Auto-rows so the cards align top-to-top. */}
+            the panel never reads as "nothing is happening". Six-tile
+            roster grouped in two thematic rows:
+              Row 1 — bhandara sources: Listed · Spotted · Mentioned
+              Row 2 — community + scale: Community · Areas · Tuesdays
+            Community leads row 2 because it's the largest number and
+            anchors the scale story; Areas + Tuesdays follow as the
+            geographic + temporal scope.
+
+            Responsive grid (rearranged 2026-05-26 from 5-cols which
+            left an orphan tile after the Mentioned tile was added):
+              • mobile  : 2 cols → 3 rows of 2
+              • md      : 3 cols → 2 rows of 3 (balanced)
+              • lg      : 3 cols → 2 rows of 3 (same balance, more
+                          per-tile breathing room than a 6-wide strip)
+              • xl      : 6 cols → 1 row strip (only on wide screens
+                          where tiles don't get cramped)
+            Auto-rows so the cards align top-to-top. */}
         <ol
-          className="mt-6 grid auto-rows-fr gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+          className="mt-6 grid auto-rows-fr gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6"
         >
+          {/* ── Row 1 — bhandara source breakdown ─────────────────── */}
           {stats.bhandarasListed > 0 ? (
             <StatCard
               icon={<IconBhandara />}
@@ -141,6 +154,20 @@ export default function StatsSection({ stats }: Props) {
               icon={<IconChat />}
               value={format(stats.bhandarasMentioned, locale)}
               label={t.stats.bhandarasMentioned}
+            />
+          ) : null}
+          {/* ── Row 2 — community + scale ─────────────────────────── */}
+          {/* WhatsApp community member total. Bot pushes this via
+              /api/bot/community-stats; tile is hidden until the bot
+              has actually upserted a non-zero count so we don't
+              render an empty "0 members" placeholder before the first
+              push lands. Moved to lead row 2 so the largest number
+              anchors the second row visually. */}
+          {stats.communityMembers > 0 ? (
+            <StatCard
+              icon={<IconCommunity />}
+              value={format(stats.communityMembers, locale)}
+              label={t.stats.communityMembers}
             />
           ) : null}
           {stats.areasCovered > 0 ? (
@@ -167,18 +194,6 @@ export default function StatsSection({ stats }: Props) {
             suffix={t.stats.tuesdaysOf}
             label={t.stats.tuesdaysSoFar}
           />
-          {/* WhatsApp community member total. Bot pushes this via
-              /api/bot/community-stats; tile is hidden until the bot
-              has actually upserted a non-zero count so we don't
-              render an empty "0 members" placeholder before the first
-              push lands. */}
-          {stats.communityMembers > 0 ? (
-            <StatCard
-              icon={<IconCommunity />}
-              value={format(stats.communityMembers, locale)}
-              label={t.stats.communityMembers}
-            />
-          ) : null}
         </ol>
       </div>
     </section>
