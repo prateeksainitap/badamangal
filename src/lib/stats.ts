@@ -16,6 +16,16 @@ export type SiteStats = {
    *  to /spot. Includes both currently-live spots and ones whose 8-hour
    *  window has expired (they still count toward "the city did this"). */
   bhandarasSpotted: number;
+  /** Cumulative count of standalone APPROVED BhandaraMention rows (text
+   *  messages from the WhatsApp community where someone declared a
+   *  bhandara is happening — `intent: "SHARING"`). Restricted to
+   *  mentions NOT already linked to an existing Bhandara row
+   *  (`bhandaraId IS NULL`) to avoid double-counting events that exist
+   *  in both surfaces. These are unverified text signals, so they read
+   *  as a softer "mentioned in chat" source alongside the harder
+   *  "listed" + "spotted" tiles — but the operator's intent is to
+   *  reflect that we tracked them. */
+  bhandarasMentioned: number;
   /** Distinct curated `area` values that have at least one approved listing. */
   areasCovered: number;
   /** Total curated areas in the Lucknow neighbourhood list (lib/lucknow.ts).
@@ -118,25 +128,42 @@ async function computeHomepageStats(): Promise<SiteStats> {
     .slice(0, 10);
   const pastTuesdays = ALL_TUESDAY_ISO.filter((iso) => iso < todayIso);
 
-  // Fan out the four reads in parallel — same Supabase pooler, so
+  // Fan out the five reads in parallel — same Supabase pooler, so
   // serialising them would multiply the round-trip cost on a cold
   // pool. visitorCounter + communityCounter are both 1-row lookups by
-  // primary key (cheap); bhandara.findMany + spot.count are the work.
-  const [counter, communityCounter, records, spottedCount] = await Promise.all([
-    prisma.siteCounter.findUnique({
-      where: { id: "home" },
-      select: { count: true },
-    }),
-    prisma.siteCounter.findUnique({
-      where: { id: "community_total_members" },
-      select: { count: true },
-    }),
-    prisma.bhandara.findMany({
-      where: { status: "APPROVED" },
-      select: { area: true },
-    }),
-    prisma.spot.count({ where: { status: "APPROVED" } }),
-  ]);
+  // primary key (cheap); the other three do the work.
+  //
+  // `mentionedCount` (added 2026-05-26): APPROVED BhandaraMention rows
+  // where intent=SHARING and bhandaraId IS NULL. SHARING isolates
+  // declarations of new bhandaras (vs ASKING / general MENTIONING
+  // chatter), and the bhandaraId=null gate ensures mentions already
+  // pinned to a Bhandara row don't double-count against the listed
+  // tile. We deliberately don't filter expiresAt — same lens as
+  // bhandara + spot, which both keep expired/past rows in the
+  // cumulative "so far" tally.
+  const [counter, communityCounter, records, spottedCount, mentionedCount] =
+    await Promise.all([
+      prisma.siteCounter.findUnique({
+        where: { id: "home" },
+        select: { count: true },
+      }),
+      prisma.siteCounter.findUnique({
+        where: { id: "community_total_members" },
+        select: { count: true },
+      }),
+      prisma.bhandara.findMany({
+        where: { status: "APPROVED" },
+        select: { area: true },
+      }),
+      prisma.spot.count({ where: { status: "APPROVED" } }),
+      prisma.bhandaraMention.count({
+        where: {
+          status: "APPROVED",
+          intent: "SHARING",
+          bhandaraId: null,
+        },
+      }),
+    ]);
 
   // Stats panel counters are cumulative ("so far" in the labels):
   // every APPROVED bhandara counts toward `bhandarasListed`, every
@@ -154,9 +181,10 @@ async function computeHomepageStats(): Promise<SiteStats> {
 
   return {
     visitorNumber: counter?.count ?? 0,
-    bhandarasTotal: records.length + spottedCount,
+    bhandarasTotal: records.length + spottedCount + mentionedCount,
     bhandarasListed: records.length,
     bhandarasSpotted: spottedCount,
+    bhandarasMentioned: mentionedCount,
     areasCovered: areas.size,
     areasTotal: AREAS.length,
     tuesdaysSoFar: pastTuesdays.length,

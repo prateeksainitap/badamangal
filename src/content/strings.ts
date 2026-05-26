@@ -98,6 +98,7 @@ type Dict = {
     bhandarasTotalAria: string;
     bhandarasListed: string;
     bhandarasSpotted: string;
+    bhandarasMentioned: string;
     platesPledged: string;
     platesNote: string;
     areasCovered: string;
@@ -311,9 +312,11 @@ const en: Dict = {
     visitorSuffix: "",
     visitorAria: "Total visitors till now",
     bhandarasTotal: "Total bhandaras tracked so far",
-    bhandarasTotalAria: "Total bhandaras tracked so far (listed + spotted)",
+    bhandarasTotalAria:
+      "Total bhandaras tracked so far (listed + spotted + mentioned)",
     bhandarasListed: "Bhandaras listed so far",
     bhandarasSpotted: "Bhandaras spotted so far",
+    bhandarasMentioned: "Mentioned in chat",
     platesPledged: "Plates pledged",
     platesNote: "across the 8 Tuesdays of this season",
     areasCovered: "Areas covered",
@@ -612,11 +615,13 @@ const hi: Dict = {
       "बीस हज़ार रसोइयों का शांत सामूहिक चमत्कार, एक-एक थाली से गिना हुआ।",
     visitorPrefix: "अब तक कुल आगंतुक",
     bhandarasTotal: "अब तक दर्ज कुल भंडारे",
-    bhandarasTotalAria: "अब तक दर्ज कुल भंडारे (सूचीबद्ध + स्पॉट किए)",
+    bhandarasTotalAria:
+      "अब तक दर्ज कुल भंडारे (सूचीबद्ध + स्पॉट किए + चैट में बताए)",
     visitorSuffix: "",
     visitorAria: "अब तक कुल आगंतुक",
     bhandarasListed: "अब तक सूचीबद्ध भंडारे",
     bhandarasSpotted: "अब तक स्पॉट किए भंडारे",
+    bhandarasMentioned: "चैट में बताए",
     platesPledged: "थाली का संकल्प",
     platesNote: "इस सीज़न के 8 मंगलवारों में",
     areasCovered: "क्षेत्र शामिल",

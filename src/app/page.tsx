@@ -316,6 +316,7 @@ export default async function HomePage() {
       bhandarasTotal: 0,
       bhandarasListed: 0,
       bhandarasSpotted: 0,
+      bhandarasMentioned: 0,
       areasCovered: 0,
       areasTotal: 0,
       tuesdaysSoFar: 0,

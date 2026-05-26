@@ -136,6 +136,13 @@ export default function StatsSection({ stats }: Props) {
               label={t.stats.bhandarasSpotted}
             />
           ) : null}
+          {stats.bhandarasMentioned > 0 ? (
+            <StatCard
+              icon={<IconChat />}
+              value={format(stats.bhandarasMentioned, locale)}
+              label={t.stats.bhandarasMentioned}
+            />
+          ) : null}
           {stats.areasCovered > 0 ? (
             <StatCard
               icon={<IconNeighborhood />}
@@ -250,6 +257,25 @@ function IconNeighborhood() {
       <circle cx="7" cy="13" r="1.4" fill="currentColor" />
       <path d="M17 21s-3-3.5-3-6.2a3 3 0 0 1 6 0C20 17.5 17 21 17 21z" />
       <circle cx="17" cy="14.6" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** Speech-bubble with two short message dashes, represents a chat
+ *  mention (a WhatsApp community member declaring a bhandara location
+ *  in text). Same stroke weight + 24×24 viewBox as the other tile
+ *  icons so the row reads as one set. The bubble's small tail anchors
+ *  it as "speech / chat" vs the rounder map-pin glyph used for
+ *  bhandara cards elsewhere. */
+function IconChat() {
+  return (
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      {/* bubble body */}
+      <path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1h-8.5l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+      {/* two message dashes inside the bubble */}
+      <path d="M7.5 9h9" />
+      <path d="M7.5 12.5h6" />
     </svg>
   );
 }
