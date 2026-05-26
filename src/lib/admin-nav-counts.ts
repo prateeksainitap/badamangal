@@ -38,6 +38,7 @@ export type AdminNavCounts = Partial<Record<string, number>>;
  *  silently hides; the rest of the sidebar still renders. */
 async function _fetchNavCounts(): Promise<AdminNavCounts> {
   const now = new Date();
+  const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const settled = await Promise.allSettled([
     prisma.bhandara.count({ where: { status: "PENDING" } }),
     prisma.spot.count({
@@ -47,6 +48,23 @@ async function _fetchNavCounts(): Promise<AdminNavCounts> {
     prisma.organiseRequest.count({ where: { status: "NEW" } }),
     prisma.volunteer.count({ where: { status: "PENDING" } }),
     prisma.contactMessage.count({ where: { status: "NEW" } }),
+    // Bot-log badge surfaces last-24h ingest failures so the
+    // operator notices Gemini hiccups / R2 upload errors / classify
+    // 502s without having to manually open the log. Count includes
+    // every FAILED_* outcome; SUCCESS_* and DUPLICATE_* don't count.
+    prisma.botIngestionLog.count({
+      where: {
+        outcome: {
+          in: [
+            "FAILED_CLASSIFY",
+            "FAILED_EXTRACT",
+            "FAILED_UPLOAD",
+            "FAILED_OTHER",
+          ],
+        },
+        createdAt: { gte: dayAgo },
+      },
+    }),
   ]);
   const pick = (idx: number): number => {
     const r = settled[idx];
@@ -66,6 +84,7 @@ async function _fetchNavCounts(): Promise<AdminNavCounts> {
     "/admin/organise": pick(3),
     "/admin/volunteers": pick(4),
     "/admin/emails": pick(5),
+    "/admin/bot-log": pick(6),
   };
 }
 
