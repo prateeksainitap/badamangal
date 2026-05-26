@@ -15,10 +15,26 @@ import { prisma } from "@/lib/db";
  * before the user has set up the cron.
  */
 export default async function BotHeartbeat() {
-  const row = await prisma.siteCounter.findUnique({
-    where: { id: "bot_heartbeat_mbp" },
-    select: { count: true, updatedAt: true },
-  });
+  // Try/catch around the single DB read so a transient EMAXCONN on
+  // peak traffic doesn't take down the entire admin tree. This
+  // component sits in the AdminShell header, which wraps every
+  // /admin/* route — an uncaught reject here bubbles to admin/error.tsx
+  // and surfaces as "Something tripped while rendering this page"
+  // on EVERY admin surface (dashboard, queues, edit pages, all of it).
+  // Silently rendering null on failure is the right degradation: the
+  // pill is non-critical UI and the user can still operate the admin.
+  let row: { count: number; updatedAt: Date } | null = null;
+  try {
+    row = await prisma.siteCounter.findUnique({
+      where: { id: "bot_heartbeat_mbp" },
+      select: { count: true, updatedAt: true },
+    });
+  } catch (err) {
+    console.error(
+      "[BotHeartbeat] heartbeat lookup failed:",
+      err instanceof Error ? err.message : err,
+    );
+  }
   if (!row) return null;
 
   const ageMs = Date.now() - row.updatedAt.getTime();
