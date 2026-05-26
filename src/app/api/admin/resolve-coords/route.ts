@@ -180,7 +180,7 @@ async function resolveShortUrl(input: string): Promise<string | null> {
  *
  * Supports both:
  *   • Full codes (10+ chars before `+`, e.g. `7JGM3CV9+QG`)
- *   • Short codes with a city anchor (e.g. `VXR6+QP Lucknow`) —
+ *   • Short codes with a city anchor (e.g. `VXR6+QP Lucknow`)
  *     recovered relative to LKO_CENTROID since the resolver only
  *     gets called from /admin in a Lucknow context.
  */

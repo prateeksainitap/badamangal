@@ -1,7 +1,7 @@
 /**
  * Beautiful, on-brand isometric illustrations rendered at the top of
- * each admin page hero. Pure inline SVG — no images, no external
- * assets — so they're fast, themeable, and look crisp at every DPR.
+ * each admin page hero. Pure inline SVG, no images, no external
+ * assets, so they're fast, themeable, and look crisp at every DPR.
  *
  * Each scene is built from layered isometric primitives (~30° tile
  * grid, 45° projection) tinted with the same cyan/violet/leaf/saffron
@@ -10,11 +10,11 @@
  * panel controls the visible size.
  *
  * Shared geometric primitives:
- *   • IsoBase    — the diamond ground plate everything sits on
- *   • IsoCube    — 3-face stacked cube (top/left/right)
- *   • IsoGlow    — soft cyan halo behind a focal element
- *   • IsoPin     — gada-style map pin
- *   • IsoStar    — tiny accent star sprinkled in negative space
+ *   • IsoBase   , the diamond ground plate everything sits on
+ *   • IsoCube   , 3-face stacked cube (top/left/right)
+ *   • IsoGlow   , soft cyan halo behind a focal element
+ *   • IsoPin    , gada-style map pin
+ *   • IsoStar   , tiny accent star sprinkled in negative space
  *
  * Each `<AdminHero{Subject}>` composes those into one of:
  *   Dashboard / Bhandaras / Spots / Mentions / Organise / Volunteers
@@ -32,7 +32,7 @@ const TONE_HEX: Record<Tone, { hi: string; mid: string; lo: string }> = {
 };
 
 type AdminHeroProps = {
-  /** Subject of the hero — picks which composition renders. */
+  /** Subject of the hero, picks which composition renders. */
   subject:
     | "dashboard"
     | "bhandaras"
@@ -164,7 +164,7 @@ function IsoBase({
   );
 }
 
-/** Isometric cube — top, left and right faces, stacked from (x, y). */
+/** Isometric cube, top, left and right faces, stacked from (x, y). */
 function IsoCube({
   x,
   y,
@@ -288,7 +288,7 @@ function IsoStar({
 
 /* ────────────── Scenes ────────────────────────────────────────── */
 
-/** Dashboard — city radar. Iso base + a glowing centre + 3 floating
+/** Dashboard, city radar. Iso base + a glowing centre + 3 floating
  *  data orbs + scattered pins around the plate. */
 function DashboardScene() {
   return (
@@ -313,7 +313,7 @@ function DashboardScene() {
   );
 }
 
-/** Bhandaras — temple silhouette with a flame on top + glowing pins. */
+/** Bhandaras, temple silhouette with a flame on top + glowing pins. */
 function BhandarasScene() {
   return (
     <g>
@@ -371,13 +371,13 @@ function BhandarasScene() {
   );
 }
 
-/** Spots — isometric camera + a stack of polaroid frames. */
+/** Spots, isometric camera + a stack of polaroid frames. */
 function SpotsScene() {
   return (
     <g>
       <IsoBase cx={160} cy={130} tone="cyan" />
       <IsoGlow cx={160} cy={92} r={50} tone="cyan" />
-      {/* Polaroid stack — three offset frames */}
+      {/* Polaroid stack, three offset frames */}
       <g transform="translate(118, 60)">
         <rect x="0" y="0" width="46" height="38" rx="2" fill={TONE_HEX.violet.lo} opacity="0.7" transform="rotate(-8 23 19)" />
         <rect x="4" y="4" width="46" height="38" rx="2" fill={TONE_HEX.cyan.lo} opacity="0.85" transform="rotate(3 27 23)" />
@@ -401,7 +401,7 @@ function SpotsScene() {
   );
 }
 
-/** Mentions — chat bubbles stacked iso with type-y dots. */
+/** Mentions, chat bubbles stacked iso with type-y dots. */
 function MentionsScene() {
   return (
     <g>
@@ -435,7 +435,7 @@ function MentionsScene() {
   );
 }
 
-/** Organise — clipboard, checks, and a calendar on iso base. */
+/** Organise, clipboard, checks, and a calendar on iso base. */
 function OrganiseScene() {
   return (
     <g>
@@ -473,7 +473,7 @@ function OrganiseScene() {
   );
 }
 
-/** Volunteers — three iso figures on a plate. */
+/** Volunteers, three iso figures on a plate. */
 function VolunteersScene() {
   return (
     <g>
@@ -532,7 +532,7 @@ function VolunteersScene() {
   );
 }
 
-/** Discover — compass + magnifier on iso base. */
+/** Discover, compass + magnifier on iso base. */
 function DiscoverScene() {
   return (
     <g>
@@ -574,7 +574,7 @@ function DiscoverScene() {
   );
 }
 
-/** Gallery — fanned photo frames on iso base. */
+/** Gallery, fanned photo frames on iso base. */
 function GalleryScene() {
   return (
     <g>
@@ -603,7 +603,7 @@ function GalleryScene() {
   );
 }
 
-/** Scan — invite-poster going through a scanner beam. */
+/** Scan, invite-poster going through a scanner beam. */
 function ScanScene() {
   return (
     <g>
@@ -620,7 +620,7 @@ function ScanScene() {
         <circle cx="28" cy="48" r="10" fill={TONE_HEX.sindoor.lo} />
         <circle cx="28" cy="48" r="6" fill={TONE_HEX.saffron.hi} />
       </g>
-      {/* Scan beam — diagonal cyan stripe */}
+      {/* Scan beam, diagonal cyan stripe */}
       <rect
         x="118"
         y="84"
@@ -647,7 +647,7 @@ function ScanScene() {
   );
 }
 
-/** Content — a stack of document cards next to a glowing prompt
+/** Content, a stack of document cards next to a glowing prompt
  *  bubble + an Instagram-frame card with a tiny AI sparkle. Reads
  *  as "centralised library of pitches, templates, images, prompts". */
 function ContentScene() {
@@ -670,7 +670,7 @@ function ContentScene() {
         <rect x="18" y="40" width="28" height="2.5" rx="1.2" fill={TONE_HEX.violet.hi} opacity="0.4" />
       </g>
 
-      {/* Centre: AI prompt bubble — speech-bubble shape with a tiny
+      {/* Centre: AI prompt bubble, speech-bubble shape with a tiny
           ✦ sparkle to suggest LLM-generated content. */}
       <g transform="translate(140, 64)">
         <rect x="0" y="0" width="46" height="34" rx="6" fill={TONE_HEX.cyan.lo} opacity="0.85" />
@@ -730,7 +730,7 @@ function ContentScene() {
   );
 }
 
-/** Emails — a stack of envelopes with one open + a pulsing "new"
+/** Emails, a stack of envelopes with one open + a pulsing "new"
  *  marker. Reads as inbox-with-fresh-mail. */
 function EmailsScene() {
   return (
@@ -764,7 +764,7 @@ function EmailsScene() {
         />
       </g>
 
-      {/* Top envelope — opened (flap up), a letter peeking out */}
+      {/* Top envelope, opened (flap up), a letter peeking out */}
       <g transform="translate(100, 50)">
         {/* Envelope back */}
         <rect x="0" y="0" width="80" height="50" rx="3" fill={TONE_HEX.cyan.lo} />
@@ -789,7 +789,7 @@ function EmailsScene() {
           fill={TONE_HEX.cyan.mid}
           opacity="0.9"
         />
-        {/* "New" pulsing dot — top-right of the top envelope */}
+        {/* "New" pulsing dot, top-right of the top envelope */}
         <circle cx="76" cy="0" r="6" fill={TONE_HEX.sindoor.mid} />
         <circle cx="76" cy="0" r="3" fill={TONE_HEX.sindoor.hi} />
       </g>
@@ -801,7 +801,7 @@ function EmailsScene() {
   );
 }
 
-/** Login — saffron disc with cyan halo, single brand mark. */
+/** Login, saffron disc with cyan halo, single brand mark. */
 function LoginScene() {
   return (
     <g>

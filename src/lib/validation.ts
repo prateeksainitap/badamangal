@@ -86,7 +86,7 @@ export const submitSchema = z
       // it blank); any non-empty value must still parse as a valid
       // Indian mobile so we don't persist garbage that the team
       // can't dial back. Downstream code already tolerates an empty
-      // organizerPhone — the schema's `String` column accepts "" and
+      // organizerPhone, the schema's `String` column accepts "" and
       // every UI read-site falls back to "-" when it's blank.
       .refine((v) => v === "" || isValidIndianMobile(v), {
         message: "Enter a valid 10-digit Indian mobile number",
@@ -94,7 +94,7 @@ export const submitSchema = z
     organizerWhatsapp: optionalWhatsapp,
     upiId: optionalUpi,
     /** Uploaded UPI QR-code image URL (R2 / Supabase). Optional
-     *  companion to upiId — see schema.prisma comment for context.
+     *  companion to upiId, see schema.prisma comment for context.
      *  Validated as a URL only; the actual upload + sharp normalisation
      *  happened at /api/uploads before the URL got plumbed here. */
     upiQrUrl: optionalUrl,

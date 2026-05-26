@@ -18,7 +18,7 @@ export default async function BotHeartbeat() {
   // Try/catch around the single DB read so a transient EMAXCONN on
   // peak traffic doesn't take down the entire admin tree. This
   // component sits in the AdminShell header, which wraps every
-  // /admin/* route — an uncaught reject here bubbles to admin/error.tsx
+  // /admin/* route, an uncaught reject here bubbles to admin/error.tsx
   // and surfaces as "Something tripped while rendering this page"
   // on EVERY admin surface (dashboard, queues, edit pages, all of it).
   // Silently rendering null on failure is the right degradation: the

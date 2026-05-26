@@ -90,7 +90,7 @@ type FormState = {
    *  is needed to support this field.
    *  Empty string = donations disabled for this listing. */
   upiId: string;
-  /** Optional uploaded UPI QR image URL — companion to upiId. Some
+  /** Optional uploaded UPI QR image URL, companion to upiId. Some
    *  organisers only know their UPI as a printed QR (no idea of the
    *  text handle underneath); uploading the QR here lets us surface
    *  their actual QR on the public page instead of a client-generated
@@ -236,7 +236,7 @@ export default function BhandaraForm({
     if (blob) {
       // Merge with INITIAL so drafts saved BEFORE a new optional field
       // (e.g. upiId added 2026-05-25) was introduced don't hydrate as
-      // undefined — every field in FormState stays a defined value.
+      // undefined, every field in FormState stays a defined value.
       // Stale drafts keep all the data the organiser already typed;
       // newly-added fields simply default to their INITIAL value.
       setState({ ...INITIAL, ...blob.state });
@@ -344,7 +344,7 @@ export default function BhandaraForm({
       case 4: return true;
       case 5:
         // Phone is optional. Only block advance if it's non-empty
-        // AND invalid — empty stays valid so organisers without a
+        // AND invalid, empty stays valid so organisers without a
         // contact number (or who don't want to share one) can still
         // submit. Team will follow up via WhatsApp / email instead.
         return (
@@ -389,7 +389,7 @@ export default function BhandaraForm({
     setErrors({});
     setFormError(null);
 
-    // pin is OPTIONAL by design — step 1 lets the organiser skip
+    // pin is OPTIONAL by design, step 1 lets the organiser skip
     // pin-drop and just type an address; the server geocodes via
     // Ola Maps (see /api/bhandaras POST). Previously this guard
     // hard-failed any pin-less submission with an English-only
@@ -1194,7 +1194,7 @@ function Step5({ state, errors, setField }: StepProps) {
               admin / contact / organise forms now use. State still
               stores the canonical 10-digit form, downstream
               isValidIndianMobile() check is unchanged.
-              Phone is OPTIONAL — left without `required` so visitors
+              Phone is OPTIONAL, left without `required` so visitors
               can submit without giving a number. */}
           <PhoneInput
             value={state.organizerPhone}
@@ -1237,7 +1237,7 @@ function Step5({ state, errors, setField }: StepProps) {
           </Field>
           <p className="text-xs text-ink-700/65">
             {locale === "hi"
-              ? "टिप: अपनी UPI app में 'मेरी UPI ID' देखें — Google Pay / PhonePe / Paytm — और वहीं से कॉपी करके पेस्ट करें।"
+              ? "टिप: अपनी UPI app में 'मेरी UPI ID' देखें, Google Pay / PhonePe / Paytm, और वहीं से कॉपी करके पेस्ट करें।"
               : "Tip: open your UPI app (GPay / PhonePe / Paytm), tap your profile, copy the ID shown there, and paste it here."}
           </p>
           {/* Either the typed UPI ID above OR an uploaded QR image is

@@ -52,7 +52,7 @@ export default async function LivePage() {
         status: "APPROVED",
         expiresAt: { gt: now },
         // No lat/lng filter here. /live renders photo cards with
-        // captions — there's no map on this page, so coordless
+        // captions, there's no map on this page, so coordless
         // bot-ingested spots ("0,0" pending admin geocode) belong
         // in the feed exactly like any other live photo. The
         // Africa-pin guard lives only in page.tsx (homepage

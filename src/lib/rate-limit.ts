@@ -30,7 +30,7 @@ export type RateLimitResult =
   | { ok: false; retryAfterSec: number };
 
 export interface RateLimitOptions {
-  /** Stable key per "actor" — usually `ipHash(readClientIp(req.headers))`
+  /** Stable key per "actor", usually `ipHash(readClientIp(req.headers))`
    *  for public routes, or `"admin:<cookie-value>"` for admin routes. */
   key: string;
   /** Max requests per window. */

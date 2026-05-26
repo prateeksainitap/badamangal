@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ContentEditor — client component used by Pitches / Templates /
+ * ContentEditor, client component used by Pitches / Templates /
  * Strategy tabs for "+ New" and inline edit.
  *
  * Renders as a <details> disclosure: closed by default, expands into
@@ -60,7 +60,7 @@ export default function ContentEditor({
   defaultAudience?: string;
   defaultChannel?: string;
 }) {
-  // Live char counter for the body textarea — gives the admin a
+  // Live char counter for the body textarea, gives the admin a
   // sense of "is this paste too long" without dropping outside the
   // 50k char DB cap.
   const [bodyLen, setBodyLen] = useState(editing?.body.length ?? 0);
@@ -155,7 +155,7 @@ export default function ContentEditor({
               required
               maxLength={200}
               defaultValue={editing?.title ?? ""}
-              placeholder="e.g. Sponsor pitch — Pan-India FMCG"
+              placeholder="e.g. Sponsor pitch, Pan-India FMCG"
               className={FIELD}
             />
           </label>

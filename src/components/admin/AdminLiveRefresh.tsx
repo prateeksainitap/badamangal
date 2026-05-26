@@ -5,7 +5,7 @@
  *
  * Fires `router.refresh()` on a fixed interval, which re-runs the
  * page's server component (re-fetching the Prisma query) and reconciles
- * the response into the client tree — no full reload, no scroll jump.
+ * the response into the client tree, no full reload, no scroll jump.
  * Per-row form state (open dropdowns, focus, scroll position) is
  * preserved by React's reconciler.
  *
@@ -20,7 +20,7 @@
  * refresh is one Prisma query (under a few ms) so the cost is
  * negligible.
  *
- * Renders nothing visible — it's purely an effect.
+ * Renders nothing visible, it's purely an effect.
  */
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -32,7 +32,7 @@ export default function AdminLiveRefresh({
 }) {
   const router = useRouter();
   useEffect(() => {
-    // `router.refresh()` is intentionally fire-and-forget — Next.js
+    // `router.refresh()` is intentionally fire-and-forget, Next.js
     // dedupes in-flight refreshes, so a tick that lands while the
     // previous fetch is still pending becomes a no-op rather than a
     // queued duplicate.

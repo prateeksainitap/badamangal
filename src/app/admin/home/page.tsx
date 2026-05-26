@@ -39,7 +39,7 @@ export const dynamic = "force-dynamic";
 /**
  * Admin Dashboard home.
  *
- * The "first surface" of the redesigned admin — what the operator
+ * The "first surface" of the redesigned admin, what the operator
  * sees on /admin/home after sign-in. Answers four questions at a
  * glance:
  *
@@ -48,7 +48,7 @@ export const dynamic = "force-dynamic";
  *   3. What's the bot doing?          → Bot status tile
  *   4. What just happened?            → Activity stream
  *
- * Pure SSR — every query runs once per request through the Supabase
+ * Pure SSR, every query runs once per request through the Supabase
  * pooler. `force-dynamic` because the dashboard is real-time by
  * nature; ISR would make the counts lie. Worst-case page render is
  * ~6 parallel queries through pgbouncer, well under 1s warm.
@@ -61,12 +61,12 @@ export default async function AdminDashboardPage() {
   const now = new Date();
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-  // Above-the-fold queries only — KPI counts. The 3 map `findMany`
+  // Above-the-fold queries only, KPI counts. The 3 map `findMany`
   // queries (live spots / bhandaras / mentions with coords) used to
   // live in this Promise.all and added ~150–300ms to time-to-first
   // byte. They now live inside <DashboardLiveMap/> behind its own
   // Suspense boundary, streaming in after the KPIs paint. Same
-  // pattern as the ActivityFeed split — the page's first paint
+  // pattern as the ActivityFeed split, the page's first paint
   // depends only on cheap COUNT queries plus the cached community
   // members + visitor counters.
   //
@@ -94,7 +94,7 @@ export default async function AdminDashboardPage() {
     getCachedVisitorCount(),
     prisma.volunteer.count({ where: { status: "PENDING" } }),
     // Unread inbox count for the Emails quick-action tile + sidebar.
-    // Fast — `status` is indexed via @@index([status, createdAt]).
+    // Fast, `status` is indexed via @@index([status, createdAt]).
     prisma.contactMessage.count({ where: { status: "NEW" } }),
   ]);
   const unwrap = <T,>(idx: number, fallback: T): T => {
@@ -128,7 +128,7 @@ export default async function AdminDashboardPage() {
 
   // Time-of-day greeting in IST. Tuesday is the Bada Mangal day so
   // we surface "It's Tuesday" with a pulsing dot when the operator
-  // logs in on a season Tuesday — the most "alive" day for the bot.
+  // logs in on a season Tuesday, the most "alive" day for the bot.
   const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
   const istHour = istNow.getUTCHours();
   const greeting =
@@ -140,7 +140,7 @@ export default async function AdminDashboardPage() {
     month: "long",
   });
 
-  // Live-chat-day label — on Tue/Sat the public chat is live (matches
+  // Live-chat-day label, on Tue/Sat the public chat is live (matches
   // the public LiveChatterBoard's schedule). On other days the panel
   // shows the most-recent open day's discussion as a backlog view,
   // so we relabel "Live chat" → "Saturday's chat" / "Tuesday's chat"
@@ -153,7 +153,7 @@ export default async function AdminDashboardPage() {
     ? "lucknow.network · live chat"
     : `lucknow.network · ${lastOpenDayName.toLowerCase()}'s chat`;
 
-  // Alerts source — same Promise.all data the rest of the dashboard
+  // Alerts source, same Promise.all data the rest of the dashboard
   // reads, plumbed into the NotificationBell shown in the AdminShell
   // header. Used to render inline at the top of /admin/home; now
   // lives behind the bell so the dashboard surface stays clean.
@@ -172,7 +172,7 @@ export default async function AdminDashboardPage() {
       notifications={<NotificationBell {...alertsProps} />}
     >
     <div className="max-w-7xl mx-auto">
-      {/* Combined hero + greeting — used to be two stacked panels
+      {/* Combined hero + greeting, used to be two stacked panels
           (a full-width AdminPageHero band on top, then the greeting
           row underneath), which ate ~260px of vertical space before
           the operator saw any data. Now the isometric illustration
@@ -188,7 +188,7 @@ export default async function AdminDashboardPage() {
           className="absolute inset-0 opacity-50 admin-data-grid pointer-events-none"
         />
         <div className="relative grid items-center gap-4 sm:gap-5 p-4 sm:p-5 sm:grid-cols-[1fr_auto]">
-          {/* Left column — eyebrow + greeting + subtitle */}
+          {/* Left column, eyebrow + greeting + subtitle */}
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1 font-mono text-[10px] flex-wrap">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-400/[0.06] border border-cyan-400/20 px-2.5 py-1 uppercase tracking-[0.18em] text-cyan-300/85">
@@ -223,11 +223,11 @@ export default async function AdminDashboardPage() {
                 bot, volunteers, mentions all reporting in
               </span>
             </p>
-            {/* Header CTAs intentionally removed — duplicates of the
+            {/* Header CTAs intentionally removed, duplicates of the
                 quick.actions strip directly below this hero. */}
           </div>
 
-          {/* Right column — compact isometric illustration. Hidden on
+          {/* Right column, compact isometric illustration. Hidden on
               narrow screens; revealed at sm+ as a fixed-size aside.
               Smaller dimensions now (h-20→24→28 vs the old 28→32→36)
               so the whole hero collapses to ~120px tall. */}
@@ -240,12 +240,12 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Quick actions — bumped to the TOP (above KPI tiles) so the
+      {/* Quick actions, bumped to the TOP (above KPI tiles) so the
           operator's most-frequent destinations are the first thing
           they see. Tiles use a FILLED accent fill so they read as
           first-class "do this now" buttons. The decorative
           quick.actions divider that used to sit above this strip
-          was removed — the tiles themselves are self-explanatory
+          was removed, the tiles themselves are self-explanatory
           and the divider was visual chrome with no information value. */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-7">
         <QuickAction
@@ -302,9 +302,9 @@ export default async function AdminDashboardPage() {
         />
       </div>
 
-      {/* KPI tile row — 6 tiles with Fraunces serif hero numbers.
+      {/* KPI tile row, 6 tiles with Fraunces serif hero numbers.
           Total Reach (WhatsApp + visitors combined) sits next to its
-          two component metrics — Site visitors gets its own tile so
+          two component metrics, Site visitors gets its own tile so
           the website-traffic number doesn't hide in a delta-line
           subtitle. Attention tiles breathe a slow saffron glow
           until cleared. */}
@@ -365,7 +365,7 @@ export default async function AdminDashboardPage() {
         />
       </div>
 
-      {/* Live chat — merged hero. Used to be two side-by-side panels
+      {/* Live chat, merged hero. Used to be two side-by-side panels
           (a city-firing map on the left, a Recent-activity feed on
           the right) which felt like two separate readouts. They're
           actually the same thing told two ways: WHERE in the city
@@ -373,7 +373,7 @@ export default async function AdminDashboardPage() {
           One bordered panel, shared header, two-column body on lg+,
           stacked on smaller screens. */}
       <section className="mb-7 rounded-2xl border border-cyan-400/15 bg-gradient-to-br from-[#0B0E16] to-[#0A0C13] overflow-hidden admin-card-glow">
-        {/* Shared header — eyebrow + title + count + open-live link. */}
+        {/* Shared header, eyebrow + title + count + open-live link. */}
         <div className="relative px-5 sm:px-6 pt-5 sm:pt-6 pb-3 flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-[0.22em] text-cyan-300/85 font-mono mb-1.5 inline-flex items-center gap-1.5">
@@ -400,9 +400,9 @@ export default async function AdminDashboardPage() {
               <span className="text-cream-50/40">
                 {chatOpenToday
                   ? isTuesday
-                    ? "today is Tuesday — chat is live"
-                    : "today is Saturday — chat is live"
-                  : `off-day — showing ${lastOpenDayName}'s discussion`}
+                    ? "today is Tuesday, chat is live"
+                    : "today is Saturday, chat is live"
+                  : `off-day, showing ${lastOpenDayName}'s discussion`}
               </span>
             </p>
           </div>
@@ -416,7 +416,7 @@ export default async function AdminDashboardPage() {
           </Link>
         </div>
 
-        {/* Body — map full-width on top, chronological stream below.
+        {/* Body, map full-width on top, chronological stream below.
             Was previously a two-column lg:grid-cols-5 (3 + 2) split
             with a vertical divider, but the right-column chat felt
             cramped at narrow widths and the map lost canvas width
@@ -427,7 +427,7 @@ export default async function AdminDashboardPage() {
             horizontal divider on the stream replaces the old
             vertical lg:divide-x. */}
         <div className="grid grid-cols-1">
-          {/* TOP — map. Plain block container (no flex-1 chain) so
+          {/* TOP, map. Plain block container (no flex-1 chain) so
               AdminOlaMap's own h-[22rem] sm:h-[24rem] lg:h-[28rem]
               dimensions are what actually drive the canvas size. */}
           <div className="relative">
@@ -466,13 +466,13 @@ export default async function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* BOTTOM — chronological activity stream. Wrapped in
+          {/* BOTTOM, chronological activity stream. Wrapped in
               Suspense so the four `findMany` queries that populate it
               never block the dashboard's KPI/hero paint. ActivityFeed
               runs in `bare` mode (no inner border / no inner header),
               the wrapping panel here owns those. With the new stacked
               layout, the stream gets the full row width and can show
-              more rows before scrolling — bumped max-h from 34rem
+              more rows before scrolling, bumped max-h from 34rem
               (the old side-by-side cap) to 40rem so a busy Tuesday
               chats list doesn't get cramped. Border-top replaces the
               old vertical lg:divide-x between the two columns. */}
@@ -499,7 +499,7 @@ export default async function AdminDashboardPage() {
   );
 }
 
-/* ───────── HeroStat — small in-hero stat readout ───────── */
+/* ───────── HeroStat, small in-hero stat readout ───────── */
 
 function HeroStat({
   label,
@@ -541,7 +541,7 @@ function HeroStat({
 /* ───────── QuickAction tile ─────────
  *
  * Terminal-command palette aesthetic. Each tile reads as a callable
- * function — mono label like `scan_and_publish()`, a per-accent
+ * function, mono label like `scan_and_publish()`, a per-accent
  * coloured icon plate, a keyboard-shortcut chip on the right, and a
  * thin animated underline on hover that doubles as a "ready to fire"
  * cue. The primary action gets the cyan→violet gradient plate; the
@@ -598,7 +598,7 @@ const QUICK_ACCENTS: Record<
     sub: "text-cream-50/85",
     chip: "bg-cream-50/20 text-cream-50",
   },
-  // Saffron — used by the Content Hub tile so the "creative / outbound
+  // Saffron, used by the Content Hub tile so the "creative / outbound
   // content" surface gets its own warm fill, distinct from the cooler
   // cyan/violet ops accents. Carries the brand's saffron continuity
   // through to the dashboard without dominating it.
@@ -610,7 +610,7 @@ const QUICK_ACCENTS: Record<
     sub: "text-cream-50/85",
     chip: "bg-cream-50/20 text-cream-50",
   },
-  // Sindoor — deep red used by the Emails tile. The tone signals
+  // Sindoor, deep red used by the Emails tile. The tone signals
   // "incoming attention" without overlapping any of the cooler ops
   // accents (cyan / violet) or the warm content accent (saffron),
   // so the operator's eye lands on Emails immediately when there's
@@ -663,7 +663,7 @@ function QuickAction({
       <div className="relative flex items-center gap-3">
         <div
           className={[
-            // 40×40 icon plate (was 36) — matches the bolder type
+            // 40×40 icon plate (was 36), matches the bolder type
             // weight so the icon doesn't look small next to the new
             // heading size.
             "shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-lg",
@@ -702,7 +702,7 @@ function QuickAction({
           <div
             className={[
               // Shortcut chip nudged up to match the heavier heading
-              // — 1.4rem min, 5.5 height. Still distinctly secondary
+              //, 1.4rem min, 5.5 height. Still distinctly secondary
               // to the now-bolder label.
               "shrink-0 inline-flex items-center justify-center min-w-[1.4rem] h-[1.4rem] px-1 rounded-md font-mono text-[10.5px] font-bold uppercase tracking-[0.08em]",
               a.chip,
@@ -724,7 +724,7 @@ function QuickAction({
   );
 }
 
-/* ───────── KPI Icons — sized for the larger 44×44 icon plate
+/* ───────── KPI Icons, sized for the larger 44×44 icon plate
  *  on each KpiTile. Stroke 2.2 reads bold without going pictographic. */
 function KpiIconClipboard() {
   return (
@@ -775,7 +775,7 @@ function KpiIconUserCheck() {
     </svg>
   );
 }
-/** Globe — used by the Site visitors KPI tile. Plain meridians +
+/** Globe, used by the Site visitors KPI tile. Plain meridians +
  *  equator on a circle. Same stroke weight (2.2) as the other KPI
  *  icons so the row reads as a single family. */
 function KpiIconGlobe() {

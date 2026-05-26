@@ -95,7 +95,7 @@ type IngestionOutcome =
   | "FAILED_OTHER";
 
 /** Fire-and-forget audit-row write. Wrapped in try/catch so a log
- *  write failure NEVER crashes the actual ingest — losing one audit
+ *  write failure NEVER crashes the actual ingest, losing one audit
  *  row is acceptable; losing a real Bhandara/Spot create is not.
  *
  *  Diagnostic counters added 2026-05-25 after we noticed BotIngestionLog
@@ -103,9 +103,9 @@ type IngestionOutcome =
  *  Three SiteCounter rows now bump alongside this function so the
  *  failure mode is visible from a single SQL query, no Vercel log
  *  trawling required:
- *    • bot_log_attempts  — every time logIngestion is called
- *    • bot_log_successes — every successful insert
- *    • bot_log_failures  — every caught error
+ *    • bot_log_attempts , every time logIngestion is called
+ *    • bot_log_successes, every successful insert
+ *    • bot_log_failures , every caught error
  *  attempts === successes + failures should always hold; if it doesn't,
  *  some other layer (Next runtime cold start, Prisma client init) is
  *  silently dropping the call. The most recent error message is also
@@ -194,17 +194,17 @@ async function logIngestion(args: {
  *  collapses whitespace, strips the common "Shri" / "Sri" prefix and
  *  the trailing "Bhandara" / "Bhandare" suffix that 95% of posters
  *  carry. Returns "" when the input has fewer than ~3 meaningful
- *  characters left — caller treats "" as "not enough signal to dedup".
+ *  characters left, caller treats "" as "not enough signal to dedup".
  *  Conservative on purpose: a generic "Bhandara" or "श्री राम" name
  *  shouldn't match every other generic poster in the queue. */
 /**
- * Normalise a bhandara name down to its DISTINCTIVE component — the
+ * Normalise a bhandara name down to its DISTINCTIVE component, the
  * part that's unique to a specific event, after stripping out the
  * boilerplate "Bada Mangal Bhandara" framing every poster has.
  *
  * Returns "" when the name has no distinctive component (i.e. the
  * entire name was just generic Bada Mangal framing). Callers MUST
- * treat empty as "do not dedup against this" — comparing two empty
+ * treat empty as "do not dedup against this", comparing two empty
  * strings would false-match every generic-named row.
  *
  * Why this matters (real production bug, 2026-05-25):
@@ -226,14 +226,14 @@ async function logIngestion(args: {
  *   "Jetking Lucknow Bada Mangal Bhandara"  → "jetking lucknow"
  *   "Vishal Bhandara Invitation"            → "" (no dedup possible)
  *   "Bada Mangal Vishal Bhandara"           → "" (no dedup possible)
- *   "Vishal Bhandara — Hotel ANR"           → "hotel anr"
+ *   "Vishal Bhandara, Hotel ANR"           → "hotel anr"
  *   "हम और आप वाला बड़ा मंगल भंडारा"        → "हम और आप वाला"
  *
  * 2026-05-26 expansion: added "vishal/विशाल" (means "grand", just an
  * adjective) and "invitation/आमंत्रण" (just the document type) to the
  * strip list after a real production false-dedup. Two distinct
- * pamphlets — a Hanumangarhi (Vinay Khand) event and a Shri Ram Tower
- * (Hazratganj) event — were both saved as "Vishal Bhandara …". The
+ * pamphlets, a Hanumangarhi (Vinay Khand) event and a Shri Ram Tower
+ * (Hazratganj) event, were both saved as "Vishal Bhandara …". The
  * old normaliser reduced them to "vishal hotel anr" vs "vishal" and
  * the fuzzy substring match (`candNorm.includes(normName)`) merged
  * them. Stripping "vishal" pushes the distinctive component to the
@@ -246,9 +246,9 @@ function normaliseBhandaraName(s: string | null | undefined): string {
     .trim()
     .replace(/\s+/g, " ")
     .replace(/^(shri|sri|श्री|जय)\s+/i, "")
-    // Strip "Bhandara" (Latin) — word-boundary anchored.
+    // Strip "Bhandara" (Latin), word-boundary anchored.
     .replace(/\b(bhandara|bhandare|bhandaara)\b/gi, "")
-    // Strip "भंडारा" (Devanagari) — NO \b anchor. JS \b only fires at
+    // Strip "भंडारा" (Devanagari), NO \b anchor. JS \b only fires at
     // the boundary between [A-Za-z0-9_] and non-word; Devanagari is
     // already a non-word char by that definition, so \b…भंडारा…\b
     // never matched. Surrounding-whitespace dance below + the final
@@ -259,24 +259,24 @@ function normaliseBhandaraName(s: string | null | undefined): string {
     .replace(/\b(bada|bade|badaa|bara|barre)\s+(mangal|mangle|mangaL)\b/gi, "")
     .replace(/(बड़ा|बड़े|बडा|बडे|बारा|बारे)\s*(मंगल|मंगले|मंगलवार)/g, "")
     // Strip generic devotional/scale adjectives that pamphlets stamp
-    // on every event — "Vishal" ("grand"), "Bhavya" ("majestic"),
-    // "Maha" ("great") — plus the document-type word "Invitation /
+    // on every event, "Vishal" ("grand"), "Bhavya" ("majestic"),
+    // "Maha" ("great"), plus the document-type word "Invitation /
     // आमंत्रण". None of these distinguish one event from another.
     .replace(/\b(vishal|bhavya|maha|mahaan|grand)\b/gi, "")
     .replace(/(विशाल|भव्य|महा|महान)/g, " ")
     .replace(/\b(invitation|aamantran|aamantra|nimantran)\b/gi, "")
     .replace(/(आमंत्रण|आमन्त्रण|निमंत्रण|निमन्त्रण)/g, " ")
     // Strip ordinal prefixes that vary per event ("Fourth", "8th",
-    // "चतुर्थ") — they're not stable across re-forwards.
+    // "चतुर्थ"), they're not stable across re-forwards.
     .replace(/\b(first|second|third|fourth|fifth|sixth|seventh|eighth)\b/gi, "")
     .replace(/\b\d+(st|nd|rd|th)?\b/g, "")
     .replace(/(प्रथम|द्वितीय|तृतीय|चतुर्थ|पंचम|षष्ठ|सप्तम|अष्टम)/g, " ")
     // Strip stray punctuation left behind by the substitutions above
     // (em-dashes, hyphens, slashes, "|"). Without this, "Vishal
-    // Bhandara — Hotel ANR" reduces to "— hotel anr" and the leading
+    // Bhandara, Hotel ANR" reduces to ", hotel anr" and the leading
     // em-dash defeats substring equality with another "hotel anr"
     // row. Keep alphanumerics + Devanagari + whitespace; drop the rest.
-    .replace(/[—–\-/|,.;:()[\]{}"'`~!@#$%^&*+=<>?]/g, " ")
+    .replace(/[, –\-/|,.;:()[\]{}"'`~!@#$%^&*+=<>?]/g, " ")
     // Collapse the resulting whitespace.
     .replace(/\s+/g, " ")
     .trim();
@@ -299,14 +299,14 @@ type IngestBody = {
    *  and ships it through so the admin can slice the BotIngestionLog
    *  by source channel ("what came in from group X today?") and the
    *  [bot:…] provenance tag on the canonical row carries it as well.
-   *  Optional — old bot daemon builds that don't send it still work. */
+   *  Optional, old bot daemon builds that don't send it still work. */
   groupName?: string;
   /** WhatsApp message id, used by the agent for "you already
    *  ingested this" dedupe. We persist it inside the description tag. */
   msgId?: string;
   /** Original mime type ("image/jpeg" | "image/png" | "image/webp"). */
   mime?: string;
-  /** Optional WhatsApp imageMessage.caption — the text the sender
+  /** Optional WhatsApp imageMessage.caption, the text the sender
    *  typed alongside the photo. When present, the spot path uses it
    *  verbatim as the public caption (Gemini's extract is ignored so
    *  the chat panel reflects the sender's own words instead of a
@@ -354,7 +354,7 @@ export async function POST(req: NextRequest) {
   // Capture the WhatsApp group / channel name when the bot agent
   // sends one. Trim to 80 chars to match senderName so the
   // BotIngestionLog row stays compact + indexable. Null if the bot
-  // didn't send one (old build / personal-chat forward / etc.) — the
+  // didn't send one (old build / personal-chat forward / etc.), the
   // ingest pipeline still works either way.
   const groupName = ((body.groupName ?? "").trim().slice(0, 80)) || null;
   const msgId = (body.msgId ?? "").slice(0, 120);
@@ -405,14 +405,14 @@ export async function POST(req: NextRequest) {
   // than open community chats. The operator drops images into them
   // *because* they're already-vetted bhandara content. Gemini's
   // off-topic classifier sometimes false-rejects real bhandara
-  // photos as "other" — newspaper-style framing, low light, weird
+  // photos as "other", newspaper-style framing, low light, weird
   // crops, etc. For these channels we skip classification entirely
   // and treat every image as a spot, since the operator's curation
   // upstream is the real filter.
   //
   // Group-name prefix match (case-insensitive) so the operator can
-  // add new sibling channels — "BM Ingest 3", "BM Curated", etc.
-  // — without a code change. The bot agent's chat.name field is
+  // add new sibling channels, "BM Ingest 3", "BM Curated", etc.
+  //, without a code change. The bot agent's chat.name field is
   // what we match against.
   const TRUSTED_CHANNEL_PREFIXES = ["BM Ingest", "BM Curated"];
   const isTrustedChannel =
@@ -426,7 +426,7 @@ export async function POST(req: NextRequest) {
     if (requestedKind !== "auto") {
       classified = requestedKind;
     } else if (isTrustedChannel) {
-      // Bypass Gemini classify. Treat as spot — the typical content
+      // Bypass Gemini classify. Treat as spot, the typical content
       // in BM Ingest channels is live-photo forwards (pandal,
       // food, crowd shots), not invite pamphlets. If a pamphlet
       // does land here, the operator can flip the resulting Spot
@@ -457,7 +457,7 @@ export async function POST(req: NextRequest) {
   // forwarded into the group, etc), DO NOT create a Bhandara or Spot
   // row. The bot still gets a 200 + a "kind: ignored" hint so its
   // notifier can log the rejection without an admin chase. The
-  // uploaded WebP is discarded — we don't even upload to R2.
+  // uploaded WebP is discarded, we don't even upload to R2.
   if (classified === "other") {
     await logIngestion({
       outcome: "IGNORED_NON_BHANDARA",
@@ -518,7 +518,7 @@ export async function POST(req: NextRequest) {
       imageHash,
       resultRowId: dupBhandara?.id ?? dupSpot?.id ?? null,
       resultRowKind: dupBhandara ? "bhandara" : "spot",
-      reason: "Byte-identical re-forward — matched on hash marker.",
+      reason: "Byte-identical re-forward, matched on hash marker.",
     });
     return NextResponse.json({
       ok: true,
@@ -641,7 +641,7 @@ export async function POST(req: NextRequest) {
       // When Gemini Vision is slow / overloaded, the structured
       // extract throws and previously we just 502'd back to the bot,
       // losing the photo. On a high-traffic Tuesday that's the worst
-      // possible outcome — pamphlets vanish off the map.
+      // possible outcome, pamphlets vanish off the map.
       //
       // Instead, save a PENDING Bhandara with just the photo + the
       // bot provenance tag. The classify call already returned
@@ -653,7 +653,7 @@ export async function POST(req: NextRequest) {
       // Byte-hash dedup ran earlier in the route, so re-forwards of
       // the SAME image bytes won't create N pending duplicates.
       // Cross-group re-forwards (different bytes) can still create
-      // duplicates — the operator merges in admin if needed.
+      // duplicates, the operator merges in admin if needed.
       let fallbackId: string | null = null;
       try {
         const pendingSlug = await ensureUniqueSlug(`pending-${Date.now().toString(36)}`);
@@ -719,7 +719,7 @@ export async function POST(req: NextRequest) {
     // The byte-hash dedup above catches re-forwards of the EXACT same
     // bytes. WhatsApp re-encodes images between groups (slight EXIF /
     // compression variance), so the same poster forwarded to 3 groups
-    // ends up with 3 different hashes — and previously created 3
+    // ends up with 3 different hashes, and previously created 3
     // separate PENDING rows that the operator had to triage.
     //
     // After Gemini extraction we have the structured signal we need:
@@ -774,7 +774,7 @@ export async function POST(req: NextRequest) {
         } catch (err) {
           console.warn("[bot/ingest] reforward tag append failed", err);
         }
-        // Evict the freshly-uploaded WebP — we're not using it. Best
+        // Evict the freshly-uploaded WebP, we're not using it. Best
         // effort; R2 cleanup failure isn't fatal.
         if (photoUrl) {
           await deleteFromR2(photoUrl).catch((err) =>
@@ -858,7 +858,7 @@ export async function POST(req: NextRequest) {
       lng = hit.lng;
       geocodeNote = `geocode:${hit.source}/${hit.candidateTag}`;
     } else {
-      // Hazratganj-ish — matches LKO_CENTER in lib/geocodeServer.ts.
+      // Hazratganj-ish, matches LKO_CENTER in lib/geocodeServer.ts.
       lat = 26.8467;
       lng = 80.9462;
       geocodeNote = hasAnyCandidateSignal
@@ -869,7 +869,7 @@ export async function POST(req: NextRequest) {
     // Tag carries the geocode outcome too, admin can spot whether a
     // row was auto-located vs. left blank without opening the edit
     // page. Stripped from public surfaces by stripBotProvenance.
-    // `auto-publish` flag added 2026-05-26 — see the APPROVED status
+    // `auto-publish` flag added 2026-05-26, see the APPROVED status
     // note below. Lets the operator filter
     // /admin/bhandaras?q=auto-publish to triage all rows the bot
     // shipped to the public listing without manual review.
@@ -879,13 +879,13 @@ export async function POST(req: NextRequest) {
       .join("\n\n");
     const descriptionHi = extracted.descriptionHi || null;
 
-    // Name fallback chain — pamphlets that pass the classifier but
+    // Name fallback chain, pamphlets that pass the classifier but
     // don't have a recognisable host name on them used to land as
     // the generic "Bhandara from WhatsApp" placeholder. That string
     // reads as "we have no idea who runs this" to a public visitor.
     // "Samast Sevagan" ("all the volunteer servants" in Sanskrit
     // /Hindi) is a real, dignified collective attribution used by
-    // many bhandaras anyway — keeps the public card readable when
+    // many bhandaras anyway, keeps the public card readable when
     // we lack a specific host. The Hindi variant uses the same
     // phrase in Devanagari so the locale-correct surface still has
     // a proper name. Operators can rename via /admin/edit/<id> when
@@ -901,8 +901,8 @@ export async function POST(req: NextRequest) {
     // Trade-off: a small fraction of false-positives (off-topic
     // images Gemini misclassified, scammer pamphlets) will be live
     // briefly before an operator catches + REJECTs them. We accept
-    // that cost because the alternative — every pamphlet sitting in
-    // a PENDING queue overnight — meant the bot looked broken to
+    // that cost because the alternative, every pamphlet sitting in
+    // a PENDING queue overnight, meant the bot looked broken to
     // organisers ("I forwarded it, where is my bhandara?"). The
     // [bot:…] provenance tag + the `auto-publish` flag in
     // description make these rows trivial to find + reject in bulk
@@ -941,7 +941,7 @@ export async function POST(req: NextRequest) {
         // organizerPhone: skip (empty string) when Gemini couldn't
         // read a number off the banner. We deliberately do NOT use a
         // placeholder like "9999999999" because the public detail
-        // page surfaces a tap-to-call CTA when this field is set —
+        // page surfaces a tap-to-call CTA when this field is set
         // a fake number routes donors into a wrong call. The detail
         // page already gracefully hides the CTA on empty, so empty
         // is the safe + correct fallback.
@@ -976,7 +976,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // kind === "spot"  — live photo (food / crowd / tents).
+  // kind === "spot" , live photo (food / crowd / tents).
   // Per the routing spec (pamphlets go to admin, live photos go
   // straight to the chat panel + map), spot images auto-publish.
   // Caption uses the WhatsApp sender's words verbatim when they
@@ -995,7 +995,7 @@ export async function POST(req: NextRequest) {
     // throws (timeout / overload), still land the photo as an
     // APPROVED Spot with the sender's caption (if any) and the bot
     // provenance tag. Spots are time-boxed (8h TTL) and tolerate
-    // missing extract data — area/address are nice-to-have, not
+    // missing extract data, area/address are nice-to-have, not
     // required for the live chat panel to render. Losing the photo
     // outright is the worse outcome.
     const senderCaptionFallback = (body.caption ?? "").trim().slice(0, 400);
@@ -1052,9 +1052,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Caption priority:
-  //   1. body.caption  — WhatsApp imageMessage.caption (sender's words)
-  //   2. extracted.caption — Gemini's vision summary (fallback only)
-  //   3. neither       — empty
+  //   1. body.caption , WhatsApp imageMessage.caption (sender's words)
+  //   2. extracted.caption, Gemini's vision summary (fallback only)
+  //   3. neither      , empty
   // The provenance tag is appended last; stripBotProvenance hides it
   // on every public surface.
   const senderCaption = (body.caption ?? "").trim().slice(0, 400);
@@ -1098,7 +1098,7 @@ export async function POST(req: NextRequest) {
     ? await prisma.spot.findFirst({
         where: {
           reporterName: senderName,
-          // Match BOTH ipHashes — the image ingest path
+          // Match BOTH ipHashes, the image ingest path
           // ("bot:whatsapp") and the location-share-as-Spot path
           // from /api/bot/message ("bot:whatsapp:text"). Without
           // the OR, a location-first → photo-after sequence
@@ -1129,7 +1129,7 @@ export async function POST(req: NextRequest) {
     } catch {
       /* malformed JSON, treat as no extras */
     }
-    // Skip if this image is already in the carousel (defensive — the
+    // Skip if this image is already in the carousel (defensive, the
     // image-hash dedup earlier in this route should already prevent
     // exact re-forwards, but a parallel race could slip past).
     const alreadyPresent =
@@ -1138,10 +1138,10 @@ export async function POST(req: NextRequest) {
       // Branch based on whether the existing row already has a
       // primary photo or not:
       //
-      //   • Has photoUrl (case A — multi-image album):
+      //   • Has photoUrl (case A, multi-image album):
       //     append THIS image to extras. Carousel grows.
       //
-      //   • No photoUrl (case B — location-first row from
+      //   • No photoUrl (case B, location-first row from
       //     /api/bot/message): set THIS image as the primary
       //     photoUrl. The row now has both coords (from the
       //     earlier location share) and a photo. One clean Spot
@@ -1161,7 +1161,7 @@ export async function POST(req: NextRequest) {
         caption?: string;
       } = {
         // Roll the TTL forward so the whole burst expires together
-        // — otherwise photo 1 expires 8h after it landed but the
+        //, otherwise photo 1 expires 8h after it landed but the
         // freshly-folded photo 4 should still be live, leaving a
         // half-stale carousel.
         expiresAt,
@@ -1201,7 +1201,7 @@ export async function POST(req: NextRequest) {
       });
     }
     // If alreadyPresent, fall through and let the normal create path
-    // run — but the image-hash dedup earlier should have caught it.
+    // run, but the image-hash dedup earlier should have caught it.
   }
 
   const spot = await prisma.spot.create({
@@ -1218,7 +1218,7 @@ export async function POST(req: NextRequest) {
       // Auto-publish live photos. Trade-off: a wrong image could
       // surface on the map for up to SPOT_TTL_HOURS (8h) before an
       // admin REJECTs it, but the alternative (PENDING gate) defeated
-      // the "live feed" experience entirely — every chat-panel
+      // the "live feed" experience entirely, every chat-panel
       // arrival had to wait on manual moderation. lat/lng default to
       // 0,0 because WhatsApp strips EXIF GPS; the map filter at
       // /api/mentions/feed excludes 0,0 spots so the bare-image spot
@@ -1249,7 +1249,7 @@ export async function POST(req: NextRequest) {
     id: spot.id,
     /** True when the spot caption came from the WhatsApp sender's
      *  imageMessage.caption (vs. Gemini's vision extract). The bot
-     *  uses this to skip the parallel POST to /api/bot/message —
+     *  uses this to skip the parallel POST to /api/bot/message
      *  the caption is already on the public Spot row, no need to
      *  also create a duplicate text mention. */
     captionUsedInSpot: senderCaption.length > 0,

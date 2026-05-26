@@ -409,7 +409,7 @@ function CodeIssuedCard({
         </h2>
       </div>
 
-      {/* Big bold code block — focal point of the card. */}
+      {/* Big bold code block, focal point of the card. */}
       <div className="rounded-2xl border-2 border-saffron-600 bg-saffron-50 p-5">
         <p className="text-xs uppercase tracking-[0.18em] text-saffron-600 font-medium">
           {t.codeLabel}

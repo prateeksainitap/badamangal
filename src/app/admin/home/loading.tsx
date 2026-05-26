@@ -19,7 +19,7 @@ export default function DashboardLoading() {
   return (
     <AdminShell>
       <div className="max-w-7xl mx-auto">
-        {/* Merged hero + greeting panel — the real page no longer
+        {/* Merged hero + greeting panel, the real page no longer
             stacks AdminPageHero above the greeting, it composes them
             side-by-side in a single cyan-bordered panel. The
             skeleton mirrors that shape so the swap is reflow-free. */}
@@ -30,13 +30,13 @@ export default function DashboardLoading() {
               <SkeletonLine w="w-72" h="h-8" />
               <SkeletonLine w="w-96" h="h-3" />
             </div>
-            {/* Compact illustration placeholder — matches the trimmed
+            {/* Compact illustration placeholder, matches the trimmed
                 AdminHeroArt slot dimensions. */}
             <div className="hidden sm:block w-40 md:w-52 lg:w-60 h-20 md:h-24 lg:h-28 rounded-2xl bg-cyan-400/[0.04]" />
           </div>
         </div>
 
-        {/* Quick actions — filled-style skeleton tiles match the
+        {/* Quick actions, filled-style skeleton tiles match the
             real strip's brightness so the first paint doesn't read
             as a darker placeholder. (The quick.actions divider that
             used to sit above this strip was removed from the real
@@ -66,7 +66,7 @@ export default function DashboardLoading() {
           ))}
         </div>
 
-        {/* KPI tile row — 5 tiles. */}
+        {/* KPI tile row, 5 tiles. */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-7">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
@@ -83,7 +83,7 @@ export default function DashboardLoading() {
           ))}
         </div>
 
-        {/* Merged Live-chat panel — single bordered card with a
+        {/* Merged Live-chat panel, single bordered card with a
             shared header on top and two columns underneath (map ~60%,
             chronological stream ~40%) on lg, stacked below. */}
         <div className="mb-7 rounded-2xl border border-cyan-400/15 bg-gradient-to-br from-[#0B0E16] to-[#0A0C13] overflow-hidden">
@@ -97,7 +97,7 @@ export default function DashboardLoading() {
             <SkeletonLine w="w-24" h="h-7" className="rounded-lg" />
           </div>
 
-          {/* Body — map on left, stream on right at lg, stacked below. */}
+          {/* Body, map on left, stream on right at lg, stacked below. */}
           <div className="grid grid-cols-1 lg:grid-cols-5 lg:divide-x lg:divide-cyan-400/[0.10]">
             <div className="lg:col-span-3 relative">
               {/* Fixed-height map placeholder, matches AdminOlaMap's

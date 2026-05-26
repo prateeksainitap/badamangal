@@ -184,7 +184,7 @@ function FooterInner() {
               </div>
             </div>
 
-            {/* WhatsApp communities list intentionally removed — it
+            {/* WhatsApp communities list intentionally removed, it
                 duplicated LiveChatterBoard's WhatsApp CTA cards
                 that already appear directly above the footer on
                 the homepage. See the constant-removal comment at

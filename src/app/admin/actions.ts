@@ -244,7 +244,7 @@ export async function editAndPublishAction(
   // + verified-with-photo etc.
   const featured = formData.get("isFeatured") === "on";
 
-  // Photo handling — three states, same contract as the spot edit
+  // Photo handling, three states, same contract as the spot edit
   // action: leave alone, replace, or remove. `removePhoto=1` is set
   // by AdminPhotoField's "Remove photo" button and is the only way
   // to explicitly null the column from the UI.
@@ -309,7 +309,7 @@ export async function editAndPublishAction(
   revalidatePath("/");
   revalidatePath(`/bhandara/[slug]`, "page");
   // Send the operator back to the bhandaras queue after save (revised
-  // again 2026-05-26 from /admin/edit/<id> — the briefly-shipped
+  // again 2026-05-26 from /admin/edit/<id>, the briefly-shipped
   // "stay on the same edit page" behaviour broke the moderation
   // flow, since the queue is what the operator wants to return to
   // after approving one row. The earlier complaint that triggered
@@ -382,14 +382,14 @@ export async function editAndApproveSpotAction(
     // Snapshot the existing photo + extras so we can either promote
     // an extra into the primary slot (if any exist) or null out
     // entirely. R2 evict only the primary that's actually being
-    // discarded — the extras' R2 objects stay live and one of them
+    // discarded, the extras' R2 objects stay live and one of them
     // is moving up to primary, so we must NOT evict those.
     const existing = await prisma.spot.findUnique({
       where: { id },
       select: { photoUrl: true, extraPhotoUrls: true },
     });
     // Parse the extras array defensively. A malformed JSON value
-    // shouldn't block the removal — treat it as no extras and just
+    // shouldn't block the removal, treat it as no extras and just
     // null the primary.
     let extras: string[] = [];
     try {
@@ -405,7 +405,7 @@ export async function editAndApproveSpotAction(
     if (extras.length > 0) {
       // Promote the first extra to primary. Operator behaviour:
       // they hit "Remove photo" on a row that has additional
-      // photos in the carousel — what they almost always want is
+      // photos in the carousel, what they almost always want is
       // the next photo in the carousel to fill the slot, not for
       // the row to lose its visual entirely. Falling back to
       // "row has no photo at all" is a regression on the public
@@ -415,7 +415,7 @@ export async function editAndApproveSpotAction(
       const [promoted, ...remaining] = extras;
       data.photoUrl = promoted;
       data.extraPhotoUrls = JSON.stringify(remaining);
-      // Only the original primary gets R2-evicted — the promoted
+      // Only the original primary gets R2-evicted, the promoted
       // photo is still in use.
       if (existing?.photoUrl) {
         await deleteFromR2(existing.photoUrl).catch((err) =>
@@ -426,7 +426,7 @@ export async function editAndApproveSpotAction(
         );
       }
     } else {
-      // No extras to promote — null out the primary entirely and
+      // No extras to promote, null out the primary entirely and
       // R2-evict the discarded file. This is the original "row
       // ends with no photo" path; spots can survive caption-only,
       // they just lose their thumbnail.
@@ -459,7 +459,7 @@ export async function editAndApproveSpotAction(
   // next public render hits the DB fresh.
   revalidateTag("public-spots");
   // Send the operator back to the spots queue after save (revised
-  // again 2026-05-26 from /admin/edit-spot/<id> — staying on the
+  // again 2026-05-26 from /admin/edit-spot/<id>, staying on the
   // same row broke the moderation flow since the operator wants to
   // jump straight to the next pending row after approving one. The
   // earlier complaint that triggered the first revision was about
@@ -1231,7 +1231,7 @@ export async function unhideGalleryPhotoAction(id: string): Promise<void> {
 // + heatmap pick up the change on next render.
 
 /** Promote a PENDING mention to APPROVED so it surfaces on the public
- *  homepage feed + heatmap until `expiresAt`. Idempotent — re-running
+ *  homepage feed + heatmap until `expiresAt`. Idempotent, re-running
  *  on an already-APPROVED mention is a no-op besides bumping
  *  approvedAt. */
 export async function approveMentionAction(
@@ -1267,7 +1267,7 @@ export async function rejectMentionAction(
  *  Useful when a particularly good location-share deserves a longer
  *  lifespan on the heatmap (e.g. a multi-Tuesday recurring bhandara
  *  that someone shared once on the first Tuesday). Resets the public
- *  window without re-approving — the mention must already be APPROVED
+ *  window without re-approving, the mention must already be APPROVED
  *  for this to surface visibly. */
 export async function extendMentionAction(
   id: string,
@@ -1306,7 +1306,7 @@ export async function purgeStaleMentionsAction(): Promise<void> {
 // form let them fill in the missing pieces (coords, menu, exact
 // timings) before clicking Save & publish.
 //
-// Status is PENDING — discovered rows MUST be reviewed before going
+// Status is PENDING, discovered rows MUST be reviewed before going
 // public, even when Gemini reports high confidence. The grounding
 // source could be a stale 2024 blog post or a misattributed event.
 // The same review gate as bot/ingest rows.
@@ -1394,7 +1394,7 @@ export async function addDiscoveredBhandaraAction(
       landmark,
       // 0,0 forces the admin to set real coords on the edit page via
       // MapLocationInput. Discovery results almost never include
-      // accurate lat/lng — extracting "26.876, 80.929" out of a blog
+      // accurate lat/lng, extracting "26.876, 80.929" out of a blog
       // post URL is fragile, so we don't try.
       lat: 0,
       lng: 0,
@@ -1417,7 +1417,7 @@ export async function addDiscoveredBhandaraAction(
 }
 
 /* ──────────────────────────────────────────────────────────────────
- *  BULK ACTIONS — multi-row operations from the moderation queue's
+ *  BULK ACTIONS, multi-row operations from the moderation queue's
  *  selection bar. Each one takes a FormData with multiple `ids`
  *  values, fans the per-id mutation in a single Prisma updateMany
  *  (faster + atomic-ish via Postgres) where possible, falling back
@@ -1440,7 +1440,7 @@ function parseIds(formData: FormData): string[] {
 }
 
 /** Bulk publish PENDING bhandaras as VERIFIED. Same effect as
- *  hitting "Verify & publish" on every selected row. Idempotent —
+ *  hitting "Verify & publish" on every selected row. Idempotent
  *  rows already APPROVED+verified are skipped by the where clause. */
 export async function bulkVerifyBhandarasAction(
   formData: FormData,
@@ -1549,26 +1549,26 @@ export async function bulkDelistSpotsAction(
  * map + chat panel render one tile.
  *
  * Primary selection (the row that survives):
- *   1. Highest count of total photos (primary photoUrl + extras) —
+ *   1. Highest count of total photos (primary photoUrl + extras)
  *      since a photo-rich row is the visual anchor we want to keep.
  *   2. Tie-break by has-photo (any photoUrl beats no photoUrl).
  *   3. Tie-break by has-coords (any non-zero lat/lng wins).
  *   4. Final tie-break by oldest createdAt (most established).
  *
  * Field merge (across ALL secondaries):
- *   • lat/lng — primary's kept unless 0,0; else first secondary with
+ *   • lat/lng, primary's kept unless 0,0; else first secondary with
  *     non-zero coords wins.
- *   • area / address — primary's kept if non-empty; else first
+ *   • area / address, primary's kept if non-empty; else first
  *     secondary with a non-empty value.
- *   • caption — primary's kept if non-empty; else first secondary
+ *   • caption, primary's kept if non-empty; else first secondary
  *     with content.
- *   • extraPhotoUrls — union of primary.extras + every secondary's
+ *   • extraPhotoUrls, union of primary.extras + every secondary's
  *     photoUrl + every secondary's extras (de-duped against
  *     primary.photoUrl, capped at 5 per schema).
  *
  * Secondary disposal:
  *   • Hard-delete each secondary row.
- *   • DO NOT R2-evict — photo URLs were transferred onto primary.
+ *   • DO NOT R2-evict, photo URLs were transferred onto primary.
  *   • Wrapped in a transaction so a mid-flight failure can't leave a
  *     half-merged primary + orphaned secondaries still on the map.
  *
@@ -1604,7 +1604,7 @@ export async function bulkMergeSpotsAction(
         n += arr.filter((u) => typeof u === "string" && u.length > 0).length;
       }
     } catch {
-      /* malformed — count 0 extras */
+      /* malformed, count 0 extras */
     }
     return n;
   }
@@ -1655,7 +1655,7 @@ export async function bulkMergeSpotsAction(
         }
       }
     } catch {
-      /* malformed — skip */
+      /* malformed, skip */
     }
   }
   addExtras(primary.extraPhotoUrls);
@@ -1668,7 +1668,7 @@ export async function bulkMergeSpotsAction(
   const mergedExtras = JSON.stringify([...extraSet].slice(0, 5));
 
   // Apply the merge in a single transaction. Update primary + delete
-  // every secondary. R2 photos stay live — they're attached to primary.
+  // every secondary. R2 photos stay live, they're attached to primary.
   await prisma.$transaction([
     prisma.spot.update({
       where: { id: primary.id },

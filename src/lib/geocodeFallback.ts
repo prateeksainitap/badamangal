@@ -10,16 +10,16 @@ import { geocodeLucknow, type ServerGeocodeHit } from "@/lib/geocodeServer";
  * it was created before this fallback existed, or because every
  * candidate query missed at ingestion time).
  *
- * Candidate order matters — earlier candidates get checked first and
+ * Candidate order matters, earlier candidates get checked first and
  * the first hit wins. The list is the same one the ingest pipeline
  * uses so the admin's resolved point matches what the bot would have
  * found if it ran today.
  *
- *   1. address (full)                            — `address`
- *   2. organizerName + " Lucknow"                — `organizer`
- *   3. organizerName + " " + area + " Lucknow"   — `organizer+area`
- *   4. landmark + " Lucknow"                     — `landmark`
- *   5. bhandara name (stripped of Shri/Bhandara) — `venue`
+ *   1. address (full)                           , `address`
+ *   2. organizerName + " Lucknow"               , `organizer`
+ *   3. organizerName + " " + area + " Lucknow"  , `organizer+area`
+ *   4. landmark + " Lucknow"                    , `landmark`
+ *   5. bhandara name (stripped of Shri/Bhandara), `venue`
  *
  * Returns the first successful hit (with the candidate tag baked
  * into `source`, e.g. "geocode/landmark") or null if every candidate
@@ -80,7 +80,7 @@ export function buildGeocodeCandidates(
   const rawName = (b.name ?? "").trim();
   if (rawName.length >= 3) {
     // Strip "Shri/Sri" prefix + "Bhandara"/Devanagari variants suffix
-    // — those words don't appear in Maps' place index and tank the
+    //, those words don't appear in Maps' place index and tank the
     // venue lookup. e.g. "World Iron Champ Gym Bhandara" → "World
     // Iron Champ Gym" which is the actual gym on the map.
     const venue = rawName
@@ -101,7 +101,7 @@ export function buildGeocodeCandidates(
 /**
  * Walk the candidate chain and return the first geocode hit. If every
  * candidate misses or there are no usable signals at all, returns null
- * — the caller decides what to do (the ingest pipeline falls back to
+ *, the caller decides what to do (the ingest pipeline falls back to
  * the Lucknow centre; the edit page leaves lat/lng at 0/0 so the
  * admin's manual paste workflow stays the source of truth).
  */
@@ -116,7 +116,7 @@ export async function resolveBhandaraCoords(
         return { ...hit, candidateTag: c.tag };
       }
     } catch (err) {
-      // One bad candidate shouldn't tank the whole chain — log and
+      // One bad candidate shouldn't tank the whole chain, log and
       // try the next.
       console.warn(
         `[geocodeFallback] candidate "${c.tag}" threw:`,

@@ -82,7 +82,7 @@ function pickBhandaraDate(tuesdayDatesJson: string): string {
  *
  * In addition to Suspense streaming, the 4 queries are now wrapped
  * in `unstable_cache` with a 20-second TTL. The activity stream is
- * a "what just happened" view — 20s of staleness is invisible to
+ * a "what just happened" view, 20s of staleness is invisible to
  * the operator and saves ~400–800ms on every dashboard load that
  * hits the cache. Tag `dashboard-activity` lets future mutations
  * call `revalidateTag` to punch through if needed; today we lean
@@ -96,7 +96,7 @@ const fetchRecentActivity = unstable_cache(
 
     // Promise.allSettled so a transient EMAXCONN on one of these 4
     // queries doesn't abort the whole activity feed (and through it
-    // the entire /admin/home render — Suspense doesn't catch render
+    // the entire /admin/home render, Suspense doesn't catch render
     // errors, they bubble to admin/error.tsx). Each rejected query
     // falls back to [] so the feed shows the surviving streams.
     const settled = await Promise.allSettled([
@@ -220,15 +220,15 @@ export default async function ActivityFeed() {
         kind: "bhandara",
         title:
           b.status === "PENDING"
-            ? `New bhandara — ${b.name}`
-            : `Bhandara published — ${b.name}`,
+            ? `New bhandara, ${b.name}`
+            : `Bhandara published, ${b.name}`,
         subtitle,
         senderName: b.name,
         status: b.status === "PENDING" ? "Pending" : "Live",
         createdAt: b.createdAt,
         // Both states route to the admin edit page so the operator
         // stays in admin context. The edit page renders all fields
-        // (pamphlet + form) and is reachable for APPROVED rows too —
+        // (pamphlet + form) and is reachable for APPROVED rows too
         // it just gates the "publish" action behind the verify flow.
         // Previously the LIVE state linked to /bhandara/<slug> which
         // bounced the operator out of admin onto the public site.
@@ -241,7 +241,7 @@ export default async function ActivityFeed() {
       title: stripBotProvenance(s.caption) || "New live spot",
       subtitle: [
         s.reporterName?.split(" ")[0] ?? "anon",
-        s.area || s.address || "—",
+        s.area || s.address || ", ",
       ]
         .filter(Boolean)
         .join(" · "),
@@ -297,7 +297,7 @@ export default async function ActivityFeed() {
 }
 
 /** Skeleton shown by the Suspense boundary while ActivityFeed
- *  awaits its four queries. Renders just the row placeholders —
+ *  awaits its four queries. Renders just the row placeholders
  *  the merged Live-chat panel supplies the surrounding chrome
  *  (header + outer border). Match the real ActivityStream rendering
  *  (no outer border) so the swap is reflow-free. */

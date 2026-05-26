@@ -2,7 +2,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import { SkeletonBlock, SkeletonLine } from "@/components/admin/Skeleton";
 
 /**
- * Loading skeleton for /admin/content — mirrors the structure of
+ * Loading skeleton for /admin/content, mirrors the structure of
  * the real page (hero band, header, tab strip, list of cards) so
  * the swap is reflow-free.
  */

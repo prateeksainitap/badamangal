@@ -9,21 +9,21 @@ import { LinkPendingOverlay } from "@/components/admin/LinkPending";
  *   • Mono-font numerals (JetBrains Mono via the existing `font-mono`
  *     utility) so the value reads as live system data, not editorial
  *     copy.
- *   • Cyan / violet / leaf accents instead of warm saffron — keeps
+ *   • Cyan / violet / leaf accents instead of warm saffron, keeps
  *     the dashboard in the operator-console aesthetic. Saffron stays
  *     reserved for the BadaMangal brand mark in the sidebar.
  *   • Attention tiles (a pending pile that needs action) breathe a
  *     soft cyan→violet card-glow so the operator's eye lands on
  *     them in peripheral vision.
  *   • Tiny "live" indicator dot in the top-right corner pulses
- *     once per beat — reads as "this value was just measured".
+ *     once per beat, reads as "this value was just measured".
  *   • Sparkline-style underline at the bottom drifts left→right,
  *     mimicking a signal trace.
  *
  * Variants:
- *   default    — neutral cyan
- *   attention  — violet glow, breathing border; for pending piles
- *   success    — leaf (kept; healthy states still benefit from green)
+ *   default   , neutral cyan
+ *   attention , violet glow, breathing border; for pending piles
+ *   success   , leaf (kept; healthy states still benefit from green)
  */
 
 type Variant = "default" | "attention" | "success";
@@ -37,7 +37,7 @@ type Props = {
   /** Optional sublabel under the number, e.g. "↑ 3 today" or "→ 2 expiring". */
   delta?: string;
   /** When set, the whole tile becomes a Link. Use an existing admin
-   *  route — Dashboard tiles deep-link into pre-filtered queues. */
+   *  route, Dashboard tiles deep-link into pre-filtered queues. */
   href?: string;
   /** Visual treatment. Defaults to "default". */
   variant?: Variant;
@@ -109,7 +109,7 @@ export default function KpiTile({
         className="pointer-events-none absolute inset-0 opacity-90"
         style={{ background: styles.bgTint }}
       />
-      {/* Subtle grid texture inside the tile — same admin-data-grid
+      {/* Subtle grid texture inside the tile, same admin-data-grid
           pattern but at much lower opacity so it reads as a faint
           measurement scaffold. */}
       <div
@@ -124,7 +124,7 @@ export default function KpiTile({
               <div className="text-[10px] uppercase tracking-[0.18em] text-cream-50/55 font-mono">
                 {label}
               </div>
-              {/* Live dot — single saffron pulse on the corner of
+              {/* Live dot, single saffron pulse on the corner of
                   the label, signals "this metric is current". */}
               <span aria-hidden className="relative inline-flex h-1 w-1 ml-0.5">
                 <span className="absolute inset-0 rounded-full bg-cyan-400/70 motion-safe:animate-ping" />
@@ -145,7 +145,7 @@ export default function KpiTile({
           ) : null}
         </div>
 
-        {/* The hero number — mono font, big, snap-in animation,
+        {/* The hero number, mono font, big, snap-in animation,
             held in the variant's accent colour. */}
         <div
           className={[

@@ -75,7 +75,7 @@ type Props = {
    *  APPROVED spot ever recorded), not just the currently-on-map
    *  subset. Without these, the heading silently shrinks every time
    *  bhandaras drop off the upcoming-only filter or spots roll past
-   *  their 8h TTL — visitor reads it as the season getting smaller
+   *  their 8h TTL, visitor reads it as the season getting smaller
    *  even though the city keeps adding. Falls back to the on-map
    *  arrays if either prop is missing so old callers don't break. */
   totalListed?: number;
@@ -110,13 +110,13 @@ export default function MapBoard({
   // community-count + WhatsApp link in the header chip but drop the
   // green LIVE pill so the chrome doesn't lie about being on air.
   const chatLive = isLiveChatOpenToday();
-  // Section-heading count — prefer the season-cumulative totals
+  // Section-heading count, prefer the season-cumulative totals
   // (every APPROVED bhandara + every APPROVED spot ever) so the
   // headline reflects what the project has TRACKED this season, not
   // just what's pinned on the map right now. The on-map subset
   // shrinks as past-dated bhandaras drop off `hasUpcomingDate` and
   // spots roll past their 8h TTL, but those are still real bhandaras
-  // the community fed into the directory — they should count toward
+  // the community fed into the directory, they should count toward
   // the "All N" headline. Falls back to the on-map array lengths so
   // older callers / SSR paths without stats still render a number.
   const totalCount =
@@ -127,7 +127,7 @@ export default function MapBoard({
   const body = t.map.sectionBody;
   const listBhandaraLabel = t.cta.listBhandara;
   const [filter, setFilter] = useState<Filter>("all");
-  // Search query — matches against name / nameHi / area / address /
+  // Search query, matches against name / nameHi / area / address /
   // landmark / organizerName for listings, and caption / area /
   // bhandaraName for spots. Lower-cased on use so the comparison is
   // case-insensitive. Empty string means "no search filter".
@@ -142,7 +142,7 @@ export default function MapBoard({
 
   const normQuery = query.trim().toLowerCase();
 
-  // Search-only filter (filter chip NOT applied) — drives tab counts so
+  // Search-only filter (filter chip NOT applied), drives tab counts so
   // the chips reflect "how many in each bucket match the search". The
   // map + side list further narrow by the filter chip below.
   const searchedListings = useMemo(() => {
@@ -220,7 +220,7 @@ export default function MapBoard({
   // exist before clicking. Counts derive from the SEARCH-filtered set
   // (not the raw totals) so when the visitor types "aliganj" the chips
   // collapse from "All 109 · Listed 47 · Spotted 62" to e.g. "All 7 ·
-  // Listed 4 · Spotted 3" — the chips become a live drill-down of the
+  // Listed 4 · Spotted 3", the chips become a live drill-down of the
   // current search rather than lying about the unfiltered totals.
   const tabs: { key: Filter; label: string; count: number }[] = [
     {

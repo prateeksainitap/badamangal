@@ -44,7 +44,7 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
   if (!s) notFound();
 
   // Spot.extraPhotoUrls is stored as a JSON-encoded string of URLs.
-  // Parse defensively — a malformed value shouldn't 500 the edit page.
+  // Parse defensively, a malformed value shouldn't 500 the edit page.
   let extraPhotoUrls: string[] = [];
   try {
     const parsed = JSON.parse(s.extraPhotoUrls || "[]") as unknown;
@@ -104,7 +104,7 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
           </Link>
         </header>
 
-        {/* Two-pane edit layout — primary photo + any extras pin to
+        {/* Two-pane edit layout, primary photo + any extras pin to
             the left so the operator can verify the live photo (and
             its submitter-attached extras) while scrolling through
             the caption / coords / address fields on the right.
@@ -116,7 +116,7 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
           action={action}
           className="grid gap-5 lg:gap-6 lg:grid-cols-12 items-start"
         >
-          {/* LEFT — sticky photo pane. `lg:self-start` keeps the
+          {/* LEFT, sticky photo pane. `lg:self-start` keeps the
               grid item from stretching to match the right pane's
               height, which is what allows `lg:sticky lg:top-20` to
               actually pin it as the right pane scrolls past. The
@@ -132,9 +132,9 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
               hint="Verify the photo here while editing the caption + coords on the right. Spots are time-limited; only swap if the original is genuinely wrong (rotated, cropped poorly, etc)."
             />
 
-            {/* Extra photos gallery — submitters can attach up to 4
+            {/* Extra photos gallery, submitters can attach up to 4
                 additional photos via the public /spot form
-                (Spot.extraPhotoUrls). Read-only — primary photoUrl
+                (Spot.extraPhotoUrls). Read-only, primary photoUrl
                 remains the only editable one. */}
             {extraPhotoUrls.length > 0 ? (
               <div className="grid gap-2">
@@ -172,7 +172,7 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
             ) : null}
           </aside>
 
-          {/* RIGHT — scrollable form fields. Same dark card styling
+          {/* RIGHT, scrollable form fields. Same dark card styling
               the old single-pane form had. */}
           <div className="lg:col-span-7 grid gap-5 rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm p-5 sm:p-7">
         <label className="grid gap-1.5">
@@ -270,7 +270,7 @@ export default async function AdminEditSpotPage({ params }: PageProps) {
             <span>
               <strong className="text-cream-50">Reset to 8 hours from now</strong>{" "}
               <span className="text-cream-50/55">
-                — gives this spot a full TTL window even if the upload sat in
+               , gives this spot a full TTL window even if the upload sat in
                 PENDING for a while.
               </span>
             </span>

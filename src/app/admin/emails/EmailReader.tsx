@@ -17,7 +17,7 @@ import {
 /**
  * Right-pane reader for the /admin/emails two-pane inbox.
  *
- * Fully committed to the cream "reading sheet" — sender block,
+ * Fully committed to the cream "reading sheet", sender block,
  * subject, body, AND action footer are all on the same paper
  * surface. The previous design bolted a dark action footer onto
  * the bottom of a cream card, which produced an ugly light-on-dark
@@ -36,7 +36,7 @@ import {
  * Client component because the action buttons use useFormStatus()
  * for pending-state spinners + native confirm() guards on destructive
  * actions. The previous shared SubmitButton was scoped to dark-admin
- * styling and would not have read on cream — these are purpose-built
+ * styling and would not have read on cream, these are purpose-built
  * cream-surface variants.
  */
 
@@ -116,7 +116,7 @@ export default function EmailReader({
   tab,
 }: {
   row: EmailReaderRow;
-  /** Current inbox tab — used for the mobile back-link so we land
+  /** Current inbox tab, used for the mobile back-link so we land
    *  on the same filter we came from. */
   tab: string;
 }) {
@@ -138,7 +138,7 @@ export default function EmailReader({
     const body =
       `Namaste ${row.name?.split(" ")[0] || ""},\n\n` +
       `Thanks for writing in.\n\n\n` +
-      `— Prateek\n` +
+      `, Prateek\n` +
       `Bada Mangal\n\n` +
       `On ${row.createdAt.toISOString().slice(0, 16).replace("T", " ")}, ${row.name} wrote:\n` +
       quoted;
@@ -149,7 +149,7 @@ export default function EmailReader({
 
   return (
     <article className="bg-cream-50 text-ink-900 rounded-2xl overflow-hidden border border-cyan-400/15 shadow-[0_12px_40px_-16px_rgba(0,0,0,0.6)]">
-      {/* Mobile back-link — only visible below lg where the list and
+      {/* Mobile back-link, only visible below lg where the list and
           reader can't co-exist. */}
       <div className="lg:hidden px-5 sm:px-6 pt-4">
         <a
@@ -160,7 +160,7 @@ export default function EmailReader({
         </a>
       </div>
 
-      {/* Header — sender block + status pill */}
+      {/* Header, sender block + status pill */}
       <header className="px-5 sm:px-7 pt-6 pb-5">
         <div className="flex items-start gap-3.5">
           <span
@@ -211,7 +211,7 @@ export default function EmailReader({
           </span>
         </div>
 
-        {/* Subject — large, real heading weight */}
+        {/* Subject, large, real heading weight */}
         {row.subject ? (
           <h1 className="mt-5 text-xl sm:text-2xl font-fraunces text-ink-900 leading-tight">
             {row.subject}
@@ -223,7 +223,7 @@ export default function EmailReader({
         )}
       </header>
 
-      {/* Body — preserved line breaks, readable sans, comfortable
+      {/* Body, preserved line breaks, readable sans, comfortable
           reading column width */}
       <div className="px-5 sm:px-7 pb-6 border-t border-ink-900/10">
         <div className="max-w-[68ch] pt-5">
@@ -256,7 +256,7 @@ export default function EmailReader({
         </div>
       </div>
 
-      {/* Action bar — STAYS ON CREAM. The previous design dropped to
+      {/* Action bar, STAYS ON CREAM. The previous design dropped to
           dark here, which broke contrast on every outline-style button.
           Now the buttons are solid brand-tone fills that read clearly
           on the cream paper. */}
@@ -333,12 +333,12 @@ export default function EmailReader({
  * Local button component scoped to the cream reading-sheet surface.
  * SubmitButton (in src/components/admin/SubmitButton.tsx) is tuned
  * for dark admin chrome and its outline-style variants disappear
- * against a light background — that was the bug in the previous
+ * against a light background, that was the bug in the previous
  * design. This component handles three tones that read clearly on
  * cream:
- *   • neutral  — soft ink fill (Mark read / Restore)
- *   • positive — leaf-green soft fill (Mark replied)
- *   • alert    — sindoor-red outline (Spam / Delete)
+ *   • neutral , soft ink fill (Mark read / Restore)
+ *   • positive, leaf-green soft fill (Mark replied)
+ *   • alert   , sindoor-red outline (Spam / Delete)
  *
  * Each variant has a defined hover state + an active disabled state.
  * useFormStatus() drives the pending spinner so we don't double-submit

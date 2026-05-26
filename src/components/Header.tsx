@@ -82,7 +82,7 @@ function HeaderInner() {
       accent: "saffron",
       // The "Live" pill on this nav item is only truthful on actual
       // live-chat days (Tue/Sat IST). On off-days the link still
-      // works — it just shouldn't claim "live" status, otherwise it
+      // works, it just shouldn't claim "live" status, otherwise it
       // mirrors the broken signal the LiveChatterBoard header used
       // to show. The /live page itself still surfaces recent photos
       // and the chat history.
@@ -133,7 +133,7 @@ function HeaderInner() {
       className={[
         // Solid cream background. The earlier bg-cream-50/92 +
         // backdrop-blur-md looked glassy when scrolled over the
-        // page's own cream sections — but over the dark
+        // page's own cream sections, but over the dark
         // LiveChatterBoard band, the 8% bleed-through made the dark
         // `text-ink-900` nav links unreadable (user-reported).
         // The "glass" effect added zero visual win when the canvas

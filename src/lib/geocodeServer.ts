@@ -13,7 +13,7 @@
  *   NO referrer restrictions on the Ola dashboard. Vercel functions
  *   don't have a real Referer to send, so any restricted key would
  *   reject every server call. Previously we spoofed `Referer:
- *   http://localhost:3030` on every server call — a fragile lie
+ *   http://localhost:3030` on every server call, a fragile lie
  *   that worked only as long as Ola's allowlist accepted spoofed
  *   origins. With the separate-key model, the spoof is gone and
  *   the public key's allowlist can be tightened to only the
@@ -72,7 +72,7 @@ export async function geocodeLucknow(
   address: string,
 ): Promise<ServerGeocodeHit | null> {
   // Prefer the dedicated server key. Fall back to the public key
-  // (with the legacy spoof — which only works if `localhost:3030`
+  // (with the legacy spoof, which only works if `localhost:3030`
   // is still on the public key's allowlist) so dev environments
   // without OLA_MAPS_SERVER_KEY set continue to function. Once
   // every environment has the server key set, the fallback path
@@ -97,7 +97,7 @@ export async function geocodeLucknow(
     u.searchParams.set("address", address);
     u.searchParams.set("api_key", key);
     u.searchParams.set("language", "English");
-    // 5s timeout — if Ola hangs the caller's Vercel function (10s
+    // 5s timeout, if Ola hangs the caller's Vercel function (10s
     // default) would burn its budget waiting. Better to fail fast and
     // fall back to the no-coords path than to 504 the caller.
     const res = await fetch(u.toString(), {
@@ -193,7 +193,7 @@ export type ReverseGeocodeHit = {
  * Reverse geocode a Lucknow lat/lng to a human-friendly area label.
  *
  * Used by /api/bot/message when a WhatsApp Location share lands with
- * no caption — the raw "Location shared: 26.87, 80.92" text is unhelpful
+ * no caption, the raw "Location shared: 26.87, 80.92" text is unhelpful
  * on the public feed, so we ask Ola Maps "what neighbourhood is this?"
  * and set `locationLabel` from the answer. Falls back to null silently
  * on any failure (the mention still gets created, just without a
@@ -203,7 +203,7 @@ export type ReverseGeocodeHit = {
  *   • Different endpoint (reverse-geocode vs geocode/autocomplete)
  *   • Different output shape (we want an area label, not coords)
  *   • Different failure handling (forward-geocode failure means
- *     "no coords"; reverse-geocode failure means "no label" — both
+ *     "no coords"; reverse-geocode failure means "no label", both
  *     are fine, neither blocks the mention insert)
  *
  * Key separation: same OLA_MAPS_SERVER_KEY / NEXT_PUBLIC fallback +
@@ -217,7 +217,7 @@ export async function reverseGeocodeLucknow(
   // Try Nominatim FIRST. Ola Maps' reverse-geocode endpoint is
   // unreliable (during testing it returned consistent `zero_results`
   // for known-good Lucknow coords, even though forward geocode worked
-  // — likely a per-day quota on that specific endpoint that we hit
+  //, likely a per-day quota on that specific endpoint that we hit
   // quickly). Nominatim is free, key-less, and returned the right
   // suburb name ("Hazratganj") on the same coords Ola couldn't
   // resolve. Etiquette: 1 req/sec ceiling, a real User-Agent, and
@@ -247,7 +247,7 @@ export async function reverseGeocodeLucknow(
     // CRITICAL: do NOT use URL.searchParams for the `latlng` param.
     // URLSearchParams URL-encodes the comma between lat and lng to
     // `%2C`, and Ola Maps' reverse-geocode endpoint treats the
-    // encoded form as a malformed coord pair — it silently returns
+    // encoded form as a malformed coord pair, it silently returns
     // `zero_results` with HTTP 404 instead of a useful response.
     const url =
       `https://api.olamaps.io/places/v1/reverse-geocode` +
@@ -321,13 +321,13 @@ const NOMINATIM_CACHE_MAX = 500;
 const NOMINATIM_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 // Rate-limit shim: track last request time, await the difference if
 // we're <1s behind. Per-process; multiple Next.js dev rebuilds reset
-// it, which is fine — Nominatim's policy is per-server-pair anyway.
+// it, which is fine, Nominatim's policy is per-server-pair anyway.
 let nominatimLastReqAt = 0;
 const NOMINATIM_MIN_INTERVAL_MS = 1100;
 
 function nominatimCacheKey(lat: number, lng: number): string {
   // ~3 decimal places ≈ 110m grid. Sufficient for "what neighbourhood
-  // is this in" — adjacent pins inside the same neighbourhood share
+  // is this in", adjacent pins inside the same neighbourhood share
   // the same suburb anyway.
   return `${lat.toFixed(3)},${lng.toFixed(3)}`;
 }
@@ -356,7 +356,7 @@ async function reverseGeocodeNominatim(
   // we fall back to the most-specific useful label across the zooms
   // (typically zoom 16's residential). That's why the inner attempt
   // returns BOTH classifications instead of just the first useful
-  // label — the outer loop arbitrates.
+  // label, the outer loop arbitrates.
   let knownAreaHit: ReverseGeocodeHit | null = null;
   let anyUsefulHit: ReverseGeocodeHit | null = null;
   for (const zoom of [16, 14, 13] as const) {
@@ -397,7 +397,7 @@ async function reverseGeocodeNominatim(
  *      stops walking zoom levels.
  *    • `anyUseful`  → a hit whose label is non-generic but doesn't
  *      match a curated area. The outer loop saves this and keeps
- *      walking — if a deeper zoom yields a `knownArea`, that wins.
+ *      walking, if a deeper zoom yields a `knownArea`, that wins.
  *      Otherwise the saved `anyUseful` is the final answer.
  *
  *  Returns null on HTTP errors, parse failures, or all-generic
@@ -419,7 +419,7 @@ async function nominatimAttemptAtZoom(
         "User-Agent": "BadaMangal/1.0 (https://badamangal.com)",
         Accept: "application/json",
       },
-      // 5s timeout — Nominatim's public endpoint can be slow under
+      // 5s timeout, Nominatim's public endpoint can be slow under
       // load. Falling through to the no-area-label path is fine.
       signal: AbortSignal.timeout(5000),
     });
@@ -441,7 +441,7 @@ async function nominatimAttemptAtZoom(
     // Prefer the most specific name. suburb is exactly "Aliganj" /
     // "Hazratganj" grade for most Lucknow pins. BUT some addresses
     // (markets without a registered neighbourhood, outskirts pins)
-    // return `suburb: "Lucknow"` — the city name itself, useless on
+    // return `suburb: "Lucknow"`, the city name itself, useless on
     // a Lucknow-only site. We blocklist those generic labels and
     // fall through to the next more-specific candidate, ending with
     // display_name's first chunk which is usually the place name
@@ -465,12 +465,12 @@ async function nominatimAttemptAtZoom(
       // useful area label on a homepage chatter card. Without this,
       // a Jankipuram Extension share whose display_name starts with
       // "12, Sector G, Jankipuram Extension, …, 226026, India" ends
-      // up labelled "12" or — after the address fields are empty —
+      // up labelled "12" or, after the address fields are empty
       // walks to "226026" and surfaces that as the "area".
       if (/^\d+$/.test(t)) return false;
       // Skip building-letter-number patterns like "A-12", "B/26",
       // "C 34" that some Lucknow display_names lead with. Same
-      // reasoning as above — they're not area names. The regex is
+      // reasoning as above, they're not area names. The regex is
       // loose on purpose (any letter, any separator, any digits)
       // so we don't have to enumerate every building schema.
       if (/^[A-Z]{1,3}[\s\-/]\d+$/i.test(t)) return false;
@@ -510,7 +510,7 @@ async function nominatimAttemptAtZoom(
           };
         }
       }
-      // Stop scanning once we have both classifications — no zoom
+      // Stop scanning once we have both classifications, no zoom
       // call would benefit from walking further candidates here.
       if (knownArea && anyUseful) break;
     }

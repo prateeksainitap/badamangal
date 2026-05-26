@@ -167,11 +167,11 @@ export function bhandaraShareText(b: Bhandara, locale: Locale): string {
   // Closer, both Ram and Hanuman invocations, separated by the
   // Devanagari danda (Hindi sentence ender) or a full stop (English).
   // 🚩 trailing emoji is the saffron flag the Hanuman bhakti tradition
-  // hoists at mandirs and bhandara venues during Bada Mangal — small
+  // hoists at mandirs and bhandara venues during Bada Mangal, small
   // visual anchor at the end of every share that ties the message
   // back to the festival's iconography. Paired with the 🙏 on the
   // intro line so the invite reads "open palms in, flag of devotion
-  // out" — exact treatment requested by the operator (see ticket
+  // out", exact treatment requested by the operator (see ticket
   // screenshot of the WhatsApp share preview, 2026-05-25).
   const closer = isHi ? "जय श्री राम। जय हनुमान। 🚩" : "Jai Shri Ram. Jai Hanuman. 🚩";
 
@@ -323,7 +323,7 @@ export function spotShareText(s: ShareableSpot, locale: Locale): string {
       ? "*भंडारा मानचित्र पर:*"
       : "*Bhandara map:*";
 
-  // Matching closer to bhandaraShareText — saffron-flag 🚩 anchor at
+  // Matching closer to bhandaraShareText, saffron-flag 🚩 anchor at
   // the end of every share so listed-bhandara and live-spot messages
   // feel like one branded voice in a group thread.
   const closer = isHi ? "जय श्री राम। जय हनुमान। 🚩" : "Jai Shri Ram. Jai Hanuman. 🚩";
@@ -344,7 +344,7 @@ export function spotShareText(s: ShareableSpot, locale: Locale): string {
     "",
     `${siteLabel} ${siteUrl}`,
     // Skip the Maps deep-link entirely when the spot doesn't have a
-    // pin yet — a `?q=0,0` link drops the recipient into the Gulf of
+    // pin yet, a `?q=0,0` link drops the recipient into the Gulf of
     // Guinea, exactly the bug the user flagged. The site link above
     // still works (lists this spot among today's live photos) so the
     // share remains actionable.

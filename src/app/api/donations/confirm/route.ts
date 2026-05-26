@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
  * button posts status="DISPUTED" so we can investigate the deep-link
  * generation if a real organiser-side issue is reported.
  *
- * Note: this is NOT proof of payment in any legal sense — it's just
+ * Note: this is NOT proof of payment in any legal sense, it's just
  * the donor's word. Real proof needs either a Razorpay webhook
  * (Phase 2) or an organiser-side reconciliation. The status field
  * makes the chain of evidence visible: CLICKED → DONOR_CONFIRMED is
@@ -30,7 +30,7 @@ export const dynamic = "force-dynamic";
  * (a 25-char cuid, effectively unguessable) can flip its status.
  * The intent id is returned only to the donor that created it, so
  * the only realistic abuse vector is the donor themselves changing
- * their own status — which is fine.
+ * their own status, which is fine.
  */
 const confirmSchema = z.object({
   intentId: z.string().min(20).max(40),

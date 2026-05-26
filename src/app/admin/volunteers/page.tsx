@@ -24,7 +24,7 @@ import {
 import { parseAreas, volunteerStatusLabel } from "@/lib/volunteer";
 
 /**
- * Volunteers registry — dark-themed rewrite. Three logical sections:
+ * Volunteers registry, dark-themed rewrite. Three logical sections:
  *
  *   1. Pending applications card (saffron border, top of page)
  *   2. Weekly payout panel (when there's unpaid money)

@@ -3,17 +3,17 @@
  *
  * Emits a single ordered stream of "chatter items" mixing two source
  * types:
- *   1. BhandaraMention — text/location messages from the WhatsApp bot
+ *   1. BhandaraMention, text/location messages from the WhatsApp bot
  *      (intent: ASKING / SHARING / MENTIONING). The original mention
  *      feed.
- *   2. Spot              — image-with-coords messages the bot ingested
+ *   2. Spot             , image-with-coords messages the bot ingested
  *      into the spotted-bhandara queue (status APPROVED). These carry
  *      a real photo URL + lat/lng, so the chat panel can render a
  *      thumbnail and the heatmap gets a high-fidelity cell.
  *
  * Unification rationale: a "shared a pin" event in WhatsApp usually
  * accompanies an image of the same bhandara. From the visitor's
- * perspective, both belong to the same live conversation — the
+ * perspective, both belong to the same live conversation, the
  * homepage shouldn't split them across two separate widgets. By
  * merging server-side, the chat panel renders one stream with photo
  * thumbnails inline where they exist.
@@ -55,11 +55,11 @@ type PublicMention = {
    *  image hits /api/bot/ingest → Bhandara, the text hits
    *  /api/bot/message → BhandaraMention; the feed re-links them by
    *  groupName + ±10-min time window). Null when no companion was
-   *  found — ASKING mentions, old mentions whose companion aged out,
+   *  found, ASKING mentions, old mentions whose companion aged out,
    *  or text-only chatter. */
   photoUrl: string | null;
   /** Mentions never carry their own photos array. Always empty for
-   *  kind="mention" — the optional companion is on `photoUrl`. */
+   *  kind="mention", the optional companion is on `photoUrl`. */
   photoUrls: string[];
   /** When the WA message was a REPLY, the quoted message it's
    *  answering. The chat bubble renders this as a small indented
@@ -75,10 +75,10 @@ type PublicMention = {
   bhandaraSlug: string | null;
   bhandaraName: string | null;
   /** WhatsApp pushName of the sender. EXPOSED on the public feed by
-   *  design — the homepage chat panel shows usernames + avatars for
+   *  design, the homepage chat panel shows usernames + avatars for
    *  live-chat feel. These are the same names the sender uses
    *  publicly in their WhatsApp groups (no profile photo, no phone
-   *  number — only the display string they themselves chose to be
+   *  number, only the display string they themselves chose to be
    *  visible). May be null when the bot couldn't read it. */
   senderName: string | null;
   createdAt: string;
@@ -89,7 +89,7 @@ type PublicSpot = {
   kind: "spot";
   text: string;
   language: string;
-  /** Spots always represent "I am here, this is a bhandara" — same
+  /** Spots always represent "I am here, this is a bhandara", same
    *  semantic as a SHARING mention. The intent column on Spot doesn't
    *  exist; we hardcode SHARING so the chat panel's intent-pill UI
    *  can render uniformly across both kinds. */
@@ -99,10 +99,10 @@ type PublicSpot = {
   lat: number;
   lng: number;
   /** Spots originate from a WA image + caption; the locationSource on
-   *  the Spot table doesn't exist — we tag as "spot_photo" so the
+   *  the Spot table doesn't exist, we tag as "spot_photo" so the
    *  chat panel can show a "with photo" affordance. */
   locationSource: "spot_photo";
-  /** Always set — that's the whole point of including Spots in this
+  /** Always set, that's the whole point of including Spots in this
    *  unified feed. The primary photo. */
   photoUrl: string;
   /** All photos for the spot (primary first, then up to 4 from
@@ -114,7 +114,7 @@ type PublicSpot = {
    *  slug surfaces here so the chat bubble can link to the detail page. */
   bhandaraSlug: string | null;
   bhandaraName: string | null;
-  /** Spot.reporterName — the WhatsApp pushName of whoever forwarded
+  /** Spot.reporterName, the WhatsApp pushName of whoever forwarded
    *  the image. Same privacy posture as PublicMention.senderName:
    *  exposed on the public feed for live-chat feel. */
   senderName: string | null;
@@ -172,7 +172,7 @@ export async function GET(req: NextRequest) {
     if (sinceDate < oldest) sinceDate = oldest;
   }
 
-  // Fire both queries in parallel — they hit different tables so
+  // Fire both queries in parallel, they hit different tables so
   // there's no contention, and serialising would just add latency.
   //
   // `serverNow` is captured BEFORE the queries run and returned to
@@ -182,7 +182,7 @@ export async function GET(req: NextRequest) {
   // any mention whose `approvedAt` fell between query-run and
   // response-receive (typical RTT 200-500 ms) would be skipped by
   // the next poll. Using a server-clock timestamp from BEFORE the
-  // query guarantees nothing in (serverNow, …) is lost — at worst
+  // query guarantees nothing in (serverNow, …) is lost, at worst
   // a row gets fetched twice and the client's id-based dedup
   // collapses it.
   const serverNow = new Date();
@@ -191,7 +191,7 @@ export async function GET(req: NextRequest) {
   // table doesn't 500 the entire homepage poll. The chat panel polls
   // this every 12s; serving an empty bucket for the failed half and
   // the live bucket for the surviving half is invisible to the user
-  // — next tick recovers. Was throwing `net::ERR_ABORTED 500` red
+  //, next tick recovers. Was throwing `net::ERR_ABORTED 500` red
   // banners in browser console under peak Tuesday load.
   const settled = await Promise.allSettled([
     prisma.bhandaraMention.findMany({
@@ -226,7 +226,7 @@ export async function GET(req: NextRequest) {
       where: {
         status: "APPROVED",
         expiresAt: { gt: now },
-        // Only include spots that actually have a photo — the whole
+        // Only include spots that actually have a photo, the whole
         // point of merging them into this feed is to surface the
         // thumbnail. Spots without photoUrl belong in the existing
         // /api/feed marquee, not here.
@@ -246,7 +246,7 @@ export async function GET(req: NextRequest) {
         // That filtered out bot-ingested spots which auto-publish with
         // lat=0/lng=0 (WhatsApp strips EXIF GPS, so the bot has no
         // coords until an admin fills them in). The chat panel still
-        // wants the photo + caption — only the heatmap should refuse
+        // wants the photo + caption, only the heatmap should refuse
         // to pin 0,0. The MentionHeatmap consumer filters those out
         // client-side; the feed itself stays generous.
         ...(sinceDate ? { createdAt: { gt: sinceDate } } : {}),
@@ -273,7 +273,7 @@ export async function GET(req: NextRequest) {
   // returns 200 with whatever survived. The generic helper preserves
   // the include-augmented row type (e.g. spotRows[].bhandara) that
   // would be lost with `[] as Awaited<ReturnType<typeof prisma...>>`
-  // — that bare-type assertion was what broke the build.
+  //, that bare-type assertion was what broke the build.
   function unwrap<T>(r: PromiseSettledResult<T[]>, label: string): T[] {
     if (r.status === "fulfilled") return r.value;
     console.error(
@@ -317,10 +317,10 @@ export async function GET(req: NextRequest) {
     try {
       companionBhandaras = await prisma.bhandara.findMany({
       where: {
-        // Bot-ingested only — the [bot:whatsapp tag is the marker
+        // Bot-ingested only, the [bot:whatsapp tag is the marker
         // /api/bot/ingest stamps onto every description it writes.
         description: { contains: "[bot:whatsapp" },
-        // Photo is the whole reason we're stitching — skip rows that
+        // Photo is the whole reason we're stitching, skip rows that
         // never got one.
         photoUrl: { not: null },
         createdAt: { gte: earliest, lte: latest },
@@ -420,7 +420,7 @@ export async function GET(req: NextRequest) {
     lat: m.lat,
     lng: m.lng,
     locationSource: m.locationSource,
-    // Companion image — surfaces the invite poster the sender forwarded
+    // Companion image, surfaces the invite poster the sender forwarded
     // alongside this caption. Null when there's no Bhandara in the
     // ±10-min window from the same group, which is the right behavior
     // for ASKING mentions ("kab tak chalega bhandara?") and for old
@@ -429,7 +429,7 @@ export async function GET(req: NextRequest) {
     photoUrls: [],
     quotedText: m.quotedText,
     quotedSender: m.quotedSender,
-    // Same source as photoUrl — let visitors tap through to the full
+    // Same source as photoUrl, let visitors tap through to the full
     // bhandara detail page when the mention is matched.
     bhandaraSlug: companion?.slug ?? null,
     bhandaraName: companion?.name ?? null,
@@ -459,7 +459,7 @@ export async function GET(req: NextRequest) {
     return {
       id: `spot:${s.id}`,
       kind: "spot",
-      // Strip the [bot:…] provenance tag from the caption — same hygiene
+      // Strip the [bot:…] provenance tag from the caption, same hygiene
       // as the existing /api/feed endpoint.
       text: stripBotProvenance(s.caption) || "Bhandara spotted",
       language: s.language,

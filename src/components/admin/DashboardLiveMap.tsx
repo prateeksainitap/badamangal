@@ -17,7 +17,7 @@ import AdminOlaMap from "@/components/admin/AdminOlaMap";
  *     ActivityFeed split on the right side of the Live-chat panel.
  *   - The data still ends up as props on AdminOlaMap (a client
  *     component), so the WebGL marker setup runs on the client as
- *     before — no behavior change, just a different render order.
+ *     before, no behavior change, just a different render order.
  *
  * Data freshness:
  *   These rows change frequently (new spots every minute on a Tuesday
@@ -38,7 +38,7 @@ export default async function DashboardLiveMap({
   // Promise.allSettled so a single EMAXCONN doesn't take down the
   // whole map (which would bubble through Suspense to the admin
   // error.tsx and replace the entire dashboard with the error UI).
-  // Each rejected query falls back to [] — the surviving layers
+  // Each rejected query falls back to [], the surviving layers
   // still render. The "X live spots" count comes from the parent.
   const settled = await Promise.allSettled([
     prisma.spot.findMany({

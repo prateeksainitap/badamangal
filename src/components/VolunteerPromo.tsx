@@ -15,7 +15,7 @@ import { useLocaleFromContext } from "@/lib/locale-context";
  *      Anyone who wants to contribute (delivery riders, cab drivers,
  *      students, anyone) joins the volunteer WhatsApp group for the
  *      full 8-Tuesday season and helps document bhandaras in their
- *      area. Stripping the money angle makes the offer cleaner — no
+ *      area. Stripping the money angle makes the offer cleaner, no
  *      one asks "but how much?" when the answer is "we asked for
  *      your seva, not your wallet".
  *
@@ -50,14 +50,14 @@ export default function VolunteerPromo() {
         />
 
         <div className="relative p-6 sm:p-10">
-          {/* Single-column layout — the 🙏 icon used to sit in its
+          {/* Single-column layout, the 🙏 icon used to sit in its
               own left column (`md:grid-cols-[auto,1fr]`) which
               made the heading start way to the right; now it flows
               inline at the end of the H2, which reads as a
               devotional flourish rather than a sidebar logo. */}
           <div>
             <div className="min-w-0">
-              {/* Eyebrow makes the "no money" angle a positive — sets
+              {/* Eyebrow makes the "no money" angle a positive, sets
                   expectations before someone clicks through. */}
               <p
                 className={`text-[11px] sm:text-xs uppercase tracking-[0.18em] text-saffron-600 font-mono font-semibold ${
@@ -96,7 +96,7 @@ export default function VolunteerPromo() {
                   : "Delivery riders, cab drivers, students, anyone who wants to contribute. Help log bhandaras in your area with photos, time, and location. You get added to our volunteer WhatsApp group for the full 8-Tuesday season."}
               </p>
 
-              {/* Persona chips — make the "anyone can do this" idea
+              {/* Persona chips, make the "anyone can do this" idea
                   feel concrete rather than vague. */}
               <ul className="mt-5 flex flex-wrap gap-2">
                 {personas.map((p) => (
@@ -109,7 +109,7 @@ export default function VolunteerPromo() {
                 ))}
               </ul>
 
-              {/* Filled saffron CTA — primary action of the block.
+              {/* Filled saffron CTA, primary action of the block.
                   Stronger contrast than the prior outline button so
                   it reads as "click me" from across the page. */}
               <div className="mt-6 sm:mt-7 flex flex-wrap items-center gap-3">

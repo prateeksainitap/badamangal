@@ -49,7 +49,7 @@ export default function GalleryUploadForm({ action }: Props) {
     }
   }
 
-  // Shared field className — cyan-bordered dark inputs, mono text,
+  // Shared field className, cyan-bordered dark inputs, mono text,
   // cyan focus ring. Drops in for every <input> in the form.
   const FIELD =
     "rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors";

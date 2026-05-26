@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/donations/intent
  *
- * Records a donation INTENT — the moment a donor taps "Sponsor this
+ * Records a donation INTENT, the moment a donor taps "Sponsor this
  * bhandara". We never see the actual UPI transaction (donor's bank
  * sends money directly to the organiser's bank), so this is a
  * intent-tracking + audit row, not payment confirmation. The flow:
@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
  *   • Donor self-confirmation via POST /api/donations/confirm
  *   • Future Razorpay webhook → status=PG_CONFIRMED with payment_id
  *
- * Auth: PUBLIC — donations are anonymous by default. Rate-limited
+ * Auth: PUBLIC, donations are anonymous by default. Rate-limited
  * per IP to stop a script from polluting the audit table at 1 Hz.
  *
  * The endpoint is intentionally fast (single Prisma insert) so the
@@ -42,7 +42,7 @@ const intentSchema = z.object({
    *  their UPI app". We dropped the auto-suggested ₹251 because the
    *  organiser felt it was steering the donor toward a specific
    *  number; we'd rather they donate whatever feels right.
-   *  Capped at ₹1,00,000 — well above any real Bada Mangal donation
+   *  Capped at ₹1,00,000, well above any real Bada Mangal donation
    *  and low enough to keep accidental typos from creating absurd
    *  audit rows. */
   amount: z.number().int().min(0).max(100_000),
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
   }
   const d = parsed.data;
 
-  // Verify the bhandara exists before recording — bogus IDs would
+  // Verify the bhandara exists before recording, bogus IDs would
   // create dangling audit rows that the admin queue can't display.
   const bh = await prisma.bhandara.findUnique({
     where: { id: d.bhandaraId },
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
   // tn (transaction note) carries our intent id so a future Razorpay
   // webhook OR a manual reconciliation can correlate.
   //
-  // amount = 0 means "no suggested amount" — we OMIT `am` from the
+  // amount = 0 means "no suggested amount", we OMIT `am` from the
   // deep link entirely so the donor's UPI app opens with an empty
   // amount field they can fill in. (Sending `am=0` lands as a
   // ₹0 prefill in some UPI apps, which is worse UX than no prefill.)

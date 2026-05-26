@@ -201,7 +201,7 @@ export default async function RootLayout({
   const initialLocale = "en" as const;
   const lang = "en-IN";
 
-  // Admin routes own their viewport — they don't share the public
+  // Admin routes own their viewport, they don't share the public
   // Header / Footer / floating CTAs / locale provider chrome. The
   // middleware (src/middleware.ts) injects `x-pathname` so we can
   // detect server-side which "world" the request belongs to.
@@ -249,7 +249,7 @@ export default async function RootLayout({
         // dashboard wrap themselves with <AdminShell>, which paints
         // the dark surface on top of paper inside its own container.
         // We only strip the PUBLIC chrome (Header/Footer/floating
-        // CTAs) on admin routes — the body skin stays the same.
+        // CTAs) on admin routes, the body skin stays the same.
         className="paper text-ink-900 font-mukta min-h-dvh flex flex-col"
       >
         <LocaleProvider value={initialLocale}>

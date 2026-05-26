@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * "What people are talking about?" — homepage live chatter section.
+ * "What people are talking about?", homepage live chatter section.
  *
  * Dark band, frosted-glass cards, designed to feel alive: bg breathes,
  * ember sparks pulse on independent clocks, map cells breathe + ripple
@@ -108,7 +108,7 @@ const TIME_TICK_MS = 15_000;
 // 4th Bada Mangal of 2026 produced 244+ live signals (listed + spots
 // + mentions) within the first 12 hours, plus 14 WhatsApp groups
 // feeding the bot. 200 (the previous cap) was truncating the panel
-// after about a half-day of activity on busy Tuesdays — operators
+// after about a half-day of activity on busy Tuesdays, operators
 // scrolling for earlier context lost rows mid-conversation.
 // The 24h TTL on mention rows still bounds the natural upper end.
 // 500 cards is comfortable for modern mobile browsers (no virtualisation
@@ -216,7 +216,7 @@ const WHATSAPP_CTAS: ReadonlyArray<{
   },
 ];
 
-/** Avatar palette — keyed off the sender name hash so the same person
+/** Avatar palette, keyed off the sender name hash so the same person
  *  consistently gets the same swatch. Six dark-mode tuned gradients. */
 const AVATAR_PALETTE: ReadonlyArray<{
   bg: string;
@@ -327,13 +327,13 @@ export default function LiveChatterBoard({
    *  channel. From SiteCounter `community_total_members` (bot push). */
   communityMembers: number;
   /** Per-group/-channel counts keyed by `WHATSAPP_CTAS[].counterKey`.
-   *  Missing keys render as "—" in the card. */
+   *  Missing keys render as ", " in the card. */
   communityCountsByKey: Record<string, number>;
 }) {
   const [mentions, setMentions] = useState<ChatterMention[]>(initial);
   // Lightbox state shared across all chat bubbles. A click on any
   // photo opens GalleryLightbox with the bubble's photo array as the
-  // navigable set — same overlay component the HomepageGallery
+  // navigable set, same overlay component the HomepageGallery
   // section uses, so the visual treatment + keyboard nav + escape /
   // arrow shortcuts all match.
   const [lightbox, setLightbox] = useState<{
@@ -368,7 +368,7 @@ export default function LiveChatterBoard({
 
   // Compute the chat-open state ONCE per render. Re-renders happen
   // on every poll tick (12s) + the 15s time tick, so the state
-  // refreshes naturally without needing a midnight-IST cron — it
+  // refreshes naturally without needing a midnight-IST cron, it
   // flips on the next render after the day changes.
   const today = todayDayIST();
   const isChatOpen = LIVE_CHAT_OPEN_DAYS.has(today);
@@ -496,7 +496,7 @@ export default function LiveChatterBoard({
     return () => body.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Section-view event — fires ONCE per page load when the live
+  // Section-view event, fires ONCE per page load when the live
   // chat / heatmap section becomes 50%+ visible. Lets us measure
   // how many homepage visitors actually scroll far enough to see
   // the live feature, vs how many bail above the fold. Using the
@@ -546,7 +546,7 @@ export default function LiveChatterBoard({
   // one BhandaraMention row per location so the heatmap can plant a
   // pin for each. The chat panel rendering that data as 3 identical
   // bubbles makes the panel look like the same message is being posted
-  // multiple times — confusing.
+  // multiple times, confusing.
   //
   // Rollup rule: walk mentions newest-first; rows with the same
   // sender + normalised text within 5 minutes of each other merge
@@ -557,7 +557,7 @@ export default function LiveChatterBoard({
   // 5-minute window keeps legitimately-repeated messages from the
   // same sender (an hour-apart re-post for emphasis) as separate
   // bubbles. Heatmap still consumes the raw `mentions` array so each
-  // location gets its own pin — only the chat panel collapses.
+  // location gets its own pin, only the chat panel collapses.
   const groupedMentions = useMemo(() => {
     const normaliseText = (s: string | null | undefined) =>
       (s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -568,7 +568,7 @@ export default function LiveChatterBoard({
       const sender = (m.senderName ?? "").trim();
       const text = normaliseText(m.text);
       if (!sender || !text || m.kind === "spot") {
-        // Spots never collapse — every photo is its own event even
+        // Spots never collapse, every photo is its own event even
         // if two spotters happen to caption the exact same string.
         out.push(m);
         continue;
@@ -602,7 +602,7 @@ export default function LiveChatterBoard({
     return out;
   }, [mentions]);
 
-  // Heatmap input — exclude ASKING messages.
+  // Heatmap input, exclude ASKING messages.
   // An ASKING bubble's coords (e.g. "anyone know about a bhandara in
   // Hazratganj?") describe the place the SENDER is wondering about,
   // not a place where a bhandara is happening. Putting a pin there
@@ -613,7 +613,7 @@ export default function LiveChatterBoard({
     () =>
       mentions.filter(
         (m): m is ChatterMention & { lat: number; lng: number } =>
-          // Heatmap is map-only — drop ASKING (questions, not
+          // Heatmap is map-only, drop ASKING (questions, not
           // sightings) AND drop 0,0 "null island" spots that the
           // feed deliberately still includes for the chat panel.
           m.intent !== "ASKING" &&
@@ -642,7 +642,7 @@ export default function LiveChatterBoard({
   // a chip. We used to slice to top-8 by count, which silently dropped
   // genuinely-active neighbourhoods (Rajajipuram, etc.) the moment
   // they fell behind a single bigger area. The wrap layout below
-  // handles overflow naturally — busy Tuesday days flow to two or
+  // handles overflow naturally, busy Tuesday days flow to two or
   // three rows of chips instead of hiding signal.
   const areaCounts = useMemo(() => {
     const counts = new Map<
@@ -697,7 +697,7 @@ export default function LiveChatterBoard({
   // first, so "first match" = most recent mention from that area.
   //
   // We scroll inside chatBodyRef (NOT the document) so the page
-  // doesn't lurch — the chat panel stays where it is on the
+  // doesn't lurch, the chat panel stays where it is on the
   // viewport while the panel's internal list scrolls to surface
   // the matching bubble. On narrow viewports where the chat panel
   // is below the heatmap, we also bring the panel into the
@@ -705,12 +705,12 @@ export default function LiveChatterBoard({
   const scrollToArea = useCallback((displayLabel: string) => {
     const body = chatBodyRef.current;
     if (!body) return;
-    // Slugify the same way the bubbles do — whitespace is COLLAPSED
+    // Slugify the same way the bubbles do, whitespace is COLLAPSED
     // (not hyphenated) so "Rajaji Puram" and "Rajajipuram" both
     // resolve to the same key ("rajajipuram") and a click on the
     // merged chip finds bubbles tagged with either spelling.
     // Multi-word areas like "Vrindavan Yojna" become "vrindavanyojna"
-    // — ugly as a slug but invisible to the user; it just has to
+    //, ugly as a slug but invisible to the user; it just has to
     // match the bubble's data-areas value exactly via the `~=`
     // selector below, which splits on whitespace.
     const key = displayLabel.toLowerCase().trim().replace(/\s+/g, "");
@@ -742,13 +742,13 @@ export default function LiveChatterBoard({
         1500,
       );
     } else {
-      // No bubble matched (rare — the chip is built from the same
+      // No bubble matched (rare, the chip is built from the same
       // mentions array, so a mismatch only happens if the data
       // changed mid-render). Fall back to scrolling to the top
       // so the click still does SOMETHING visible.
       body.scrollTo({ top: 0, behavior: "smooth" });
     }
-    // On narrow viewports the panel can be below the fold — make
+    // On narrow viewports the panel can be below the fold, make
     // sure it's in view before the body-scroll lands. No-op on
     // desktop where chips + panel are already side-by-side.
     const panel = body.closest("[data-chat-panel]");
@@ -792,7 +792,7 @@ export default function LiveChatterBoard({
                   subtitle's rhythm so we don't lose the warmth. */}
               <span>
                 {isHi
-                  ? "आपके पास के भंडारे — मानचित्र पर लाइव"
+                  ? "आपके पास के भंडारे, मानचित्र पर लाइव"
                   : "Bhandaras near me, on the map and live in chat"}
               </span>
               {/* The green "live" pill is only shown on actual
@@ -832,7 +832,7 @@ export default function LiveChatterBoard({
           </div>
         </header>
 
-        {/* Active area chips. Now clickable — tapping a chip scrolls
+        {/* Active area chips. Now clickable, tapping a chip scrolls
             the chat panel to its newest message and fires a GA
             event so we can measure which neighbourhoods drive the
             most attention. Hover lifts the border + saffron text
@@ -860,7 +860,7 @@ export default function LiveChatterBoard({
               >
                 <PinIcon />
                 <span className="font-medium">{a.display}</span>
-                {/* Count badge — dark text on solid saffron for AAA-level
+                {/* Count badge, dark text on solid saffron for AAA-level
                     contrast (the previous cream-on-saffron gradient was
                     ~1.6:1 and read as a saffron blur at 10px). min-w +
                     text-center keeps single digits from looking
@@ -884,7 +884,7 @@ export default function LiveChatterBoard({
         <div className="chatter-glass relative grid rounded-2xl overflow-hidden lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:h-[40rem]">
           <MentionHeatmap mentions={geoMentions} />
 
-          {/* Chat panel — no glass / no border / no rounded chrome of
+          {/* Chat panel, no glass / no border / no rounded chrome of
               its own anymore. Just a left-side hairline divider on lg+
               and a top divider on stacked layouts so the two halves
               still read as separate instruments inside the shared card.
@@ -892,7 +892,7 @@ export default function LiveChatterBoard({
               scrolls in place instead of expanding the page; lg lets
               it fill the parent's lg:h-[40rem] cell. */}
           <div className="relative flex flex-col h-[28rem] sm:h-[32rem] lg:h-full lg:min-h-0 border-t border-cream-50/10 lg:border-t-0 lg:border-l lg:border-cream-50/10">
-            {/* Header — ChatBubble SVG + title + LIVE pill on the left,
+            {/* Header, ChatBubble SVG + title + LIVE pill on the left,
                 connection state on the right. The LIVE pill that used
                 to sit in the section header above moves here so the
                 live count + connected indicator read together as one
@@ -994,7 +994,7 @@ export default function LiveChatterBoard({
               ) : (
                 groupedMentions.map((m, idx) => {
                   const firstSeenAt = firstSeenRef.current.get(m.id);
-                  // Suppress the new-glow when chat is offline — no
+                  // Suppress the new-glow when chat is offline, no
                   // genuinely "new" messages should be landing then.
                   const isNew =
                     isChatOpen &&
@@ -1150,7 +1150,7 @@ export default function LiveChatterBoard({
              4. outer drop shadow for depth
            Single utility class so every card on the section can opt-in
            with the chatter-glass classname instead of duplicating the
-           rules. (No backticks in this comment block — they would
+           rules. (No backticks in this comment block, they would
            terminate the styled-jsx template literal.) */
         :global(.chatter-glass) {
           background-color: rgba(26, 20, 16, 0.72);
@@ -1233,12 +1233,12 @@ export default function LiveChatterBoard({
 }
 
 /** Full-width WhatsApp community section. Sits below the chat panel
- *  in the same dark band. No outer card wrapper per design — the four
+ *  in the same dark band. No outer card wrapper per design, the four
  *  cards do the visual lifting themselves; the heading sits flush.
  *
  *  Subheading total is computed by summing the per-group counts (not
  *  the separate `community_total_members` row) so the headline number
- *  always matches what's visible in the cards below — no risk of
+ *  always matches what's visible in the cards below, no risk of
  *  divergence between the two SiteCounter sources. */
 function WhatsappCommunitySection({
   countsByKey,
@@ -1406,7 +1406,7 @@ function WhatsappCard({
   );
 }
 
-/** "12 recent mentions" badge — same chrome as LivePulseBadge but
+/** "12 recent mentions" badge, same chrome as LivePulseBadge but
  *  without the green dot + LIVE label. Used on off-days (Sun/Mon/Wed/
  *  Thu/Fri) when the chat isn't taking new messages, so the count
  *  reflects "what's still on the feed from the last open day" rather
@@ -1453,17 +1453,17 @@ function LivePulseBadge({ count, isHi }: { count: number; isHi: boolean }) {
 }
 
 /** Section-level LIVE pill that sits inline with the main "What people
- *  are talking about?" heading. Marks the whole section as live —
+ *  are talking about?" heading. Marks the whole section as live
  *  previously this pill sat next to the 9,652 community total; moved
  *  here so the live-state signal reads as section-wide rather than
  *  tied to that single number. */
-/** Empty-state for the Live chat panel — shown when the feed has
+/** Empty-state for the Live chat panel, shown when the feed has
  *  zero mentions, whether the chat is "open" today (Tue/Sat) or not.
  *
  *  Three jobs:
  *    1. Visually prove the system is alive (radar-pulse animation) so
  *       the user trusts it'll fill in when chatter starts.
- *    2. Tell the user what to expect — the community size + the
+ *    2. Tell the user what to expect, the community size + the
  *       Tuesday/Saturday rhythm.
  *    3. Offer two ways to make this less quiet themselves: drop a
  *       Spot, or hop into a WhatsApp circle.
@@ -1485,7 +1485,7 @@ function LiveChatEmpty({
   const totalDisplay = communityTotal.toLocaleString(isHi ? "hi-IN" : "en-IN");
   return (
     <div className="grid gap-4 text-center max-w-sm">
-      {/* Radar pulse — concentric circles expanding out from a
+      {/* Radar pulse, concentric circles expanding out from a
           breathing leaf-green centre. The three rings are offset so
           there's always a wave in flight; the centre dot pulses on
           a slower clock. Reads as "actively scanning" without any
@@ -1499,7 +1499,7 @@ function LiveChatEmpty({
         </span>
       </div>
 
-      {/* Headline — community-size framing when chat is open today,
+      {/* Headline, community-size framing when chat is open today,
           next-open-day framing when it's a quiet day. Either way the
           tone is "we're listening" not "nothing happening". */}
       <h4 className="font-fraunces text-cream-50 text-lg leading-snug">
@@ -1528,19 +1528,19 @@ function LiveChatEmpty({
         )}
       </h4>
 
-      {/* Sub — sets expectations + the Tue/Sat rhythm so the absence
+      {/* Sub, sets expectations + the Tue/Sat rhythm so the absence
           of activity right now reads as "between waves", not broken. */}
       <p className="text-sm text-cream-50/70 leading-snug">
         {isChatOpen
           ? isHi
-            ? "जैसे ही कोई पड़ोसी भंडारा शेयर करे, तस्वीर या पिन भेजे — सब यहाँ पल भर में दिखेगा।"
+            ? "जैसे ही कोई पड़ोसी भंडारा शेयर करे, तस्वीर या पिन भेजे, सब यहाँ पल भर में दिखेगा।"
             : "The moment a neighbour shares a bhandara, drops a photo or a pin, it'll slide in here."
           : isHi
             ? "बड़ा मंगल समुदाय मंगलवार और शनिवार को सबसे ज़्यादा सक्रिय रहता है। तब तक नीचे की लिस्ट देखें।"
             : "Our community is most active on Bada Mangal Tuesdays and Saturdays. Browse the listed bhandaras below in the meantime."}
       </p>
 
-      {/* CTAs — both nudge the user toward making the panel less
+      {/* CTAs, both nudge the user toward making the panel less
           empty: drop a Spot (creates content), or hop into a WhatsApp
           circle (joins the source-of-truth chatter). #join-community-
           heading is the WhatsApp section's <h3>; smooth-scroll handled
@@ -1678,7 +1678,7 @@ function ChatBubble({
     e.stopPropagation();
     setPhotoIdx((i) => (i + 1) % photos.length);
   };
-  // ASKING bubbles must not surface ANY location-based action —
+  // ASKING bubbles must not surface ANY location-based action
   // no Directions CTA, no map-deep-link on the photo, no location
   // pill below the message. The user is asking IF something's
   // happening there; exposing a "Get directions" or pin pill would
@@ -1688,8 +1688,8 @@ function ChatBubble({
   const showLocationActions = mention.intent !== "ASKING";
   // Google Maps destination: when we have a precise pin (a WhatsApp
   // location share or a pasted Google Maps URL) we feed the raw
-  // lat,lng. Otherwise — Ola's text-to-coords geocode of "Aliganj
-  // Purania Chowk" routinely lands a kilometre off the real venue —
+  // lat,lng. Otherwise, Ola's text-to-coords geocode of "Aliganj
+  // Purania Chowk" routinely lands a kilometre off the real venue
   // we pass the textual locationLabel + ", Lucknow" and let Google's
   // own (much richer Lucknow corpus) place finder resolve it. For
   // 0,0 "null-island" spots (bot-ingest before admin sets coords)
@@ -1720,7 +1720,7 @@ function ChatBubble({
       : null;
 
   // Space-separated slugified area keys for every location this
-  // mention covers — used by the active-area chip click handler to
+  // mention covers, used by the active-area chip click handler to
   // find the first bubble matching the chosen area and scroll it
   // into view. Same right-most-comma-segment rule as the chip
   // strip's area extraction in areaCounts above. Multi-location
@@ -1883,7 +1883,7 @@ function ChatBubble({
                 >
                   ›
                 </button>
-                {/* Position indicator dots — clickable for direct jump.
+                {/* Position indicator dots, clickable for direct jump.
                     Active dot is saffron + slightly larger; the rest
                     are cream-translucent. Sits over the bottom of the
                     image with a subtle dark gradient behind for
@@ -1913,7 +1913,7 @@ function ChatBubble({
                     ))}
                   </div>
                 </div>
-                {/* Count badge in the top-right — at a glance "X / N". */}
+                {/* Count badge in the top-right, at a glance "X / N". */}
                 <span
                   aria-hidden
                   className="absolute top-1 right-1 text-[9px] font-semibold tabular-nums px-1.5 py-0.5 rounded-full bg-black/65 text-cream-50 ring-1 ring-cream-50/20"
@@ -1945,7 +1945,7 @@ function ChatBubble({
             ) : null}
           </div>
         ) : null}
-        {/* Quoted-reply strip — only renders when the WA message was
+        {/* Quoted-reply strip, only renders when the WA message was
             a reply. Subtle indented block with a left rail and the
             quoted sender + truncated text, so a one-word reply like
             "Malhaur" lands under the question it's answering and
@@ -1968,7 +1968,7 @@ function ChatBubble({
         <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-cream-50/55 mt-0">
           {showLocationActions ? (
             // Multi-location messages ("Kamta, Chinhat ya amity?") get
-            // one chip per place — server-split rows are collapsed by
+            // one chip per place, server-split rows are collapsed by
             // the groupedMentions rollup in the parent. Single-location
             // messages render just the one chip via the [locationLabel]
             // singleton fallback.
@@ -2053,7 +2053,7 @@ function PeopleIcon() {
 
 /** WhatsApp brand glyph. Canonical Simple Icons path (viewBox 24×24),
  *  cleaner curves than the hand-simplified version we were using
- *  before — at 16-22px the old path's tail rendered as a wobbly
+ *  before, at 16-22px the old path's tail rendered as a wobbly
  *  squashed "W" against the leaf-green tile. Defaults to filling its
  *  natural 16×16, parents can override via inline width/height. */
 function WhatsappGlyph({ size = 16 }: { size?: number }) {
@@ -2070,8 +2070,8 @@ function WhatsappGlyph({ size = 16 }: { size?: number }) {
   );
 }
 
-/** People / group glyph for the "group" kind tile. Solid silhouettes —
- *  three heads + shoulders — to read instantly at 22px on a busy card
+/** People / group glyph for the "group" kind tile. Solid silhouettes
+ *  three heads + shoulders, to read instantly at 22px on a busy card
  *  thumbnail. ViewBox 24×24 so it lines up with the WhatsApp + chat
  *  glyphs in this file. */
 function PeopleGroupGlyph({ size = 18 }: { size?: number }) {
@@ -2089,7 +2089,7 @@ function PeopleGroupGlyph({ size = 18 }: { size?: number }) {
 }
 
 /** Megaphone / loudspeaker glyph for the "channel" kind tile. A
- *  broadcast horn pointed up-right with a faint sound wave — reads as
+ *  broadcast horn pointed up-right with a faint sound wave, reads as
  *  "one-to-many announcement" at a glance, the right metaphor for a
  *  WhatsApp Channel (broadcast-only, no replies). */
 function MegaphoneGlyph({ size = 18 }: { size?: number }) {
@@ -2107,7 +2107,7 @@ function MegaphoneGlyph({ size = 18 }: { size?: number }) {
 }
 
 /** Chat bubble outline glyph. Replacement for the 💬 emoji in the
- *  Live chat panel header — sharper, single-color, and inherits
+ *  Live chat panel header, sharper, single-color, and inherits
  *  currentColor so it tints cleanly with the cream-50 text it sits
  *  next to. */
 function ChatBubbleGlyph({ size = 18 }: { size?: number }) {

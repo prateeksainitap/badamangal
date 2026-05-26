@@ -1,13 +1,13 @@
 /**
  * Silent text-message ingestion endpoint for the OpenClaw WhatsApp
- * agent. Sibling of /api/bot/ingest (which handles images) — same
+ * agent. Sibling of /api/bot/ingest (which handles images), same
  * Bearer-token gate, same silent-in-the-group contract, same admin
  * queue as the publication surface.
  *
  * Flow:
  *   1. The OpenClaw agent watches allowlisted bhandara WhatsApp
  *      groups and forwards EVERY text message here. (No client-side
- *      filtering — the classifier is our filter, and it's better than
+ *      filtering, the classifier is our filter, and it's better than
  *      a regex when "kahan ho raha hai bhandara" can be mistyped 20
  *      different ways.)
  *   2. We classify via Gemini Flash: intent (ASKING / SHARING /
@@ -19,7 +19,7 @@
  *      order): a direct lat/lng on the WhatsApp payload (location
  *      share), a Google Maps URL pasted in the message body, or a
  *      forward-geocode of the extracted address. All three fall
- *      back to "no location" gracefully — the mention still shows up
+ *      back to "no location" gracefully, the mention still shows up
  *      on the public feed, just not on the heatmap.
  *   5. Insert a PENDING BhandaraMention row with a 24-hour expiry,
  *      embed a provenance tag so admins can see sender/group/intent
@@ -41,9 +41,9 @@
  *   "text":         "Aliganj sector E me bhandara ho raha hai 11 baje se", // required, ≤ 2000 chars
  *   "groupName":    "BadaMangal Connect 2026",  // optional, ≤ 80 chars
  *   "senderName":   "Sharma ji",                // optional, ≤ 80 chars
- *   "msgId":        "wa-abc-123",               // optional, ≤ 120 chars — used for dedup
- *   "locationLat":  26.876,                     // optional — set when sender shared a WA location pin
- *   "locationLng":  80.929                      // optional — paired with locationLat
+ *   "msgId":        "wa-abc-123",               // optional, ≤ 120 chars, used for dedup
+ *   "locationLat":  26.876,                     // optional, set when sender shared a WA location pin
+ *   "locationLng":  80.929                      // optional, paired with locationLat
  * }
  * ```
  *
@@ -62,7 +62,7 @@
  * ## Auth
  *
  * Same secret as /api/bot/ingest: `BOT_INGEST_SECRET`. Treat as a
- * password — anyone with it can spam the admin queue but can't publish
+ * password, anyone with it can spam the admin queue but can't publish
  * (publication requires the separate admin cookie). Rotate at the first
  * sign of leakage; the OpenClaw agent reads it from its own env file.
  */
@@ -106,7 +106,7 @@ const SPOT_TTL_HOURS = 8;
  *  (each ~30-60s apart) doesn't produce three identical map pins. */
 const SPOT_DEDUP_WINDOW_MS = 10 * 60 * 1000;
 /** Half-side of the bounding box used for Spot dedup. 0.001° ≈ 110m at
- *  Lucknow's latitude — tight enough that two genuinely-different
+ *  Lucknow's latitude, tight enough that two genuinely-different
  *  bhandaras a block apart still count as separate, loose enough that
  *  a re-shared pin from the same venue (which can drift by a few
  *  metres) is recognised as a duplicate. */
@@ -117,7 +117,7 @@ const SPOT_DEDUP_HALF_DEG = 0.001;
  *  positives in the queue. */
 const MIN_CONFIDENCE = 0.4;
 /** Lucknow bounding box (matches geocodeServer + admin/resolve-coords).
- *  Any lat/lng outside this is treated as "no location" — pasting a
+ *  Any lat/lng outside this is treated as "no location", pasting a
  *  share-pin from Delhi shouldn't put a dot on Lucknow's heatmap. */
 const LKO_BBOX = {
   latMin: 26.6,
@@ -151,7 +151,7 @@ type IngestBody = {
   recentContext?: { senderName?: string; text?: string }[];
   /** When the WhatsApp message was a reply (Baileys' contextInfo.
    *  quotedMessage), the bot sends the quoted text + best-effort
-   *  sender so the chat panel can render "↳ <quoted> — <sender>"
+   *  sender so the chat panel can render "↳ <quoted>, <sender>"
    *  above the reply bubble. Both fields capped server-side. */
   quotedText?: string;
   quotedSender?: string;
@@ -168,11 +168,11 @@ function jsonError(
 /**
  * Pull lat/lng out of a Google Maps URL (any common shape Google
  * serves). Tries every known coord pattern in turn:
- *   • `!3dLAT!4dLNG`    — canonical "place pin"
- *   • `/@LAT,LNG`        — viewport / map-center
- *   • `?q=LAT,LNG`       — bare-query share
- *   • `?ll=LAT,LNG`      — legacy embed style
- *   • `/search/LAT,LNG`  — search-link form
+ *   • `!3dLAT!4dLNG`   , canonical "place pin"
+ *   • `/@LAT,LNG`       , viewport / map-center
+ *   • `?q=LAT,LNG`      , bare-query share
+ *   • `?ll=LAT,LNG`     , legacy embed style
+ *   • `/search/LAT,LNG` , search-link form
  * Returns null on no match.
  */
 function parseCoordsFromMapsUrl(
@@ -210,7 +210,7 @@ const SHORT_URL_CACHE_MAX = 500;
  *
  * Handles BOTH full URLs and short share-links (`maps.app.goo.gl`,
  * `goo.gl/maps`). Short URLs are expanded via a single HEAD request
- * with a tight 3 s timeout — the bot endpoint is a hot path, but
+ * with a tight 3 s timeout, the bot endpoint is a hot path, but
  * losing a coord-bearing share to a "we don't follow short URLs"
  * shortcut was the bigger UX cost (real production complaint, Tuesday
  * 1 of Adhik Mas 2026). Expanded URLs are cached in-memory so the same
@@ -272,7 +272,7 @@ async function extractCoordsFromMessage(
         }
       } catch (err) {
         // Timeout, network error, or DNS hiccup. Leave url as-is and
-        // fall through to the coord-pattern matcher — most short
+        // fall through to the coord-pattern matcher, most short
         // URLs have no coords on their own anyway, so we return null
         // and the caller falls back to address-extraction.
         console.warn(
@@ -285,14 +285,14 @@ async function extractCoordsFromMessage(
     }
   }
 
-  // 1) Try explicit coord patterns first — cheap, no network.
+  // 1) Try explicit coord patterns first, cheap, no network.
   const direct = parseCoordsFromMapsUrl(url);
   if (direct) return direct;
 
   // 2) Fallback: when the expanded URL has a `/place/NAME/` segment
   //    but no @lat,lng (Google's place-ID share form), pull the place
   //    name out and forward-geocode it. Most short-link shares land
-  //    in this branch, not the coord-pattern branch — Google strips
+  //    in this branch, not the coord-pattern branch, Google strips
   //    explicit coords from the share-card link in favour of the
   //    1s<placeID>:0x<feature> data payload.
   const placeMatch = url.match(/\/place\/([^/?#]+)/);
@@ -335,7 +335,7 @@ export async function POST(req: NextRequest) {
     return jsonError(403, "forbidden");
   }
 
-  // ── 2. Rate limit (per IP, generous — chatty groups can be bursty)
+  // ── 2. Rate limit (per IP, generous, chatty groups can be bursty)
   // The OpenClaw agent batches forwards in 1s windows, so even a
   // very active group rarely exceeds 30 messages/min. 120/min gives
   // headroom for multi-group bursts during a Bada Mangal Tuesday
@@ -367,7 +367,7 @@ export async function POST(req: NextRequest) {
       detail: `Max ${MAX_TEXT_LEN} characters`,
     });
   }
-  // Profanity gate — strict, short-circuits before any DB / Gemini /
+  // Profanity gate, strict, short-circuits before any DB / Gemini /
   // geocode work. The homepage chatter feed is family-facing and the
   // moderation queue shouldn't fill with slurs. Rejected messages
   // return `ok:true, kind:"ignored", reason:"profanity"` so the bot
@@ -404,7 +404,7 @@ export async function POST(req: NextRequest) {
 
   // ── 5. Detect WhatsApp Location share (skip classifier path) ───
   // A pin shared into an allowlisted bhandara group IS the intent
-  // signal — the user wouldn't drop a Lucknow pin in this kind of
+  // signal, the user wouldn't drop a Lucknow pin in this kind of
   // group unless they meant "here's a bhandara" or "anyone serving
   // around here?". Running the classifier on the synthetic text
   // "Location shared: 26.xx, 80.xx" reliably yields UNRELATED with
@@ -460,7 +460,7 @@ export async function POST(req: NextRequest) {
         // Only rewrite the card text if the bot sent the synthetic
         // "Location shared: lat, lng" fallback. When the user typed a
         // real caption alongside the pin, keep their words verbatim
-        // — they wrote something meaningful and we shouldn't smother
+        //, they wrote something meaningful and we shouldn't smother
         // it. Regex matches the bot-side template exactly so we
         // don't accidentally overwrite a human caption that happens
         // to mention coordinates.
@@ -493,7 +493,7 @@ export async function POST(req: NextRequest) {
     // pin, no duplicate Mention.
     //
     // If no recent photo Spot matches, fall through to the normal
-    // Mention-creation path below — the pin still lands as a chat
+    // Mention-creation path below, the pin still lands as a chat
     // mention, just unbound, same as today.
     const PHOTO_BURST_BIND_WINDOW_MS = 5 * 60 * 1000;
     if (senderName && lat !== null && lng !== null) {
@@ -521,7 +521,7 @@ export async function POST(req: NextRequest) {
             address: recentPhotoSpot.address || locationLabel || null,
           },
         });
-        // Mention is NOT created — this pin became the photo Spot's
+        // Mention is NOT created, this pin became the photo Spot's
         // coords. The homepage chat panel will show one row (the
         // photo Spot, now with a real map pin) instead of one photo
         // card + one location-share card.
@@ -603,7 +603,7 @@ export async function POST(req: NextRequest) {
 
   // ── 8. Build the list of locations to materialise ────────────────
   // Most messages yield ONE location (lat/lng set or null). SHARING
-  // messages that list multiple bhandaras yield several — we
+  // messages that list multiple bhandaras yield several, we
   // materialise one BhandaraMention per location so the heatmap shows
   // a separate cell for each.
   //
@@ -628,7 +628,7 @@ export async function POST(req: NextRequest) {
   if (hasLucknowShare || !classified) {
     // WA Location share is always single-location. The !classified
     // case can't actually happen at runtime (we'd have errored or
-    // short-circuited above) but TS doesn't know that — narrowing
+    // short-circuited above) but TS doesn't know that, narrowing
     // here keeps the next branch's `classified` non-null.
     locations.push({ lat, lng, label: locationLabel, source: locationSource });
   } else {
@@ -652,7 +652,7 @@ export async function POST(req: NextRequest) {
     let urlClaimed = false;
 
     if (addresses.length === 0) {
-      // No addresses extracted — single mention, with URL coords if
+      // No addresses extracted, single mention, with URL coords if
       // we found a Google Maps link in the body.
       if (fromUrl && inLucknow(fromUrl.lat, fromUrl.lng)) {
         locations.push({
@@ -707,7 +707,7 @@ export async function POST(req: NextRequest) {
             });
           }
           // Non-first addresses that fail to geocode are dropped
-          // silently — we already have the first one on the feed and
+          // silently, we already have the first one on the feed and
           // adding a no-coords row per failed lookup would create
           // duplicate-looking text cards.
         } catch (err) {
@@ -767,12 +767,12 @@ export async function POST(req: NextRequest) {
   // so a forward whose newlines flattened to spaces (or whose
   // sender retyped with slightly different capitalisation) still
   // matches the original. Previous version did an exact equality
-  // compare in SQL — three Shyam "ONLY BHANDARA ON FRIDAY"
+  // compare in SQL, three Shyam "ONLY BHANDARA ON FRIDAY"
   // forwards slipped through because msg 1 was single-line and
   // msgs 2/3 had `\n` line breaks.
   //
   // Same-group repeats with EVOLVING text (text → pin → follow-up)
-  // are handled by the merge logic immediately below — that's a
+  // are handled by the merge logic immediately below, that's a
   // shorter window and only fires when the rows would naturally
   // fold together; this forward-dedup uses a wider window and a
   // normalised text match.
@@ -811,7 +811,7 @@ export async function POST(req: NextRequest) {
       // attach to and fell through here. Without this rescue, the
       // photo lands without coords AND the location lands as a dup-
       // rejected mention, so the spot stays at null-island until an
-      // admin fixes it manually — exactly the bug user just hit.
+      // admin fixes it manually, exactly the bug user just hit.
       let boundSpotId: string | null = null;
       if (senderName && lat !== null && lng !== null) {
         const PHOTO_BURST_BIND_WINDOW_MS = 5 * 60 * 1000;
@@ -875,7 +875,7 @@ export async function POST(req: NextRequest) {
   // Skipped on multi-location messages (locations.length > 1) because
   // merging multi-loc into a single existing row would lose the
   // separate cells the user explicitly intended. Skipped when sender
-  // OR group is unknown — can't safely fold anonymous traffic.
+  // OR group is unknown, can't safely fold anonymous traffic.
   const canMerge =
     locations.length === 1 && !!senderName && !!groupName;
 
@@ -1003,14 +1003,14 @@ export async function POST(req: NextRequest) {
   // message is plainly a conversational reply ("Malhaur" right
   // after someone asked "Amity konsa wala?"), Baileys gives us no
   // contextInfo to attribute. We still want the chat panel to
-  // render the question above the answer — otherwise short
+  // render the question above the answer, otherwise short
   // location-only shares look like context-free shouts.
   //
   // Fallback: when no formal quote and the message is short +
   // SHARING + we have recentContext, find the most-recent
   // question-shaped message from a DIFFERENT sender and persist
   // IT as the inferred quoted context. Same column, no special
-  // marker — the reader doesn't care whether the reply was
+  // marker, the reader doesn't care whether the reply was
   // tapped-and-quoted or just typed.
   if (!quotedTextSan && intent === "SHARING") {
     const shortReply =
@@ -1115,7 +1115,7 @@ export async function POST(req: NextRequest) {
 
 /** Returns true when `text` looks like the bot's synthetic
  *  "Location shared: lat, lng" or the server's reverse-geocoded
- *  "Shared a location near X" — neither of which is the user's own
+ *  "Shared a location near X", neither of which is the user's own
  *  prose. Merging prefers a real user-typed text over either. */
 function isSyntheticLocationText(t: string): boolean {
   const trimmed = t.trim();
@@ -1124,7 +1124,7 @@ function isSyntheticLocationText(t: string): boolean {
   return false;
 }
 
-/** Score for "how good are these coords" — higher wins on merge.
+/** Score for "how good are these coords", higher wins on merge.
  *  Mirrors the locationSource priority used by the location resolver. */
 function coordsRank(source: string, hasCoords: boolean): number {
   if (!hasCoords) return 0;
@@ -1140,7 +1140,7 @@ function coordsRank(source: string, hasCoords: boolean): number {
   }
 }
 
-/** Score for "how informative is this intent" — SHARING beats
+/** Score for "how informative is this intent", SHARING beats
  *  MENTIONING beats ASKING. Used when merging two messages with
  *  different intents from the same sender. */
 function intentRank(intent: string): number {
@@ -1276,7 +1276,7 @@ type EnsureSpotInput = {
  *   The bot's text-ingest pipeline creates BhandaraMention rows, which
  *   are great for the LiveChatterBoard heatmap and chat panel but don't
  *   show up on the main homepage MapBoard / HappeningNow / lifetime
- *   "Bhandaras spotted" counter — those read from the Spot table. A
+ *   "Bhandaras spotted" counter, those read from the Spot table. A
  *   SHARING message ("bhandara at sector E, free for everyone") with
  *   a real Lucknow lat/lng IS a spot in every meaningful sense; this
  *   helper bridges the two so the counter and the map don't lag behind
@@ -1288,7 +1288,7 @@ type EnsureSpotInput = {
  *   - lat/lng must be inside Lucknow's bbox (same check as the rest
  *     of the bot pipeline).
  *   - locationSource MUST be either whatsapp_share or google_maps_url.
- *     `extracted_address` is too unreliable — Gemini sometimes pulls
+ *     `extracted_address` is too unreliable, Gemini sometimes pulls
  *     an old reference address out of historical chat ("when we met
  *     last year at Aliganj") and we don't want stale-context messages
  *     planting fake pins on the live map.
@@ -1315,7 +1315,7 @@ async function ensureBhandaraSpot(
   // Dedup: same sender + same approximate coords inside the window.
   // Reporter name is the cheapest distinguishing key we have on Spot
   // (we don't carry msgId / groupName there). When senderName is
-  // unknown we skip the dedup query entirely — anonymous shares are
+  // unknown we skip the dedup query entirely, anonymous shares are
   // rare enough that occasional duplicates are an acceptable cost vs
   // a global all-sender lookup that could spuriously suppress real
   // back-to-back drops from different people standing at the same
@@ -1363,7 +1363,7 @@ async function ensureBhandaraSpot(
       language: lang,
       reporterName: senderName,
       reporterPhoneHash: null,
-      // Auto-publish — the upstream profanity gate + classifier already
+      // Auto-publish, the upstream profanity gate + classifier already
       // gave us a high-confidence SHARING + real coords, and the whole
       // point of this promotion is real-time. The 8h TTL is the safety
       // net if a bad spot slips through; admin can still purge via

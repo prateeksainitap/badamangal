@@ -10,14 +10,14 @@ export const dynamic = "force-dynamic";
 /**
  * GET /d/[id]
  *
- * Tracked QR-scan redirect — same pattern Canva uses on their QR
+ * Tracked QR-scan redirect, same pattern Canva uses on their QR
  * generator. When this endpoint is the destination of a QR code,
  * every scan hits our server first, we record a DonationIntent
  * row, then 302 to the actual `upi://pay?` deep link so the
  * scanner's phone hands the payment off to their UPI app.
  *
  * Why this exists:
- *   Raw `upi://pay?…` QRs are uncatchable — they go straight from
+ *   Raw `upi://pay?…` QRs are uncatchable, they go straight from
  *   the camera into the UPI app, our server never sees the scan.
  *   By generating a QR that encodes `https://badamangal.com/d/<id>`
  *   instead, we get the same "scan to pay" UX with an audit trail.
@@ -71,14 +71,14 @@ export async function GET(
     },
   });
 
-  // No row OR not approved — redirect to home rather than 404, so a
+  // No row OR not approved, redirect to home rather than 404, so a
   // confused scanner at a venue lands somewhere useful instead of an
   // error page that looks broken in front of a queue.
   if (!bh || bh.status !== "APPROVED") {
     return NextResponse.redirect(SITE_URL, 302);
   }
 
-  // Bhandara found but no UPI configured — send the donor to the
+  // Bhandara found but no UPI configured, send the donor to the
   // bhandara detail page where they can read details, see the
   // organiser's phone, and contact directly. Better fallback than a
   // dead 404.
@@ -93,7 +93,7 @@ export async function GET(
   // isn't blocked by our telemetry. Same posture as the in-page
   // beacon over at /api/donations/intent.
   //
-  // amount = 0 is our sentinel for "no suggested amount" — the donor
+  // amount = 0 is our sentinel for "no suggested amount", the donor
   // types whatever feels right in their UPI app. Earlier we baked
   // ₹251 into both the deep link and the audit row; the organiser
   // felt the prefilled number was steering donors. /admin/donations

@@ -2,7 +2,7 @@
  * Merged page hero used on every admin sub-page.
  *
  * Originally this was an illustration-only strip that sat ABOVE the
- * page's eyebrow/title/subtitle block — producing two stacked
+ * page's eyebrow/title/subtitle block, producing two stacked
  * sections of chrome before the operator hit any actual data. We
  * collapsed it into a single panel: eyebrow + title + subtitle +
  * primary-action on the left, the page's isometric illustration
@@ -88,7 +88,7 @@ export default function AdminPageHero({
         aria-hidden
         className="absolute inset-0 opacity-50 admin-data-grid pointer-events-none"
       />
-      {/* Two-column on sm+ — text on the left grows to fill, the
+      {/* Two-column on sm+, text on the left grows to fill, the
           illustration tucks into the right as a fixed-width aside.
           Stacks on mobile so the title doesn't fight a giant SVG
           for horizontal room. */}

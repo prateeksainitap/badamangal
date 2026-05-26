@@ -21,7 +21,7 @@ const SPOT_TTL_HOURS = 8;
  * to (R2 + Supabase Storage + our own /uploads path). Relative URLs
  * starting with "/" are accepted as legacy local-uploaded files.
  *
- * Update carefully — adding a host here means we trust its content
+ * Update carefully, adding a host here means we trust its content
  * to render on the public homepage.
  */
 const PHOTO_URL_ALLOWED_HOST_SUFFIXES = [

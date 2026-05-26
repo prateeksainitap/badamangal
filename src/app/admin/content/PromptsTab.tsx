@@ -12,18 +12,18 @@ import { EmptyState } from "./PitchesTab";
 import { extractVariables, AVAILABLE_MODELS } from "@/lib/openai";
 
 /**
- * Prompts tab — saved AI prompts the operator can Run inline.
+ * Prompts tab, saved AI prompts the operator can Run inline.
  *
  * Each row is a card with:
  *   • Title + tags + default model
  *   • Body preview (collapsed)
- *   • Run form — one text input per {{variable}} extracted from the
+ *   • Run form, one text input per {{variable}} extracted from the
  *     body, plus a model picker. Submits to runPromptAction which
  *     calls OpenAI Chat Completions and stores the result in the row.
- *   • lastRunOutput — collapsed details panel showing the most recent
+ *   • lastRunOutput, collapsed details panel showing the most recent
  *     assistant response (truncated to 8k chars in the DB).
  *
- * No streaming for V1 — the form submits, the server action awaits
+ * No streaming for V1, the form submits, the server action awaits
  * OpenAI, writes back, revalidates the path. Streaming UI can be a
  * follow-up if the wait feels too long.
  *
@@ -41,7 +41,7 @@ export default async function PromptsTab() {
 
   return (
     <div className="space-y-4">
-      {/* API key callout — shown when OPENAI_API_KEY is unset so the
+      {/* API key callout, shown when OPENAI_API_KEY is unset so the
           admin knows the runner won't work yet. Disappears once the
           key is added to .env.local + dev server is restarted. */}
       {!apiKeyConfigured ? (
@@ -63,7 +63,7 @@ export default async function PromptsTab() {
       {rows.length === 0 ? (
         <EmptyState
           title="No prompts yet"
-          hint="Save reusable prompts here — outreach drafts, IG caption generators, sponsor follow-ups. Use {{double-brace}} placeholders for variables."
+          hint="Save reusable prompts here, outreach drafts, IG caption generators, sponsor follow-ups. Use {{double-brace}} placeholders for variables."
         />
       ) : (
         <div className="grid gap-4">
@@ -171,7 +171,7 @@ function PromptCard({ row }: { row: PromptRow }) {
           </div>
         </details>
 
-        {/* Last-run output — only shown after at least one run. */}
+        {/* Last-run output, only shown after at least one run. */}
         {row.lastRunOutput ? (
           <details className="mt-3 group" open={isError}>
             <summary
@@ -198,7 +198,7 @@ function PromptCard({ row }: { row: PromptRow }) {
           </details>
         ) : null}
 
-        {/* Run form — one input per {{variable}} extracted from the
+        {/* Run form, one input per {{variable}} extracted from the
             prompt body + model picker + Run button. */}
         {!isArchived ? (
           <form
@@ -211,7 +211,7 @@ function PromptCard({ row }: { row: PromptRow }) {
 
             {vars.length === 0 ? (
               <p className="text-[12px] text-cream-50/55 font-mono">
-                No <code>{`{{`}variables{`}}`}</code> — the prompt runs as-is.
+                No <code>{`{{`}variables{`}}`}</code>, the prompt runs as-is.
               </p>
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">

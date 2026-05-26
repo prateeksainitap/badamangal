@@ -4,13 +4,13 @@
  * Wraps @2toad/profanity (English defaults) with a curated list of
  * Romanised Hindi / Hinglish profanity transliterations. The library's
  * English wordlist on its own misses everything our WhatsApp groups
- * actually produce — Lucknow chats are bilingual and the offensive
+ * actually produce, Lucknow chats are bilingual and the offensive
  * stuff is almost entirely Romanised Hindi.
  *
  * Policy: STRICT. Bhandara is a religious / community gathering and
  * the homepage's "what Lucknow is saying" surface is family-facing.
  * False-positive cost (filtering a borderline word like "saala" that
- * some users use affectionately) is low — the mention just doesn't
+ * some users use affectionately) is low, the mention just doesn't
  * appear publicly; admin can re-approve from /admin/mentions if needed.
  * False-negative cost (a slur leaking to the homepage) is high.
  * Better to over-filter and let admin override than to under-filter.
@@ -29,7 +29,7 @@ import { Profanity, CensorType } from "@2toad/profanity";
  *
  *  Curated conservatively: kept to words that are unambiguously
  *  profanity in chat context, even when they're used "casually".
- *  Mild address words like "yaar", "bhai", "dost" are NOT here —
+ *  Mild address words like "yaar", "bhai", "dost" are NOT here
  *  those are neutral. */
 const HINGLISH_PROFANITY = [
   // Sister/mother-f variants
@@ -44,7 +44,7 @@ const HINGLISH_PROFANITY = [
   "gaand", "gand", "gandu", "gaandu",
   // Bestiality / animal insults used in profane context
   "suar", "suer", "suarwala", "kutta", "kuttiya", "kutte",
-  // Composite "mother-of-X" / "sister-of-X" insults — substring-match
+  // Composite "mother-of-X" / "sister-of-X" insults, substring-match
   // catches "maa ki", "behen ki", "teri maa" patterns once the user
   // types the full phrase. We list the head words; library handles
   // the boundary.
@@ -54,7 +54,7 @@ const HINGLISH_PROFANITY = [
   "fck", "fuk", "fuq",
 ];
 
-/** Shared singleton — instantiating Profanity reloads + compiles the
+/** Shared singleton, instantiating Profanity reloads + compiles the
  *  regex blacklist, which is non-trivial. Reuse one instance across
  *  every request. */
 const profanity = new Profanity({
@@ -65,7 +65,7 @@ const profanity = new Profanity({
 profanity.addWords(HINGLISH_PROFANITY);
 
 /** True if the input contains any blacklisted English or Hinglish
- *  profanity. Whole-word match — "classic" doesn't trip on "ass". */
+ *  profanity. Whole-word match, "classic" doesn't trip on "ass". */
 export function hasProfanity(text: string): boolean {
   return profanity.exists(text);
 }

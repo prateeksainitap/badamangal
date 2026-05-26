@@ -3,7 +3,7 @@
  * icons are 22×22 with `currentColor` strokes so the tile / button
  * that wraps them controls the tint.
  *
- * Naming convention: `Icon<Subject>` — Bhandara, Spot, Mention,
+ * Naming convention: `Icon<Subject>`, Bhandara, Spot, Mention,
  * Volunteer, Organise, Discover, Clock, Calendar, Check, etc.
  *
  * Keep the set tight (only what the admin actually needs). Anything
@@ -13,7 +13,7 @@
 type IconProps = { size?: number };
 
 export function IconBhandara({ size = 22 }: IconProps = {}) {
-  // Diya / flame on a leaf base — same vocabulary as the sidebar diya.
+  // Diya / flame on a leaf base, same vocabulary as the sidebar diya.
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M12 3 c1.6 1.5 2.5 3.2 0 5.5 c-2.5 -2.3 -1.6 -4 0 -5.5 z" fill="currentColor" />
@@ -154,7 +154,7 @@ export function IconUserPlus({ size = 22 }: IconProps = {}) {
   );
 }
 
-/** Envelope — drop-in replacement for the ✉ (U+2709) dingbat we used
+/** Envelope, drop-in replacement for the ✉ (U+2709) dingbat we used
  *  to inline in buttons and empty states. Most system fonts +
  *  Mukta lack U+2709 → it renders as the missing-glyph tofu box.
  *  This SVG version scales to its `size` prop and tracks
@@ -168,7 +168,7 @@ export function IconEnvelope({ size = 22 }: IconProps = {}) {
   );
 }
 
-/** Arrow-up-right — drop-in for the ↗ (U+2197) glyph we used as an
+/** Arrow-up-right, drop-in for the ↗ (U+2197) glyph we used as an
  *  "opens externally / launches mailto" hint. Same font-coverage
  *  problem as the envelope. */
 export function IconArrowUpRight({ size = 22 }: IconProps = {}) {

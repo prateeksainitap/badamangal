@@ -33,11 +33,11 @@ import {
 } from "@/components/admin/QueueSelection";
 
 /**
- * Spots moderation queue — sibling of /admin/bhandaras.
+ * Spots moderation queue, sibling of /admin/bhandaras.
  *
  * Active vs Past:
  *   Spots auto-expire 8h after creation. A row is "Past" once
- *   `expiresAt <= now` regardless of approval status — that's the
+ *   `expiresAt <= now` regardless of approval status, that's the
  *   archive view. Every other tab (All / Live / Rejected) excludes
  *   past rows so the operator's working surface stays free of stale
  *   items the way the bhandaras queue does. PAST shows everything
@@ -88,14 +88,14 @@ function whereForTab(tab: TabKey, now: Date): Prisma.SpotWhereInput {
     case "LIVE":
       return { status: "APPROVED", expiresAt: { gt: now } };
     case "REJECTED":
-      // Past rejected rows go to PAST, not REJECTED — keep this tab
+      // Past rejected rows go to PAST, not REJECTED, keep this tab
       // focused on currently-relevant rejections.
       return { status: "REJECTED", expiresAt: { gt: now } };
     case "PAST":
       return { expiresAt: { lte: now } };
     case "ALL":
     default:
-      // ALL now means "everything currently active" — past items live
+      // ALL now means "everything currently active", past items live
       // in their own bucket.
       return { expiresAt: { gt: now } };
   }
@@ -146,7 +146,7 @@ export default async function AdminSpotsPage({
   //   • botEver    = caption contains [bot:
   //   • pastEver   = expiresAt <= now
   //
-  // Source tabs (active-only, exclude past — "what's currently in
+  // Source tabs (active-only, exclude past, "what's currently in
   // my working surface, split by who created it"):
   //   • activeAll, activeHuman, activeBot
   //
@@ -190,7 +190,7 @@ export default async function AdminSpotsPage({
     prisma.spot.count({ where: { AND: [pastWhere, botCaption] } }),
     // ever bot count (used to derive humanEver)
     prisma.spot.count({ where: botCaption }),
-    // status counts × source — needed only for the source the user
+    // status counts × source, needed only for the source the user
     // has selected, but it's cheaper to compute both than to branch
     // the query plan. The page reads the right pair below.
     prisma.spot.count({
@@ -343,7 +343,7 @@ export default async function AdminSpotsPage({
         totalInTab={totalInTab}
         preserveParams={{
           // So clicking a status tab doesn't drop the active source
-          // or search — the operator's primary cut (Human / Bot)
+          // or search, the operator's primary cut (Human / Bot)
           // and any in-flight query stay intact.
           source: source !== "all" ? source : undefined,
           q: q || undefined,
@@ -353,7 +353,7 @@ export default async function AdminSpotsPage({
             current={source}
             variant="primary"
             counts={{
-              // Active-only — source strip is the working-surface
+              // Active-only, source strip is the working-surface
               // primary cut. Past rows remain reachable via Status·Past.
               all: activeAll,
               human: activeHuman,
@@ -423,7 +423,7 @@ function EmptyState({ tab, query }: { tab: TabKey; query: string }) {
       : tab === "REJECTED"
         ? "Nothing currently rejected."
         : tab === "PAST"
-          ? "No expired spots — the archive is empty."
+          ? "No expired spots, the archive is empty."
           : "No active spots right now.";
 
   return (

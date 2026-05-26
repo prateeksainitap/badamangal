@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Admin shell — sidebar + top bar that wraps every authenticated
+ * Admin shell, sidebar + top bar that wraps every authenticated
  * admin page. Owns the dark ember-brown theme that matches the
  * homepage LiveChatterBoard panel (ink-900 base, saffron accents,
  * cream text) so the admin reads as the "operator's view" of the
@@ -88,7 +88,7 @@ const NAV: NavItem[] = [
     // Donation-intent audit. Every Sponsor-button tap on a public
     // bhandara page lands here as a row recording who tapped (ip
     // hash), the bhandara, suggested amount, recipient UPI, and the
-    // status of the claim. Intent-tracking only — see
+    // status of the claim. Intent-tracking only, see
     // /admin/donations page header for the full disclaimer about
     // UPI direct-to-organiser flows lacking server-side confirmation.
     href: "/admin/donations",
@@ -98,7 +98,7 @@ const NAV: NavItem[] = [
   {
     // Bot-ingest audit. Surfaces every /api/bot/ingest outcome
     // (success / duplicate / ignored / failed) so the operator can
-    // answer "I forwarded that poster — what did the bot do with
+    // answer "I forwarded that poster, what did the bot do with
     // it?" from the sidebar without hunting URLs. Added 2026-05-25
     // after a debug session where the user couldn't tell that the
     // bot was actually working (3 dedupes had landed but no new
@@ -112,7 +112,7 @@ const NAV: NavItem[] = [
 
 type Props = {
   children: React.ReactNode;
-  /** Optional banner shown above the page title — used by Bhandaras
+  /** Optional banner shown above the page title, used by Bhandaras
    *  / Spots pages to surface "5 pending" type counters. */
   pageTitle?: string;
   /** Optional subtitle shown under the title. */
@@ -153,7 +153,7 @@ export default function AdminShell({
   const currentType = search?.get("type") ?? "";
 
   function isActive(item: NavItem): boolean {
-    // Dashboard is `/admin/home` — exact match.
+    // Dashboard is `/admin/home`, exact match.
     if (item.href.startsWith("/admin/home"))
       return pathname.startsWith("/admin/home");
     // Items that share `/admin` but differentiate by ?type=
@@ -175,7 +175,7 @@ export default function AdminShell({
       // overflow-clip (not overflow-hidden): clips visual overflow
       // WITHOUT establishing a new scrolling context. The old
       // overflow-hidden silently broke `position: sticky` for every
-      // descendant — the sticky element's scrolling ancestor became
+      // descendant, the sticky element's scrolling ancestor became
       // this div (which doesn't itself scroll; the WINDOW scrolls),
       // so sticking never engaged. `overflow-clip` is the modern
       // equivalent (Chrome 90+, FF 81+, Safari 16+) that prevents
@@ -183,7 +183,7 @@ export default function AdminShell({
       // scroll container.
       className="admin-shell admin-data-grid min-h-dvh text-cream-50 relative overflow-clip"
       style={{
-        // Deep near-black with a subtle blue undertone — operator
+        // Deep near-black with a subtle blue undertone, operator
         // console feel without going fully clinical. Saffron stays
         // on the brand mark + a few accent CTAs so the surface
         // doesn't lose its BadaMangal identity entirely.
@@ -196,7 +196,7 @@ export default function AdminShell({
       <a href="#admin-main" className="admin-skip-link">
         Skip to content
       </a>
-      {/* Mesh-gradient backdrop — multi-stop radials in cyan + violet
+      {/* Mesh-gradient backdrop, multi-stop radials in cyan + violet
           + a single warm saffron to keep the brand thread visible. */}
       <div
         aria-hidden
@@ -206,11 +206,11 @@ export default function AdminShell({
             "radial-gradient(ellipse 70% 60% at 92% -5%, rgba(34, 211, 238, 0.14) 0%, transparent 55%), radial-gradient(ellipse 60% 50% at -5% 105%, rgba(139, 92, 246, 0.16) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 50% 50%, rgba(242,148,76,0.05) 0%, transparent 70%)",
         }}
       />
-      {/* Scanline removed by request — the slow top→bottom drift
+      {/* Scanline removed by request, the slow top→bottom drift
           read as fidgety rather than ambient. The .admin-scanline
           CSS rule still lives in globals.css in case we want to
           bring it back behind a feature flag later. */}
-      {/* Fine noise overlay — 1.5% opacity, lifts the flat dark
+      {/* Fine noise overlay, 1.5% opacity, lifts the flat dark
           fill out of plastic territory into a textured operator
           surface. */}
       <div
@@ -236,7 +236,7 @@ export default function AdminShell({
             overflow-clip fix on .admin-shell + main is what allows
             sticky to actually engage here. */}
         <aside className="hidden md:flex md:flex-col md:sticky md:top-0 md:h-dvh w-60 shrink-0 border-r border-cyan-400/10 bg-black/45 backdrop-blur-md">
-          {/* Brand mark — the real Final-Logo-BM-white.svg is a
+          {/* Brand mark, the real Final-Logo-BM-white.svg is a
               1660×479 horizontal lockup that ALREADY contains both
               the gada-on-disc mark and the "Bada Mangal" wordmark.
               We were previously squashing it into a 28×28 saffron-
@@ -246,7 +246,7 @@ export default function AdminShell({
               hand-rolled duplicate. Now we render the lockup at its
               natural aspect ratio inside the sidebar's brand row.
               The ops.console tagline lives below as the only
-              hand-written text — keeps the AI/ops console identity
+              hand-written text, keeps the AI/ops console identity
               without competing with the wordmark. */}
           <Link
             href="/admin/home"
@@ -260,7 +260,7 @@ export default function AdminShell({
               alt="Bada Mangal"
               width="1660"
               height="479"
-              // h-10 (40px) — bumped from h-7 (28px). The lockup
+              // h-10 (40px), bumped from h-7 (28px). The lockup
               // SVG is 1660×479 (~3.46:1) so h-10 keeps the wordmark
               // legible without overflowing the 240px sidebar width
               // (40px × 3.46 ≈ 138px wide, well within the column).
@@ -279,7 +279,7 @@ export default function AdminShell({
                 <Link
                   key={item.label}
                   href={item.href}
-                  // Prefetch on hover/viewport — the admin pages are
+                  // Prefetch on hover/viewport, the admin pages are
                   // all `force-dynamic`, so without prefetch every
                   // sidebar click was a cold 1-2s SSR round-trip.
                   // With prefetch, by the time the operator clicks
@@ -294,7 +294,7 @@ export default function AdminShell({
                       : "text-cream-50/70 hover:text-cream-50 hover:bg-cream-50/[0.04]",
                   ].join(" ")}
                 >
-                  {/* Active indicator — cyan accent bar inset just
+                  {/* Active indicator, cyan accent bar inset just
                       inside the rounded gradient so it reads as part
                       of the highlighted row, not a stray line hanging
                       off the menu item's outer edge. Inset by left-1.5
@@ -304,7 +304,7 @@ export default function AdminShell({
                       .admin-nav-slide-in keyframe animates the
                       `transform` property (`scaleY` from 0.4 → 1) and
                       CSS animations win against utility transforms on
-                      the same property — that conflict was leaving the
+                      the same property, that conflict was leaving the
                       bar hanging below the row centre. Auto-margins
                       on a known height (`h-5`) centre cleanly without
                       touching transform. */}
@@ -333,7 +333,7 @@ export default function AdminShell({
                   >
                     {item.label}
                   </span>
-                  {/* Counter badge — only renders when the parent
+                  {/* Counter badge, only renders when the parent
                       page passed a count for this href and it's > 0.
                       Tone follows urgency: pending things (bhandaras,
                       mentions, volunteers, organise, emails) get
@@ -385,7 +385,7 @@ export default function AdminShell({
               </span>
               <span className="font-semibold tracking-tight">View public site</span>
             </Link>
-            {/* Build-state chip — small AI/ops detail at the very
+            {/* Build-state chip, small AI/ops detail at the very
                 bottom that reads as "this is a system being
                 operated", not a cms login. */}
             <div className="mt-3 mx-3 rounded-lg border border-cyan-400/15 bg-cyan-400/[0.03] px-2 py-1.5 font-mono text-[10px] leading-tight">
@@ -423,7 +423,7 @@ export default function AdminShell({
               ) : null}
             </div>
 
-            {/* AI status pill — animated cyan→violet shimmer on the
+            {/* AI status pill, animated cyan→violet shimmer on the
                 text so the operator always sees "the AI is here +
                 processing". Pure decoration; reflects the existence
                 of Gemini + bot pipelines without showing real-time
@@ -436,7 +436,7 @@ export default function AdminShell({
               <span className="admin-ai-shimmer">AI · online</span>
             </div>
 
-            {/* Bot heartbeat — surface here at all times so the
+            {/* Bot heartbeat, surface here at all times so the
                 operator never has to dig for it. The existing
                 server-component pill is passed in via the layout
                 because AdminShell itself is client-side. */}
@@ -446,7 +446,7 @@ export default function AdminShell({
               </div>
             ) : null}
 
-            {/* Notification bell — server-rendered NotificationBell
+            {/* Notification bell, server-rendered NotificationBell
                 with the popover panel hidden inside a <details>.
                 Only pages that fetch alert source data pass this in
                 (the dashboard does); other pages don't render a bell.
@@ -477,7 +477,7 @@ export default function AdminShell({
             // overflow-y: auto per CSS spec, which makes <main> a
             // scrolling container and breaks position:sticky inside
             // any child (the sticky element pins to <main>, but main
-            // doesn't actually scroll — the window does — so sticking
+            // doesn't actually scroll, the window does, so sticking
             // never engages). overflow-x-clip clips horizontal overflow
             // without establishing a scrolling context, letting the
             // window remain the scrolling parent for sticky descendants.
@@ -491,7 +491,7 @@ export default function AdminShell({
   );
 }
 
-/** Mobile-only hamburger — sidebar collapses to a drawer below md. */
+/** Mobile-only hamburger, sidebar collapses to a drawer below md. */
 function MobileNavToggle() {
   const [open, setOpen] = useState(false);
   return (
@@ -624,7 +624,7 @@ function IconImage() {
     </svg>
   );
 }
-/** Envelope — used for the Emails nav item. Plain stylised letter
+/** Envelope, used for the Emails nav item. Plain stylised letter
  *  shape; the inner triangle hints at an open flap so the icon
  *  reads as "inbox" rather than just "mail". */
 function IconEnvelope() {
@@ -635,7 +635,7 @@ function IconEnvelope() {
     </svg>
   );
 }
-/** Rupee glyph — used by the Donations sidebar item. Drawn rather
+/** Rupee glyph, used by the Donations sidebar item. Drawn rather
  *  than relying on the literal "₹" character so weight + stroke line
  *  up with the other line-art icons in the rail. */
 function IconRupee() {
@@ -648,7 +648,7 @@ function IconRupee() {
     </svg>
   );
 }
-/** Sparkle — used for the Content Hub nav item. Reads as "AI /
+/** Sparkle, used for the Content Hub nav item. Reads as "AI /
  *  generated content / library of templates" without committing to
  *  any one of pitches / images / prompts. */
 function IconSparkle() {

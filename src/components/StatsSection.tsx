@@ -116,8 +116,8 @@ export default function StatsSection({ stats }: Props) {
         {/* Stats grid. Tiles whose underlying number is 0 are hidden so
             the panel never reads as "nothing is happening". Six-tile
             roster grouped in two thematic rows:
-              Row 1 — bhandara sources: Listed · Spotted · Mentioned
-              Row 2 — community + scale: Community · Areas · Tuesdays
+              Row 1, bhandara sources: Listed · Spotted · Mentioned
+              Row 2, community + scale: Community · Areas · Tuesdays
             Community leads row 2 because it's the largest number and
             anchors the scale story; Areas + Tuesdays follow as the
             geographic + temporal scope.
@@ -134,7 +134,7 @@ export default function StatsSection({ stats }: Props) {
         <ol
           className="mt-6 grid auto-rows-fr gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6"
         >
-          {/* ── Row 1 — bhandara source breakdown ─────────────────── */}
+          {/* ── Row 1, bhandara source breakdown ─────────────────── */}
           {stats.bhandarasListed > 0 ? (
             <StatCard
               icon={<IconBhandara />}
@@ -156,7 +156,7 @@ export default function StatsSection({ stats }: Props) {
               label={t.stats.bhandarasMentioned}
             />
           ) : null}
-          {/* ── Row 2 — community + scale ─────────────────────────── */}
+          {/* ── Row 2, community + scale ─────────────────────────── */}
           {/* WhatsApp community member total. Bot pushes this via
               /api/bot/community-stats; tile is hidden until the bot
               has actually upserted a non-zero count so we don't
@@ -220,7 +220,7 @@ function StatCard({
         {icon}
       </div>
 
-      {/* Number — bumped a tier brighter + bolder. Was saffron-600 at
+      {/* Number, bumped a tier brighter + bolder. Was saffron-600 at
           2xl/3xl, now sindoor-700 at 3xl/4xl with a warm drop-shadow.
           On the cream tile this reads as a confident headline number
           rather than a quiet caption. */}

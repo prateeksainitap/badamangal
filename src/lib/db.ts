@@ -17,7 +17,7 @@ const globalForPrisma = globalThis as unknown as {
      comes back as `PrismaClientKnownRequestError: Can't reach database
      server`, the route 500s, and the admin sees the DATABASE HICCUP
      error boundary card. The pooler is back up by the time the card
-     renders — clicking Retry succeeds — but it's a constant friction
+     renders, clicking Retry succeeds, but it's a constant friction
      under any reasonable load.
 
    What this does:
@@ -30,7 +30,7 @@ const globalForPrisma = globalThis as unknown as {
      Skip mutations. Retrying a `create` / `update` / `delete` on a
      transient error risks double-writes (the original may have
      succeeded server-side but the client dropped the response). Those
-     surface to the user as before — which is correct: a write failure
+     surface to the user as before, which is correct: a write failure
      during moderation is a real signal, not noise.
 
    Why $use (deprecated in v6) and not $extends:
@@ -67,10 +67,10 @@ function isTransientConnectionError(err: unknown): boolean {
       : "";
   // Prisma surfaces transient pool / pgbouncer failures with a few
   // distinct shapes:
-  //   • PrismaClientInitializationError — "Can't reach database server"
-  //   • P1001 / P1002 / P1008 / P1017 codes — connection-layer issues
-  //   • "Server has closed the connection" — pgbouncer recycling
-  //   • "max client connections reached" (EMAXCONN) — pooler saturated
+  //   • PrismaClientInitializationError, "Can't reach database server"
+  //   • P1001 / P1002 / P1008 / P1017 codes, connection-layer issues
+  //   • "Server has closed the connection", pgbouncer recycling
+  //   • "max client connections reached" (EMAXCONN), pooler saturated
   //     under traffic spikes. Added 2026-05-26 after Tuesday-1 of
   //     Adhik Mas blew the 200-connection pool ceiling and admin
   //     pages started 500'ing instead of slow-retrying. The error

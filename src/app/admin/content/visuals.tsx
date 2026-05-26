@@ -1,5 +1,5 @@
 /**
- * Visual tokens for the Content Hub — kind/audience/channel icons +
+ * Visual tokens for the Content Hub, kind/audience/channel icons +
  * tone classes. Centralised so the card, editor, and filter chips
  * all use the same colour + glyph language.
  *
@@ -11,10 +11,10 @@
  *   press      → sindoor      (newsroom/urgent)
  *   organiser  → cyan         (community ops)
  *   volunteer  → leaf         (active helper)
- *   donor      → leaf         (giving — leaf with a heart icon
+ *   donor      → leaf         (giving, leaf with a heart icon
  *                              differentiates from volunteer)
  *   community  → violet       (group/audience)
- *   internal   → ink/neutral  (no stripe — quiet)
+ *   internal   → ink/neutral  (no stripe, quiet)
  *   other      → ink/neutral
  *
  * Each KIND gets its own glyph (pitch/template/strategy/other) for
@@ -106,13 +106,13 @@ export function audienceTone(a: ContentAudience | string): AudienceTone {
   return AUDIENCE_TONE[a] ?? TONE_INK;
 }
 
-/** Inline SVGs — kept small (16×16) so they sit comfortably in a
+/** Inline SVGs, kept small (16×16) so they sit comfortably in a
  *  10×10 (~40px) icon disc. All use stroke="currentColor" so the
  *  iconText tone above colourises them. */
 export function KindIcon({ kind }: { kind: ContentKind | string }) {
   switch (kind) {
     case "PITCH":
-      // arrow-up-right inside a small frame — "outbound message"
+      // arrow-up-right inside a small frame, "outbound message"
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M7 17 L17 7" />
@@ -120,14 +120,14 @@ export function KindIcon({ kind }: { kind: ContentKind | string }) {
         </svg>
       );
     case "TEMPLATE":
-      // message-square — copy-pasteable comm
+      // message-square, copy-pasteable comm
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M21 15 a2 2 0 0 1 -2 2 H7 l-4 4 V5 a2 2 0 0 1 2 -2 h14 a2 2 0 0 1 2 2 z" />
         </svg>
       );
     case "STRATEGY":
-      // compass — long-form planning
+      // compass, long-form planning
       return (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <circle cx="12" cy="12" r="9" />
@@ -145,7 +145,7 @@ export function KindIcon({ kind }: { kind: ContentKind | string }) {
   }
 }
 
-/** Audience glyphs — used in filter chips so a row of pill-buttons
+/** Audience glyphs, used in filter chips so a row of pill-buttons
  *  reads at a glance ("📰 Press" not just "Press"). Sized 14×14 to
  *  fit inline with chip text. */
 export function AudienceIcon({ audience }: { audience: ContentAudience | string }) {
@@ -162,7 +162,7 @@ export function AudienceIcon({ audience }: { audience: ContentAudience | string 
   };
   switch (audience) {
     case "SPONSOR":
-      // briefcase — corporate / paying
+      // briefcase, corporate / paying
       return (
         <svg {...props}>
           <rect x="3" y="7" width="18" height="13" rx="2" />
@@ -170,7 +170,7 @@ export function AudienceIcon({ audience }: { audience: ContentAudience | string 
         </svg>
       );
     case "INFLUENCER":
-      // camera — creator
+      // camera, creator
       return (
         <svg {...props}>
           <path d="M23 19 a2 2 0 0 1 -2 2 H3 a2 2 0 0 1 -2 -2 V8 a2 2 0 0 1 2 -2 h4 l2 -3 h6 l2 3 h4 a2 2 0 0 1 2 2 z" />
@@ -232,7 +232,7 @@ export function AudienceIcon({ audience }: { audience: ContentAudience | string 
   }
 }
 
-/** Channel glyph mini-icons — used as a small adjacent badge on the
+/** Channel glyph mini-icons, used as a small adjacent badge on the
  *  card meta row when the content is targeted at a specific channel. */
 export function ChannelIcon({ channel }: { channel: ContentChannel | string }) {
   const props = {

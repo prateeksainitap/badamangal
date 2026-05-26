@@ -4,7 +4,7 @@ import ContentCard from "./ContentCard";
 import ContentEditor from "./ContentEditor";
 
 /**
- * Pitches tab — Content rows where kind = "PITCH".
+ * Pitches tab, Content rows where kind = "PITCH".
  *
  * Filter chips along the top let the operator narrow by audience
  * (sponsor / influencer / press / etc) and channel (email / IG / press
@@ -70,7 +70,7 @@ export default async function PitchesTab({
           hint={
             audience || channel
               ? "Clear the filters above or create a new pitch."
-              : "Use “+ New content” above to draft your first pitch — or click the import banner up top to load /notes/ pitches."
+              : "Use “+ New content” above to draft your first pitch, or click the import banner up top to load /notes/ pitches."
           }
         />
       ) : (
@@ -86,7 +86,7 @@ export default async function PitchesTab({
 
 /* ─────────────────────────── FilterStrip ────────────────────────── */
 
-/** Shared filter chip strip — pitches + templates both use this. */
+/** Shared filter chip strip, pitches + templates both use this. */
 export function FilterStrip({
   audience,
   channel,

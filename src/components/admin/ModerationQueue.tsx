@@ -30,7 +30,7 @@ import { LinkPendingBadge } from "@/components/admin/LinkPending";
  */
 
 export type QueueTab = {
-  /** Tab identifier — used as the `?status=...` URL param value. */
+  /** Tab identifier, used as the `?status=...` URL param value. */
   key: string;
   /** Visible label on the pill. */
   label: string;
@@ -42,7 +42,7 @@ export type QueueTab = {
 type Props = {
   /** Small uppercase eyebrow above the title, e.g. "Moderation".
    *  Pages that pass content to AdminPageHero should NOT pass this
-   *  too — the local title block is suppressed when `title` is
+   *  too, the local title block is suppressed when `title` is
    *  undefined. */
   eyebrow?: string;
   /** Main heading. Renders as Fraunces serif on dark. */
@@ -73,7 +73,7 @@ type Props = {
    *  own ("Search name, area, organizer…", "Search caption…", etc). */
   searchPlaceholder?: string;
 
-  /** Children — the page's row list. Wrap each row in `.admin-row-in`
+  /** Children, the page's row list. Wrap each row in `.admin-row-in`
    *  with a `--i` index for the stagger entry, same convention the
    *  ActivityStream uses. */
   children: React.ReactNode;
@@ -84,17 +84,17 @@ type Props = {
   /** Total rows in the active tab (before any search filter). Used
    *  in the summary when `shownCount` is set. */
   totalInTab?: number;
-  /** Active search query — when present, the summary shows
+  /** Active search query, when present, the summary shows
    *  "N matches for 'foo'" instead of "Showing N of M". */
   searchValue?: string;
 
   /** Optional inline filter UI rendered to the right of the status
-   *  tab strip (same row as the search input). Light weight — for
+   *  tab strip (same row as the search input). Light weight, for
    *  small secondary toggles. */
   extraFilters?: React.ReactNode;
   /** PRIMARY filter rendered as its own row ABOVE the status tabs.
    *  Used by Bhandaras + Spots queues for the source segmented
-   *  control — the operator's primary mental cut is "human vs bot"
+   *  control, the operator's primary mental cut is "human vs bot"
    *  and the status pills become a sub-filter within that source. */
   primaryFilter?: React.ReactNode;
   /** URL params the status tab hrefs must preserve. Without this,
@@ -125,7 +125,7 @@ export default function ModerationQueue({
 }: Props) {
   /** Build a status-tab href that preserves the other active params
    *  (source, search) so flipping status doesn't reset them. The
-   *  first tab in the list is the implicit "all" — for it we omit
+   *  first tab in the list is the implicit "all", for it we omit
    *  the status param entirely so the URL stays clean. */
   function tabHref(tabKey: string): string {
     const params = new URLSearchParams();
@@ -143,7 +143,7 @@ export default function ModerationQueue({
   // The page header (eyebrow + title + subtitle + primaryAction) is
   // now rendered by AdminPageHero in the merged-hero layout. We only
   // render the local header block as a fallback for pages that haven't
-  // migrated yet — gated on `title` being present. Once every caller
+  // migrated yet, gated on `title` being present. Once every caller
   // moves to AdminPageHero, this branch + the matching props can go.
   const renderLocalHeader = Boolean(title);
   return (
@@ -200,7 +200,7 @@ export default function ModerationQueue({
           scrolling path to have overflow!=visible (besides the
           window). AdminShell uses overflow-clip on the shell and
           overflow-x-clip on <main> specifically so this stays
-          working — don't change those. */}
+          working, don't change those. */}
       <div className="sticky top-14 z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 mb-5 bg-[#080A10]/90 backdrop-blur-md border-b border-cyan-400/[0.08]">
         {primaryFilter ? (
           <div className="pt-3 flex items-center gap-2 flex-wrap">
@@ -231,7 +231,7 @@ export default function ModerationQueue({
                 ].join(" ")}
               >
                 <span>{tab.label}</span>
-                {/* Always show the count badge — even 0 — so the
+                {/* Always show the count badge, even 0, so the
                     operator can see the full breakdown when a source
                     filter is active. Zero counts render with a
                     dimmer tone so the strip stays calm. */}

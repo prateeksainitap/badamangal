@@ -9,11 +9,11 @@ import BotHeartbeat from "@/components/admin/BotHeartbeat";
 import { IconCheck } from "@/components/admin/AdminIcons";
 
 /**
- * /admin/bot-log — recent /api/bot/ingest audit rows.
+ * /admin/bot-log, recent /api/bot/ingest audit rows.
  *
  * Read-only view of BotIngestionLog. Lets the operator answer
  * questions like "I forwarded that poster from the Jai Sree Ram
- * channel but it didn't show up in the queue — what happened?".
+ * channel but it didn't show up in the queue, what happened?".
  * Every ingest attempt writes a row here, regardless of outcome
  * (success / duplicate / ignored / failed), so the trail never
  * goes cold.
@@ -46,7 +46,7 @@ const OUTCOME_KEYS = [
 ] as const;
 type OutcomeKey = (typeof OUTCOME_KEYS)[number];
 
-/** Outcomes the operator usually cares about — anything that did
+/** Outcomes the operator usually cares about, anything that did
  *  NOT cleanly create a row. The "PROBLEMS" virtual tab is shorthand
  *  for this set. */
 const PROBLEM_OUTCOMES = [
@@ -135,7 +135,7 @@ export default async function AdminBotLogPage({
     ? ((sp.outcome ?? "PROBLEMS") as OutcomeKey)
     : "PROBLEMS";
   // Optional group-name search. Powers "show me everything from the
-  // Jai Sri Ram channel" — operator types the channel name (or a
+  // Jai Sri Ram channel", operator types the channel name (or a
   // fragment of it) and the row list narrows to forwards whose
   // recorded groupName contains the query. Case-insensitive.
   const groupQuery = (sp.group ?? "").trim();
@@ -157,7 +157,7 @@ export default async function AdminBotLogPage({
   const whereCombined = { AND: [whereOutcome, whereGroup] };
 
   // Counts by outcome (single groupBy) + filtered rows (latest 200).
-  // Outcome tab counts intentionally IGNORE the group filter — the
+  // Outcome tab counts intentionally IGNORE the group filter, the
   // tab strip is the global "what's happening overall" view; the
   // group search narrows the list inside the active tab.
   const [counts, rows] = await Promise.all([
@@ -271,7 +271,7 @@ export default async function AdminBotLogPage({
           })}
         </div>
 
-        {/* Group-name search — narrows the active tab's rows to forwards
+        {/* Group-name search, narrows the active tab's rows to forwards
             whose recorded groupName contains the query. GET form so the
             URL stays shareable (?group=Jai+Sri+Ram). Hidden `outcome`
             input preserves the active tab on submit. */}
@@ -287,7 +287,7 @@ export default async function AdminBotLogPage({
               type="search"
               name="group"
               defaultValue={groupQuery}
-              placeholder="Filter by WhatsApp group / channel — e.g. Jai Sri Ram"
+              placeholder="Filter by WhatsApp group / channel, e.g. Jai Sri Ram"
               className="w-full rounded-xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm px-3.5 py-2 text-sm text-cream-50 font-mono placeholder:text-cream-50/35 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
             />
           </label>
@@ -366,7 +366,7 @@ export default async function AdminBotLogPage({
                           </span>
                         )}
                         {r.groupName ? (
-                          // Channel chip — clickable so the operator can
+                          // Channel chip, clickable so the operator can
                           // pivot from "this row came from X" to "show
                           // me everything from X". Saffron tone keeps
                           // it visually distinct from the outcome pill.

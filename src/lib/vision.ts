@@ -212,12 +212,12 @@ Be conservative: when in doubt, leave the field empty. Do not paste the model's 
 //
 // We ask for a one-word answer so the call is small and fast, most
 // images classify in well under a second of Gemini wall time.
-const CLASSIFY_PROMPT = `You are looking at a photo forwarded into a Lucknow Bada Mangal bhandara WhatsApp group. Many forwards aren't actually about a bhandara at all — newspaper clippings, recipe screenshots, political posters, memes, generic festival graphics, religious wallpapers, ads — your FIRST job is to filter those out.
+const CLASSIFY_PROMPT = `You are looking at a photo forwarded into a Lucknow Bada Mangal bhandara WhatsApp group. Many forwards aren't actually about a bhandara at all, newspaper clippings, recipe screenshots, political posters, memes, generic festival graphics, religious wallpapers, ads, your FIRST job is to filter those out.
 Classify the image as exactly ONE of these three categories. Output a single lowercase word, no punctuation, no prose:
-- "bhandara": a designed invite/poster announcing a SPECIFIC bhandara event in Lucknow (date, address, organiser, menu, time). Mostly graphic + text, often a decorated banner. Must clearly announce a bhandara — not just any religious / festival poster.
-- "spot": a live photograph from the venue — people serving / eating, a saffron pandal, a queue of devotees, a banner / sign AT the venue, cooked food being plated. A real-world snapshot of a bhandara happening.
-- "other": ANYTHING ELSE. Newspaper clippings, recipe / cooking images, political party posters, advertisements, wedding cards, generic Hanuman / Ram wallpapers, religious greetings, memes, status images, food magazine shots, business banners, election material, social-cause infographics, "Vasudhaiva Kutumbakam" type articles, etc. When in doubt, pick "other" — the cost of a wrong "other" is one missed bhandara; the cost of a wrong "bhandara" / "spot" is junk on the public feed.
-Rule of thumb: a "bhandara" or "spot" image must SHOW a Lucknow bhandara — the event itself or its invitation poster. Anything that's just topically adjacent (devotional content, social-cause content, food in general) is "other".`;
+- "bhandara": a designed invite/poster announcing a SPECIFIC bhandara event in Lucknow (date, address, organiser, menu, time). Mostly graphic + text, often a decorated banner. Must clearly announce a bhandara, not just any religious / festival poster.
+- "spot": a live photograph from the venue, people serving / eating, a saffron pandal, a queue of devotees, a banner / sign AT the venue, cooked food being plated. A real-world snapshot of a bhandara happening.
+- "other": ANYTHING ELSE. Newspaper clippings, recipe / cooking images, political party posters, advertisements, wedding cards, generic Hanuman / Ram wallpapers, religious greetings, memes, status images, food magazine shots, business banners, election material, social-cause infographics, "Vasudhaiva Kutumbakam" type articles, etc. When in doubt, pick "other", the cost of a wrong "other" is one missed bhandara; the cost of a wrong "bhandara" / "spot" is junk on the public feed.
+Rule of thumb: a "bhandara" or "spot" image must SHOW a Lucknow bhandara, the event itself or its invitation poster. Anything that's just topically adjacent (devotional content, social-cause content, food in general) is "other".`;
 
 const SPOT_PROMPT = `You are reading a photo someone snapped of a live Bada Mangal bhandara in Lucknow. The photo may show a banner, a serving counter, a crowd, or just food. Extract a brief caption and any visible location hints.
 
@@ -255,7 +255,7 @@ async function callGeminiVision(
   // and a hung Gemini connection would burn the Vercel function to
   // its full timeout before failing.
   //
-  // 5xx retries: 3 attempts not 2 — a single Gemini 503 overload spike
+  // 5xx retries: 3 attempts not 2, a single Gemini 503 overload spike
   // commonly lasts 5–10 seconds. Two attempts 1.5s apart fall entirely
   // inside that spike → photo lost. Three attempts with backoff (1.5s,
   // 4s) covers spikes up to ~7s wall clock.
@@ -264,7 +264,7 @@ async function callGeminiVision(
   // surfaced "The operation was aborted due to timeout" three attempts
   // in a row on a slow Gemini day. The previous behaviour retried
   // timeouts too, which meant 3 × 12s = 36s of the function budget
-  // burned on the same hung connection — and "auto" mode actually
+  // burned on the same hung connection, and "auto" mode actually
   // calls vision TWICE (classify + extract), so a hung Gemini could
   // chew through 72s before the function even noticed. Now a hard
   // throw on AbortError surfaces a clean 502 to the UI within one
@@ -316,7 +316,7 @@ async function callGeminiVision(
               // landmarks. Bumped 2026-05-25 after the admin scan UI
               // surfaced "Gemini hit the maxOutputTokens cap" on a
               // text-heavy "Aamantran / Sri Madbhagavat Katha" invite
-              // — the parser hit MAX_TOKENS finish-reason and threw
+              //, the parser hit MAX_TOKENS finish-reason and threw
               // before the trailing JSON could close. JSON mode is
               // still enabled below, so the model only emits the
               // structured shape we ask for; the extra budget gives
@@ -333,7 +333,7 @@ async function callGeminiVision(
     } catch (err) {
       // AbortError = the 22s per-attempt timer fired. Used to retry;
       // now we throw immediately. A hung Gemini connection doesn't
-      // get faster on retry — it's the same backend instance the load
+      // get faster on retry, it's the same backend instance the load
       // balancer routed us to, and burning another 22s × 2 attempts
       // just chews through the Vercel function budget. The admin UI
       // catches the 502 we surface and prompts the operator to retry,
@@ -433,20 +433,20 @@ export async function classifyImage(
   try {
     const raw = await callGeminiVision(imageBase64, mediaType, CLASSIFY_PROMPT);
     const cleaned = raw.toLowerCase().replace(/[^a-z]/g, "");
-    // Check "other" first — both other words ("bhandara", "spot")
+    // Check "other" first, both other words ("bhandara", "spot")
     // never appear as substrings of "other". Order matters because
     // we want "other" to win cleanly even if Gemini hedges with
     // "other (looks like a news article)".
     if (cleaned.includes("other")) return "other";
     if (cleaned.includes("spot")) return "spot";
     if (cleaned.includes("bhandara")) return "bhandara";
-    // Unknown response — treat as "other" so junk doesn't leak
+    // Unknown response, treat as "other" so junk doesn't leak
     // through. This is the conservative direction: a missed bhandara
     // is recoverable (admin can re-add), a wrong public spot isn't.
     return "other";
   } catch (err) {
     // Don't fail ingest on a classification hiccup, default to
-    // "other" so the row never ships to a public surface — the
+    // "other" so the row never ships to a public surface, the
     // bot's notify already pings the admin so genuine bhandaras
     // can be re-classified manually if the cap fires.
     console.error("[vision.classifyImage] failed, defaulting to other:", err);
@@ -488,14 +488,14 @@ async function callGeminiText(prompt: string): Promise<string> {
 
   // Retry once on transient Gemini errors (5xx, 429 "model overloaded").
   // Permanent failures (400 bad request, 403 auth, 404 model gone) bail
-  // out immediately — retrying those would just waste tokens. Two
+  // out immediately, retrying those would just waste tokens. Two
   // attempts is the right cap: Gemini Flash's overload spikes typically
   // clear within a second or two; longer outages should fail loudly so
   // the bot's `lastError` path fires its DM-the-owner alert instead of
   // swallowing the problem for minutes.
   //
   // Backoff is small (1.5s) because the bot's user-facing flow is "I
-  // sent a WhatsApp message and want to see it on the heatmap" — every
+  // sent a WhatsApp message and want to see it on the heatmap", every
   // second added on the server side is felt by the operator. The
   // common case (no transient) costs zero extra latency.
   const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
@@ -523,7 +523,7 @@ async function callGeminiText(prompt: string): Promise<string> {
     if (resp.ok) break;
     lastErrText = await resp.text();
     // Only retry transient errors. The 429 "spend cap exceeded" case
-    // would also retry — that's fine; one extra request to confirm
+    // would also retry, that's fine; one extra request to confirm
     // the cap is a cheap diagnostic and the second 429 surfaces the
     // same error to the caller.
     if (attempt < MAX_ATTEMPTS && TRANSIENT_STATUSES.has(resp.status)) {
@@ -811,7 +811,7 @@ export const classifiedTextSchema = z.object({
     .enum(["ASKING", "SHARING", "MENTIONING", "UNRELATED"])
     .default("UNRELATED"),
   /** Self-reported 0-1. Endpoint discards anything < 0.4 even when
-   *  the intent isn't UNRELATED — Gemini sometimes guesses ASKING on a
+   *  the intent isn't UNRELATED, Gemini sometimes guesses ASKING on a
    *  generic "kya ho raha hai" with no bhandara context. */
   confidence: z.number().min(0).max(1).default(0),
   /** Detected language of the original message; used to seed the
@@ -911,16 +911,16 @@ export async function classifyBhandaraMessage(
   // location-only queries ("polytechnic ke aas pss?") and reply
   // fragments ("batata hu abhi udher pahuch ke") are almost always
   // about a bhandara even though the message body never says
-  // "bhandara" — every active sender in the group has bhandara
+  // "bhandara", every active sender in the group has bhandara
   // context already loaded. We feed that signal to Gemini in the
   // prompt so it can interpret short messages charitably instead of
   // defaulting to UNRELATED.
   const isBhandaraGroup = !!groupName && /bhandara|bhandare|mangal/i.test(groupName);
   const groupBlock = groupName
-    ? `\n\nGroup: "${groupName}"${isBhandaraGroup ? "  (this group is explicitly about Bada Mangal bhandaras — assume bhandara context for ambiguous messages)" : ""}\n`
+    ? `\n\nGroup: "${groupName}"${isBhandaraGroup ? "  (this group is explicitly about Bada Mangal bhandaras, assume bhandara context for ambiguous messages)" : ""}\n`
     : "";
 
-  // Conversation context — last few messages from the SAME group
+  // Conversation context, last few messages from the SAME group
   // (oldest first). Lets the classifier read short replies the way
   // a human would: "Golf city" right after someone asked "polytechnic
   // ke pass kuch h?" is the sender answering with a location, not a
@@ -937,16 +937,16 @@ export async function classifyBhandaraMessage(
     ctx.length > 0
       ? `\n\nRecent conversation in this group (oldest first):\n${ctx
           .map((m) => `  [${m.senderName}]: ${m.text}`)
-          .join("\n")}\n\nUse the conversation above to interpret short replies. A bare 1-3 word message ("Golf city", "udhar nahi", "bta rha") right after someone asked "where?" is almost always the reply to that question — classify as SHARING with the named location, or as ASKING/MENTIONING based on the answer's tone. A bare acknowledgement ("ok", "ji", "acha") even in a hot conversation stays UNRELATED. If the current message clearly STARTS a new topic, ignore the prior conversation.\n`
+          .join("\n")}\n\nUse the conversation above to interpret short replies. A bare 1-3 word message ("Golf city", "udhar nahi", "bta rha") right after someone asked "where?" is almost always the reply to that question, classify as SHARING with the named location, or as ASKING/MENTIONING based on the answer's tone. A bare acknowledgement ("ok", "ji", "acha") even in a hot conversation stays UNRELATED. If the current message clearly STARTS a new topic, ignore the prior conversation.\n`
       : "";
 
-  const prompt = `You are reading a single WhatsApp chat message from a Lucknow community group during the Jyeshtha "Bada Mangal" season. The message may be in Hindi (Devanagari or Roman/Hinglish), English, or mixed. Many messages in the group are unrelated to bhandara at all — your first job is to filter those out.
+  const prompt = `You are reading a single WhatsApp chat message from a Lucknow community group during the Jyeshtha "Bada Mangal" season. The message may be in Hindi (Devanagari or Roman/Hinglish), English, or mixed. Many messages in the group are unrelated to bhandara at all, your first job is to filter those out.
 ${groupBlock}${contextBlock}
 A "bhandara" is a free community meal traditionally served on Bada Mangal Tuesdays. Messages we care about include:
-  • ASKING:     "kahan ho raha hai bada mangal bhandara aaj?", "any bhandara near Hazratganj today?", "भंडारा कहाँ है?", and — when the group is bhandara-themed — short location-only queries that don't contain the word "bhandara" but clearly ask about one ("polytechnic ke aas pss ho toh batao", "Alambagh me kahi h kya?", "any in Aashiyana??", "GPO ke around?", "Kamta, Chinhat ya amity ke taraf koi bhandara ho toh batao"). Clarifying questions in a chain ("Amity konsa wala?", "kaunsa Aliganj sector?") are also ASKING. In a bhandara group, asking "X ke pass kuch h?" essentially always means "is there a bhandara near X?"
-  • SHARING:    "Aliganj sector E me bhandara ho raha hai 11 baje se", "bhandara at Ram Mandir, Indira Nagar — until 4pm", attaching a Google Maps URL. Also short location-led sharing when the group is bhandara-themed and the message names a place + time ("Kothari Bandhu park, Rajajipuram, 11 baje se", "Civil Hospital ke samne aaj").
+  • ASKING:     "kahan ho raha hai bada mangal bhandara aaj?", "any bhandara near Hazratganj today?", "भंडारा कहाँ है?", and, when the group is bhandara-themed, short location-only queries that don't contain the word "bhandara" but clearly ask about one ("polytechnic ke aas pss ho toh batao", "Alambagh me kahi h kya?", "any in Aashiyana??", "GPO ke around?", "Kamta, Chinhat ya amity ke taraf koi bhandara ho toh batao"). Clarifying questions in a chain ("Amity konsa wala?", "kaunsa Aliganj sector?") are also ASKING. In a bhandara group, asking "X ke pass kuch h?" essentially always means "is there a bhandara near X?"
+  • SHARING:    "Aliganj sector E me bhandara ho raha hai 11 baje se", "bhandara at Ram Mandir, Indira Nagar, until 4pm", attaching a Google Maps URL. Also short location-led sharing when the group is bhandara-themed and the message names a place + time ("Kothari Bandhu park, Rajajipuram, 11 baje se", "Civil Hospital ke samne aaj").
 
-                IMPORTANT: in a bhandara-themed group, BARE Lucknow place names sent as a single message — even one or two words, with no verb, no "bhandara" word, no other context — are SHARING. The sender is answering a previous "where?" question by naming the spot. Examples (each a complete one-line message, all SHARING):
+                IMPORTANT: in a bhandara-themed group, BARE Lucknow place names sent as a single message, even one or two words, with no verb, no "bhandara" word, no other context, are SHARING. The sender is answering a previous "where?" question by naming the spot. Examples (each a complete one-line message, all SHARING):
                   - "Golf city"                              → extractedAddress: "Golf City, Lucknow",   locationLabel: "Golf City"
                   - "Atal chauk"                             → extractedAddress: "Atal Chauk, Lucknow",  locationLabel: "Atal Chauk"
                   - "Aliganj sector E"                       → extractedAddress: "Sector E, Aliganj, Lucknow", locationLabel: "Sector E, Aliganj"
@@ -958,21 +958,21 @@ A "bhandara" is a free community meal traditionally served on Bada Mangal Tuesda
   • MENTIONING: "puri-sabzi was amazing today, thanks Sharma ji", "बहुत अच्छा भंडारा था कल"
   • UNRELATED:  "good morning", "happy birthday", "next meeting on Sunday", anything off-topic. Bare acknowledgements ("ok", "ok brother", "thanks", "ji", "hn ji", "acha", "Bta rha", "👍"), one-word reaction replies, sticker reactions, and pure chitchat with no location/food cue stay UNRELATED even in a bhandara group. The give-away for UNRELATED is the absence of BOTH (a) any Lucknow place name AND (b) any bhandara/food/timing/contribution cue.
 
-                ALSO UNRELATED — news-article / press-clipping text. If the message reads like a newspaper headline or article paraphrase ("News article about X and his social organization Y", "Adarsh Dwivedi runs a social initiative", "Vasudhaiva Kutumbakam organisation distributed meals", anything that describes a person, NGO, politician, or campaign in third-person reporter voice rather than telling you where a bhandara is happening), it is UNRELATED. The same applies to recipe instructions, motivational quotes, religious wallpapers transcribed, election material, and corporate / NGO press releases — even when they mention food, Lucknow, or seva. Bhandara mentions are short, local, and actionable ("here", "today", "11 baje"); news-article descriptions are biographical or summary.
+                ALSO UNRELATED, news-article / press-clipping text. If the message reads like a newspaper headline or article paraphrase ("News article about X and his social organization Y", "Adarsh Dwivedi runs a social initiative", "Vasudhaiva Kutumbakam organisation distributed meals", anything that describes a person, NGO, politician, or campaign in third-person reporter voice rather than telling you where a bhandara is happening), it is UNRELATED. The same applies to recipe instructions, motivational quotes, religious wallpapers transcribed, election material, and corporate / NGO press releases, even when they mention food, Lucknow, or seva. Bhandara mentions are short, local, and actionable ("here", "today", "11 baje"); news-article descriptions are biographical or summary.
 
 Output ONE JSON object only, no markdown, no commentary, no code fence:
 {
   "intent":             "ASKING" | "SHARING" | "MENTIONING" | "UNRELATED",
   "confidence":         0.0–1.0 (how sure you are about intent),
   "language":           "hi" | "en" | "mixed",
-  "extractedAddress":   The MOST SPECIFIC address-or-landmark the message gives, suffixed with the locality + ", Lucknow" so the forward-geocoder can resolve it precisely. ALWAYS include the landmark/park/temple/shop name when the sender mentions one — that is the difference between a precise pin and a generic neighbourhood centroid. Empty string only if the message names NO place at all. Examples:
+  "extractedAddress":   The MOST SPECIFIC address-or-landmark the message gives, suffixed with the locality + ", Lucknow" so the forward-geocoder can resolve it precisely. ALWAYS include the landmark/park/temple/shop name when the sender mentions one, that is the difference between a precise pin and a generic neighbourhood centroid. Empty string only if the message names NO place at all. Examples:
     • "Kothari Bandhu park ke hanuman mandir ke samne, Rajajipuram" → "Kothari Bandhu Park, Hanuman Mandir, Rajajipuram, Lucknow"
     • "ramnagar wale bhandara" → "Ramnagar, Lucknow"
     • "Sector E Aliganj, Civil Hospital ke paas"  → "Sector E, Civil Hospital, Aliganj, Lucknow"
     • "near GPO"                                  → "GPO, Hazratganj, Lucknow"
   When the message lists multiple locations, put the FIRST here and the full list in extractedAddresses below.
   "extractedAddresses": Array of distinct locations the message refers to, in order of appearance. Same precision rules as extractedAddress (always include the landmark phrase). For single-location messages this is a 1-element array matching extractedAddress. For SHARING messages that list multiple bhandaras ("Aliganj sector E AND Hazratganj GPO", "bhandara at Ram Mandir, also one at Civil Hospital"), include each as a separate entry. Maximum 5. Empty array if no location.
-  "locationLabel":      Short human-friendly label for the public feed chip, ≤ 40 chars. PREFER the specific landmark/park/temple/shop the sender mentioned over the bare area name — "Rajajipuram" alone is much less useful than "Kothari Bandhu Park". Examples (acceptable → preferred):
+  "locationLabel":      Short human-friendly label for the public feed chip, ≤ 40 chars. PREFER the specific landmark/park/temple/shop the sender mentioned over the bare area name, "Rajajipuram" alone is much less useful than "Kothari Bandhu Park". Examples (acceptable → preferred):
     • "Rajajipuram"          → "Kothari Bandhu Park, Rajajipuram"
     • "Indira Nagar"         → "Ram Mandir, Indira Nagar"
     • "Aliganj"              → "Sector E, Aliganj"
@@ -1022,7 +1022,7 @@ ${trimmed}
 //   • Gemini returns empty `.candidates` → caller renders an empty
 //     state ("no bhandaras found, try a different query").
 
-// Discovery JSON arrives directly from Gemini — and Gemini's habit
+// Discovery JSON arrives directly from Gemini, and Gemini's habit
 // is to send `null` (not `undefined` or `""`) for fields it can't
 // extract from a source page. Plain `z.string().default("")` only
 // fires on undefined, so a null leaked through and made the whole
@@ -1030,7 +1030,7 @@ ${trimmed}
 //
 // Each optional text/array/number field is wrapped in a preprocess
 // that maps null → its "no data" default before the inner schema
-// gets to validate. Required fields (here: `name`) stay strict —
+// gets to validate. Required fields (here: `name`) stay strict
 // a candidate without a name isn't actionable.
 const optText = (max: number) =>
   z.preprocess(
@@ -1052,7 +1052,7 @@ export const discoveredBhandaraSchema = z.object({
    *  name isn't actionable). */
   name: z.string().trim().min(2).max(80),
   /** Hindi (Devanagari) name when the source provides one or it's
-   *  easily transliterable. Empty string when unknown — empty signals
+   *  easily transliterable. Empty string when unknown, empty signals
    *  to the admin form that they should fill it. */
   nameHi: optText(80),
   /** Lucknow neighbourhood / locality. Should be one of the curated
@@ -1061,7 +1061,7 @@ export const discoveredBhandaraSchema = z.object({
    *  exactly. ≤ 60 chars. */
   area: optText(60),
   /** Full street address as printed on the source. ≤ 300 chars.
-   *  Empty when no address could be extracted (still actionable —
+   *  Empty when no address could be extracted (still actionable
    *  the admin can geocode from area + name in the edit form). */
   address: optText(300),
   /** One landmark phrase if explicitly mentioned. ≤ 120 chars. */
@@ -1133,7 +1133,7 @@ export async function discoverBhandarasViaSearch(
      *  the admin only sees genuinely new candidates. */
     excludeNames?: ReadonlyArray<string>;
     /** YYYY-MM-DD cutoff (IST). Candidates whose `tuesdayDates` have
-     *  no entry on/after this date are dropped — pamphlets for past
+     *  no entry on/after this date are dropped, pamphlets for past
      *  events aren't actionable on a live moderation queue. */
     requireDateAtOrAfter?: string;
   },
@@ -1148,24 +1148,24 @@ export async function discoverBhandarasViaSearch(
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not set");
 
-  // Cap the exclude-list at 200 names — comfortably more than a
+  // Cap the exclude-list at 200 names, comfortably more than a
   // season's worth, keeps the prompt token count predictable when
   // a future season has accumulated thousands of past rows.
   const excludeList = (opts?.excludeNames ?? []).slice(0, 200);
   const excludeBlock =
     excludeList.length > 0
-      ? `\n\nEXCLUDE — these bhandaras are ALREADY in our directory; do not list them again, even under slightly different spellings:\n${excludeList
+      ? `\n\nEXCLUDE, these bhandaras are ALREADY in our directory; do not list them again, even under slightly different spellings:\n${excludeList
           .map((n) => `  - ${n}`)
           .join("\n")}\n`
       : "";
 
   const dateBlock = opts?.requireDateAtOrAfter
-    ? `\n\nDATE FILTER — focus on **pamphlets and invite cards announcing events on ${opts.requireDateAtOrAfter} (today, IST) or any later date**. SKIP:\n  - bhandaras whose dates have all already passed\n  - general news/feature articles about the Bada Mangal season (we want specific upcoming events)\n  - retrospective coverage of last week's bhandaras\nA candidate without a verifiable upcoming date is not actionable; drop it.\n`
+    ? `\n\nDATE FILTER, focus on **pamphlets and invite cards announcing events on ${opts.requireDateAtOrAfter} (today, IST) or any later date**. SKIP:\n  - bhandaras whose dates have all already passed\n  - general news/feature articles about the Bada Mangal season (we want specific upcoming events)\n  - retrospective coverage of last week's bhandaras\nA candidate without a verifiable upcoming date is not actionable; drop it.\n`
     : "";
 
   // Prompt anchors the search to Lucknow + Bada Mangal so a stray
   // query like "bhandara" doesn't pull in cross-city results. Output
-  // is strict JSON matching DiscoveredBhandara — same shape as the
+  // is strict JSON matching DiscoveredBhandara, same shape as the
   // existing ExtractedBhandara so the downstream form-fill code path
   // could be unified later.
   const prompt = `You are a research assistant helping moderate a directory of "Bada Mangal" bhandaras (free community meals) in Lucknow, India for the Jyeshtha ${year} season.
@@ -1180,12 +1180,12 @@ Cast a WIDE net across the open web so no bhandara is missed:
   • Hindi & English news (Hindustan Times, Amar Ujala, Dainik Jagran, Times of India, LallanTop, local Lucknow news blogs)
   • Personal blogs and community rollups
   • Facebook events and pages
-  • **Instagram posts and reels** — try grounded queries like \`site:instagram.com "Bada Mangal" Lucknow\`, \`site:instagram.com bhandara Lucknow ${year}\`, hashtags like #badamangallucknow, #lucknowbhandara, #badamangal${year}; check organiser handles for invite cards / story screenshots
+  • **Instagram posts and reels**, try grounded queries like \`site:instagram.com "Bada Mangal" Lucknow\`, \`site:instagram.com bhandara Lucknow ${year}\`, hashtags like #badamangallucknow, #lucknowbhandara, #badamangal${year}; check organiser handles for invite cards / story screenshots
   • YouTube short titles & descriptions where organisers announce dates
 
-For Instagram results, the URL pattern is usually \`https://www.instagram.com/p/<shortcode>/\` or \`https://www.instagram.com/reel/<shortcode>/\` — include those as sources verbatim.
+For Instagram results, the URL pattern is usually \`https://www.instagram.com/p/<shortcode>/\` or \`https://www.instagram.com/reel/<shortcode>/\`, include those as sources verbatim.
 
-Compile a list of distinct bhandara events (NOT just news articles about the season in general — we want the actual events the public can attend).
+Compile a list of distinct bhandara events (NOT just news articles about the season in general, we want the actual events the public can attend).
 
 For each event, return:
 {
@@ -1206,11 +1206,11 @@ For each event, return:
 
 Output ONE JSON object only, no markdown, no commentary, no code fence:
 {
-  "candidates": [ ... up to 20 entries, sorted by confidence descending — over-fetch because the server filters out anything already in the directory or with no upcoming date ... ],
+  "candidates": [ ... up to 20 entries, sorted by confidence descending, over-fetch because the server filters out anything already in the directory or with no upcoming date ... ],
   "summary":    "One sentence summary of what you found"
 }
 
-Be conservative: if you can't verify a bhandara from a real source, omit it. NEVER invent addresses or phone numbers. Prefer fewer, well-grounded candidates over many speculative ones. Skip any "bhandara" mentions that are news articles about the season — we only want actual events someone can attend.`;
+Be conservative: if you can't verify a bhandara from a real source, omit it. NEVER invent addresses or phone numbers. Prefer fewer, well-grounded candidates over many speculative ones. Skip any "bhandara" mentions that are news articles about the season, we only want actual events someone can attend.`;
 
   const endpoint = `${GEMINI_ENDPOINT}?key=${encodeURIComponent(key)}`;
   // googleSearch tool turns this into a grounded call. Some
@@ -1226,7 +1226,7 @@ Be conservative: if you can't verify a bhandara from a real source, omit it. NEV
       tools: [{ googleSearch: {} }],
       generationConfig: {
         temperature: 0.2,
-        // 32768 — bumped from 4096 → 16384 → 32768 across a few
+        // 32768, bumped from 4096 → 16384 → 32768 across a few
         // iterations. Grounded responses interleave citation chunks
         // and Gemini Flash counts those toward the output budget, so
         // the JSON payload alone doesn't predict the real cost.
@@ -1315,7 +1315,7 @@ Be conservative: if you can't verify a bhandara from a real source, omit it. NEV
 
   if (excludeList.length > 0) {
     // Slug-based match catches "Pandey Pariwar Bhandara" ≡
-    // "pandey pariwar bhandara" ≡ "Pandey  Pariwar—Bhandara!" since
+    // "pandey pariwar bhandara" ≡ "Pandey  Pariwar, Bhandara!" since
     // slugify normalises punctuation, case, and whitespace.
     const knownSlugs = new Set(excludeList.map((n) => slugify(n)));
     candidates = candidates.filter((c) => {
@@ -1390,7 +1390,7 @@ function salvageTruncatedDiscoveryJson(raw: string): string | null {
       depth--;
       if (depth === 0) lastCompleteObjectEnd = i;
     } else if (ch === "]" && depth === 0) {
-      // We somehow already have a complete array — nothing to fix.
+      // We somehow already have a complete array, nothing to fix.
       return null;
     }
   }
@@ -1417,7 +1417,7 @@ function salvageTruncatedDiscoveryJson(raw: string): string | null {
 // WhatsApp UI conventions Gemini Vision needs to handle:
 //   • Multiple chat bubbles per screenshot, left-aligned (incoming) and
 //     right-aligned (outgoing)
-//   • Sender names above bubbles in group chats (incoming only —
+//   • Sender names above bubbles in group chats (incoming only
 //     outgoing bubbles don't have a name)
 //   • Timestamps inside the bubble bottom-right ("11:32 AM")
 //   • Group header at top showing group name
@@ -1437,7 +1437,7 @@ export const extractedWhatsAppMessageSchema = z.object({
    *  string for outgoing messages (no sender name shown) or when
    *  Gemini can't read it. */
   sender: z.string().trim().max(80).default(""),
-  /** The verbatim message text. PII NOT redacted here — the
+  /** The verbatim message text. PII NOT redacted here, the
    *  downstream classifyBhandaraMessage redacts before insert. */
   text: z.string().trim().max(2000).default(""),
   /** Bubble timestamp as shown in the UI ("11:32 AM", "Yesterday",
@@ -1447,7 +1447,7 @@ export const extractedWhatsAppMessageSchema = z.object({
   /** True when the bubble was a WhatsApp Location share (map
    *  thumbnail + address). The endpoint can then ask the admin
    *  for explicit lat/lng for these (the screenshot itself doesn't
-   *  carry the coordinates — only the rendered map tile does). */
+   *  carry the coordinates, only the rendered map tile does). */
   isLocationShare: z.boolean().default(false),
 });
 
@@ -1467,7 +1467,7 @@ export type ExtractedWhatsAppConversation = z.infer<
  *
  * Returns a structured list the screenshot-ingest endpoint can iterate
  * over. Empty `messages` array is a valid result (e.g. screenshot of a
- * call screen, contact list, settings page) — the endpoint surfaces it
+ * call screen, contact list, settings page), the endpoint surfaces it
  * as "no messages found" rather than an error.
  *
  * Failure modes:
@@ -1479,11 +1479,11 @@ export async function extractWhatsAppConversationFromImage(
   imageBase64: string,
   mediaType: "image/jpeg" | "image/png" | "image/webp",
 ): Promise<ExtractedWhatsAppConversation> {
-  const prompt = `You are reading a screenshot of a WhatsApp chat — typically a Lucknow community group during the Bada Mangal season. Extract every visible chat message from the conversation.
+  const prompt = `You are reading a screenshot of a WhatsApp chat, typically a Lucknow community group during the Bada Mangal season. Extract every visible chat message from the conversation.
 
 For each message bubble in the screenshot, capture:
-  - sender:          The display name shown above the bubble (incoming messages only — outgoing messages have no name; emit "" for those). ≤ 80 chars.
-  - text:            The verbatim message text. Preserve language (Hindi Devanagari, English, Roman/Hinglish — whatever's in the bubble). Skip emoji-only or status-update bubbles. Include reply-quoted parts only when they're the bubble's primary content. ≤ 2000 chars.
+  - sender:          The display name shown above the bubble (incoming messages only, outgoing messages have no name; emit "" for those). ≤ 80 chars.
+  - text:            The verbatim message text. Preserve language (Hindi Devanagari, English, Roman/Hinglish, whatever's in the bubble). Skip emoji-only or status-update bubbles. Include reply-quoted parts only when they're the bubble's primary content. ≤ 2000 chars.
   - timestamp:       The bubble's own timestamp as shown in the UI ("11:32 AM", "Yesterday", "10/05/2026"). ≤ 40 chars. Empty if not visible.
   - isLocationShare: true ONLY when the bubble shows a WhatsApp Location share (map thumbnail + an address line inside the bubble). For those, put the visible address text in the "text" field.
 

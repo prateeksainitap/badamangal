@@ -585,7 +585,7 @@ function buildSpotPopupHtml(
   locale: "hi" | "en",
 ): string {
   // Spots can land coordless (bot-ingested before admin sets coords)
-  // — hide the Directions CTA + the popup's maps fallback entirely
+  //, hide the Directions CTA + the popup's maps fallback entirely
   // in that case. The share-message builder also skips its Maps
   // deep-link line via the same gate in lib/share.ts, so a Copy or
   // Share from a coordless popup produces a message with no 0,0

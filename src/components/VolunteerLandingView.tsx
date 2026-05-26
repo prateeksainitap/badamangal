@@ -64,7 +64,7 @@ const COPY: Record<Locale, StringsBlock> = {
     h1Part2: "सबके लिए सुलभ बनाएँ",
     pill: "🙏 केवल सेवा · कोई शुल्क नहीं",
     bodyParagraph:
-      "डिलीवरी राइडर, कैब ड्राइवर, छात्र, या कोई भी जो योगदान देना चाहता है — अपने इलाके के भण्डारों की जानकारी, तस्वीरें और स्थान दर्ज करने में मदद करें। पूरे आठ मंगलवार के सीज़न के लिए हमारे WhatsApp समूह में जुड़ें।",
+      "डिलीवरी राइडर, कैब ड्राइवर, छात्र, या कोई भी जो योगदान देना चाहता है, अपने इलाके के भण्डारों की जानकारी, तस्वीरें और स्थान दर्ज करने में मदद करें। पूरे आठ मंगलवार के सीज़न के लिए हमारे WhatsApp समूह में जुड़ें।",
     personas: [
       { emoji: "🛵", label: "डिलीवरी राइडर" },
       { emoji: "🚖", label: "कैब ड्राइवर" },
@@ -89,7 +89,7 @@ const COPY: Record<Locale, StringsBlock> = {
         num: "2",
         emoji: "📸",
         title: "भण्डारे पर जाएँ",
-        body: "ज्येष्ठ माह के मंगलवार + शनिवार। तस्वीरें, समय, स्थान, प्रसाद — हर भण्डारे में करीब 10 मिनट।",
+        body: "ज्येष्ठ माह के मंगलवार + शनिवार। तस्वीरें, समय, स्थान, प्रसाद, हर भण्डारे में करीब 10 मिनट।",
       },
       {
         num: "3",
@@ -272,7 +272,7 @@ export default function VolunteerLandingView() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6 pb-24">
-      {/* ─── Hero (left) + Form (right) — 2-col on lg ─────────── */}
+      {/* ─── Hero (left) + Form (right), 2-col on lg ─────────── */}
       <section className="mt-8 sm:mt-14 grid gap-8 lg:grid-cols-12 lg:gap-12 items-start">
         {/* LEFT 7/12 */}
         <div className="lg:col-span-7">
@@ -315,7 +315,7 @@ export default function VolunteerLandingView() {
             ))}
           </ul>
 
-          {/* Stats — bigger + bolder, homepage register */}
+          {/* Stats, bigger + bolder, homepage register */}
           <div className="mt-8 grid grid-cols-3 gap-3 max-w-md">
             {t.stats.map((s) => (
               <div
@@ -336,7 +336,7 @@ export default function VolunteerLandingView() {
             ))}
           </div>
 
-          {/* "How your seva flows" — moved up from below the form so
+          {/* "How your seva flows", moved up from below the form so
               visitors see the flow without scrolling past the FAQ.
               Sits inside the hero left column, right under the
               stats. Vertical layout on mobile is automatic because
@@ -383,7 +383,7 @@ export default function VolunteerLandingView() {
             </ol>
           </div>
 
-          {/* "Other ways to contribute" — opens up the contribution
+          {/* "Other ways to contribute", opens up the contribution
               surface beyond field volunteering. Field path is the
               hero; this section answers "what if I can't go to a
               bhandara but still want to help?" with 5 specific roles
@@ -441,7 +441,7 @@ export default function VolunteerLandingView() {
           </div>
         </div>
 
-        {/* RIGHT 5/12 — the form, sticky on desktop */}
+        {/* RIGHT 5/12, the form, sticky on desktop */}
         <div className="lg:col-span-5 lg:sticky lg:top-8">
           <div
             id="signup"

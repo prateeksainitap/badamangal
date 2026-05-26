@@ -21,7 +21,7 @@ export const MAX_PDF_BYTES = 5 * 1024 * 1024;
 // IMPORTANT: This list MUST stay aligned with the server allowlist in
 // src/app/api/uploads/route.ts. The aspirational HEIC/HEIF entries
 // here previously let iPhone "Most Efficient" uploads pass client
-// validation, then 415 at the API with a generic error — the user
+// validation, then 415 at the API with a generic error, the user
 // never saw the helpful "switch to Most Compatible" nudge below.
 // Removed so the unsupported-type branch fires and surfaces the HEIC-
 // specific guidance. When the server actually ships a working

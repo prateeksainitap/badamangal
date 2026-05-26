@@ -50,7 +50,7 @@ export default async function AdminScanPage() {
 
         {/* ScanReview client component lives inside a dark ops-console
             panel. Its inner form chrome has been re-skinned in
-            ScanReview.tsx — see that file for the cyan/violet pass. */}
+            ScanReview.tsx, see that file for the cyan/violet pass. */}
         <div className="rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm text-cream-50 p-5 sm:p-7 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.7)] admin-card-glow">
           <ScanReview
             areas={[...AREAS]}

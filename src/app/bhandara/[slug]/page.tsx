@@ -39,7 +39,7 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
   // skips pre-rendering and `dynamicParams = true` above means the
   // first visit to any slug renders on-demand + caches under the
   // 5-min ISR window. Net effect of a build-time DB miss is a tiny
-  // first-visit latency hit on each slug — not a deployment outage.
+  // first-visit latency hit on each slug, not a deployment outage.
   //
   // Reuse the build-time-deduped query so this call shares a single
   // findMany with the 36 area pages instead of opening yet another

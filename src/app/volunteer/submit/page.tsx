@@ -8,7 +8,7 @@
  *   • Volunteer code is read from URL ?code= OR localStorage so the
  *     volunteer doesn't need the URL param after their first submit
  *   • Locale-aware single-language rendering (English-only when EN,
- *     Hindi-only when HI) needs the React locale context — used to
+ *     Hindi-only when HI) needs the React locale context, used to
  *     be a bilingual mixed page, now the LangToggle in the header
  *     controls the entire page including the header eyebrow + H1.
  *
@@ -29,7 +29,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Submit a bhandara | BadaMangal Volunteer",
   description:
-    "Upload 10 photos + 2 videos + 1 live spot photo + the listing fields. Pure seva submission — your contribution lights up the public bhandara map for everyone.",
+    "Upload 10 photos + 2 videos + 1 live spot photo + the listing fields. Pure seva submission, your contribution lights up the public bhandara map for everyone.",
   alternates: { canonical: `${SITE_URL}/volunteer/submit` },
   robots: { index: false, follow: false },
 };

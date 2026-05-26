@@ -11,7 +11,7 @@ import { submissionStatusLabel } from "@/lib/volunteer";
 import { IconCheck, IconX } from "@/components/admin/AdminIcons";
 
 /**
- * Volunteer submission row — dark-themed card for
+ * Volunteer submission row, dark-themed card for
  * /admin/volunteers/submissions. Renders the bundle quality
  * (photos / videos / spot / GPS) at a glance + a 4-action
  * cluster (Approve · Partial · Duplicate · Reject) on NEW
@@ -128,17 +128,17 @@ export default function VolunteerSubmissionRow({
 
       {/* Details */}
       <div className="mt-3 grid sm:grid-cols-2 gap-2 text-xs">
-        <Field label="Address" value={sub.address || "—"} />
+        <Field label="Address" value={sub.address || ", "} />
         <Field
           label="Organizer"
           value={
             sub.organizerName
               ? `${sub.organizerName}${sub.organizerPhone ? ` · ${sub.organizerPhone}` : ""}`
-              : "—"
+              : ", "
           }
         />
-        <Field label="Start time" value={sub.startTime ?? "—"} />
-        <Field label="Menu" value={sub.menu ?? "—"} />
+        <Field label="Start time" value={sub.startTime ?? ", "} />
+        <Field label="Menu" value={sub.menu ?? ", "} />
         {sub.gpsLat && sub.gpsLng ? (
           <Field
             label="GPS"

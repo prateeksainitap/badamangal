@@ -35,7 +35,7 @@ import {
 } from "@/components/admin/QueueSelection";
 
 /**
- * WhatsApp mentions moderation queue — dark-themed rewrite.
+ * WhatsApp mentions moderation queue, dark-themed rewrite.
  *
  * Original logic preserved: status tabs (PENDING/APPROVED/REJECTED/ALL),
  * secondary intent + min-confidence filters, AdminLiveRefresh every
@@ -189,7 +189,7 @@ export default async function AdminMentionsPage({
         shownCount={rows.length}
         totalInTab={totalInTab}
       >
-        {/* Screenshot ingest tool — promoted to the TOP of the queue
+        {/* Screenshot ingest tool, promoted to the TOP of the queue
             (above the row list) because it's an *action* the admin
             visits this page TO USE, not a buried footer. Re-skinned to
             the cyan AI/ops palette and given a stronger callout chip
@@ -223,7 +223,7 @@ export default async function AdminMentionsPage({
           </details>
         </div>
 
-        {/* Secondary filters — intent + confidence floor. Plain GET
+        {/* Secondary filters, intent + confidence floor. Plain GET
             form so navigation re-runs the server query without any
             client JS. */}
         <SecondaryFilters status={status} intent={intent} minConf={minConf} />
@@ -264,7 +264,7 @@ export default async function AdminMentionsPage({
           </QueueSelectionProvider>
         )}
 
-        {/* Maintenance — purge PENDING rows older than 7 days. */}
+        {/* Maintenance, purge PENDING rows older than 7 days. */}
         {countPending > 0 ? (
           <form
             action={purgeStaleMentionsAction}

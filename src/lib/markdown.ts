@@ -11,7 +11,7 @@
  * Trust model:
  *   Markdown bodies are authored by the admin (single-operator tool).
  *   They're never user-generated content from the public site. So we
- *   ALLOW inline HTML in the source — the admin sometimes wants a
+ *   ALLOW inline HTML in the source, the admin sometimes wants a
  *   styled span or anchor with target="_blank". If this ever opens up
  *   to multi-user authoring, gate behind a sanitizer (DOMPurify on
  *   the server, or marked's `mangle: false, breaks: true, gfm: true`
@@ -24,12 +24,12 @@
 
 import { marked, type MarkedOptions } from "marked";
 
-// One-time configuration. Marked's renderer is stateful — calling
+// One-time configuration. Marked's renderer is stateful, calling
 // setOptions repeatedly is wasteful and can cause race-y output if
 // multiple modules try to reconfigure. Set once at module load.
 marked.setOptions({
   gfm: true,
-  breaks: false, // require blank line for paragraph breaks — matches
+  breaks: false, // require blank line for paragraph breaks, matches
   // how operators write markdown in the /notes/ files
   // (which is the seed corpus). With breaks:true, every
   // newline becomes a <br> which looks bad in pitch decks.

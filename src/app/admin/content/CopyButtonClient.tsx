@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { IconCheck } from "@/components/admin/AdminIcons";
 
-/** Small client island — copies its `text` prop to the clipboard
+/** Small client island, copies its `text` prop to the clipboard
  *  on click and flips its label to "Copied" (with check icon) for
  *  1.5s. Used inside ContentCard so the rest of the card can stay
  *  server-rendered. */

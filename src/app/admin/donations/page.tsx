@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
  *
  * Every "Sponsor this bhandara" tap that reaches /api/donations/intent
  * lands here, newest first. The page is honest about what each row
- * represents — it is the INTENT to pay, not proof of payment. UPI
+ * represents, it is the INTENT to pay, not proof of payment. UPI
  * organiser-direct flows don't expose merchant webhooks, so this
  * row says "a donor on this device, at this time, opened their UPI
  * app aimed at this organiser's VPA with this suggested amount." That's
@@ -29,11 +29,11 @@ export const dynamic = "force-dynamic";
  *   • Cross-correlate with organiser-side reconciliation
  *
  * Real payment confirmation needs either:
- *   • Razorpay webhook (Phase 2) — flips status to PG_CONFIRMED with
+ *   • Razorpay webhook (Phase 2), flips status to PG_CONFIRMED with
  *     the bank reference in razorpayPaymentId
  *   • Donor self-confirmation via POST /api/donations/confirm
  *     (status DONOR_CONFIRMED)
- *   • Organiser-side confirmation — currently informal; could be
+ *   • Organiser-side confirmation, currently informal; could be
  *     added later as POST /api/donations/confirm with a magic-link
  *     gated by the bhandara's organiser-only token
  */
@@ -55,7 +55,7 @@ export default async function DonationsPage() {
     },
   });
 
-  // Aggregate strip — "X taps · Y rupees attempted · Z confirmed".
+  // Aggregate strip, "X taps · Y rupees attempted · Z confirmed".
   // Pure math over the loaded 200 so it always matches the rows the
   // operator can see in the table below; for an all-time aggregate
   // we'd need a separate count query, deliberately omitted for
@@ -75,7 +75,7 @@ export default async function DonationsPage() {
         subject="dashboard"
         eyebrow="Donations"
         title="Sponsor-tap audit"
-        subtitle="Every Sponsor click captured before the UPI deep-link opens. Intent-tracking, not payment proof — UPI direct-to-organiser flows have no server-side confirmation. See per-row status for evidence layers."
+        subtitle="Every Sponsor click captured before the UPI deep-link opens. Intent-tracking, not payment proof, UPI direct-to-organiser flows have no server-side confirmation. See per-row status for evidence layers."
       />
 
       <section className="mt-6 grid gap-3 sm:grid-cols-4">
@@ -199,7 +199,7 @@ export default async function DonationsPage() {
 /* ────────────────────── helpers ────────────────────── */
 
 function formatTime(d: Date): string {
-  // "26 May, 02:14 PM" — operator-readable, Indian convention.
+  // "26 May, 02:14 PM", operator-readable, Indian convention.
   return d.toLocaleString("en-IN", {
     day: "numeric",
     month: "short",

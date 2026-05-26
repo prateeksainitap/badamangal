@@ -2,23 +2,23 @@ import Link from "next/link";
 import { LinkPendingBadge } from "@/components/admin/LinkPending";
 
 /**
- * Source filter — the PRIMARY axis on the Bhandaras + Spots queues.
+ * Source filter, the PRIMARY axis on the Bhandaras + Spots queues.
  *
  * Two visual variants:
- *   • "primary"   — heavier segmented control, sits above the status
+ *   • "primary"  , heavier segmented control, sits above the status
  *                   tab strip. This is the new default used by the
  *                   /admin/bhandaras + /admin/spots queues so the
  *                   operator's first mental cut is "human vs bot",
  *                   then status as a sub-filter within that source.
- *   • "secondary" — the older lighter pill row (kept for back-compat
+ *   • "secondary", the older lighter pill row (kept for back-compat
  *                   with any caller that still wants the inline look).
  *
  * Four exclusive states:
- *   • "all"   — no filter (default)
- *   • "human" — manually listed via form / phone / Prateek
- *   • "bot"   — captured by the WhatsApp ingest bot
- *   • "auto"  — bot-ingested AND auto-published (the bot's new default
- *               since 2026-05-26). This is a refinement of "bot" — the
+ *   • "all"  , no filter (default)
+ *   • "human", manually listed via form / phone / Prateek
+ *   • "bot"  , captured by the WhatsApp ingest bot
+ *   • "auto" , bot-ingested AND auto-published (the bot's new default
+ *               since 2026-05-26). This is a refinement of "bot", the
  *               same rows minus any pre-auto-publish bot ingests still
  *               sitting in PENDING. Lets the operator review what the
  *               bot pushed live without manual approval.
@@ -38,7 +38,7 @@ type Props = {
   /** Currently-active source filter. */
   current: SourceFilterValue;
   /** Counts shown as the small badge inside each chip. The page
-   *  controls what "all" means — for the source-primary IA it's the
+   *  controls what "all" means, for the source-primary IA it's the
    *  active total (excluding past), so the source strip is the
    *  current-working-surface filter, not an all-time tally. `auto`
    *  is the auto-published subset of `bot`; OMIT it on surfaces
@@ -74,7 +74,7 @@ export default function SourceFilter({
   variant = "primary",
 }: Props) {
   // Hide the "Auto posted" option on surfaces that don't expose an
-  // auto count (Spots — every row auto-publishes by design, so the
+  // auto count (Spots, every row auto-publishes by design, so the
   // filter would be a no-op). Bhandaras passes a real number, even
   // 0, and the chip stays visible so the operator's filter set is
   // stable across deploys.
@@ -144,7 +144,7 @@ export default function SourceFilter({
     );
   }
 
-  // ── primary variant — segmented control ──────────────────────────
+  // ── primary variant, segmented control ──────────────────────────
   // Heavier visual treatment than the status pill row below it: a
   // single rounded-xl container, larger padding, gradient on the
   // active segment with a subtle inset shadow so the source choice

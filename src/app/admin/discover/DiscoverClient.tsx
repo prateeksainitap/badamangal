@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Client-side discovery UI for /admin/discover — dark-themed
+ * Client-side discovery UI for /admin/discover, dark-themed
  * rewrite that lives inside the new <AdminShell>.
  *
  * Query form (top) → run discovery → results list. Each candidate
@@ -39,7 +39,7 @@ type DiscoveryResponse = {
   detail?: string;
 };
 
-/** Candidates under 0.3 confidence are hidden by default — they're
+/** Candidates under 0.3 confidence are hidden by default, they're
  *  usually noise. Admins can click "show low-confidence" to expand. */
 const HIDE_BELOW_CONFIDENCE = 0.3;
 
@@ -94,7 +94,7 @@ export default function DiscoverClient() {
 
   return (
     <div>
-      {/* Query form — full-width search panel */}
+      {/* Query form, full-width search panel */}
       <form
         onSubmit={runDiscovery}
         className="rounded-2xl border border-cream-50/10 bg-cream-50/[0.03] backdrop-blur-sm p-4 sm:p-5"
@@ -144,7 +144,7 @@ export default function DiscoverClient() {
       {/* Status strip */}
       {loading ? (
         <p className="mt-4 text-sm text-cream-50/55 italic">
-          Asking Gemini to scour the web for matches — this can take 5–10
+          Asking Gemini to scour the web for matches, this can take 5–10
           seconds.
         </p>
       ) : null}
@@ -255,7 +255,7 @@ function CandidateCard({
             <>
               <span className="text-cream-50/45">Timing:</span>{" "}
               {candidate.timeStart}
-              {candidate.timeEnd ? ` — ${candidate.timeEnd}` : ""}
+              {candidate.timeEnd ? `, ${candidate.timeEnd}` : ""}
             </>
           ) : null}
           {candidate.timeStart && candidate.organizerName ? " · " : ""}

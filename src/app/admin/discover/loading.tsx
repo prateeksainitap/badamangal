@@ -6,7 +6,7 @@ import {
 } from "@/components/admin/Skeleton";
 
 /**
- * Loading skeleton for /admin/discover — the "find bhandaras on
+ * Loading skeleton for /admin/discover, the "find bhandaras on
  * the web" tool. Header + search query bar + a 2-column results
  * grid placeholder. Renders inside AdminShell.
  */

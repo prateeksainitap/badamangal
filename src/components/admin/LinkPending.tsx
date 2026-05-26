@@ -18,13 +18,13 @@ import { useLinkStatus } from "next/link";
  *   exactly this: a component that renders inside a <Link> can read
  *   `{ pending: boolean }` for that link's navigation state. We use
  *   it to:
- *     • LinkPendingBadge — replace a tab's count badge with a small
+ *     • LinkPendingBadge, replace a tab's count badge with a small
  *       spinner while the navigation is in flight. Most common case.
- *     • LinkPendingOverlay — render a subtle pulsing overlay anywhere
+ *     • LinkPendingOverlay, render a subtle pulsing overlay anywhere
  *       inside a Link (used by KpiStrip tiles where the count is
  *       the focal point and shouldn't be hidden).
  *
- * Both components are tiny client islands — only the indicator
+ * Both components are tiny client islands, only the indicator
  * re-renders on pending state change, the parent server-rendered
  * tab stays as-is.
  */

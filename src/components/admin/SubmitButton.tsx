@@ -23,36 +23,36 @@ import { useFormStatus } from "react-dom";
  * "why useFormStatus and not local state" reasoning.
  *
  *
- * VISUAL SYSTEM — "one bold + tinted siblings"
+ * VISUAL SYSTEM, "one bold + tinted siblings"
  * --------------------------------------------
  * Every action button across the admin app shares one shape and two
  * sizing tokens (sm for rows, md for forms). Variants only change
  * fill / border weight, never padding or radius. That gives the
  * operator a single visual language to scan:
  *
- *   • Tier 1 — SOLID (one per row max)
+ *   • Tier 1, SOLID (one per row max)
  *     primary-green     leaf-600 fill, soft green glow      → Verify, Approve, Confirm
  *     primary-saffron   cyan→violet gradient, soft glow     → Scan & publish, hero CTAs
  *
- *   • Tier 2 — SUBTLE TINTED (multiple per row, calmer siblings)
+ *   • Tier 2, SUBTLE TINTED (multiple per row, calmer siblings)
  *     outline-leaf      leaf-tint bg + thin leaf border     → +8h, Re-approve, secondary positive
  *     outline-saffron   cyan-tint bg + thin cyan border     → Edit, Publish (no badge), neutral
  *     outline-alert     alert-tint bg + thin alert border   → Reject, Delist, Delete
  *     outline-ink       ink-tint bg + thin neutral border   → Sign out, Refresh, overflow text
  *
  * Variant names are preserved so the dozens of existing call sites
- * keep working with no edits — only the underlying classes change.
+ * keep working with no edits, only the underlying classes change.
  */
 type Variant =
-  | "primary-green" // solid leaf — the row's ONE main positive action
-  | "primary-saffron" // solid cyan→violet gradient — page-hero CTAs
-  | "outline-leaf" // subtle leaf-tint — secondary positive
-  | "outline-saffron" // subtle cyan-tint — neutral / edit / view
-  | "outline-alert" // subtle alert-tint — destructive
-  | "outline-ink"; // subtle ink-tint — neutral text actions
+  | "primary-green" // solid leaf, the row's ONE main positive action
+  | "primary-saffron" // solid cyan→violet gradient, page-hero CTAs
+  | "outline-leaf" // subtle leaf-tint, secondary positive
+  | "outline-saffron" // subtle cyan-tint, neutral / edit / view
+  | "outline-alert" // subtle alert-tint, destructive
+  | "outline-ink"; // subtle ink-tint, neutral text actions
 
 const styleByVariant: Record<Variant, string> = {
-  // SOLID — bold fills + a soft drop-glow in the matching hue so the
+  // SOLID, bold fills + a soft drop-glow in the matching hue so the
   // tile reads as "click me first". A thin matching border keeps the
   // edge crisp on top of the dark ops-console background.
   "primary-green":
@@ -60,7 +60,7 @@ const styleByVariant: Record<Variant, string> = {
   "primary-saffron":
     "bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-cream-50 border border-cyan-300/40 shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)]",
 
-  // SUBTLE TINTED — soft tinted fill (~8% alpha) + 1px border at the
+  // SUBTLE TINTED, soft tinted fill (~8% alpha) + 1px border at the
   // matching tone. Reads as a quiet sibling of the solid primary,
   // not as a competing CTA. Hover bumps the fill to ~14% so the
   // hit-feedback is unmistakable without screaming.
@@ -96,8 +96,8 @@ export default function SubmitButton({
   confirm?: string;
 }) {
   const { pending } = useFormStatus();
-  // sm — row actions (alongside Edit links + overflow menus)
-  // md — form-bottom CTAs ("Save changes", "Approve volunteer")
+  // sm, row actions (alongside Edit links + overflow menus)
+  // md, form-bottom CTAs ("Save changes", "Approve volunteer")
   const sizing =
     size === "md" ? "px-4 py-2 text-sm" : "px-3 py-1.5 text-xs";
   return (

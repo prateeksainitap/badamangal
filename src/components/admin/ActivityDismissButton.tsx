@@ -10,11 +10,11 @@ import { useFormStatus } from "react-dom";
  * parent <li>'s `group-hover:opacity-100` keyframe brings it to full
  * visibility (the default opacity-0 hides it until the row is
  * hovered/focused). Native `confirm()` guards against the accidental
- * click — once confirmed, the wrapping <form> POSTs to
+ * click, once confirmed, the wrapping <form> POSTs to
  * `dismissActivityEventAction`.
  *
  * `useFormStatus()` is the React hook that lets the button disable
- * + spin during the in-flight server-action request — same pattern
+ * + spin during the in-flight server-action request, same pattern
  * the rest of /admin uses via SubmitButton. We can't reuse
  * SubmitButton here because that one renders a much chunkier button;
  * the Live-chat stream rows are dense, this needs to be an icon.

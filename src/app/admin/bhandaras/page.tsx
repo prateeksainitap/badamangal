@@ -40,18 +40,18 @@ import {
 } from "@/components/admin/QueueSelection";
 
 /**
- * Bhandaras moderation queue — replaces the legacy `/admin?type=bhandara`.
+ * Bhandaras moderation queue, replaces the legacy `/admin?type=bhandara`.
  *
  * Active vs Past:
  *   `tuesdayDates` is a JSON string[] of ISO dates (the "service days"
- *   for this bhandara — Tuesday + occasional Bade Shanivar). A row is
+ *   for this bhandara, Tuesday + occasional Bade Shanivar). A row is
  *   "Past" once EVERY date in that array is strictly before today (in
  *   IST). At least one date today-or-future = "Active".
  *
- *   Past rows clutter the operator's queue (especially Pending — a
+ *   Past rows clutter the operator's queue (especially Pending, a
  *   pending request for a date that already passed is meaningless) so
  *   we surface a PAST tab and exclude past items from every other tab.
- *   The PAST tab is status-agnostic — it's the archive view.
+ *   The PAST tab is status-agnostic, it's the archive view.
  *
  * Why JS-side partition (vs SQL):
  *   Prisma can't query into a JSON-encoded string column (the
@@ -59,10 +59,10 @@ import {
  *   tricks would be brittle. The set is small (low hundreds), so we
  *   fetch all rows that match search + classify in JS. The counts for
  *   each tab + the source-filter chips are derived from the same
- *   classified set — one DB round-trip total, vs the 8 we had before.
+ *   classified set, one DB round-trip total, vs the 8 we had before.
  *
  * Search + filter routing is URL-driven via `?status=`, `?q=`,
- * `?source=` so this stays a pure server component — no client state.
+ * `?source=` so this stays a pure server component, no client state.
  */
 
 export const metadata: Metadata = {
@@ -96,10 +96,10 @@ const AUTO_PUBLISH_TAG = "auto-publish";
 // across every status.
 //
 // LIVE semantic: "anything currently visible on the public site",
-// which is APPROVED + has-upcoming-date — regardless of isVerified.
+// which is APPROVED + has-upcoming-date, regardless of isVerified.
 // Verified bhandaras are a refinement of Live (still publicly live,
 // just with an extra trust pill) so they also surface under the LIVE
-// tab. Operator question — "show me everything live right now" — gets
+// tab. Operator question, "show me everything live right now", gets
 // the answer it expects, and the VERIFIED tab stays as the narrower
 // "manually trust-stamped" subset.
 //
@@ -153,7 +153,7 @@ export default async function AdminBhandarasPage({
   const sp = await searchParams;
   // Back-compat: the LIVE tab key used to be UNVERIFIED. Old bookmarks
   // (and the sidebar nav before the rename rolled out) may still link
-  // to ?status=UNVERIFIED — silently normalise so we don't 404 the
+  // to ?status=UNVERIFIED, silently normalise so we don't 404 the
   // operator into the ALL tab.
   const rawStatus = (sp.status ?? "").toUpperCase();
   const normalisedStatus = rawStatus === "UNVERIFIED" ? "LIVE" : rawStatus;
@@ -170,7 +170,7 @@ export default async function AdminBhandarasPage({
 
   const todayIso = istTodayIso();
 
-  // Search filter — same field set the legacy queue used. `mode:
+  // Search filter, same field set the legacy queue used. `mode:
   // "insensitive"` on every text column so search is case-blind.
   const searchWhere: Prisma.BhandaraWhereInput = q
     ? {
@@ -189,7 +189,7 @@ export default async function AdminBhandarasPage({
     : {};
 
   // One round-trip: every row matching search (no status/source/date
-  // filter yet — those are derived in JS). Selects only the columns
+  // filter yet, those are derived in JS). Selects only the columns
   // the queue + BhandaraRow + classifier need.
   const allMatching = await prisma.bhandara.findMany({
     where: searchWhere,
@@ -217,7 +217,7 @@ export default async function AdminBhandarasPage({
   });
 
   // Classify each row once: past flag, status group, source.
-  // `isAuto` is the auto-published subset of `isBot` — bot rows whose
+  // `isAuto` is the auto-published subset of `isBot`, bot rows whose
   // provenance tag carries the `auto-publish` flag added 2026-05-26.
   // Older bot rows ingested before auto-publish (back when every
   // forward landed PENDING) are bot-but-not-auto.
@@ -248,14 +248,14 @@ export default async function AdminBhandarasPage({
   //   • botEver    = every row where isBot
   //   • pastEver   = every row where isPast
   //
-  // Source tabs (primary filter — counts are ACTIVE only, i.e. exclude
+  // Source tabs (primary filter, counts are ACTIVE only, i.e. exclude
   // past so the source strip is a "what's in my working surface"
   // view, not an all-time tally):
   //   • activeAll   = !isPast
   //   • activeHuman = !isPast && !isBot
   //   • activeBot   = !isPast && isBot
   //
-  // Status tabs (secondary filter — counts scoped to the current
+  // Status tabs (secondary filter, counts scoped to the current
   // source selection so switching source re-derives every status
   // chip): pending / unverified / verified / rejected within active
   // rows, plus past within the selected source.
@@ -466,7 +466,7 @@ export default async function AdminBhandarasPage({
         totalInTab={totalInTab}
         preserveParams={{
           // So clicking a status tab doesn't drop the active source
-          // or search — the operator's primary cut (Human / Bot)
+          // or search, the operator's primary cut (Human / Bot)
           // and any in-flight query stay intact.
           source: source !== "all" ? source : undefined,
           q: q || undefined,
@@ -483,7 +483,7 @@ export default async function AdminBhandarasPage({
               all: activeAll,
               human: activeHuman,
               bot: activeBot,
-              // `auto` is a subset of `bot` — same active-only scope.
+              // `auto` is a subset of `bot`, same active-only scope.
               auto: activeAuto,
             }}
             preserveParams={{
@@ -516,11 +516,11 @@ export default async function AdminBhandarasPage({
   );
 }
 
-/** Bulk-action set varies by tab — Verify + Approve only make sense
+/** Bulk-action set varies by tab, Verify + Approve only make sense
  *  on PENDING / REJECTED rows; on LIVE (the union of unverified +
  *  verified) Verify still applies (it's a no-op on already-verified
  *  rows server-side) but Approve doesn't; on the VERIFIED refinement
- *  nothing except Delete is meaningful. PAST is archive — Delete is
+ *  nothing except Delete is meaningful. PAST is archive, Delete is
  *  the only meaningful bulk action (cleanup). */
 function bulkActionsForTab(tab: TabKey): BulkActionDef[] {
   const verify: BulkActionDef = {
@@ -582,7 +582,7 @@ function EmptyState({ tab, query }: { tab: TabKey; query: string }) {
           : tab === "REJECTED"
             ? "Nothing rejected."
             : tab === "PAST"
-              ? "Nothing in the archive — every listing has an upcoming date."
+              ? "Nothing in the archive, every listing has an upcoming date."
               : "No bhandaras in the database yet.";
 
   return (

@@ -8,7 +8,7 @@
  * the homepage LiveChatterBoard + heatmap populate immediately.
  *
  * Why APPROVED (not PENDING) for this path:
- *   The admin is in the loop on every screenshot — they pasted it in,
+ *   The admin is in the loop on every screenshot, they pasted it in,
  *   they reviewed Gemini's classification output inline, they hit
  *   "ingest". Routing through the moderation queue would force them
  *   to switch tabs and re-approve every row, which defeats the
@@ -43,7 +43,7 @@ export const dynamic = "force-dynamic";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8 MB before normalisation
 /** Floor for inserting a mention. Same value as /api/bot/message. Tune
- *  alongside that endpoint — if a real-traffic screenshot test reveals
+ *  alongside that endpoint, if a real-traffic screenshot test reveals
  *  the floor is too aggressive, raise both together. */
 const MIN_CONFIDENCE = 0.4;
 /** Public-feed cutoff for screenshot-ingested mentions. 24h matches
@@ -67,7 +67,7 @@ function inLucknow(lat: number, lng: number): boolean {
 
 /** Inline Google-Maps-URL regex extractor (copy of the helper in
  *  /api/bot/message). Kept inline so the screenshot endpoint stays
- *  self-contained — extracting to a shared util can come later when
+ *  self-contained, extracting to a shared util can come later when
  *  a third caller needs it. */
 function extractCoordsFromText(
   text: string,
@@ -100,7 +100,7 @@ type IngestBody = {
 };
 
 /** Per-message result returned in the API response so the admin can
- *  see what happened to each bubble in their screenshot — useful for
+ *  see what happened to each bubble in their screenshot, useful for
  *  debugging classifier behaviour during the testing phase. */
 type ProcessedMessage = {
   sender: string;
@@ -320,7 +320,7 @@ export async function POST(req: NextRequest) {
             locationSource = "extracted_address";
           }
         } catch (err) {
-          // Non-fatal — insert without coords; the mention will
+          // Non-fatal, insert without coords; the mention will
           // appear on the feed but not on the heatmap.
           console.warn("[admin/ingest-screenshot] geocode error:", err);
         }
@@ -361,7 +361,7 @@ export async function POST(req: NextRequest) {
           groupName,
           senderName: msg.sender || null,
           // No WhatsApp msgId on screenshot-extracted messages, so
-          // dedup via msgId can't fire — by design. Admins can
+          // dedup via msgId can't fire, by design. Admins can
           // upload the same screenshot twice without colliding;
           // duplicates surface on /admin/mentions for cleanup.
           msgId: null,

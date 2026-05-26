@@ -6,7 +6,7 @@
  * Bucket-based "where is the conversation hottest" overlay on top of a
  * small Ola Maps instance scoped to Lucknow. Not a true raster heatmap
  * (MapLibre's built-in `heatmap` layer needs raw map access we'd rather
- * not retrofit yet) — instead each ~500m grid cell with ≥1 mention
+ * not retrofit yet), instead each ~500m grid cell with ≥1 mention
  * gets a translucent saffron disc marker whose colour intensity scales
  * with count.
  *
@@ -14,7 +14,7 @@
  *   • Privacy: a 1:1 mention→pin map would expose individual locations
  *     even when the source mention's location was a fuzzy address
  *     geocode. Aggregating to a 500m cell adds spatial uncertainty
- *     comparable to a "neighbourhood" — the right level for a public
+ *     comparable to a "neighbourhood", the right level for a public
  *     "what's the city doing" view.
  *   • Performance: a 500m grid covers Lucknow with ~3,200 cells max,
  *     in practice <50 are populated at peak. Each cell is one DOM node
@@ -59,7 +59,7 @@ const DEFAULT_ZOOM = 11;
 const BUCKET_SIZE = 0.005;
 
 /** Visual ramp: count → background colour. Tuned for the DARK map
- *  backdrop the homepage now uses — saturated oranges that read as
+ *  backdrop the homepage now uses, saturated oranges that read as
  *  warm-glow markers against the dark navy/charcoal tiles. Borders
  *  bump to near-opaque so cells stay crisp at the cell edge even
  *  over busy tile labels. */
@@ -100,7 +100,7 @@ if (typeof document !== "undefined") {
     const style = document.createElement("style");
     style.dataset.anim = SENTINEL;
     style.textContent = `
-      /* Faster, livelier breathe. Old: 3.6s, scale 1↔1.06 — felt
+      /* Faster, livelier breathe. Old: 3.6s, scale 1↔1.06, felt
          static at a glance. New: 1.6s, scale 1↔1.14, with the
          saffron glow halo also pulsing on the same cycle so the
          eye picks up motion even on a quiet panel. */
@@ -120,7 +120,7 @@ if (typeof document !== "undefined") {
             0 2px 10px rgba(0, 0, 0, 0.5);
         }
       }
-      /* Continuous outer halo — every cell now broadcasts a soft
+      /* Continuous outer halo, every cell now broadcasts a soft
          expanding ring all the time, not just the <60s-fresh ones.
          Reads as "live signal" rather than "marker on a map". */
       @keyframes bm-heat-halo {
@@ -130,7 +130,7 @@ if (typeof document !== "undefined") {
       .bm-heat-halo {
         animation: bm-heat-halo 1.8s ease-out infinite;
       }
-      /* Fresh-mention ripple — same shape as before but punched up
+      /* Fresh-mention ripple, same shape as before but punched up
          so a new arrival visibly stands out from the always-on halo:
          faster ring, brighter alpha at start, wider final scale. */
       @keyframes bm-heat-ripple {
@@ -180,7 +180,7 @@ type Cell = {
 
 /** Bucket a list of geo-mentions into cell aggregates. Cell centroid
  *  is the midpoint of the bucket, not the average of contained mentions
- *  — that way the cells tile cleanly even when mention density inside
+ * , that way the cells tile cleanly even when mention density inside
  *  is uneven. */
 function bucketMentions(mentions: GeoMention[]): Cell[] {
   const map = new Map<string, Cell>();
@@ -196,7 +196,7 @@ function bucketMentions(mentions: GeoMention[]): Cell[] {
       if (created > existing.mostRecent) existing.mostRecent = created;
       // Append the label only when it's distinct AND we still have
       // room (cap at 5). Case-insensitive compare so "Aliganj" and
-      // "aliganj" collapse — chat language is messy.
+      // "aliganj" collapse, chat language is messy.
       if (
         label &&
         existing.labels.length < 5 &&
@@ -262,7 +262,7 @@ function buildCellElement(cell: Cell): HTMLDivElement {
   relWrap.style.cssText = `position:relative;display:block;width:${r}px;height:${r}px;`;
   wrap.appendChild(relWrap);
 
-  // Ripple ring — only rendered for fresh cells. CSS-keyframe expands
+  // Ripple ring, only rendered for fresh cells. CSS-keyframe expands
   // and fades out an outer ring once. We rebuild markers on every poll
   // tick (parent effect tears down + reattaches), so each rebuild
   // re-fires the animation on cells that are still inside the 60s
@@ -270,7 +270,7 @@ function buildCellElement(cell: Cell): HTMLDivElement {
   // the inner disc + its tooltip.
   // Always-on halo: a soft expanding ring every cell broadcasts at
   // 1.8s cadence. Reads as a live signal rather than a static
-  // marker. Sits BEHIND the inner disc in DOM order — pointer-
+  // marker. Sits BEHIND the inner disc in DOM order, pointer-
   // events:none so hovers still hit the disc + its tooltip.
   const halo = document.createElement("span");
   halo.className = "bm-heat-halo";
@@ -319,13 +319,13 @@ function buildCellElement(cell: Cell): HTMLDivElement {
     `width:${r}px`,
     `height:${r}px`,
     // Radial gradient: brighter at the centre, fade to ramp colour at
-    // edge. Reads as a warm glow instead of a flat dot — more "living"
+    // edge. Reads as a warm glow instead of a flat dot, more "living"
     // on the dark map.
     `background:radial-gradient(circle at 50% 50%, ${ramp.bg} 0%, ${ramp.bg} 60%, ${withAlpha(ramp.bg, 0.4)} 100%)`,
     `border:1.5px solid ${ramp.border}`,
     "border-radius:9999px",
     "box-shadow:0 0 12px rgba(242,148,76,0.35), 0 2px 6px rgba(0,0,0,0.4)",
-    // Per-cell breathing — slow scale 1 ↔ 1.06 with a staggered start
+    // Per-cell breathing, slow scale 1 ↔ 1.06 with a staggered start
     // (offset by latitude). Doesn't interfere with the ripple above
     // since they animate on different transform targets.
     "animation:bm-heat-breathe 3.6s ease-in-out infinite",
@@ -342,7 +342,7 @@ function buildCellElement(cell: Cell): HTMLDivElement {
   // Tooltip composition: count + recency + the actual location names
   // people mentioned in chat. Native title attribute renders multi-line
   // via \n (every major browser respects this) so we don't need a
-  // custom hover popover for the read-only tooltip — the OS-styled
+  // custom hover popover for the read-only tooltip, the OS-styled
   // tooltip matches the rest of the map UI.
   const head = `${cell.count} mention${cell.count === 1 ? "" : "s"} · most recent ${ago} ago`;
   const labelLine =
@@ -367,7 +367,7 @@ export default function MentionHeatmap({
   const markersRef = useRef<any[]>([]);
   const [mapReady, setMapReady] = useState(false);
   // Tracks whether we've done the one-shot auto-fit yet. Once true,
-  // we leave the user's map view alone — subsequent polls don't
+  // we leave the user's map view alone, subsequent polls don't
   // re-snap the camera back to the data bounds, which would feel
   // like the map is fighting them. New mentions still add cells; the
   // user can pan/zoom freely after first fit.
@@ -398,7 +398,7 @@ export default function MentionHeatmap({
           // dark band on the homepage. Saffron / orange cell markers
           // pop against the dark tiles, which is the whole point of
           // pairing them. Uses Ola's `default-dark-standard` style
-          // (verified via the styles API — see lib/olaMaps.ts).
+          // (verified via the styles API, see lib/olaMaps.ts).
           style: OLA_DARK_STYLE,
           container: containerRef.current,
           center: [LKO_CENTER.lng, LKO_CENTER.lat],
@@ -417,7 +417,7 @@ export default function MentionHeatmap({
           map?.remove?.();
           return;
         }
-        // Minimal controls — no geolocate on a heatmap (it isn't
+        // Minimal controls, no geolocate on a heatmap (it isn't
         // a navigation surface). Just the zoom +/- pair so curious
         // visitors can drill into a hot cell.
         attachMapControls(map, {
@@ -456,7 +456,7 @@ export default function MentionHeatmap({
         mapRef.current?.remove?.();
         mapRef.current = null;
       } catch {
-        // Defensive — nothing to do if the SDK already torn down.
+        // Defensive, nothing to do if the SDK already torn down.
       }
     };
   }, []);
@@ -464,7 +464,7 @@ export default function MentionHeatmap({
   // ── Effect B: sync cell markers whenever the mentions array
   // changes (parent re-renders on each poll). Cheap: drop the old
   // markers, build new ones from the bucketed cells. We don't try
-  // to diff cell-by-cell — typical cell counts (<50) make full
+  // to diff cell-by-cell, typical cell counts (<50) make full
   // rebuild faster than reconciling, and the visual flicker is
   // imperceptible (each marker is just a coloured disc, no animation).
   const cells = useMemo(() => bucketMentions(mentions), [mentions]);
@@ -495,7 +495,7 @@ export default function MentionHeatmap({
       }
       markersRef.current = newMarkers;
 
-      // Auto-fit-bounds — frame the actual data so a single cell in
+      // Auto-fit-bounds, frame the actual data so a single cell in
       // Aliganj doesn't sit lost on a city-wide view. We only fit
       // when the user hasn't manually moved the map yet; once they
       // pan/zoom, their view wins and subsequent renders don't
@@ -507,7 +507,7 @@ export default function MentionHeatmap({
         try {
           if (cells.length === 1) {
             // Single cell: keep the city around it visible. Zoom 13
-            // was too tight — only ~1.5 km radius showed, so a lone
+            // was too tight, only ~1.5 km radius showed, so a lone
             // Aliganj pin landed surrounded by unrelated streets
             // with no Lucknow context. Zoom 11 (~5 km radius) frames
             // the cell against the rest of the city.
@@ -542,12 +542,12 @@ export default function MentionHeatmap({
   }, [cells, mapReady]);
 
   // Empty / config-miss states surface their own copy rather than
-  // rendering an empty card — keeps the section visually balanced
+  // rendering an empty card, keeps the section visually balanced
   // with the chatter feed on the left.
   if (!isOlaConfigured()) {
     return (
       <div className="p-6 text-sm text-cream-50/70 italic min-h-[18rem] flex items-center justify-center">
-        Map key missing — heatmap unavailable. (Set
+        Map key missing, heatmap unavailable. (Set
         NEXT_PUBLIC_OLA_MAPS_API_KEY in environment.)
       </div>
     );

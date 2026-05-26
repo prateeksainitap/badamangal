@@ -12,7 +12,7 @@ import BotHeartbeat from "@/components/admin/BotHeartbeat";
 import AdminPageHero from "@/components/admin/AdminPageHero";
 
 /**
- * /admin/new — manual-create flow.
+ * /admin/new, manual-create flow.
  *
  * Reuses ScanReview's review-phase form but with `initialBlank` set,
  * which:
@@ -20,7 +20,7 @@ import AdminPageHero from "@/components/admin/AdminPageHero";
  *   • Opens straight on the editable review form with every field empty
  *   • Lets the operator pick bhandara vs spot via the toggle at the top
  *
- * POSTs to /api/admin/publish — exact same endpoint the Gemini-scan
+ * POSTs to /api/admin/publish, exact same endpoint the Gemini-scan
  * flow uses, so the server-side validation, slug-uniqueness retry,
  * APPROVED-at-creation behavior, etc. all apply unchanged.
  *
@@ -60,7 +60,7 @@ export default async function AdminNewPage({
     <AdminShell navCounts={await getAdminNavCounts()} botHeartbeat={<BotHeartbeat />}>
       <div className="max-w-7xl mx-auto">
         <AdminPageHero
-          // Reuses the "scan" illustration — same family of work
+          // Reuses the "scan" illustration, same family of work
           // (creating a listing), no new SVG required.
           subject="scan"
           eyebrow="Add manually"
@@ -75,7 +75,7 @@ export default async function AdminNewPage({
               <span className="text-cyan-300">$</span> No poster to scan? Drop
               in the details an organizer gave you, a spot you saw on the
               field, or anything you need to seed by hand. Same publish
-              flow as scan — just typed instead of extracted.
+              flow as scan, just typed instead of extracted.
             </>
           }
           primaryAction={

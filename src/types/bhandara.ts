@@ -23,7 +23,7 @@ export type Bhandara = {
   organizerWhatsapp?: string;
   upiId?: string;
   /** Uploaded UPI QR-code image URL (R2 / Supabase). Optional companion
-   *  to upiId — used by SponsorBhandara to render the organiser's
+   *  to upiId, used by SponsorBhandara to render the organiser's
    *  custom QR instead of a client-generated one from the VPA text. */
   upiQrUrl?: string;
   photoUrl?: string;

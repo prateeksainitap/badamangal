@@ -8,11 +8,11 @@ import {
 import { AVAILABLE_MODELS, extractVariables } from "@/lib/openai";
 
 /**
- * PromptEditor — create / edit a Prompt row.
+ * PromptEditor, create / edit a Prompt row.
  *
  * Mirrors ContentEditor's disclosure-style layout for visual
  * consistency. Adds two prompt-specific niceties:
- *   1. Live variable detection — as the admin types {{name}} into
+ *   1. Live variable detection, as the admin types {{name}} into
  *      the body, the chip strip beneath updates. Makes it obvious
  *      what inputs the runner will ask for.
  *   2. Model dropdown sourced from AVAILABLE_MODELS so adding a new
@@ -160,7 +160,7 @@ export default function PromptEditor({ editing }: { editing?: PromptRow }) {
           </span>
           {vars.length === 0 ? (
             <span className="text-[11px] text-cream-50/40 font-mono">
-              none — the prompt will run as-is
+              none, the prompt will run as-is
             </span>
           ) : (
             vars.map((v) => (

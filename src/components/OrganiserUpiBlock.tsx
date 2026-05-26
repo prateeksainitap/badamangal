@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useLocaleFromContext } from "@/lib/locale-context";
 
 type Props = {
-  /** Recipient VPA (e.g. `9235374707@barodampay`). Required — the
+  /** Recipient VPA (e.g. `9235374707@barodampay`). Required, the
    *  block self-hides when this is missing. */
   upiId: string;
   /** Organiser name on file. Surfaced in the panel copy and the
@@ -15,7 +15,7 @@ type Props = {
 };
 
 /**
- * OrganiserUpiBlock — donate panel on a bhandara detail page.
+ * OrganiserUpiBlock, donate panel on a bhandara detail page.
  *
  * Renders only when the organiser has provided BOTH a UPI ID and an
  * uploaded QR image. We deliberately prefer the bank-issued QR (with
@@ -25,7 +25,7 @@ type Props = {
  *   • UPI-app built-in scanners (GPay / PhonePe / Paytm cameras)
  *     verify bank-issued QRs more strictly. Our generated one would
  *     work for phone-camera scans but get rejected by some UPI
- *     scanners — the organiser's screenshot doesn't have that
+ *     scanners, the organiser's screenshot doesn't have that
  *     compatibility gap.
  *   • The bank-issued QR carries the organiser's name + masked
  *     account on its face, which adds a layer of donor trust we
@@ -51,7 +51,7 @@ export default function OrganiserUpiBlock({
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {
-      // Older browsers without clipboard API — fall back silently.
+      // Older browsers without clipboard API, fall back silently.
     }
   }
 
@@ -75,7 +75,7 @@ export default function OrganiserUpiBlock({
         />
 
         <div className="relative grid gap-8 p-6 sm:p-8 md:grid-cols-[auto,1fr] md:items-center">
-          {/* QR — the bank-issued image the organiser uploaded. */}
+          {/* QR, the bank-issued image the organiser uploaded. */}
           <div className="mx-auto w-full max-w-[260px] md:w-[240px]">
             <div className="rounded-2xl bg-white p-3 border border-gold-500/40 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.25)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -97,7 +97,7 @@ export default function OrganiserUpiBlock({
             </p>
           </div>
 
-          {/* Copy block — payee, suggested amount, and the two
+          {/* Copy block, payee, suggested amount, and the two
               actions (tap-to-pay deep-link, copy VPA). */}
           <div>
             <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-sindoor-700/85 font-mono">
@@ -112,8 +112,8 @@ export default function OrganiserUpiBlock({
             </h2>
             <p className="mt-2 text-sm text-ink-600 leading-relaxed">
               {t(
-                `Payments go directly to ${organizerName}'s UPI account. We don't take a cut — this is a community ledger, not a checkout.`,
-                `दान सीधे ${organizerName} के UPI खाते में जाते हैं। हम कोई शुल्क नहीं लेते — यह एक सामुदायिक खाता है।`,
+                `Payments go directly to ${organizerName}'s UPI account. We don't take a cut, this is a community ledger, not a checkout.`,
+                `दान सीधे ${organizerName} के UPI खाते में जाते हैं। हम कोई शुल्क नहीं लेते, यह एक सामुदायिक खाता है।`,
               )}
             </p>
 

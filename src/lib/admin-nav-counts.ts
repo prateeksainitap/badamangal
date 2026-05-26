@@ -5,7 +5,7 @@
  * Why a shared util:
  *   Every admin page renders AdminShell, and every page wants the
  *   sidebar badges. Without a shared helper, each page would need
- *   to re-implement the 7 count queries — 7 round-trips per page
+ *   to re-implement the 7 count queries, 7 round-trips per page
  *   load, duplicated 10x across the admin. Bad for both perf and
  *   maintenance.
  *
@@ -14,7 +14,7 @@
  *   so in-session navigations don't re-hit the DB at all. The cache
  *   is busted explicitly via `revalidateTag("admin-nav-counts")` from
  *   every mutation that changes any of these counts (approve / reject /
- *   spam / verify etc.) — see actions.ts. 5 min is safe because the
+ *   spam / verify etc.), see actions.ts. 5 min is safe because the
  *   tag-revalidation gives us instant freshness on the queues that
  *   matter; the 30s window was wasted cache-miss tax on idle clicks.
  *
@@ -22,7 +22,7 @@
  *   • Cyan/live tone   → spots (auto-expire, "happening now")
  *   • Saffron/attention → everything else that needs human review
  *
- * Keys MUST match NAV item hrefs in AdminShell — the shell looks
+ * Keys MUST match NAV item hrefs in AdminShell, the shell looks
  * them up by href when deciding which badge to render.
  */
 
@@ -31,7 +31,7 @@ import { prisma } from "@/lib/db";
 
 export type AdminNavCounts = Partial<Record<string, number>>;
 
-/** Raw count fetch — one round-trip per queue, all in parallel.
+/** Raw count fetch, one round-trip per queue, all in parallel.
  *  Promise.allSettled so a transient EMAXCONN on any single count
  *  doesn't take down the whole AdminShell sidebar (and with it the
  *  entire admin tree). Failed counts fall back to 0 so the badge
@@ -94,7 +94,7 @@ async function _fetchNavCounts(): Promise<AdminNavCounts> {
   };
 }
 
-/** Cached fetch — 5-minute TTL. Mutations that affect these counts
+/** Cached fetch, 5-minute TTL. Mutations that affect these counts
  *  should call `revalidateTag("admin-nav-counts")` to punch through
  *  instantly; we lean on that for freshness instead of polling. */
 export const getAdminNavCounts = unstable_cache(

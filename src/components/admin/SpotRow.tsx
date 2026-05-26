@@ -10,7 +10,7 @@ import { stripBotProvenance, parseBotGroupName } from "@/lib/sanitize";
 import { RowCheckbox } from "@/components/admin/QueueSelection";
 
 /**
- * Spot moderation row — dark-themed card for the new /admin/spots
+ * Spot moderation row, dark-themed card for the new /admin/spots
  * queue. Replaces SpotsView's in-page renderer with a tighter
  * standardized layout matching BhandaraRow:
  *
@@ -28,7 +28,7 @@ import { RowCheckbox } from "@/components/admin/QueueSelection";
  *   EXPIRED:  Edit · Extend +8h · Delist                             ⋯(Delete)
  *   REJECTED: Re-approve · Extend +8h · Edit                         ⋯(Delete)
  *
- * Photo handling preserves the legacy "+N" extras badge — bot
+ * Photo handling preserves the legacy "+N" extras badge, bot
  * spots usually have just the primary; user-submitted forms can
  * carry up to 4 extras (Spot.extraPhotoUrls JSON column). The
  * primary thumb is clickable to open the full-res image; the edit
@@ -57,7 +57,7 @@ export type SpotQueueRow = {
 
 type Props = {
   spot: SpotQueueRow;
-  /** Server-snapshot "now" — passed in so every row in a list
+  /** Server-snapshot "now", passed in so every row in a list
    *  uses the SAME clock for expiry math, avoiding the case where
    *  the first row says "3h left" and the last says "2.99h left"
    *  just because rendering took 10ms. */
@@ -71,7 +71,7 @@ export default function SpotRow({ spot: s, now, index }: Props) {
   const isRejected = s.status === "REJECTED";
   const isLive = !isRejected && !isExpired;
 
-  // Extra-photo count — defensive JSON parse on the
+  // Extra-photo count, defensive JSON parse on the
   // string-encoded column. Bot rows almost always [0]; user
   // submissions occasionally 1–4.
   let extraCount = 0;
@@ -86,7 +86,7 @@ export default function SpotRow({ spot: s, now, index }: Props) {
     extraCount = 0;
   }
 
-  // Hours until expiry / since expiry — used for the "Live · 4.2h
+  // Hours until expiry / since expiry, used for the "Live · 4.2h
   // left" or "Expired 1.3h ago" sublabel.
   const hoursDelta =
     (s.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60);
@@ -95,7 +95,7 @@ export default function SpotRow({ spot: s, now, index }: Props) {
     : `${hoursDelta.toFixed(1)}h left`;
 
   // Strip the [bot:…] provenance tag from the caption before
-  // display — same hygiene as the public live-chat panel.
+  // display, same hygiene as the public live-chat panel.
   const cleanCaption = stripBotProvenance(s.caption) || null;
   // Bot-ingested spots carry the [bot:…] tag in the raw caption.
   // We surface a small "BOT · in <group>" chip pair in the header
@@ -107,7 +107,7 @@ export default function SpotRow({ spot: s, now, index }: Props) {
 
   return (
     <article
-      // Clamp stagger index at 6 — with hundreds of rows in a busy
+      // Clamp stagger index at 6, with hundreds of rows in a busy
       // queue, an uncapped 45ms-per-row delay leaves the last row
       // invisible for 6+ seconds. Capping keeps the "receiving"
       // feel for the visible block above the fold without leaving
@@ -123,12 +123,12 @@ export default function SpotRow({ spot: s, now, index }: Props) {
     >
       <div className="flex gap-3 sm:gap-4">
         <RowCheckbox id={s.id} label={cleanCaption ?? "Spot"} />
-        {/* Thumbnail — primary photo with an optional "+N" badge for
+        {/* Thumbnail, primary photo with an optional "+N" badge for
             extras. Clickable to open the full-res in a new tab. */}
         <Thumb url={s.photoUrl} extraCount={extraCount} alt={cleanCaption ?? "Spot"} />
 
         <div className="flex-1 min-w-0">
-          {/* Header row — caption + state pill */}
+          {/* Header row, caption + state pill */}
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="min-w-0">
               <div className="font-fraunces text-cream-50 text-base sm:text-lg leading-tight">
@@ -195,7 +195,7 @@ export default function SpotRow({ spot: s, now, index }: Props) {
             </div>
           </div>
 
-          {/* Meta row — reporter, coords, IP */}
+          {/* Meta row, reporter, coords, IP */}
           <div className="mt-3 text-xs text-cream-50/55 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span>
               <span className="text-cream-50/40">Reporter:</span>{" "}
@@ -214,7 +214,7 @@ export default function SpotRow({ spot: s, now, index }: Props) {
             </span>
           </div>
 
-          {/* Address — separate line because it's often long */}
+          {/* Address, separate line because it's often long */}
           {s.address ? (
             <div className="mt-2 text-xs text-cream-50/65 truncate">
               <span className="text-cream-50/40">Address:</span> {s.address}
@@ -302,7 +302,7 @@ function Thumb({
       className="shrink-0 group relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden border border-cream-50/10 hover:border-saffron-500/40 transition-colors"
       title={
         extraCount > 0
-          ? `Open full image — ${extraCount} extra photo${extraCount === 1 ? "" : "s"} on edit page`
+          ? `Open full image, ${extraCount} extra photo${extraCount === 1 ? "" : "s"} on edit page`
           : "Open full image"
       }
     >
@@ -367,7 +367,7 @@ function StatePill({ state }: { state: "live" | "expired" | "rejected" }) {
   );
 }
 
-/** Edit link — matches SubmitButton's outline-saffron subtle tint
+/** Edit link, matches SubmitButton's outline-saffron subtle tint
  *  so the action cluster reads as a single row of sibling pills. */
 function EditLink({ id }: { id: string }) {
   return (
@@ -412,7 +412,7 @@ function DeleteForm({ id }: { id: string }) {
 function MoreMenu({ children }: { children: React.ReactNode }) {
   return (
     // `open:z-30` lifts the WHOLE <details> above the next row when
-    // open — see the matching note in BhandaraRow's MoreMenu for the
+    // open, see the matching note in BhandaraRow's MoreMenu for the
     // stacking-context rationale.
     <details className="relative inline-block group open:z-30">
       {/* Trigger height matches sm SubmitButton (h-[28px]) so the

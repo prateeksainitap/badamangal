@@ -11,7 +11,7 @@
  * The provider owns a `Set<string>` of selected row ids. <RowCheckbox>
  * reads + writes that set via context. <BulkActionBar> renders the
  * sticky bottom bar (visible only when count > 0) with each action
- * as its own <form> POSTing to a server action — the form's hidden
+ * as its own <form> POSTing to a server action, the form's hidden
  * inputs serialise the selected ids so the server gets them via
  * `formData.getAll("ids")`.
  *
@@ -36,7 +36,7 @@ type SelectionContext = {
   toggle: (id: string) => void;
   clear: () => void;
   selectAll: (ids: string[]) => void;
-  /** Total rows currently rendered — used by the "X of Y" label
+  /** Total rows currently rendered, used by the "X of Y" label
    *  inside the bar. The provider doesn't track this itself; it's
    *  set by the page via the `total` prop. */
   total: number;
@@ -235,7 +235,7 @@ export function QueueRow({
 /* ────────────────────── BulkActionBar ─────────────────────────── */
 
 export type BulkActionDef = {
-  /** Internal key — used as React key, doesn't go to server. */
+  /** Internal key, used as React key, doesn't go to server. */
   key: string;
   /** Button label. */
   label: string;
@@ -258,7 +258,7 @@ export type BulkActionDef = {
 
 export function BulkActionBar({
   actions,
-  /** Optional list of all row ids visible on the page — when
+  /** Optional list of all row ids visible on the page, when
    *  provided, the "Select all" button activates. Pass `undefined`
    *  to hide that button. */
   allRowIds,
@@ -304,7 +304,7 @@ export function BulkActionBar({
           </button>
         ) : null}
 
-        {/* Action buttons — each is its own form with the selected
+        {/* Action buttons, each is its own form with the selected
             ids serialised as multiple <input name="ids" value=…>
             hidden inputs.
 
@@ -314,7 +314,7 @@ export function BulkActionBar({
             operator hits Delist / Merge / Verify in bulk, even
             though the server-side mutation completed and the page
             data refreshed. The bar would also linger because
-            `count > 0`. Real complaint from /admin/spots — after
+            `count > 0`. Real complaint from /admin/spots, after
             clicking Delist 2 the same 2 rows kept their tick marks.
 
             Wrapped in try/finally so clear() runs even when the
@@ -348,7 +348,7 @@ export function BulkActionBar({
                 // 5 s buffer covers the typical Next revalidate
                 // window. If the re-render comes faster, the rows
                 // are already gone (merged/deleted) or have new
-                // data (edited) — the lingering pending mark on
+                // data (edited), the lingering pending mark on
                 // those ids is harmless because the rendered row
                 // tree no longer contains them. If the re-render
                 // is slower than 5 s, we surface the actual page

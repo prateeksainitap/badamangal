@@ -22,7 +22,7 @@ import OrganiseRow, {
 } from "@/components/admin/OrganiseRow";
 
 /**
- * Organise-bhandara leads queue — dark-themed rewrite.
+ * Organise-bhandara leads queue, dark-themed rewrite.
  *
  * Workflow: NEW → CONTACTED → CONFIRMED → COMPLETED (+ REJECTED).
  * Active states (NEW, CONTACTED) sort to the top so the team's

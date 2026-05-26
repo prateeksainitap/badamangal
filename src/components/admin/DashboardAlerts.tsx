@@ -11,22 +11,22 @@ import { IconEnvelope, IconCheck } from "@/components/admin/AdminIcons";
  *
  * Design principles:
  *   • No empty chrome. When there's nothing to alert about, this
- *     component renders `null` — the dashboard stays clean instead
+ *     component renders `null`, the dashboard stays clean instead
  *     of showing an "all clear" placeholder.
  *   • Non-dismissible. Operators can't accidentally hide something
  *     important; alerts auto-resolve when the underlying data
  *     condition clears (e.g. once you approve the volunteers, the
  *     "volunteers waiting" card disappears on next render).
- *   • Pure server component. No client state — just props + render.
+ *   • Pure server component. No client state, just props + render.
  *
  * Severity ladder, in display order (highest urgency first):
- *   critical  — someone is blocked / something is broken
- *   warning   — queue / inbox is building up
- *   info      — context that helps interpret the day
+ *   critical , someone is blocked / something is broken
+ *   warning  , queue / inbox is building up
+ *   info     , context that helps interpret the day
  *
  * Adding a new alert: push to the `alerts` array below the same way.
  * Each alert sorts by severity then by insertion order. Keep
- * `severity: "critical"` rare — overuse desensitises the operator
+ * `severity: "critical"` rare, overuse desensitises the operator
  * to actual fires.
  */
 
@@ -38,7 +38,7 @@ type AlertItem = {
   /** Glyph or SVG shown left of the title. Strings are fine for
    *  emoji (📋, 🕉, 💤, 🔑) which have system emoji-font fallback,
    *  but Unicode dingbats (✉ U+2709, ✓ U+2713) render as tofu in
-   *  fonts that don't carry them — for those, pass a ReactNode
+   *  fonts that don't carry them, for those, pass a ReactNode
    *  using the AdminIcons SVG set instead. */
   icon: React.ReactNode;
   title: string;
@@ -104,9 +104,9 @@ const TONE: Record<
   },
 };
 
-/** Pure logic — compute the ordered alert list from the current
+/** Pure logic, compute the ordered alert list from the current
  *  dashboard data snapshot. Shared by the inline `<DashboardAlerts/>`
- *  surface (now unused — kept for back-compat) and the new
+ *  surface (now unused, kept for back-compat) and the new
  *  `<NotificationBell/>` header popover. */
 export function computeAlerts(props: Props): AlertItem[] {
   const alerts: AlertItem[] = [];
@@ -130,7 +130,7 @@ export function computeAlerts(props: Props): AlertItem[] {
   }
 
   // ── WARNING ─────────────────────────────────────────────────────
-  // Listings queue building up — not blocking anyone, but bigger
+  // Listings queue building up, not blocking anyone, but bigger
   // the queue, less context the operator has when each row is
   // finally reviewed. Threshold of 5 chosen so 1-2 stragglers don't
   // raise an alarm.
@@ -146,7 +146,7 @@ export function computeAlerts(props: Props): AlertItem[] {
     });
   }
 
-  // Unread inbox — public-facing first impression risk. Surfaces
+  // Unread inbox, public-facing first impression risk. Surfaces
   // for any count > 0 because contact-form messages tend to expect
   // a reply within a day or two.
   if (props.newEmailsCount > 0) {
@@ -163,7 +163,7 @@ export function computeAlerts(props: Props): AlertItem[] {
   }
 
   // ── INFO ────────────────────────────────────────────────────────
-  // Tuesday is the busy day — the bot fires constantly, mention
+  // Tuesday is the busy day, the bot fires constantly, mention
   // volume spikes, spot reports come in faster than usual. Surface
   // it as context so the operator knows why the dashboard feels
   // alive vs. a slow off-day.
@@ -172,14 +172,14 @@ export function computeAlerts(props: Props): AlertItem[] {
       id: "tuesday",
       severity: "info",
       icon: "🕉",
-      title: "It's Tuesday — Bada Mangal day",
+      title: "It's Tuesday, Bada Mangal day",
       description:
         "Expect mention volume + spot reports to spike. Keep the queue thin.",
     });
   }
 
   // No mentions in the last 24h is unusual when the bot is healthy.
-  // Surface as info (not critical) because slow days do happen —
+  // Surface as info (not critical) because slow days do happen
   // just nudges the operator to glance at /admin/mentions.
   if (props.mentions24hCount === 0) {
     alerts.push({
@@ -193,7 +193,7 @@ export function computeAlerts(props: Props): AlertItem[] {
     });
   }
 
-  // OpenAI key missing — the Content Hub Prompts tab Run buttons
+  // OpenAI key missing, the Content Hub Prompts tab Run buttons
   // won't fire without it. Info severity because nothing breaks;
   // it just disables a feature.
   if (!process.env.OPENAI_API_KEY) {
@@ -236,11 +236,11 @@ export default function DashboardAlerts(props: Props) {
 }
 
 /* ──────────────────────────────────────────────────────────────────
-   NotificationBell — header popover variant
+   NotificationBell, header popover variant
    ──────────────────────────────────────────────────────────────────
    Replaces the inline alerts strip on /admin/home. Lives in the
    AdminShell top bar's right side. Implemented as native
-   <details>/<summary> so the popover is pure CSS — no client hook,
+   <details>/<summary> so the popover is pure CSS, no client hook,
    no useState, no portal. The bell renders as the <summary>; the
    alert cards live inside the <details>'s expanded panel.
 
@@ -277,8 +277,8 @@ export function NotificationBell(props: Props) {
         ].join(" ")}
         aria-label={
           total === 0
-            ? "Notifications — all clear"
-            : `Notifications — ${total} active`
+            ? "Notifications, all clear"
+            : `Notifications, ${total} active`
         }
         title={
           total === 0
@@ -314,7 +314,7 @@ export function NotificationBell(props: Props) {
         ) : null}
       </summary>
 
-      {/* Popover panel — absolutely positioned to the right of the
+      {/* Popover panel, absolutely positioned to the right of the
           bell. Wider than a row card so each alert can breathe. */}
       <div className="absolute right-0 top-full mt-2 z-30 w-[22rem] sm:w-[26rem] max-w-[calc(100vw-1.5rem)] rounded-2xl border border-cyan-400/25 bg-[#0B0E16]/95 backdrop-blur-md shadow-[0_24px_50px_-12px_rgba(0,0,0,0.7)] overflow-hidden">
         <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-cyan-400/15">

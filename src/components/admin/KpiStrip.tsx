@@ -8,14 +8,14 @@
  * looking at any rows.
  *
  * Items:
- *   • `label` — short uppercase eyebrow ("Pending", "Live now").
- *   • `value` — pre-formatted string (number or "TUESDAY") so the
+ *   • `label`, short uppercase eyebrow ("Pending", "Live now").
+ *   • `value`, pre-formatted string (number or "TUESDAY") so the
  *     caller controls locale / commas.
- *   • `accent` — "cyan" | "violet" | "leaf" | "sindoor". Drives
+ *   • `accent`, "cyan" | "violet" | "leaf" | "sindoor". Drives
  *     the icon tint, value colour, and border tint.
- *   • `icon` — 22×22 stroke icon shown in a 44×44 plate on the
+ *   • `icon`, 22×22 stroke icon shown in a 44×44 plate on the
  *     right of the tile.
- *   • `href` — optional. When set, the tile becomes a Link
+ *   • `href`, optional. When set, the tile becomes a Link
  *     (deep-link into a pre-filtered queue tab).
  *
  * Server-rendered, no client JS.

@@ -7,7 +7,7 @@
  *     - 10 GB storage (BadaMangal sits at ~300 MB)
  *     - 1M Class A operations / month (writes; we use ~500)
  *     - 10M Class B operations / month (reads; we use ~150K)
- *     - ZERO egress fees — R2's killer feature
+ *     - ZERO egress fees, R2's killer feature
  *
  * Public URL scheme:
  *   Photos served from cdn.badamangal.com (a CNAME on Cloudflare

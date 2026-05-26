@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 type Locale = "hi" | "en";
 
 type Props = {
-  /** null when the bhandara has no map pin (lat=0/lng=0) — the
+  /** null when the bhandara has no map pin (lat=0/lng=0), the
    *  Directions slot is hidden entirely in that case. */
   directionsHref: string | null;
   whatsappHref: string;
@@ -21,7 +21,7 @@ type Props = {
    *  webhook. When omitted, the button keeps its original behaviour:
    *  a plain href to `sponsorHref` (or a tel: fallback). */
   bhandaraId?: string;
-  /** UPI VPA the donation goes to — only used when bhandaraId is set,
+  /** UPI VPA the donation goes to, only used when bhandaraId is set,
    *  so the audit row records the actual recipient at click time
    *  (organiser.upiId may be edited later). */
   recipientUpiId?: string;
@@ -67,7 +67,7 @@ export default function MobileStickyActions({
   // telemetry layer.
   const beaconAndOpen = (e: React.MouseEvent<HTMLAnchorElement>) => {
     burst();
-    // Without the intent-tracking props this is a plain link click —
+    // Without the intent-tracking props this is a plain link click
     // let the browser handle it.
     if (!bhandaraId || !recipientUpiId || !sponsorHref) return;
     // Prevent the default <a> navigation so we can fire the beacon
@@ -108,7 +108,7 @@ export default function MobileStickyActions({
         } | null;
         window.location.href = data?.upiDeepLink ?? fallback;
       } catch {
-        // Network / CORS error — UX trumps telemetry. Always open
+        // Network / CORS error, UX trumps telemetry. Always open
         // the deep-link so the donor isn't stranded.
         window.location.href = fallback;
       }

@@ -101,7 +101,7 @@ export default function HappeningNow({ initial }: Props) {
   // source WhatsApp message has neither a location share nor EXIF
   // on the photo. Those rows still represent a real spotted
   // bhandara (we have the photo + sender), they just can't be
-  // pinned yet — the operator fills coords in /admin/spots. We want
+  // pinned yet, the operator fills coords in /admin/spots. We want
   // visitors to see the full count without pretending the orphans
   // don't exist.
   const onMapCount = useMemo(
@@ -184,8 +184,8 @@ export default function HappeningNow({ initial }: Props) {
                   className="inline-flex items-center gap-1.5 rounded-full bg-cream-50 border border-ink-600/25 text-ink-900 px-2.5 py-1"
                   title={
                     isHi
-                      ? "लोकेशन के बिना भेजे गए — मॉडरेटर जल्द जोड़ देंगे।"
-                      : "Sent without a location pin — moderator will add coords shortly."
+                      ? "लोकेशन के बिना भेजे गए, मॉडरेटर जल्द जोड़ देंगे।"
+                      : "Sent without a location pin, moderator will add coords shortly."
                   }
                 >
                   <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-600/55" />
@@ -382,7 +382,7 @@ function SpotCard({
 
   // Bot-ingested spots can land with lat=0/lng=0 (WhatsApp strips EXIF
   // until admin sets coords). When that's the case we hide the
-  // "Get directions" button entirely — a maps link to 0,0 drops the
+  // "Get directions" button entirely, a maps link to 0,0 drops the
   // user in the Gulf of Guinea. The card still shows the photo +
   // caption + reporter + relative time; the directions row simply
   // doesn't render.

@@ -5,15 +5,15 @@
  * (/admin/bhandaras, /admin/spots, etc). Functional twin of
  * AdminSearchBox but with:
  *
- *   • Dark surface — ink-900 background, cream-50 text, saffron
+ *   • Dark surface, ink-900 background, cream-50 text, saffron
  *     focus ring. Designed against the AdminShell's dark canvas
  *     rather than the legacy cream paper.
- *   • No `type` prop — the new routes encode the queue in the
+ *   • No `type` prop, the new routes encode the queue in the
  *     pathname (/admin/bhandaras vs /admin/spots) instead of a
  *     `?type=` query param, so the input doesn't need to know
  *     which queue it belongs to. URL updates preserve every other
  *     query param (status, page, etc.) untouched.
- *   • Debounced 200ms via setTimeout — same UX as the legacy
+ *   • Debounced 200ms via setTimeout, same UX as the legacy
  *     component, kept identical so typing feels predictable
  *     across surfaces during the migration.
  */
@@ -39,7 +39,7 @@ export default function AdminSearchInput({
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /** Build the next URL by mutating ONLY the `q` param — every other
+  /** Build the next URL by mutating ONLY the `q` param, every other
    *  param (status, page, etc.) rides along untouched. The legacy
    *  AdminSearchBox rebuilt URLSearchParams from scratch, which
    *  silently dropped any future param we add to these routes. */

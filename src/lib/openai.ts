@@ -19,7 +19,7 @@
  *     OPENAI_API_KEY="sk-..."
  *   When the env var is missing we throw a friendly "OPENAI_API_KEY
  *   not set" error that the UI catches and shows instead of crashing
- *   the request. That way unwired prompts still render — just the
+ *   the request. That way unwired prompts still render, just the
  *   Run button surfaces the helpful error.
  *
  * Model selection:
@@ -32,7 +32,7 @@
 
 import OpenAI from "openai";
 
-/** Lazy singleton — only instantiated when a runner actually fires
+/** Lazy singleton, only instantiated when a runner actually fires
  *  so importing this module never explodes if the key is unset. */
 let _client: OpenAI | null = null;
 function getClient(): OpenAI {
@@ -146,7 +146,7 @@ export async function runChatPrompt(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    // Surface OpenAI SDK errors as-is — they're already human-friendly
+    // Surface OpenAI SDK errors as-is, they're already human-friendly
     // (e.g. "Incorrect API key provided", "Rate limit reached").
     return { ok: false, error: message };
   }

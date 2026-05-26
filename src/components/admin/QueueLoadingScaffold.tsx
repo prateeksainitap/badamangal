@@ -14,12 +14,12 @@ import {
  * shape (header, filter ribbon, summary line, row list) as
  * shimmer placeholders. Used by each queue's own `loading.tsx` so
  * the visual contract between skeleton and real page stays in one
- * file — change the skeleton here once and every queue picks it up.
+ * file, change the skeleton here once and every queue picks it up.
  *
  * `rowCount` controls how many placeholder cards the skeleton paints
  * by default; queues with denser-than-usual lists (Mentions) pass a
  * higher number so the page doesn't visibly grow when content lands.
- * `withThumb` toggles the thumbnail block — true for Bhandaras +
+ * `withThumb` toggles the thumbnail block, true for Bhandaras +
  * Spots (where the row carries a photo), false for Mentions and
  * Organise (text-only rows).
  */

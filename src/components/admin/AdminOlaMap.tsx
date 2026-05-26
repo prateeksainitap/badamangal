@@ -29,7 +29,7 @@ import {
  *     wants ops-grade dot markers + an action popover that fires the
  *     same delistSpotAction / rejectAction / rejectMentionAction the
  *     queue rows use.
- *   • The dark style is hard-coded here — the public site uses light
+ *   • The dark style is hard-coded here, the public site uses light
  *     by default, the admin always uses dark to match the AI/ops
  *     console palette.
  *   • Falls back to a friendly "Map unavailable" panel with a hint
@@ -114,7 +114,7 @@ export default function AdminOlaMap({
     // dashboard renders where the hero is briefly 0-height (during
     // Suspense → final swap) get a silently-broken canvas: the WebGL
     // context can't initialise on a zero-sized element and the map
-    // never paints — but no error is thrown so our catch block never
+    // never paints, but no error is thrown so our catch block never
     // fires either. The other two map components on the site
     // (BhandaraMap, MentionHeatmap) use this same pattern; AdminOlaMap
     // was the only one missing it, which is why this one alone has
@@ -129,7 +129,7 @@ export default function AdminOlaMap({
         if (cancelled || !ref.current) return;
         // Container may still be measuring 0×0 on the very first
         // microtask after a Suspense swap. Bail and retry on next
-        // animation frame — by then layout is guaranteed committed.
+        // animation frame, by then layout is guaranteed committed.
         const rect = ref.current.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) {
           requestAnimationFrame(() => {
@@ -171,7 +171,7 @@ export default function AdminOlaMap({
           position: "top-right",
         });
 
-        // Swallow Ola's known-benign style noise — the same allowlist
+        // Swallow Ola's known-benign style noise, the same allowlist
         // BhandaraMap + MentionHeatmap use. ONLY surface a real error
         // overlay for hard failures the user can act on (the original
         // code flashed the "rejected" message on any 4xx-shaped string,
@@ -223,7 +223,7 @@ export default function AdminOlaMap({
             try {
               map?.resize?.();
             } catch {
-              // Map may already have been removed during a fast unmount —
+              // Map may already have been removed during a fast unmount
               // resize on a torn-down map throws. Safe to ignore.
             }
           });
@@ -254,22 +254,22 @@ export default function AdminOlaMap({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intentionally one-shot — data refresh handled by parent revalidate
+  }, []); // intentionally one-shot, data refresh handled by parent revalidate
 
   return (
-    // Outer positioned container — hosts the absolutely-positioned
+    // Outer positioned container, hosts the absolutely-positioned
     // overlays (legend, count badge, error overlay, marker popover).
     // CRITICAL: hard pixel/rem heights here, NOT `h-full`. The
     // previous `h-full` approach silently failed because the
     // dashboard slot's flex-1 chain didn't propagate a definite
-    // height through to the ref div — `height: 100%` of an "auto"
+    // height through to the ref div, `height: 100%` of an "auto"
     // parent collapses to 0 and the WebGL canvas can't initialise.
     // BhandaraMap (which has worked since launch) uses the exact
     // same hard-height pattern (see BhandaraMap.tsx line 556:
     // `h-[420px] sm:h-[520px] w-full`). Mirror it here verbatim
     // so the map paints regardless of parent layout fragility.
     <div className="relative w-full h-[22rem] sm:h-[24rem] lg:h-[28rem]">
-      {/* Map canvas container — ref directly here. Inline
+      {/* Map canvas container, ref directly here. Inline
           `position: relative` (not via a Tailwind class) because
           MapLibre's canvas is positioned `absolute` and pins to its
           container's nearest positioned ancestor; declaring relative
@@ -290,7 +290,7 @@ export default function AdminOlaMap({
           default navigation controls (zoom +/− land at top-right
           unless re-anchored), and the map's place-name labels
           ("Industrial Area" / "Vrindavan Township" etc. that the
-          tile layer draws around the visible canvas — they cluster
+          tile layer draws around the visible canvas, they cluster
           toward the right edge for Lucknow's typical centered
           framing). Top-left is clear on both counts: Ola attribution
           sits at bottom-left, zoom at top-right, this stays out of
@@ -407,7 +407,7 @@ function addMarkers(
       // GC reasons (the SDK's internal store does the same).
       (el as unknown as { __marker: unknown }).__marker = marker;
     } catch {
-      /* Marker init failed — skip */
+      /* Marker init failed, skip */
     }
   }
 }
@@ -423,7 +423,7 @@ function MarkerPopover({
 }) {
   // Centre-screen popover (Ola maplibre doesn't give us reliable
   // pixel coords for a dynamic element without a render loop, and
-  // the admin doesn't need spatial pointing — a centred sheet works
+  // the admin doesn't need spatial pointing, a centred sheet works
   // for moderation actions).
   return (
     <div

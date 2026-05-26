@@ -69,7 +69,7 @@ export default async function AdminEditPage({ params }: PageProps) {
   // candidate missed at ingest time) sit at lat=lng=0 and force the
   // admin to manually paste a Maps link to publish. Now we try the
   // same prioritised candidate list at view time and prefill the
-  // lat/lng inputs with the best hit — same data path as ingest, so
+  // lat/lng inputs with the best hit, same data path as ingest, so
   // results are consistent. MapLocationInput surfaces a "auto / X"
   // tag so the admin sees the pre-fill is a guess (not human-pinned)
   // and can override with a real paste if it landed wrong.
@@ -133,18 +133,18 @@ export default async function AdminEditPage({ params }: PageProps) {
           </Link>
         </header>
 
-        {/* Two-pane edit layout — pamphlet pins to the left so the
+        {/* Two-pane edit layout, pamphlet pins to the left so the
             operator can keep reading it while scrolling through the
             form on the right. AdminPhotoField writes to a hidden
             `<input name="photoUrl">` that's still inside the same
             <form>, so the server action signature is unchanged.
-            Below lg, the panes stack (photo on top, form below) —
+            Below lg, the panes stack (photo on top, form below)
             same UX the old single-column page had. */}
         <form
           action={action}
           className="grid gap-5 lg:gap-6 lg:grid-cols-12 items-start"
         >
-          {/* LEFT — sticky pamphlet pane. `lg:self-start` keeps the
+          {/* LEFT, sticky pamphlet pane. `lg:self-start` keeps the
               grid item from stretching to match the right pane's
               height, which is what allows `lg:sticky lg:top-20` to
               actually pin it as the right pane scrolls past.
@@ -160,7 +160,7 @@ export default async function AdminEditPage({ params }: PageProps) {
             />
           </aside>
 
-          {/* RIGHT — scrollable form fields. Keeps the same dark
+          {/* RIGHT, scrollable form fields. Keeps the same dark
               card styling the old single-pane form had. */}
           <div className="lg:col-span-7 grid gap-5 rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm p-5 sm:p-7">
         {/* Labels rendered in font-mono (see Pair component below), which

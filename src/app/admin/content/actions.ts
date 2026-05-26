@@ -137,7 +137,7 @@ export async function restoreContentAction(id: string): Promise<void> {
   revalidatePath("/admin/content");
 }
 
-/** Hard delete — only for accidental rows. Archived → Delete is
+/** Hard delete, only for accidental rows. Archived → Delete is
  *  the two-step path the UI exposes. */
 export async function deleteContentAction(id: string): Promise<void> {
   await requireAdmin();
@@ -248,7 +248,7 @@ export async function runPromptAction(
     vars,
   });
 
-  // Persist outcome — including errors — so the UI can re-show the
+  // Persist outcome, including errors, so the UI can re-show the
   // last attempt on next render without re-firing the API call.
   const output = result.ok
     ? result.text
@@ -292,7 +292,7 @@ export async function setGalleryTagsAction(
  *
  *  The /notes/ folder is gitignored but exists on the operator's
  *  machine. Filename → kind/audience/channel mapping is encoded
- *  below — add a new entry when you drop a new .md in there. */
+ *  below, add a new entry when you drop a new .md in there. */
 type NoteSeed = {
   file: string;
   title: string;
@@ -386,7 +386,7 @@ const NOTE_SEEDS: NoteSeed[] = [
 
 /** Form-compatible wrapper: matches `(formData: FormData) => void` so
  *  it can be passed directly to a Next.js `<form action>`. The return
- *  shape from the underlying importer is discarded — the admin sees
+ *  shape from the underlying importer is discarded, the admin sees
  *  the imported rows after the page revalidates. */
 export async function importNotesAction(
   _formData?: FormData,

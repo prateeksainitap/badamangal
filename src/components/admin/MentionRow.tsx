@@ -8,7 +8,7 @@ import { RowCheckbox } from "@/components/admin/QueueSelection";
 import { IconCheck, IconX } from "@/components/admin/AdminIcons";
 
 /**
- * WhatsApp mention moderation row — dark-themed card for the
+ * WhatsApp mention moderation row, dark-themed card for the
  * /admin/mentions queue. Replaces the legacy light-paper rendering
  * with a row matching the rest of the new admin shell.
  *
@@ -42,7 +42,7 @@ export type MentionQueueRow = {
 
 type Props = {
   mention: MentionQueueRow;
-  /** Stagger index — clamped at 6 (see BhandaraRow / SpotRow for
+  /** Stagger index, clamped at 6 (see BhandaraRow / SpotRow for
    *  the rationale). */
   index: number;
 };
@@ -119,7 +119,7 @@ export default function MentionRow({ mention: m, index }: Props) {
         </div>
       ) : (
         <p className="mt-3 text-xs text-cream-50/45 italic">
-          No location extracted — appears on the feed but not on the heatmap.
+          No location extracted, appears on the feed but not on the heatmap.
         </p>
       )}
 
@@ -182,7 +182,7 @@ function IntentPill({ intent }: { intent: string }) {
 }
 
 function ConfidencePill({ confidence }: { confidence: number }) {
-  // Tint by confidence floor — high (≥ 0.8) cream, mid (0.5-0.8)
+  // Tint by confidence floor, high (≥ 0.8) cream, mid (0.5-0.8)
   // saffron, low (< 0.5) sindoor. Same triage signal the legacy
   // ink-100 chip carried but with brand-aligned coloring.
   const tint =

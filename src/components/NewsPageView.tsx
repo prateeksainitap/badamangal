@@ -61,7 +61,7 @@ export default function NewsPageView({ liveHi, liveEn }: Props) {
     .sort((a, b) => (a.date < b.date ? 1 : -1));
 
   // Merged feed: show ALL news on BOTH locales, sorted newest-first
-  // by publishedAt. Previously this was `isHi ? liveHi : liveEn` —
+  // by publishedAt. Previously this was `isHi ? liveHi : liveEn`
   // which served entirely different article sets on the language
   // toggle (English locale → ToI / HT only, Hindi locale → Dainik
   // Jagran / Amar Ujala only). That artificially halved coverage on

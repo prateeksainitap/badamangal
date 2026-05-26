@@ -713,7 +713,7 @@ function PostCard({
               visible regardless of aspect ratio. Min-height keeps very
               wide landscape photos from collapsing to a sliver.
               `key` on the img so React swaps the DOM node when the
-              carousel advances — kills a brief flash of the previous
+              carousel advances, kills a brief flash of the previous
               image while the new src decodes. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -813,7 +813,7 @@ function PostActions({
   locale: Locale;
 }) {
   const toast = useToast();
-  // Proper map-pin check — used to be just `typeof === "number"` which
+  // Proper map-pin check, used to be just `typeof === "number"` which
   // accepted 0,0 (the bot-ingest fallback for coords-less spots). Now
   // we share the lib/share `hasMapPin` rule with every other surface:
   // both coords numeric, both finite, neither zero. When that fails,

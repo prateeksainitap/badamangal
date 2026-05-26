@@ -21,14 +21,14 @@ import {
  *
  * The previous design rendered every row as an identical dark
  * rectangle with three "Edit / Copy / Archive" buttons buried at
- * the bottom — unscannable, actions invisible while scrolling,
+ * the bottom, unscannable, actions invisible while scrolling,
  * no visual variation between a sponsor pitch and a press release.
  *
  * New layout:
  *
  *   ┌──┬──────────────────────────────────────────────┬──────────┐
  *   │S │ [icon] PITCH · SPONSOR · EMAIL · bilingual   │ ✎  ⧉  ⋯  │   <- meta + actions
- *   │  │ Pitch title — large serif heading             │          │
+ *   │  │ Pitch title, large serif heading             │          │
  *   │T │ One-line summary in lighter tone              │          │
  *   │R │ Body excerpt, 3 lines, readable sans          │          │
  *   │I │ #tags · 4,348 chars · updated 2026-05-24      │          │
@@ -40,7 +40,7 @@ import {
  *     influencer=violet, press=sindoor, etc.) so the operator can
  *     scan a mixed list by colour rather than reading every badge.
  *   • KIND icon sits in a coloured disc next to the meta row.
- *   • ACTIONS cluster (Edit / Copy / Archive) lives top-right —
+ *   • ACTIONS cluster (Edit / Copy / Archive) lives top-right
  *     ALWAYS visible while scrolling past a tall card body.
  *   • Body excerpt uses Mukta sans + line-clamp-3 so it reads like
  *     content, not like log output. Click "Read full document" to
@@ -90,7 +90,7 @@ export default function ContentCard({ row }: { row: ContentRow }) {
           : `border-cyan-400/15 ${tone.hover} hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.55)]`,
       ].join(" ")}
     >
-      {/* Audience colour stripe — runs the full height of the card on
+      {/* Audience colour stripe, runs the full height of the card on
           the left edge so a mixed-audience list reads as a bar chart
           of colour columns. ~5px wide, gradient top→bottom. */}
       <div
@@ -146,7 +146,7 @@ export default function ContentCard({ row }: { row: ContentRow }) {
             </div>
           </div>
 
-          {/* Actions cluster — top-right, always visible while scrolling */}
+          {/* Actions cluster, top-right, always visible while scrolling */}
           <div className="shrink-0 flex items-center gap-1.5">
             <CopyButtonClient text={row.body} />
             {!isArchived ? (
@@ -169,7 +169,7 @@ export default function ContentCard({ row }: { row: ContentRow }) {
                 </SubmitButton>
               </form>
             )}
-            {/* Overflow menu — Archive / Delete tucked behind ⋯ so
+            {/* Overflow menu, Archive / Delete tucked behind ⋯ so
                 the row stays clean. Same <details>-popover pattern
                 BhandaraRow's MoreMenu uses. */}
             <details className="relative inline-block">
@@ -208,12 +208,12 @@ export default function ContentCard({ row }: { row: ContentRow }) {
           </div>
         </div>
 
-        {/* Row 2: Title — large serif lead */}
+        {/* Row 2: Title, large serif lead */}
         <h3 className="font-fraunces text-[19px] sm:text-xl text-cream-50 leading-tight mt-3">
           {row.title}
         </h3>
 
-        {/* Row 3: Body preview — readable sans, soft tone, line-clamped */}
+        {/* Row 3: Body preview, readable sans, soft tone, line-clamped */}
         <p className="mt-2 text-sm text-cream-50/65 leading-relaxed font-mukta line-clamp-3">
           {previewText}
         </p>
@@ -249,7 +249,7 @@ export default function ContentCard({ row }: { row: ContentRow }) {
           ) : null}
         </div>
 
-        {/* Row 5: "Read full document" disclosure — expands into the
+        {/* Row 5: "Read full document" disclosure, expands into the
             cream reading sheet. Keeps the closed state slim. */}
         <details className="group/read mt-3">
           <summary className="cursor-pointer list-none inline-flex items-center gap-1.5 text-xs text-cyan-300/85 hover:text-cyan-200 font-mono transition-colors">

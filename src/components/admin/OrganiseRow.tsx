@@ -10,7 +10,7 @@ import SubmitButton from "@/components/admin/SubmitButton";
 import { IconCheck, IconX } from "@/components/admin/AdminIcons";
 
 /**
- * OrganiseRequest moderation row — dark-themed card for the
+ * OrganiseRequest moderation row, dark-themed card for the
  * /admin/organise lead workflow. Shows lead's name + phone +
  * package + size + dates + notes, and a stage-aware button cluster
  * that walks the lead through:

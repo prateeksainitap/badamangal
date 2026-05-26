@@ -75,7 +75,7 @@ export function LocaleProvider({
 
     apply(resolve());
 
-    // Event handler — branches on event type:
+    // Event handler, branches on event type:
     //
     //   bm:locale-change → dispatched by <LangToggle /> immediately
     //     after it rewrites the cookie. At this moment the COOKIE is

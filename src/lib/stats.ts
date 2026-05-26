@@ -17,7 +17,7 @@ export type SiteStats = {
    *  window has expired (they still count toward "the city did this"). */
   bhandarasSpotted: number;
   /** Cumulative count of standalone APPROVED BhandaraMention rows
-   *  that represent a CONFIRMED bhandara — every text/location signal
+   *  that represent a CONFIRMED bhandara, every text/location signal
    *  from the WhatsApp community where someone declared or referenced
    *  a bhandara that exists. Includes:
    *   • SHARING declarations ("Aliganj sector E me ho raha hai")
@@ -26,7 +26,7 @@ export type SiteStats = {
    *   • Mentions carrying a structured location (WhatsApp share,
    *     Google Maps URL, extracted address)
    *
-   *  Explicitly EXCLUDES `intent: "ASKING"` — those are questions
+   *  Explicitly EXCLUDES `intent: "ASKING"`, those are questions
    *  ("Alambagh me kahi bhandara h kya?"), which are demand-signal,
    *  not supply. A question about whether a bhandara exists is not
    *  a confirmation that one does (2026-05-26 operator correction).
@@ -86,7 +86,7 @@ export type SiteStats = {
 
 let homepageStatsPromise: Promise<SiteStats> | null = null;
 /** Wall-clock timestamp of when `homepageStatsPromise` was kicked off.
- *  Drives the cache-TTL gate below — once the promise is older than
+ *  Drives the cache-TTL gate below, once the promise is older than
  *  STATS_CACHE_TTL_MS we recompute on the next call instead of handing
  *  back stale numbers. NaN sentinel means "no cache yet". */
 let homepageStatsPromiseStartedAt = Number.NaN;
@@ -129,14 +129,14 @@ export function getHomepageStats(opts?: { fresh?: boolean }): Promise<SiteStats>
     // memoised the in-flight promise indefinitely; the cached value
     // was only ever discarded on rejection, so a successful first
     // compute would serve the same number for the rest of the
-    // Lambda's lifetime — sometimes hours.
+    // Lambda's lifetime, sometimes hours.
     //
     // Self-invalidating cache: if the underlying compute rejects
     // (transient Supabase pooler blip during cold start, etc.), we
     // clear the memoised promise so the next caller retries instead
     // of being stuck with a permanently-rejected promise for the
     // lifetime of the Lambda. The .catch() attaches a no-op handler
-    // only for the invalidation side-effect — the rejection is
+    // only for the invalidation side-effect, the rejection is
     // re-thrown via the returned promise so callers still see it
     // and can degrade locally (see page.tsx Promise.allSettled).
     const p = computeHomepageStats();
@@ -169,12 +169,12 @@ async function computeHomepageStats(): Promise<SiteStats> {
     .slice(0, 10);
   const pastTuesdays = ALL_TUESDAY_ISO.filter((iso) => iso < todayIso);
 
-  // Fan out the five reads in parallel — same Supabase pooler, so
+  // Fan out the five reads in parallel, same Supabase pooler, so
   // serialising them would multiply the round-trip cost on a cold
   // pool. visitorCounter + communityCounter are both 1-row lookups by
   // primary key (cheap); the other three do the work.
   //
-  // `mentionedCount` — APPROVED BhandaraMention rows where the
+  // `mentionedCount`, APPROVED BhandaraMention rows where the
   // mention CONFIRMS a bhandara exists. SHARING (declarations) +
   // MENTIONING (chatter / photos / thanks). ASKING is excluded:
   // "Alambagh me kahi bhandara h kya?" is a question about supply,
@@ -184,7 +184,7 @@ async function computeHomepageStats(): Promise<SiteStats> {
   //
   // The bhandaraId=null gate stays: mentions pinned to a Bhandara
   // row would otherwise double-count against `bhandarasListed`.
-  // expiresAt is also unfiltered — same lens as bhandara + spot,
+  // expiresAt is also unfiltered, same lens as bhandara + spot,
   // which both keep expired/past rows in the cumulative "so far"
   // tally.
   const [counter, communityCounter, records, spottedCount, mentionedCount] =

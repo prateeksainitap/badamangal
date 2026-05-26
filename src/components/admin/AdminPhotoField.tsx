@@ -166,7 +166,7 @@ export default function AdminPhotoField({
         ) : null}
       </div>
 
-      {/* Hidden fields — the server action reads photoUrl + an
+      {/* Hidden fields, the server action reads photoUrl + an
           explicit removePhoto=1 flag. Keeping them as real <input>s
           (vs. building FormData by hand) preserves the no-JS
           fallback: untouched form round-trips the original photo. */}
@@ -178,7 +178,7 @@ export default function AdminPhotoField({
         readOnly
       />
 
-      {/* Preview band — dark cyan-bordered surface that matches the
+      {/* Preview band, dark cyan-bordered surface that matches the
           rest of the AI/ops console. Click the preview to open the
           full-resolution image in a new tab. */}
       {hasPhoto ? (
@@ -234,7 +234,7 @@ export default function AdminPhotoField({
         >
           Take photo
         </button>
-        {/* Remove photo — explicit destructive action. Only enabled
+        {/* Remove photo, explicit destructive action. Only enabled
             when a photo is actually present (or staged). Confirms via
             native confirm() because R2 eviction is one-way; the next
             re-upload re-creates a fresh object under a new key. */}

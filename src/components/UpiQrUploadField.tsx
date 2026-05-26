@@ -10,7 +10,7 @@ import UpiQrUpload from "@/components/UpiQrUpload";
  *   `UpiQrUpload` is a controlled component (parent owns the value).
  *   That suits ScanReview and BhandaraForm, which already track form
  *   state in React. But /admin/edit/[id] is a server-rendered form
- *   posted to a server action — there's no React state, just `<input
+ *   posted to a server action, there's no React state, just `<input
  *   name="...">` fields and a `<form action={...}>` submit handler.
  *   This wrapper holds the URL in its own useState and renders a
  *   hidden `<input name={name}>` so the server action picks it up via

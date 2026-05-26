@@ -32,7 +32,7 @@ import { useLocaleFromContext } from "@/lib/locale-context";
  * Trade-off accepted: lose the no-JS progressive-enhancement story
  * for snappier, reliable open/close animations and clean exclusive
  * behaviour. The full answer text still ships in the server HTML
- * for search engines + FAQPage JSON-LD (in src/lib/seo.ts) — only
+ * for search engines + FAQPage JSON-LD (in src/lib/seo.ts), only
  * the toggle interaction needs JS. Accessibility wired up via
  * <button> + aria-expanded + aria-controls per WAI-ARIA
  * accordion pattern.

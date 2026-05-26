@@ -3,7 +3,7 @@ import Link from "next/link";
 /**
  * Compact list row for the /admin/emails two-pane inbox.
  *
- * Reads as one dense ~70px tall card — same density as Gmail's
+ * Reads as one dense ~70px tall card, same density as Gmail's
  * desktop list or Apple Mail's message column. Each row carries:
  *   • Unread dot (cyan, only when status === "NEW")
  *   • Sender name (bold when unread)
@@ -63,7 +63,7 @@ export default function EmailListItem({
 }: {
   row: ListItemRow;
   isActive: boolean;
-  /** Current status tab — preserved in the link so navigation
+  /** Current status tab, preserved in the link so navigation
    *  doesn't jump back to NEW when the reader opens a row that's
    *  already READ / REPLIED. */
   tab: string;
@@ -72,7 +72,7 @@ export default function EmailListItem({
   const initial = (row.name?.trim()?.[0] ?? row.email[0] ?? "•").toUpperCase();
   const hue = avatarHueFor(row.email || row.name || row.id);
 
-  // Body preview — first line that has any visible content, plus
+  // Body preview, first line that has any visible content, plus
   // a continuation ellipsis. Stripped of leading "Namaste" / "Hi"
   // would be nice but the operator usually wants to see the
   // opening line verbatim, so leave as-is.

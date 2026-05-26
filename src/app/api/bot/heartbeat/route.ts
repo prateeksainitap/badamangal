@@ -13,7 +13,7 @@
  *
  * Bearer-gated on `BOT_INGEST_SECRET` (same secret the bot already
  * holds for /api/bot/ingest etc). Without this gate the URL is a
- * public DB-write endpoint — anyone could `while true; curl ...` to
+ * public DB-write endpoint, anyone could `while true; curl ...` to
  * pollute Vercel function logs + waste DB writes indefinitely. The
  * bot already passes the header on every other call, so requiring it
  * here is zero friction on the legitimate path.
@@ -27,7 +27,7 @@ export const dynamic = "force-dynamic";
 const ALLOWED_SOURCES = new Set(["mbp", "vps", "test", "manual"]);
 
 export async function GET(req: NextRequest) {
-  // Bearer auth — match the other /api/bot/* routes.
+  // Bearer auth, match the other /api/bot/* routes.
   const expected = process.env.BOT_INGEST_SECRET;
   if (!expected) {
     return NextResponse.json(

@@ -834,7 +834,7 @@ async function ModeToggle({
     },
     // Mentions is a separate page (/admin/mentions, not a ?type filter
     // on /admin) so clicking this navigates AWAY from the tab bar. The
-    // tab can never appear active here, by design — it's a discovery
+    // tab can never appear active here, by design, it's a discovery
     // link to the chatter-moderation queue, not part of the bhandara
     // / spot / bot triage flow.
     {
@@ -1199,7 +1199,7 @@ async function SpotsView({
                       }
                       return s.photoUrl ? (
                         // Same clickable thumbnail pattern as the
-                        // Bhandaras queue above — click opens the
+                        // Bhandaras queue above, click opens the
                         // full-resolution image in a new tab so admins
                         // can verify the photo without leaving the
                         // moderation flow. The dedicated Edit button
@@ -1216,7 +1216,7 @@ async function SpotsView({
                           }
                           title={
                             extraCount > 0
-                              ? `Open full image — ${extraCount} extra photo${extraCount === 1 ? "" : "s"} on the edit page`
+                              ? `Open full image, ${extraCount} extra photo${extraCount === 1 ? "" : "s"} on the edit page`
                               : "Open full image"
                           }
                         >

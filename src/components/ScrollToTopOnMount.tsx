@@ -16,7 +16,7 @@ import { useEffect } from "react";
  * scroll position to the new page.
  *
  * Mount once anywhere in the page tree (it just runs an effect on
- * mount and renders null). Safe to mount in a server component — it
+ * mount and renders null). Safe to mount in a server component, it
  * itself is a client component, so React handles the boundary.
  *
  * If you ever need to OPT OUT of this behaviour (e.g. an in-page

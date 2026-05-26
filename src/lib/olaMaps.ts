@@ -44,7 +44,7 @@ export const OLA_HINDI_STYLE =
  * Dark variant of the standard style. Used by the LiveChatterBoard's
  * MentionHeatmap on the homepage's dark "What people are talking
  * about?" band so the map matches the surrounding dark theme. Same
- * vector tiles, dark cartography — keeps every place label readable
+ * vector tiles, dark cartography, keeps every place label readable
  * against the cream-text content.
  */
 export const OLA_DARK_STYLE =

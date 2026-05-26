@@ -74,7 +74,7 @@ const optionalUpi = z
   .transform((v) => (v === "" || v === undefined ? undefined : v));
 
 // Optional URL (for uploaded UPI QR images). Lenient on the admin
-// path — accept anything that looks URL-ish or an empty string.
+// path, accept anything that looks URL-ish or an empty string.
 // The actual upload + image validation happened at /api/uploads
 // before this URL got plumbed here, so we don't re-validate the
 // asset itself.
@@ -117,7 +117,7 @@ const bhandaraInput = z.object({
   // submission flow; here we trust the admin to enter sane values.
   organizerWhatsapp: optionalPhone,
   upiId: optionalUpi,
-  /** Uploaded UPI QR image URL — companion to upiId. See
+  /** Uploaded UPI QR image URL, companion to upiId. See
    *  Bhandara.upiQrUrl comment in schema.prisma for context. */
   upiQrUrl: optionalUrl,
   photoUrl: z.string().trim().url(),

@@ -95,7 +95,7 @@ type Props = {
   /** When set, the component skips the upload/scan UI and opens the
    *  review form pre-populated with empty fields for the given kind.
    *  Used by /admin/new where the operator types details from scratch
-   *  (organizer phoned in, news article spotted, seed data, etc.) —
+   *  (organizer phoned in, news article spotted, seed data, etc.)
    *  same publish endpoint, no Gemini in the loop. The kind toggle
    *  at the top still lets them flip between bhandara/spot inside
    *  the form. */
@@ -275,14 +275,14 @@ export default function ScanReview({
       if (!res.ok) {
         const friendly =
           res.status === 504
-            ? "Scan timed out. Gemini took longer than 60 seconds — usually a busy moment on Google's side. Click 'Scan with Gemini' again; the upload is already saved."
+            ? "Scan timed out. Gemini took longer than 60 seconds, usually a busy moment on Google's side. Click 'Scan with Gemini' again; the upload is already saved."
             : res.status === 502
-              ? "Gemini failed to read this image. Try a sharper or higher-resolution upload, or scan again — the upload is already saved."
+              ? "Gemini failed to read this image. Try a sharper or higher-resolution upload, or scan again, the upload is already saved."
               : res.status === 429
                 ? "Too many scans in a short window. Wait a minute and try again."
                 : res.status === 401
                   ? "Session expired. Refresh the page and log in again."
-                  : `Scan failed (HTTP ${res.status}). Try again — the upload is already saved.`;
+                  : `Scan failed (HTTP ${res.status}). Try again, the upload is already saved.`;
         const errMsg =
           errBody && typeof errBody.error === "string"
             ? errBody.error
@@ -360,7 +360,7 @@ export default function ScanReview({
       </div>
 
       {/* ── Upload card ───────────────────────────────────────── */}
-      {/* In manual-create mode the upload UI is suppressed entirely —
+      {/* In manual-create mode the upload UI is suppressed entirely
           the form below opens with empty fields and the operator
           types everything. */}
       {!initialBlank && (phase === "idle" || phase === "scanning") ? (
@@ -755,7 +755,7 @@ function BhandaraReviewForm({
           : "mt-4 grid gap-6 lg:grid-cols-[260px_1fr]"
       }
     >
-      {/* Photo + extras column — scan flow only. The slot is meaningless
+      {/* Photo + extras column, scan flow only. The slot is meaningless
           in manual-create mode (no upload, no Gemini geocode), so we
           omit it entirely instead of leaving an empty cream rectangle.
           Sticky on lg+ so the poster + geocode notice stay in view
@@ -812,7 +812,7 @@ function BhandaraReviewForm({
         </div>
       ) : null}
 
-      {/* Form column — dark admin surface */}
+      {/* Form column, dark admin surface */}
       <div className="rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/70 backdrop-blur-sm p-5 sm:p-6">
         <h2 className="font-fraunces text-xl text-cream-50">
           {blank ? "New bhandara" : "Review & publish"}
@@ -845,7 +845,7 @@ function BhandaraReviewForm({
               organiser have one mental model.
               Replaced the native <select> (system font + OS menu
               chrome that broke out of the admin AI theme) with the
-              shared AdminListbox — same dark cyan trigger + popover
+              shared AdminListbox, same dark cyan trigger + popover
               every other admin select uses. The custom-area free-text
               mode keeps its own eyebrow + escape-hatch button so
               admins who picked "Other" by accident can revert. */}
@@ -1011,7 +1011,7 @@ function BhandaraReviewForm({
               onChange={setUpiId}
               mono
             />
-            {/* Companion QR upload — covers the case where the
+            {/* Companion QR upload, covers the case where the
                 organiser has a printed UPI QR but doesn't know the
                 handle text underneath. Either field works on its
                 own; both is fine. SponsorBhandara on the public
@@ -1255,7 +1255,7 @@ function SpotReviewForm({
   onCancel: () => void;
   publishing: boolean;
   publishError: string | null;
-  /** Same flag as BhandaraReviewForm — see there for details. */
+  /** Same flag as BhandaraReviewForm, see there for details. */
   blank?: boolean;
 }) {
   const e = scan.extracted;
@@ -1388,7 +1388,7 @@ function SpotReviewForm({
       }
     >
       {!blank ? (
-        // Sticky on lg+ — same rationale as BhandaraReviewForm above.
+        // Sticky on lg+, same rationale as BhandaraReviewForm above.
         <div className="lg:sticky lg:top-20 lg:self-start">
           {/* Click the preview to open full-resolution in a new tab.
               Live-spot photos are often phone-camera shots of a busy
@@ -1652,7 +1652,7 @@ function SpotReviewForm({
 // ────────────────────────────────────────────────────────────────────
 
 // Field + SelectField match the AI/ops palette used by /admin/edit
-// (MapLocationInput, etc.) — cyan-tinted dark inputs, cyan-300/70
+// (MapLocationInput, etc.), cyan-tinted dark inputs, cyan-300/70
 // uppercase mono labels. Re-skinned in one place; every form that
 // uses these picks up the dark theme automatically.
 function Field({
@@ -1713,7 +1713,7 @@ function SelectField({
   options: string[];
   required?: boolean;
 }) {
-  // Was a native <select> (broke out of the admin AI theme — OS menu
+  // Was a native <select> (broke out of the admin AI theme, OS menu
   // chrome, system font, no keyboard niceties). Swapped to AdminListbox
   // so this helper matches the rest of the admin form. The external
   // <label> + eyebrow are dropped because AdminListbox now owns its

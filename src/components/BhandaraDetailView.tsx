@@ -374,7 +374,7 @@ export default function BhandaraDetailView({ b, others }: Props) {
         </section>
       ) : null}
 
-      {/* SPONSOR / DONATE — organiser-direct UPI block.
+      {/* SPONSOR / DONATE, organiser-direct UPI block.
           Renders only when the bhandara has BOTH a UPI ID and an
           uploaded bank-issued QR (b.upiQrUrl). The mobile sticky bar
           continues to carry the secondary "Sponsor" tap; this block

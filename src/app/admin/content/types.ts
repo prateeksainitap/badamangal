@@ -1,7 +1,7 @@
 /**
  * Plain TS constants for the Content Hub.
  *
- * Lives in its own file because `actions.ts` is "use server" — which
+ * Lives in its own file because `actions.ts` is "use server", which
  * Next.js limits to async function exports only. Pulling these
  * arrays out keeps both the server actions and the UI components
  * sharing a single source of truth for the allowed enum values

@@ -4,13 +4,13 @@
  * The WhatsApp bot pipeline (BadaMangal community → bot → DB →
  * homepage live chat) only runs on the high-activity days:
  * Tuesdays + Saturdays IST. On the other 5 days a week the chat
- * panel is "offline" — recent mentions stay visible but no new
+ * panel is "offline", recent mentions stay visible but no new
  * ones land.
  *
  * Visual contract:
  *   • On open days, the homepage shows a green pulsing "LIVE" pill
  *     next to the section heading and inside the chat-panel header.
- *   • On closed days, those pills are hidden — the community-count
+ *   • On closed days, those pills are hidden, the community-count
  *     chip + WhatsApp deep-link remain.
  *
  * This module exists so the rule lives in ONE place. Both
@@ -60,7 +60,7 @@ export function mostRecentOpenDayIST(): number {
     const d = (today - offset + 7) % 7;
     if (LIVE_CHAT_OPEN_DAYS.has(d)) return d;
   }
-  // Unreachable — set is non-empty.
+  // Unreachable, set is non-empty.
   return 2;
 }
 

@@ -13,13 +13,13 @@ const DISMISSIBLE_KINDS = new Set<ActivityEvent["kind"]>([
 ]);
 
 /**
- * Activity stream — chronological "what just happened" feed shown
+ * Activity stream, chronological "what just happened" feed shown
  * on the admin dashboard. Each row is a scan-card:
  *
  *   [colored avatar] Title in one line                 [status · time]
  *                    Subtitle: area · sender · source
  *
- * The stream is read-only — it's a "what's the system doing" lens,
+ * The stream is read-only, it's a "what's the system doing" lens,
  * not a moderation queue. Rows that point at a moderatable entity
  * (a bot-ingested PENDING bhandara, a new spot, a flagged volunteer)
  * link to the relevant edit/review page so the operator can act in
@@ -27,7 +27,7 @@ const DISMISSIBLE_KINDS = new Set<ActivityEvent["kind"]>([
  *
  * Visual:
  *   Sender initials sit inside a colored disc whose hue is derived
- *   deterministically from the first letter — same approach the
+ *   deterministically from the first letter, same approach the
  *   public LiveChatterBoard uses for chat-bubble avatars, ported
  *   here for visual continuity. A status pill on the right gives
  *   each row an at-a-glance "shape" (sindoor for needs-review,
@@ -50,10 +50,10 @@ export type ActivityEvent = {
   subtitle?: string;
   /** ISO datetime; rendered as relative "Xm ago". */
   createdAt: string;
-  /** Optional deep-link target — when set, the whole row becomes
+  /** Optional deep-link target, when set, the whole row becomes
    *  a Link. */
   href?: string;
-  /** Optional sender name — used to derive avatar initials + hue.
+  /** Optional sender name, used to derive avatar initials + hue.
    *  Falls back to the kind glyph when missing. */
   senderName?: string | null;
   /** Optional status pill text (e.g. "Pending", "Live", "Approved").
@@ -188,7 +188,7 @@ export default function ActivityStream({
         const initial = initialFor(e.senderName);
         const canDismiss = dismissable && DISMISSIBLE_KINDS.has(e.kind);
         // The link area pads less on the right when a dismiss
-        // button overlays the corner — keeps the time / pill from
+        // button overlays the corner, keeps the time / pill from
         // sitting under the ✕ on hover.
         const row = (
           <div

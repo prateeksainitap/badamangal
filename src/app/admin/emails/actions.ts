@@ -3,7 +3,7 @@
 /**
  * Server actions for the /admin/emails inbox.
  *
- * The underlying table is `ContactMessage` — rows landed by the
+ * The underlying table is `ContactMessage`, rows landed by the
  * public /contact form. The actions here just walk the row through
  * its lifecycle:
  *
@@ -23,7 +23,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin-auth";
 
-/** Common revalidate set — both pages depend on email state. */
+/** Common revalidate set, both pages depend on email state. */
 function bumpPaths() {
   revalidatePath("/admin/emails");
   revalidatePath("/admin/home");
@@ -70,7 +70,7 @@ export async function restoreEmailAction(id: string): Promise<void> {
 
 /** Hard-delete an email row. Only exposed under SPAM in the UI to
  *  avoid accidental deletes of legitimate inbox content. Cannot be
- *  undone — the row + any attachment URL go away. */
+ *  undone, the row + any attachment URL go away. */
 export async function deleteEmailAction(id: string): Promise<void> {
   await requireAdmin();
   await prisma.contactMessage.delete({ where: { id } });

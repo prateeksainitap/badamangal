@@ -1,7 +1,7 @@
 /**
  * Hand-written type declarations for `open-location-code`.
  * The npm package ships JS only, no `@types/...` exists. Surface area
- * here is intentionally minimal — only what /api/admin/resolve-coords
+ * here is intentionally minimal, only what /api/admin/resolve-coords
  * actually uses.
  */
 declare module "open-location-code" {

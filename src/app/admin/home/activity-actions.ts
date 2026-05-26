@@ -10,14 +10,14 @@
  *
  *   spot      → hard delete + R2 photo evict (same as deleteSpotAction)
  *   bhandara  → hard delete + R2 photo evict (same as deleteBhandaraAction)
- *   mention   → soft hide (status = REJECTED) — preserves the row
+ *   mention   → soft hide (status = REJECTED), preserves the row
  *               for audit so the bot doesn't keep re-forwarding
  *   volunteer → no-op (volunteers shouldn't be deleted from a feed;
  *               removed from the row list at the UI layer)
  *   system    → no-op (system events are informational)
  *
  * The UI ONLY surfaces the dismiss button on deletable kinds, so
- * the no-op branches here are belt-and-braces — protecting against
+ * the no-op branches here are belt-and-braces, protecting against
  * a hand-rolled POST that bypasses the button visibility check.
  *
  * Revalidates `/admin` (layout-level) so every dashboard tile, KPI,
@@ -84,7 +84,7 @@ export async function dismissActivityEventAction(
         data: { bhandaraId: null },
       });
     } catch {
-      /* ignore — cascade handles it */
+      /* ignore, cascade handles it */
     }
     await prisma.bhandara.delete({ where: { id } });
     invalidateBhandaraQueryCache();
@@ -103,7 +103,7 @@ export async function dismissActivityEventAction(
       data: { status: "REJECTED" },
     });
   } else {
-    // volunteer / system / unknown — nothing to do.
+    // volunteer / system / unknown, nothing to do.
     return;
   }
 

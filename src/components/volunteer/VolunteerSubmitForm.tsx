@@ -42,7 +42,7 @@ import { olaReverseGeocode } from "@/lib/geocode";
 import { useLocaleFromContext } from "@/lib/locale-context";
 
 /** Single-language copy bundle. Same pattern + same intent as
- *  VolunteerSignupForm's COPY — earlier this form interleaved Hindi
+ *  VolunteerSignupForm's COPY, earlier this form interleaved Hindi
  *  and English in every label / hint / button, which got noisy fast.
  *  Now the LangToggle in the header picks one language and the
  *  entire form (legends, field labels, helper text, Drive

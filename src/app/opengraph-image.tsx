@@ -60,7 +60,7 @@ const CREAM_50 = "#FBF7F0";
  *      data URL.
  *   2. HTTP fetch from the live site. Used on Vercel serverless
  *      functions where the `/public` directory is NOT bundled into
- *      the function's filesystem — it's served by Vercel's edge
+ *      the function's filesystem, it's served by Vercel's edge
  *      CDN at the public URL. The filesystem read silently ENOENT'd
  *      in prod, dropping every OG render to the SVG fallback even
  *      though the PNG is in the repo. Fetching the same asset from
@@ -70,7 +70,7 @@ async function publicAssetDataUrl(
   relPath: string,
   mime: string,
 ): Promise<string | null> {
-  // Filesystem first — dev + build-time prerender succeed here.
+  // Filesystem first, dev + build-time prerender succeed here.
   try {
     const abs = path.join(process.cwd(), "public", relPath);
     const buf = await readFile(abs);
@@ -78,7 +78,7 @@ async function publicAssetDataUrl(
   } catch {
     /* fall through to HTTP fetch */
   }
-  // HTTP fallback — Vercel-serverless-safe path. Same asset, served
+  // HTTP fallback, Vercel-serverless-safe path. Same asset, served
   // by Vercel's edge CDN instead of the function's filesystem.
   try {
     const base =

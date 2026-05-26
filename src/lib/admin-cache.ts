@@ -6,7 +6,7 @@
  * the operator moderates), but a few are slow-changing and don't
  * need to refetch from Postgres on every navigation:
  *
- *   • Community member total — pushed by the WhatsApp bot once an
+ *   • Community member total, pushed by the WhatsApp bot once an
  *     hour. Caching for 5 minutes is invisible to the operator.
  *
  * Wrapping these in `unstable_cache` lets the in-memory cache serve
@@ -42,7 +42,7 @@ export const getCachedCommunityMembers = unstable_cache(
 
 /** Cumulative homepage visitor count. Incremented once per visit by
  *  /api/visit. Cached for 60s so the dashboard doesn't re-query
- *  this every navigation — it's a counter that's monotonically
+ *  this every navigation, it's a counter that's monotonically
  *  increasing, so a minute of staleness is invisible to the
  *  operator. */
 export const getCachedVisitorCount = unstable_cache(

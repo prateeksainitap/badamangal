@@ -328,7 +328,7 @@ const OG_IMAGE_ALLOWED_HOSTS: ReadonlyArray<string> = [
 function isAllowedOgHost(rawUrl: string): boolean {
   try {
     const u = new URL(rawUrl);
-    // Reject anything that isn't HTTPS — http://internal-host attempts
+    // Reject anything that isn't HTTPS, http://internal-host attempts
     // wouldn't pass the suffix check anyway, but we belt-and-brace.
     if (u.protocol !== "https:") return false;
     const host = u.hostname.toLowerCase();
@@ -480,7 +480,7 @@ export async function refreshNews(): Promise<AggregatorReport> {
  * Process a single RSS item. Extracted from the inner loop of
  * refreshNews so we can chunk-parallelize via Promise.allSettled.
  *
- * Mutates `report` in place — caller batches these so the cross-
+ * Mutates `report` in place, caller batches these so the cross-
  * item interleaving is benign; report-counter increments are
  * commutative additions.
  */

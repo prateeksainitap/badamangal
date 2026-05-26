@@ -16,7 +16,7 @@
  *
  * The positions are pre-computed at module load (deterministic
  * pseudo-random seeded by index), not regenerated per render, so
- * the graph stays stable across re-mounts — flicker-free.
+ * the graph stays stable across re-mounts, flicker-free.
  */
 
 type Node = { x: number; y: number; r: number; delay: number };
@@ -86,7 +86,7 @@ export default function NeuralBackground() {
         className="absolute inset-0"
       >
         <defs>
-          {/* Edge glow — a soft outer halo on the line so the
+          {/* Edge glow, a soft outer halo on the line so the
               connections read as energy, not pencil sketches. */}
           <filter id="neural-glow" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur stdDeviation="1.2" result="b" />
@@ -95,13 +95,13 @@ export default function NeuralBackground() {
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          {/* Node-core gradient — bright cyan center, faded edge. */}
+          {/* Node-core gradient, bright cyan center, faded edge. */}
           <radialGradient id="neural-node" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#9be4ff" stopOpacity="1" />
             <stop offset="50%" stopColor="#22d3ee" stopOpacity="0.85" />
             <stop offset="100%" stopColor="#22d3ee" stopOpacity="0" />
           </radialGradient>
-          {/* Accent node — violet for variety. Sprinkled on a few
+          {/* Accent node, violet for variety. Sprinkled on a few
               nodes so the network has a two-tone feel. */}
           <radialGradient id="neural-node-violet" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#d8b4fe" stopOpacity="1" />
@@ -140,7 +140,7 @@ export default function NeuralBackground() {
           })}
         </g>
 
-        {/* Nodes. Every 5th node is violet — distributes the accent
+        {/* Nodes. Every 5th node is violet, distributes the accent
             colour across the network without clustering. The pulse
             animation re-scales the circle slightly, staggered by
             per-node delay so the network never blinks in sync. */}

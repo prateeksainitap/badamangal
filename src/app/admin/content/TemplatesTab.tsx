@@ -4,7 +4,7 @@ import ContentEditor from "./ContentEditor";
 import { FilterStrip, EmptyState, TEMPLATE_AUDIENCE_OPTIONS } from "./PitchesTab";
 
 /**
- * Templates tab — Content rows where kind = "TEMPLATE".
+ * Templates tab, Content rows where kind = "TEMPLATE".
  *
  * Copy-paste templates for WhatsApp / email / Instagram. The audience
  * pivot here is organiser / volunteer / donor (vs sponsor / press for

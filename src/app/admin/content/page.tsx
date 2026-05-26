@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 /**
- * /admin/content — the Content Hub.
+ * /admin/content, the Content Hub.
  *
  * One stop for everything outbound: pitches, templates, strategy docs,
  * AI-generated images for IG/WA, and a runnable prompt library. Each
@@ -88,7 +88,7 @@ export default async function ContentHubPage({
     ? (sp.tab as Tab)
     : "pitches";
 
-  // Counts for the tab pills — drives the small badge next to each
+  // Counts for the tab pills, drives the small badge next to each
   // label so the operator sees "5 pitches" at a glance. All 5 counts
   // resolved in parallel so the tab strip doesn't wait per tab.
   const [
@@ -122,7 +122,7 @@ export default async function ContentHubPage({
   return (
     <AdminShell navCounts={await getAdminNavCounts()} botHeartbeat={<BotHeartbeat />}>
       <div className="max-w-7xl mx-auto">
-        {/* Compact page header — used to be a big illustrated hero
+        {/* Compact page header, used to be a big illustrated hero
             (~280px tall) that pushed real content way below the
             fold. Now it's a single-row chip+title+backlink strip
             that fits in ~80px, leaving the tabs + cards as the
@@ -169,7 +169,7 @@ export default async function ContentHubPage({
           </Link>
         </div>
 
-        {/* First-run import banner — vanishes once any Content row
+        {/* First-run import banner, vanishes once any Content row
             exists. Calls importNotesAction which idempotent-seeds the
             seven /notes/*.md files. */}
         {showImportBanner ? (
@@ -186,7 +186,7 @@ export default async function ContentHubPage({
                   Loads the seven markdown files from <code>/notes/</code> into
                   the hub: sponsor pitch, influencer pitch, press pitch,
                   visitor personas, off-season strategy, marketing strategy,
-                  and the overnight review. Idempotent — safe to re-run.
+                  and the overnight review. Idempotent, safe to re-run.
                 </p>
               </div>
               <form action={importNotesAction}>
@@ -198,7 +198,7 @@ export default async function ContentHubPage({
           </div>
         ) : null}
 
-        {/* Tab strip — segmented pill control matching the rest of the
+        {/* Tab strip, segmented pill control matching the rest of the
             admin's queue tabs. Each tab is a Link so deep-links survive. */}
         <div
           role="tablist"
@@ -240,7 +240,7 @@ export default async function ContentHubPage({
           })}
         </div>
 
-        {/* Section subtitle for the active tab — sets context without
+        {/* Section subtitle for the active tab, sets context without
             needing the operator to recall what each tab covers. */}
         <div className="mb-5 flex items-center gap-3">
           <h2 className="font-fraunces text-cream-50 text-xl">

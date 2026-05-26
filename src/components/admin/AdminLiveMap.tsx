@@ -5,9 +5,9 @@
  *
  * Plots THREE layers over a Lucknow schematic:
  *
- *   • Live spots (cyan)            — APPROVED + un-expired Spot rows
- *   • Listed bhandaras (saffron)   — APPROVED Bhandara rows with coords
- *   • Chat mentions (violet)       — APPROVED BhandaraMention rows
+ *   • Live spots (cyan)           , APPROVED + un-expired Spot rows
+ *   • Listed bhandaras (saffron)  , APPROVED Bhandara rows with coords
+ *   • Chat mentions (violet)      , APPROVED BhandaraMention rows
  *                                    with lat/lng pinned by Gemini
  *
  * Click any marker → a popover anchored to it shows the row's

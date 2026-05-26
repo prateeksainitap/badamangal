@@ -11,7 +11,7 @@ import EmailReader from "./EmailReader";
 import { IconEnvelope } from "@/components/admin/AdminIcons";
 
 /**
- * /admin/emails — Gmail/Apple-Mail-style two-pane inbox for the
+ * /admin/emails, Gmail/Apple-Mail-style two-pane inbox for the
  * public contact-form messages (ContactMessage table).
  *
  * Layout:
@@ -48,7 +48,7 @@ type TabKey = (typeof TAB_KEYS)[number];
 
 const TAB_META: Record<TabKey, { label: string; helper: string }> = {
   NEW: { label: "New", helper: "Fresh messages waiting for a reply." },
-  READ: { label: "Read", helper: "You opened these — reply when you can." },
+  READ: { label: "Read", helper: "You opened these, reply when you can." },
   REPLIED: { label: "Replied", helper: "Closed-loop conversations." },
   SPAM: { label: "Spam", helper: "Flagged messages. Restore or delete." },
   ALL: { label: "All", helper: "Everything in the inbox, newest first." },
@@ -67,7 +67,7 @@ export default async function AdminEmailsPage({
     : "NEW";
   const requestedId = typeof sp.id === "string" ? sp.id : "";
 
-  // Counts + filtered rows in parallel — same data shape the old
+  // Counts + filtered rows in parallel, same data shape the old
   // page used. Counts power tab badges; rows power the list pane.
   const [counts, rows] = await Promise.all([
     prisma.contactMessage.groupBy({
@@ -98,7 +98,7 @@ export default async function AdminEmailsPage({
   }
   const newCount = countByStatus.NEW ?? 0;
 
-  // Selection logic — if ?id is set AND present in the current
+  // Selection logic, if ?id is set AND present in the current
   // list, use it. Else fall back to the first row so the reader
   // pane is never empty when there's at least one message.
   // Selected row needs the full ContactMessage shape (phone +
@@ -118,7 +118,7 @@ export default async function AdminEmailsPage({
   return (
     <AdminShell navCounts={await getAdminNavCounts()} botHeartbeat={<BotHeartbeat />}>
       <div className="max-w-7xl mx-auto">
-        {/* Compact page header — no big hero, the inbox itself
+        {/* Compact page header, no big hero, the inbox itself
             should dominate the surface. */}
         <div className="mb-5 flex items-end justify-between gap-4 flex-wrap">
           <div className="min-w-0">
@@ -151,7 +151,7 @@ export default async function AdminEmailsPage({
           </Link>
         </div>
 
-        {/* Tab strip — drives the LIST query. */}
+        {/* Tab strip, drives the LIST query. */}
         <div
           role="tablist"
           aria-label="Inbox status"

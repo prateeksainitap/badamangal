@@ -92,7 +92,7 @@ type FileItem = {
   error?: string;
 };
 
-/** 8 MB pre-compression source limit — anything bigger gets rejected at
+/** 8 MB pre-compression source limit, anything bigger gets rejected at
  *  selection. The server's MAX_IMAGE_BYTES is also 8 MB but it sees the
  *  COMPRESSED payload, so this client-side cap is on the raw file. */
 const MAX_SOURCE_BYTES = 8 * 1024 * 1024;
@@ -283,7 +283,7 @@ export default function ScreenshotIngestPanel() {
         aria-expanded={expanded}
       >
         <span className="font-medium text-cream-50 text-sm">
-          🧪 Test by screenshots — extract mentions from WhatsApp chat
+          🧪 Test by screenshots, extract mentions from WhatsApp chat
           images (batch upload supported)
         </span>
         <span className="text-xs text-cream-50/65">
@@ -295,7 +295,7 @@ export default function ScreenshotIngestPanel() {
           <p className="text-xs text-cream-50/65">
             Useful for validating the WhatsApp ingest pipeline without
             waiting for the OpenClaw agent. Pick one or more chat
-            screenshots — they&apos;ll be auto-compressed in your
+            screenshots, they&apos;ll be auto-compressed in your
             browser (WebP, max 2000px long edge), then processed{" "}
             <strong>one at a time</strong> so the per-file Gemini
             extract + classifier round-trip stays inside its rate
@@ -360,7 +360,7 @@ export default function ScreenshotIngestPanel() {
               <span className="text-sm text-cream-50/65">
                 Group name override{" "}
                 <span className="text-cream-50/50">
-                  (optional — applies to every file in this batch)
+                  (optional, applies to every file in this batch)
                 </span>
               </span>
               <input
@@ -554,7 +554,7 @@ function FileResultSummary({ resp }: { resp: IngestResp }) {
                   </span>
                 ) : null}
                 {p.sender ? (
-                  <span className="text-cream-50/65">— {p.sender}</span>
+                  <span className="text-cream-50/65">, {p.sender}</span>
                 ) : null}
               </div>
               <p className="text-cream-50 whitespace-pre-wrap break-words">
@@ -683,7 +683,7 @@ function formatBytes(n: number): string {
  * Image() for older Safari.
  *
  * Throws on corrupt files, unsupported formats, or canvas toBlob
- * failures — the caller marks the file `error` and moves on without
+ * failures, the caller marks the file `error` and moves on without
  * killing the whole queue.
  */
 async function compressImage(

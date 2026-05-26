@@ -5,8 +5,8 @@ import { useRef, useState } from "react";
 /**
  * Controlled UPI-QR image uploader.
  *
- * Shared by every "Enable donations" surface — public BhandaraForm,
- * /admin/scan ScanReview, /admin/edit/[id], /admin/new — so the QR
+ * Shared by every "Enable donations" surface, public BhandaraForm,
+ * /admin/scan ScanReview, /admin/edit/[id], /admin/new, so the QR
  * affordance reads the same regardless of which flow the operator
  * came in through. Holds NO state of its own besides "is the
  * upload in flight"; parent owns the URL value and persists it
@@ -224,12 +224,12 @@ export default function UpiQrUpload({
 
       {error ? <p className={tokens.errorText}>{error}</p> : null}
 
-      {/* Hidden form-submission carrier — set only when the parent
+      {/* Hidden form-submission carrier, set only when the parent
           wants this component to participate in a plain HTML form
           submit (e.g. the /admin/edit/[id] server-action form). */}
       {name ? <input type="hidden" name={name} value={value} /> : null}
 
-      {/* The actual file picker — kept hidden, triggered by the
+      {/* The actual file picker, kept hidden, triggered by the
           buttons above. accept narrows the system file picker to
           image types so the user can't accidentally pick a PDF. */}
       <input

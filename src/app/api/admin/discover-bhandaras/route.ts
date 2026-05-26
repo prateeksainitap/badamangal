@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
   // is live + PENDING is in the admin queue + ARCHIVED is the
   // historical archive). We exclude REJECTED so a deliberately-
   // killed row can be re-discovered if it shows up again.
-  // Names — not slugs — go to Gemini so it can match by phrasing in
+  // Names, not slugs, go to Gemini so it can match by phrasing in
   // the source pages. The vision helper re-derives slugs server-side
   // for an exact match check.
   const existing = await prisma.bhandara.findMany({

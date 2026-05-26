@@ -101,7 +101,7 @@ export default function HomeHero() {
           primary sindoor pill and the secondary ghost pill read
           as a balanced pair. The find CTA carries a magnifier
           glyph; the add CTA is intentionally text-only (the +
-          icon was dropped 2026-05-26 — the pill reads cleaner
+          icon was dropped 2026-05-26, the pill reads cleaner
           without a duplicate "add" signal when the label
           already says it). On mobile the row stays centred and
           the buttons keep equal width via `w-[240px]` so they

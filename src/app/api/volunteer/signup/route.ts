@@ -34,16 +34,16 @@ import { generateVolunteerCode } from "@/lib/volunteer-server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// No maxDuration override — default 10s on Hobby is plenty for the
+// No maxDuration override, default 10s on Hobby is plenty for the
 // IP-cap check + single DB insert. Removing the explicit value folds
 // this route into Fluid Compute's default function group instead of
 // spawning its own tier (Hobby's 12-function cap counted each unique
 // maxDuration as a separate group, pushing the project over).
 
-// Per-IP signup cap — RESTORED for the public soft-launch. Without
+// Per-IP signup cap, RESTORED for the public soft-launch. Without
 // it, anyone can mint unlimited BM-LKO-XXXXXX codes and each code
 // unlocks the 30 submissions/day + 12 MB photo + 60 MB video upload
-// quota in /api/volunteer/upload-media — a free storage-cost DoS
+// quota in /api/volunteer/upload-media, a free storage-cost DoS
 // straight into our R2 bucket. 5/day/IP is generous for the
 // "shared WiFi" cases (it'd take a whole family + admin testing on
 // one IP to exhaust 5) while capping worst-case abuse at 5 quotas.

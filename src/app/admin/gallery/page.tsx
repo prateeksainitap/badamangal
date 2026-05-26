@@ -68,7 +68,7 @@ export default async function AdminGalleryPage() {
           }
         />
 
-        {/* Upload form — GalleryUploadForm carries its own dark card
+        {/* Upload form, GalleryUploadForm carries its own dark card
             internally (re-skinned to AI palette). The outer wrapper
             here just adds the section header. */}
         <section className="mb-8">

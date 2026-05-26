@@ -4,7 +4,7 @@ import ContentEditor from "./ContentEditor";
 import { EmptyState } from "./PitchesTab";
 
 /**
- * Strategy tab — long-form planning docs.
+ * Strategy tab, long-form planning docs.
  *
  * Visitor personas, off-season calendar, marketing strategy. These
  * don't need the audience/channel pivots that pitches and templates
@@ -22,7 +22,7 @@ export default async function StrategyTab() {
       {rows.length === 0 ? (
         <EmptyState
           title="No strategy docs yet"
-          hint="Personas, calendar, off-season strategy — anything long-form planning material. The import banner up top loads the seven /notes/ markdown files at once."
+          hint="Personas, calendar, off-season strategy, anything long-form planning material. The import banner up top loads the seven /notes/ markdown files at once."
         />
       ) : (
         <div className="grid gap-4">

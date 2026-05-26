@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * Homepage testimonials section — "Lucknow is liking us…".
+ * Homepage testimonials section, "Lucknow is liking us…".
  *
  * Seeded from the screenshots stored in
  * /Users/prateeksaini/Documents/Personal/Bada Mangal/Testimonials.
- * Every entry traces back to a real message — email, WhatsApp DM /
+ * Every entry traces back to a real message, email, WhatsApp DM /
  * group, Telegram broadcast, or a Reddit comment. No fabrication.
  *
  * Layout:
@@ -25,7 +25,7 @@
  *
  * Locale-aware: section chrome (eyebrow, heading, sub, share CTA,
  * stat labels) flips with the LangToggle. Testimonial bodies stay
- * in their original language — translating a Hindi-Roman line into
+ * in their original language, translating a Hindi-Roman line into
  * English (or vice versa) would feel inauthentic.
  *
  * Future: when more testimonials accumulate, consider promoting
@@ -46,9 +46,9 @@ type Testimonial = {
   role?: string;
   /** ISO date the testimonial was received. */
   dateIso: string;
-  /** Quote text — sender's exact words. */
+  /** Quote text, sender's exact words. */
   body: string;
-  /** Source label — "Email", "WhatsApp", "Telegram", "Reddit". */
+  /** Source label, "Email", "WhatsApp", "Telegram", "Reddit". */
   source: string;
 };
 
@@ -63,7 +63,7 @@ const REDDIT_STATS = {
 };
 
 const TESTIMONIALS: Testimonial[] = [
-  // First names only (per design call 2026-05-26) — surnames felt
+  // First names only (per design call 2026-05-26), surnames felt
   // formal in a community testimonial card. Reddit usernames stay
   // as-is since they ARE the identity people picked for themselves.
   {
@@ -86,7 +86,7 @@ const TESTIMONIALS: Testimonial[] = [
   },
   {
     // Role kept to just the Reddit user-flair ("illahabadi amrood")
-    // — the "Reddit" prefix was redundant with the "via Reddit"
+    //, the "Reddit" prefix was redundant with the "via Reddit"
     // line in the source row below, and the pill rendered as an
     // orange "REDDIT" chip that competed with the flair text.
     name: "Crouts",
@@ -94,7 +94,7 @@ const TESTIMONIALS: Testimonial[] = [
     role: "illahabadi amrood",
     dateIso: "2026-05-22",
     body:
-      "Demn boi, good work! In our city Allahabad we have a humungous student diaspora — on every such Tuesdays there's an unofficial ritual that students will not cook and go on bhandara hopping around the city. Badhiya WhatsApp group bana rakha hai kab kaha kidhar kya mil raha haha.",
+      "Demn boi, good work! In our city Allahabad we have a humungous student diaspora, on every such Tuesdays there's an unofficial ritual that students will not cook and go on bhandara hopping around the city. Badhiya WhatsApp group bana rakha hai kab kaha kidhar kya mil raha haha.",
     source: "Reddit",
   },
   {
@@ -112,7 +112,7 @@ const TESTIMONIALS: Testimonial[] = [
     source: "WhatsApp",
   },
   {
-    // No role badge — Reddit username alone is enough; the source
+    // No role badge, Reddit username alone is enough; the source
     // chip below already shows "via Reddit", so a redundant pill
     // would just add visual noise.
     name: "ducksayswhack",
@@ -123,7 +123,7 @@ const TESTIMONIALS: Testimonial[] = [
   },
 ];
 
-/** The "lead" testimonial — gets its own wide card above the grid.
+/** The "lead" testimonial, gets its own wide card above the grid.
  *  Shashwat's email is the longest, most generous quote we have and
  *  carries a verifiable real name + email + phone, so it earns the
  *  prominence. */
@@ -290,7 +290,7 @@ export default function HomeTestimonials() {
           {/* Hand-drawn saffron heart flourish. SVG (not emoji) so
               the colour matches the brand palette exactly + scales
               cleanly with the heading. The aria-hidden span keeps
-              screen readers from reading "heart" — the H1 already
+              screen readers from reading "heart", the H1 already
               communicates the sentiment. */}
           <span aria-hidden className="inline-flex items-center">
             <svg
@@ -349,7 +349,7 @@ export default function HomeTestimonials() {
         <div className="mt-6 mx-auto h-px w-28 bg-gradient-to-r from-transparent via-gold-500/55 to-transparent" />
       </div>
 
-      {/* Featured testimonial — Shashwat's email. Wide hero card so
+      {/* Featured testimonial, Shashwat's email. Wide hero card so
           the most-generous quote earns the prominence. */}
       <article className="relative mt-10 overflow-hidden rounded-3xl border-2 border-saffron-500/45 bg-cream-50 p-7 sm:p-10 shadow-[0_24px_60px_-30px_rgba(156,42,42,0.32)] max-w-3xl mx-auto">
         <div
@@ -360,7 +360,7 @@ export default function HomeTestimonials() {
               "radial-gradient(700px 420px at 92% 8%, rgba(242,148,76,0.14), transparent 60%), radial-gradient(700px 420px at 8% 92%, rgba(214,73,73,0.08), transparent 60%)",
           }}
         />
-        {/* Tasteful saffron quote glyph — sits comfortably inside
+        {/* Tasteful saffron quote glyph, sits comfortably inside
             the card padding (not crammed at the corner) and uses
             an SVG instead of the unicode ", so it matches the
             brand palette without the muddy "dark grey at low

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Global click tracker — turns every `data-ga="event_name"` attribute
+ * Global click tracker, turns every `data-ga="event_name"` attribute
  * scattered across the app into an actual GA4 event.
  *
  * Why this exists (2026-05-26 audit finding):

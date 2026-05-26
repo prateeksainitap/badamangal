@@ -12,7 +12,7 @@ import { useLinkStatus } from "next/link";
  *   warm cache but 1.7–3.3s on the cold path through the Supabase
  *   pooler. Without any pending feedback, a Lucknow visitor on a 4G
  *   connection taps the button, sees nothing for ~2 seconds, and
- *   starts tapping again — sometimes navigating mid-load and
+ *   starts tapping again, sometimes navigating mid-load and
  *   triggering a second uncached request. This spinner closes that
  *   feedback gap.
  *

@@ -5,7 +5,7 @@
  *
  * Why this file (and not just global-error.tsx):
  *
- *   - `global-error.tsx` is the LAST line of defence — it catches
+ *   - `global-error.tsx` is the LAST line of defence, it catches
  *     anything that escapes every nested boundary, INCLUDING errors
  *     thrown by `layout.tsx` itself. It renders its own <html><body>
  *     and replaces the entire page chrome.
@@ -32,7 +32,7 @@
  *      again" button. We deliberately do NOT auto-fire `reset()` on
  *      mount: a previous build did, expecting the underlying error
  *      to be transient, but a PERSISTENT SSR error puts the page
- *      into an infinite re-render storm — each reset triggers a new
+ *      into an infinite re-render storm, each reset triggers a new
  *      render that throws, which mounts this boundary fresh, which
  *      auto-resets again, etc. Real production incident on
  *      2026-05-26 hit ~1000 retries in a few seconds with the error
@@ -62,7 +62,7 @@ export default function PublicSegmentError({
   reset: () => void;
 }) {
   // NO auto-reset. A previous build of this file fired reset() once
-  // on mount expecting transient errors to self-heal — but a
+  // on mount expecting transient errors to self-heal, but a
   // persistent SSR error produces an infinite re-render storm
   // (each reset re-renders the page → SSR throws → boundary
   // remounts → auto-reset fires again → loop). Real prod incident

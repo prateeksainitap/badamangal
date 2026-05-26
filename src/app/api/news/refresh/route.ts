@@ -24,7 +24,7 @@
  * so if you don't define a secret, that path is disabled. The
  * endpoint never accidentally goes world-readable.
  *
- * Both GET and POST verbs run the same handler — Vercel Cron always
+ * Both GET and POST verbs run the same handler, Vercel Cron always
  * sends GET, the admin button always sends POST, and external crons
  * can use either.
  */
@@ -33,7 +33,7 @@ import { refreshNews } from "@/lib/news-aggregator";
 import { isAdmin } from "@/lib/admin-auth";
 
 // If CRON_SECRET is unset, the Vercel-Cron auth path silently
-// fails — the daily cron at vercel.json:5 will 401 every day with
+// fails, the daily cron at vercel.json:5 will 401 every day with
 // no visible alarm. Surface that in the build/runtime logs so the
 // operator catches the missing config in seconds rather than
 // noticing weeks later that news stopped refreshing.
@@ -49,7 +49,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60; // network calls + DB writes; bumped to Vercel Hobby max
 
 async function isAuthorized(req: NextRequest): Promise<boolean> {
-  // Path 1: admin cookie (via @/lib/admin-auth — HMAC-signed, see
+  // Path 1: admin cookie (via @/lib/admin-auth, HMAC-signed, see
   // src/lib/admin-auth.ts for the format)
   if (await isAdmin()) return true;
   // Path 2: X-News-Refresh-Token header (legacy / external cron)

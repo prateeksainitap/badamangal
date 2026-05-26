@@ -13,7 +13,7 @@ import { IconCheck } from "@/components/admin/AdminIcons";
 import { parseBotGroupName } from "@/lib/sanitize";
 
 /**
- * Bhandara moderation row — dark-themed card consumed by the new
+ * Bhandara moderation row, dark-themed card consumed by the new
  * /admin/bhandaras queue. Replaces the legacy in-page renderer in
  * src/app/admin/page.tsx with a tighter, standardized layout:
  *
@@ -54,7 +54,7 @@ export type BhandaraQueueRow = {
   organizerName: string | null;
   organizerPhone: string | null;
   photoUrl: string | null;
-  /** Serialized JSON array of menu strings — Spot.extraPhotoUrls
+  /** Serialized JSON array of menu strings, Spot.extraPhotoUrls
    *  pattern. Parsed defensively. */
   menu: string | null;
   /** Description carries the `[bot:…]` tag for bot-ingested rows. */
@@ -64,7 +64,7 @@ export type BhandaraQueueRow = {
 
 type Props = {
   bhandara: BhandaraQueueRow;
-  /** Index in the list — drives the .admin-row-in stagger
+  /** Index in the list, drives the .admin-row-in stagger
    *  animation (`--i` custom property in CSS). */
   index: number;
 };
@@ -74,7 +74,7 @@ export default function BhandaraRow({ bhandara: b, index }: Props) {
   const fromBot = desc.includes("[bot:");
   // Group / channel name extracted from the [bot:…] provenance tag.
   // Null for older rows ingested before `groupName` was plumbed
-  // through /api/bot/ingest — those still show just the BOT pill.
+  // through /api/bot/ingest, those still show just the BOT pill.
   const botGroupName = fromBot ? parseBotGroupName(b.description) : null;
   // Auto-published flag (bot ingest, no admin review). The token is
   // written into the provenance tag by /api/bot/ingest since
@@ -87,7 +87,7 @@ export default function BhandaraRow({ bhandara: b, index }: Props) {
   const isVerified = isApproved && b.isVerified;
   const isUnverified = isApproved && !b.isVerified;
 
-  // Menu — JSON-encoded array. Defensive parse; null/empty/garbage
+  // Menu, JSON-encoded array. Defensive parse; null/empty/garbage
   // all degrade to no chips.
   let menuItems: string[] = [];
   try {
@@ -110,7 +110,7 @@ export default function BhandaraRow({ bhandara: b, index }: Props) {
 
   return (
     <article
-      // Clamp stagger index at 6 — see SpotRow for the same fix
+      // Clamp stagger index at 6, see SpotRow for the same fix
       // rationale (uncapped 45ms × 141 rows = 6+ second tail).
       style={{ ["--i" as string]: Math.min(index, 6) }}
       className={[
@@ -174,7 +174,7 @@ export default function BhandaraRow({ bhandara: b, index }: Props) {
                   <span aria-hidden>📱</span> Bot
                 </span>
               ) : null}
-              {/* AUTO pill — auto-published rows the bot pushed live
+              {/* AUTO pill, auto-published rows the bot pushed live
                   without a manual approval step. Clicking pivots to
                   /admin/bhandaras?source=auto so the operator can
                   batch-review every auto-publish at once. Distinct
@@ -184,14 +184,14 @@ export default function BhandaraRow({ bhandara: b, index }: Props) {
                 <Link
                   href="/admin/bhandaras?source=auto"
                   prefetch={false}
-                  title="Auto-published by the bot — open the Auto posted filter"
+                  title="Auto-published by the bot, open the Auto posted filter"
                   className="inline-flex items-center gap-1 rounded-full bg-amber-400/[0.14] border border-amber-400/40 text-amber-300 hover:bg-amber-400/[0.22] hover:border-amber-400/65 hover:text-amber-200 text-[10px] font-semibold uppercase tracking-[0.12em] px-2 py-0.5 transition-colors"
                 >
                   <span aria-hidden>⚡</span> Auto
                 </Link>
               ) : null}
               {botGroupName ? (
-                // Clickable channel chip — pivots to /admin/bot-log
+                // Clickable channel chip, pivots to /admin/bot-log
                 // filtered by this group so the operator can see
                 // every forward that's come in from the same source.
                 // Violet tone matches the bot-ingested row border so
@@ -233,7 +233,7 @@ export default function BhandaraRow({ bhandara: b, index }: Props) {
             {b.organizerName || b.organizerPhone ? (
               <div className="min-w-0 truncate">
                 <span className="text-cream-50/45">Organizer: </span>
-                {b.organizerName ?? "—"}
+                {b.organizerName ?? ", "}
                 {b.organizerPhone ? (
                   <span className="text-cream-50/55"> · {b.organizerPhone}</span>
                 ) : null}
@@ -394,7 +394,7 @@ function StatusPill({
     verified: {
       bg: "bg-leaf-400/[0.18] border-leaf-400/45",
       text: "text-leaf-400",
-      // No dingbat — the leaf-green tint + the IconCheck rendered below
+      // No dingbat, the leaf-green tint + the IconCheck rendered below
       // (when status === "verified") carries the "verified" affordance.
       label: "Verified",
       withDot: false,
@@ -427,7 +427,7 @@ function StatusPill({
   );
 }
 
-/** EditLink / ViewPublicLink / MoreMenu — these are <Link>/<a>/<details>
+/** EditLink / ViewPublicLink / MoreMenu, these are <Link>/<a>/<details>
  *  triggers, not <form> submits, so they can't use SubmitButton.
  *  They borrow SubmitButton's "outline-saffron" subtle-tint visual
  *  (and ViewPublicLink's primary variant borrows "primary-saffron"),
@@ -512,7 +512,7 @@ function DeleteForm({ id }: { id: string }) {
   );
 }
 
-/** Collapsible "more actions" menu — shows a vertical-ellipsis
+/** Collapsible "more actions" menu, shows a vertical-ellipsis
  *  trigger; children are revealed in a popover on click. Pure
  *  CSS via <details>/<summary> for SSR-friendly zero-JS. */
 function MoreMenu({ children }: { children: React.ReactNode }) {
@@ -522,7 +522,7 @@ function MoreMenu({ children }: { children: React.ReactNode }) {
     // its own z-10) is still beaten by the next row's content
     // because every row's <article> is `position: relative` with no
     // z-index, so all rows share the parent stacking context and
-    // DOM order wins ties — the next row paints over the popover.
+    // DOM order wins ties, the next row paints over the popover.
     // Lifting the parent `<details>` is what actually fixes the
     // stacking, the inner panel's z-index is secondary.
     <details className="relative inline-block group open:z-30">

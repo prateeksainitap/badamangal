@@ -39,7 +39,7 @@ type Props = {
   optional?: boolean;
   /** When the server pre-filled the lat/lng on load (typically when
    *  the row was at 0,0 and we resolved a candidate via the geocode
-   *  fallback chain — organizer / landmark / venue / etc.), pass the
+   *  fallback chain, organizer / landmark / venue / etc.), pass the
    *  candidate tag here (e.g. "organizer+area", "landmark", "venue").
    *  We surface it as a small saffron "auto-resolved from X" notice
    *  so the operator sees that the pre-fill was a best-guess (not a
@@ -82,7 +82,7 @@ export default function MapLocationInput({
     // so the operator sees "auto-resolved from organizer+area" on
     // first paint, without having to click Resolve. The user can
     // overwrite by pasting a real Maps link if the auto-guess is
-    // wrong — the same flow that handles the manual case.
+    // wrong, the same flow that handles the manual case.
     autoResolvedFrom
       ? {
           kind: "ok",

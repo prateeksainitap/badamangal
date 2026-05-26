@@ -9,7 +9,7 @@
  *
  * Design choices:
  *   • All shimmers gate on `motion-safe` so reduced-motion users
- *     see a static fill — the AI-console look isn't worth the
+ *     see a static fill, the AI-console look isn't worth the
  *     vestibular cost.
  *   • Two-tone fill (cyan-tinted box with a brighter sweep) so the
  *     skeleton reads as "system is fetching", not "image broken".
@@ -40,7 +40,7 @@ export function SkeletonLine({ w = "w-full", h = "h-3", className = "" }: LinePr
   );
 }
 
-/** Bigger rounded block — for thumbnails, cards, map areas. */
+/** Bigger rounded block, for thumbnails, cards, map areas. */
 export function SkeletonBlock({ className = "" }: { className?: string }) {
   return (
     <div
@@ -80,7 +80,7 @@ export function SkeletonRow({ withThumb = true }: { withThumb?: boolean }) {
   );
 }
 
-/** Skeleton header — eyebrow chip + big title line + subtitle.
+/** Skeleton header, eyebrow chip + big title line + subtitle.
  *  Optional right-side CTA cluster placeholder. */
 export function SkeletonPageHeader({ withCta = false }: { withCta?: boolean }) {
   return (

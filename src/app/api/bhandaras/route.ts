@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
       //
       // EXCEPTION: if the geocode failed (lat or lng is 0), we hold
       // the row in PENDING. A bhandara at lat=0,lng=0 renders off
-      // the African coast on the public map — pollutes the
+      // the African coast on the public map, pollutes the
       // homepage city map until admin notices. Holding it in
       // PENDING surfaces the row in /admin's queue where
       // MapLocationInput can rescue the coordinates manually

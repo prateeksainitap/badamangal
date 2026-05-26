@@ -65,12 +65,12 @@ export const revalidate = 60;
  * Promise.allSettled fallback in the data-fetch section below would
  * normally return empty arrays for failed queries, so the public
  * homepage suddenly rendered as "All 0 Bada Mangal bhandaras in
- * Lucknow" — a catastrophic UX regression on the season's biggest
+ * Lucknow", a catastrophic UX regression on the season's biggest
  * day. With this cache the failure mode degrades to "all data is
  * 1-5 minutes stale" instead, which is invisible to the visitor.
  *
  * Stored value is opaque (each key is keyed off the unwrap label).
- * Eviction is by TTL only — we never evict on count, since the
+ * Eviction is by TTL only, we never evict on count, since the
  * working set is exactly 7 entries (one per Prisma query). Each
  * Lambda warms its own cache from successful queries; cold-start
  * Lambdas start empty and the fallback shape kicks in.
@@ -168,8 +168,8 @@ export default async function HomePage() {
   // saturation right after a Vercel deploy swap, a momentary
   // pgbouncer recycle), the whole homepage SSR threw and visitors
   // saw the alarming "Something stopped working" global error page.
-  // That happened in production at ~05:00 IST on 26 May 2026 — the
-  // morning of Tuesday 1 of the Adhik Mas season — and the digest
+  // That happened in production at ~05:00 IST on 26 May 2026, the
+  // morning of Tuesday 1 of the Adhik Mas season, and the digest
   // bubbled all the way up because there was no segment error.tsx
   // catching it either.
   //
@@ -183,7 +183,7 @@ export default async function HomePage() {
   // one. Within 60 s the next revalidate pass refreshes the data.
   //
   // Errors are console.error-ed so they're still visible in Vercel
-  // function logs — we don't want partial failure to be silent.
+  // function logs, we don't want partial failure to be silent.
   const [
     recordsResult,
     statsResult,
@@ -196,7 +196,7 @@ export default async function HomePage() {
     // REVERTED 2026-05-26: was getCachedApprovedBhandaras() via
     // unstable_cache. unstable_cache JSON-serializes cached values,
     // which converts Date columns (createdAt, etc.) into strings on
-    // retrieval — downstream code calls .toISOString() on those
+    // retrieval, downstream code calls .toISOString() on those
     // dates and crashed the SSR. Real prod incident: HTTP 500 +
     // segment-error infinite re-render storm. Back to direct
     // prisma; in-memory `lastGood` cache + Promise.allSettled
@@ -221,7 +221,7 @@ export default async function HomePage() {
     // ceiling of 500 protects the wire payload (~300 KB worst case) in
     // case a future bug pushes expiresAt unusually far out.
     // Reverted from getCachedLiveSpots() for the same reason as
-    // bhandaras above — unstable_cache JSON-serializes Date columns
+    // bhandaras above, unstable_cache JSON-serializes Date columns
     // and breaks downstream .toISOString() calls.
     prisma.spot.findMany({
       where: { status: "APPROVED", expiresAt: { gt: new Date() } },
@@ -282,7 +282,7 @@ export default async function HomePage() {
     // between SSR and the live poll.
     //
     // Sort by `approvedAt` (NOT createdAt) so freshly-approved
-    // mentions of older PENDING rows show at the top — matches the
+    // mentions of older PENDING rows show at the top, matches the
     // semantic the polling loop uses, so SSR and post-hydration state
     // converge to the same ordering.
     prisma.bhandaraMention.findMany({
@@ -335,12 +335,12 @@ export default async function HomePage() {
   // Unwrap each settled result with a TWO-LAYER fallback so a DB
   // failure degrades gracefully instead of catastrophically.
   //
-  // Layer A (fresh-success): query succeeded — store the result in
+  // Layer A (fresh-success): query succeeded, store the result in
   // the module-level lastGood cache so future failures can reuse it.
   //
   // Layer B (recent-cached): query failed but we have a successful
   // result from less than LAST_GOOD_TTL_MS ago. Serve that. This
-  // covers the EMAXCONN window during a Vercel cold-start storm —
+  // covers the EMAXCONN window during a Vercel cold-start storm
   // the homepage stays populated with the most recent known data
   // while the pool recovers. The 5-min TTL is short enough that
   // genuinely stale data doesn't linger; long enough to cover the
@@ -415,7 +415,7 @@ export default async function HomePage() {
   // headline counts diverge from the cards / pins below them.
   // Filter out any row whose coords are 0,0 OR fall outside the
   // Lucknow bbox (26.7-27.0 lat, 80.7-81.2 lng). A bhandara at 0,0
-  // would render in the Atlantic Ocean / off Africa coast — the
+  // would render in the Atlantic Ocean / off Africa coast, the
   // operator literally saw a pin "near Madagascar" today after a
   // recovery sweep promoted PENDING rows without fixing their
   // bot-fallback coords. The spots array already has the same
@@ -443,13 +443,13 @@ export default async function HomePage() {
   // Promise.all batch, just shape into the wire format here.
   //
   // Two derived arrays, NOT one:
-  //   • `liveSpots` (all approved + live) — fed to HappeningNow so the
+  //   • `liveSpots` (all approved + live), fed to HappeningNow so the
   //     homepage card grid matches /live exactly. /live's SSR query
   //     doesn't filter 0,0 coords either; this keeps both surfaces in
   //     sync so a coordless-but-photo-rich Spot (bot ingest without
   //     EXIF / location share) doesn't appear on /live but vanish on
   //     the homepage.
-  //   • `liveSpotsWithCoords` — same array minus 0,0 entries, fed to
+  //   • `liveSpotsWithCoords`, same array minus 0,0 entries, fed to
   //     MapBoard so the city map never plants an Africa-pin marker at
   //     null-island. Map pins genuinely need real coords; HappeningNow
   //     cards don't.
@@ -500,7 +500,7 @@ export default async function HomePage() {
       bhandaraSlug: s.bhandara?.slug ?? null,
       bhandaraName: s.bhandara?.name ?? null,
       authorName: s.reporterName?.trim() || "Spotter",
-      // Strip the [bot:whatsapp …] provenance tag — was leaking onto
+      // Strip the [bot:whatsapp …] provenance tag, was leaking onto
       // the LiveFeedMarquee card, where the truncated tail "…[bot:
       // whatsapp · from:R.K Pal Balaji ka bhandara (2) · …" was
       // visible mid-caption.
@@ -547,7 +547,7 @@ export default async function HomePage() {
     // Spots-with-photos go through the same chat panel. We pull from
     // the spotRecords already fetched above (so no extra DB hit) and
     // filter to ones with a real photo + non-zero coords (the same
-    // filter the API endpoint applies — keeps SSR + poll responses
+    // filter the API endpoint applies, keeps SSR + poll responses
     // identical in shape).
     //
     // STRICT WHATSAPP-ONLY: only bot-ingested spots (caption carries
@@ -560,7 +560,7 @@ export default async function HomePage() {
       .filter(
         (s) =>
           // Photo + non-expired only. We DO NOT drop lat=0/lng=0
-          // spots here — bot-ingested live photos auto-publish with
+          // spots here, bot-ingested live photos auto-publish with
           // 0,0 because WhatsApp strips EXIF GPS, and the chat panel
           // should still show the photo. The heatmap filters 0,0
           // separately so no ghost pin lands on null island.
@@ -815,7 +815,7 @@ export default async function HomePage() {
         // FULL liveSpots count (not liveSpotsWithCoords) so the 0,0
         // orphans the HappeningNow section already surfaces under
         // its "X without location" pill are also counted in the
-        // headline — keeps the two numbers consistent.
+        // headline, keeps the two numbers consistent.
         totalListed={listings.length}
         totalSpotted={liveSpots.length}
       />
@@ -842,7 +842,7 @@ export default async function HomePage() {
         <HomeCardsEmpty />
       )}
 
-      {/* LIVE CHATTER BOARD — sits BELOW the listed-bhandaras grid.
+      {/* LIVE CHATTER BOARD, sits BELOW the listed-bhandaras grid.
           (Was briefly promoted above the grid; reverted because the
           on-the-day chatter, when stale or from a previous Tuesday,
           misled visitors landing on a non-Bada-Mangal day.) The
@@ -933,7 +933,7 @@ export default async function HomePage() {
           India / Navbharat Times when those stories land. */}
       <MediaCoverage />
 
-      {/* TESTIMONIALS, "Lucknow is liking us" — community feedback
+      {/* TESTIMONIALS, "Lucknow is liking us", community feedback
           band. Sits right after press coverage so the flow reads as
           "newspapers are talking about us → here's what individual
           Lucknow folks said back" before resources / history /

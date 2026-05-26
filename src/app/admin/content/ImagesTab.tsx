@@ -6,7 +6,7 @@ import CopyButtonClient from "./CopyButtonClient";
 import { EmptyState } from "./PitchesTab";
 
 /**
- * Images tab — surfaces GalleryPhoto rows with non-empty `tags`.
+ * Images tab, surfaces GalleryPhoto rows with non-empty `tags`.
  *
  * Re-uses the same R2 bucket the homepage gallery uses. Tagging an
  * existing photo from /admin/gallery (with "ig" / "wa" / "pamphlet" /
@@ -81,7 +81,7 @@ export default async function ImagesTab({ filterTag }: { filterTag?: string }) {
         })}
       </div>
 
-      {/* Upload pointer — uploading new images flows through the
+      {/* Upload pointer, uploading new images flows through the
           gallery page (which already has compression + R2 + a polished
           UI). The hub just *surfaces* tagged images. */}
       <div className="rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm p-4 flex items-center gap-3 flex-wrap">

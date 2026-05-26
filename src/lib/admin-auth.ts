@@ -1,5 +1,5 @@
 /**
- * Admin authentication helpers — single source of truth.
+ * Admin authentication helpers, single source of truth.
  *
  * Before this module existed, every admin route / server action /
  * page handler reimplemented the same body:

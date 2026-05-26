@@ -30,7 +30,7 @@ import {
  *     next matching label (basic typeahead).
  *   • Renders a hidden <input type="hidden" name=…> so the listbox
  *     plays nicely with the surrounding plain <form method="get">.
- *     No JS form-state coupling needed — the page already routes
+ *     No JS form-state coupling needed, the page already routes
  *     filter state through the URL.
  */
 
@@ -43,7 +43,7 @@ export type ListboxOption = {
 };
 
 type Props = {
-  /** Hidden input name — what gets submitted with the surrounding form.
+  /** Hidden input name, what gets submitted with the surrounding form.
    *  Pass an empty string when using `onChange` to drive parent state
    *  instead of HTML form submission. */
   name: string;
@@ -124,7 +124,7 @@ export default function AdminListbox({
     el?.scrollIntoView({ block: "nearest" });
   }, [open, highlight]);
 
-  // Typeahead — short window (450ms) so typing "ASH" jumps to "Asking".
+  // Typeahead, short window (450ms) so typing "ASH" jumps to "Asking".
   const buffer = useRef<{ str: string; t: number }>({ str: "", t: 0 });
   const jumpTo = useCallback(
     (ch: string) => {
@@ -185,7 +185,7 @@ export default function AdminListbox({
       ref={containerRef}
       className={["relative inline-block", className].join(" ")}
     >
-      {/* Hidden input — what the surrounding GET form submits. */}
+      {/* Hidden input, what the surrounding GET form submits. */}
       <input type="hidden" name={name} value={internal} />
 
       <button

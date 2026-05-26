@@ -13,8 +13,8 @@ import Link from "next/link";
  *
  * Why this exists:
  *   The Supabase pooler at `aws-1-ap-southeast-1.pooler.supabase.com:6543`
- *   occasionally hiccups — pool saturation, brief networking blip,
- *   connection-recycling pause — and a single `prisma.bhandara.count`
+ *   occasionally hiccups, pool saturation, brief networking blip,
+ *   connection-recycling pause, and a single `prisma.bhandara.count`
  *   in the dashboard's `Promise.all` will throw a
  *   `PrismaClientInitializationError`. Without an error boundary the
  *   ENTIRE admin route 500s and the operator has to hard-refresh; the
@@ -31,10 +31,10 @@ import Link from "next/link";
  *   the operator can debug if a hard failure (e.g. wrong
  *   `DATABASE_URL`) recurs. The error.digest is shown beneath because
  *   that's what Next.js stamps on the server log for the same
- *   request — handy when grepping logs.
+ *   request, handy when grepping logs.
  *
  * Why route-segment (not nested per-page):
- *   One file at /admin/error.tsx is enough — Next.js bubbles errors
+ *   One file at /admin/error.tsx is enough, Next.js bubbles errors
  *   from any descendant route up to the nearest error.tsx. Less code
  *   to maintain.
  */
@@ -77,7 +77,7 @@ export default function AdminError({
         </h1>
         <p className="mt-2 text-sm text-cream-50/70 leading-relaxed">
           {isPrismaConnect
-            ? "Click Retry — the pool usually frees in a second or two. If it keeps failing, check Supabase → Database → Active connections."
+            ? "Click Retry, the pool usually frees in a second or two. If it keeps failing, check Supabase → Database → Active connections."
             : "The error is logged. Retry will re-trigger the page; if it persists, the details below help debug."}
         </p>
 
@@ -99,7 +99,7 @@ export default function AdminError({
           </Link>
         </div>
 
-        {/* Diagnostic disclosure — collapsed by default, expand to
+        {/* Diagnostic disclosure, collapsed by default, expand to
             see the raw error + digest for log grepping. */}
         <details className="mt-6 group">
           <summary className="cursor-pointer list-none text-[11px] uppercase tracking-[0.16em] font-mono text-cream-50/55 hover:text-cream-50/80 inline-flex items-center gap-1.5 select-none">
