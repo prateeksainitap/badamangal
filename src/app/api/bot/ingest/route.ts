@@ -829,24 +829,55 @@ export async function POST(req: NextRequest) {
     // Tag carries the geocode outcome too, admin can spot whether a
     // row was auto-located vs. left blank without opening the edit
     // page. Stripped from public surfaces by stripBotProvenance.
-    const taggedDescription = `${tag.slice(0, -1)} · ${geocodeNote}]`;
+    // `auto-publish` flag added 2026-05-26 — see the APPROVED status
+    // note below. Lets the operator filter
+    // /admin/bhandaras?q=auto-publish to triage all rows the bot
+    // shipped to the public listing without manual review.
+    const taggedDescription = `${tag.slice(0, -1)} · ${geocodeNote} · auto-publish]`;
     const description = [extracted.description, taggedDescription]
       .filter(Boolean)
       .join("\n\n");
     const descriptionHi = extracted.descriptionHi || null;
 
+    // Name fallback chain — pamphlets that pass the classifier but
+    // don't have a recognisable host name on them used to land as
+    // the generic "Bhandara from WhatsApp" placeholder. That string
+    // reads as "we have no idea who runs this" to a public visitor.
+    // "Samast Sevagan" ("all the volunteer servants" in Sanskrit
+    // /Hindi) is a real, dignified collective attribution used by
+    // many bhandaras anyway — keeps the public card readable when
+    // we lack a specific host. The Hindi variant uses the same
+    // phrase in Devanagari so the locale-correct surface still has
+    // a proper name. Operators can rename via /admin/edit/<id> when
+    // they identify the real host.
+    const fallbackName = "Samast Sevagan";
+    const fallbackNameHi = "समस्त सेवकगण";
+
     // Pamphlet/poster path. classifyImage returned "bhandara" so we
-    // create a PENDING listing row only — admin reviews + approves
-    // before the listing shows up on the public cards / map. The
-    // chat panel + map deliberately do NOT surface a companion Spot
-    // here: a pamphlet is an announcement of an event, not a live
-    // sighting. (Food/crowd/tent photos take the spot branch below
-    // and bypass admin via an APPROVED Spot.)
+    // create the listing row. Status APPROVED (auto-publish, since
+    // 2026-05-26) so the bhandara appears on the public map + cards
+    // within seconds of the WhatsApp forward landing in the group.
+    //
+    // Trade-off: a small fraction of false-positives (off-topic
+    // images Gemini misclassified, scammer pamphlets) will be live
+    // briefly before an operator catches + REJECTs them. We accept
+    // that cost because the alternative — every pamphlet sitting in
+    // a PENDING queue overnight — meant the bot looked broken to
+    // organisers ("I forwarded it, where is my bhandara?"). The
+    // [bot:…] provenance tag + the `auto-publish` flag in
+    // description make these rows trivial to find + reject in bulk
+    // from /admin/bhandaras.
+    //
+    // Extract-failure rows (the catch branch above) stay PENDING
+    // because there's no extracted signal to publish. The chat panel
+    // + map deliberately do NOT surface a companion Spot here: a
+    // pamphlet is an announcement, not a live sighting.
+    const nowIso = new Date();
     const row = await prisma.bhandara.create({
       data: {
         slug,
-        name: extracted.name || "Bhandara from WhatsApp",
-        nameHi: extracted.nameHi || null,
+        name: extracted.name || fallbackName,
+        nameHi: extracted.nameHi || fallbackNameHi,
         description,
         descriptionHi,
         area: extracted.area ?? "",
@@ -867,9 +898,17 @@ export async function POST(req: NextRequest) {
         // every publish. Leave blank if the model couldn't read a host
         // name; the admin will fill it from the photo during review.
         organizerName: extracted.organizerName || "",
+        // organizerPhone: skip (empty string) when Gemini couldn't
+        // read a number off the banner. We deliberately do NOT use a
+        // placeholder like "9999999999" because the public detail
+        // page surfaces a tap-to-call CTA when this field is set —
+        // a fake number routes donors into a wrong call. The detail
+        // page already gracefully hides the CTA on empty, so empty
+        // is the safe + correct fallback.
         organizerPhone: extracted.organizerPhone || "",
         photoUrl,
-        status: "PENDING",
+        status: "APPROVED",
+        approvedAt: nowIso,
       },
     });
 
