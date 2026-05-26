@@ -28,17 +28,20 @@
  *
  * Behaviour:
  *
- *   1. On mount, fire `reset()` once (after a 50 ms tick so React
- *      finishes painting the fallback — otherwise we throw an
- *      "error during render" loop). If the underlying issue was
- *      transient, the page re-renders cleanly and the visitor sees
- *      a single ~200 ms blink, not an error screen.
+ *   1. Render the calm fallback IMMEDIATELY with a manual "Try
+ *      again" button. We deliberately do NOT auto-fire `reset()` on
+ *      mount: a previous build did, expecting the underlying error
+ *      to be transient, but a PERSISTENT SSR error puts the page
+ *      into an infinite re-render storm — each reset triggers a new
+ *      render that throws, which mounts this boundary fresh, which
+ *      auto-resets again, etc. Real production incident on
+ *      2026-05-26 hit ~1000 retries in a few seconds with the error
+ *      counter climbing in real time. Manual retry only.
  *
- *   2. If the auto-retry also throws, React keeps us on this
- *      boundary and the user sees the cream/saffron fallback with a
- *      manual "Try again" button. They can also navigate back home,
- *      reload, or hit any other link in the surrounding chrome
- *      (which is still mounted because this is a segment boundary).
+ *   2. If the visitor taps "Try again" and it works, great. If it
+ *      doesn't, they get the same screen + can navigate elsewhere
+ *      (the surrounding chrome is still mounted because this is a
+ *      segment boundary, not the global one).
  *
  *   3. The error digest is exposed in a muted footer line so support
  *      reports include a real reference for ops to grep against
@@ -51,8 +54,6 @@
  *   page.tsx's Promise.allSettled unwrap helpers when triaging.
  */
 
-import { useEffect, useRef } from "react";
-
 export default function PublicSegmentError({
   error,
   reset,
@@ -60,29 +61,13 @@ export default function PublicSegmentError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  // Fire reset() exactly once on mount. Subsequent renders are
-  // either the recovered page (we're unmounted) or a second crash
-  // (we want to show the manual UI, not loop). The ref makes the
-  // guard survive React 18 double-mount in dev.
-  const retriedRef = useRef(false);
-  useEffect(() => {
-    if (retriedRef.current) return;
-    retriedRef.current = true;
-    // 50 ms breathing room lets React finish flushing this boundary
-    // before we ask it to re-render the segment. Without the tick,
-    // a synchronous reset() can throw "error during render".
-    const t = window.setTimeout(() => {
-      try {
-        reset();
-      } catch {
-        // reset() throwing means the boundary cannot recover; we'll
-        // fall through to the visible fallback below and the user
-        // gets the manual retry button.
-      }
-    }, 50);
-    return () => window.clearTimeout(t);
-  }, [reset]);
-
+  // NO auto-reset. A previous build of this file fired reset() once
+  // on mount expecting transient errors to self-heal — but a
+  // persistent SSR error produces an infinite re-render storm
+  // (each reset re-renders the page → SSR throws → boundary
+  // remounts → auto-reset fires again → loop). Real prod incident
+  // saw ~1000 retries in seconds with the GA error counter climbing.
+  // Manual retry only.
   return (
     <main
       className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center px-6 py-16 text-center"
@@ -92,12 +77,11 @@ export default function PublicSegmentError({
         🪔 One moment
       </p>
       <h1 className="mt-3 font-fraunces text-2xl text-sindoor-700 sm:text-3xl">
-        Reloading this page…
+        Something hiccuped on our end.
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-ink-600">
-        We had a brief hiccup loading the latest data. If this card stays
-        visible after a second, tap Try again or head back to the home
-        page.
+        We couldn't load the latest data. Tap Try again, or head back to
+        the home page.
       </p>
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         <button
