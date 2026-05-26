@@ -379,22 +379,66 @@ export async function editAndApproveSpotAction(
     status: "APPROVED",
   };
   if (wantsRemoval) {
-    // Snapshot the existing photo URL before we null it so we can
-    // evict the R2 object. If R2 eviction fails we still null the DB
-    // — the orphaned file is a much smaller problem than a column
-    // pointing at a deleted bucket key.
+    // Snapshot the existing photo + extras so we can either promote
+    // an extra into the primary slot (if any exist) or null out
+    // entirely. R2 evict only the primary that's actually being
+    // discarded — the extras' R2 objects stay live and one of them
+    // is moving up to primary, so we must NOT evict those.
     const existing = await prisma.spot.findUnique({
       where: { id },
-      select: { photoUrl: true },
+      select: { photoUrl: true, extraPhotoUrls: true },
     });
-    data.photoUrl = null;
-    if (existing?.photoUrl) {
-      await deleteFromR2(existing.photoUrl).catch((err) =>
-        console.warn(
-          "[editAndApproveSpotAction] R2 evict on remove failed",
-          err,
-        ),
-      );
+    // Parse the extras array defensively. A malformed JSON value
+    // shouldn't block the removal — treat it as no extras and just
+    // null the primary.
+    let extras: string[] = [];
+    try {
+      const arr = JSON.parse(existing?.extraPhotoUrls ?? "[]") as unknown;
+      if (Array.isArray(arr)) {
+        extras = arr.filter(
+          (u): u is string => typeof u === "string" && u.length > 0,
+        );
+      }
+    } catch {
+      extras = [];
+    }
+    if (extras.length > 0) {
+      // Promote the first extra to primary. Operator behaviour:
+      // they hit "Remove photo" on a row that has additional
+      // photos in the carousel — what they almost always want is
+      // the next photo in the carousel to fill the slot, not for
+      // the row to lose its visual entirely. Falling back to
+      // "row has no photo at all" is a regression on the public
+      // chat panel + heatmap thumbnail. Pop extras[0] into
+      // photoUrl, shrink the extras array by one. The newly-
+      // primary photo stays live in R2 (it was already there).
+      const [promoted, ...remaining] = extras;
+      data.photoUrl = promoted;
+      data.extraPhotoUrls = JSON.stringify(remaining);
+      // Only the original primary gets R2-evicted — the promoted
+      // photo is still in use.
+      if (existing?.photoUrl) {
+        await deleteFromR2(existing.photoUrl).catch((err) =>
+          console.warn(
+            "[editAndApproveSpotAction] R2 evict on primary swap failed",
+            err,
+          ),
+        );
+      }
+    } else {
+      // No extras to promote — null out the primary entirely and
+      // R2-evict the discarded file. This is the original "row
+      // ends with no photo" path; spots can survive caption-only,
+      // they just lose their thumbnail.
+      data.photoUrl = null;
+      if (existing?.photoUrl) {
+        await deleteFromR2(existing.photoUrl).catch((err) =>
+          console.warn(
+            "[editAndApproveSpotAction] R2 evict on remove failed",
+            err,
+          ),
+        );
+      }
     }
   } else if (newPhotoUrl) {
     data.photoUrl = newPhotoUrl;
