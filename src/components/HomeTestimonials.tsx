@@ -312,9 +312,16 @@ export default function HomeTestimonials() {
         {/* Reddit social-proof strip. Tiny gold-bordered chip showing
             the r/lucknow post's view + upvote + comment counts.
             Pulled from the Reddit insights screenshot in the
-            Testimonials folder. */}
-        <div className="mt-6 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-full border border-gold-500/45 bg-cream-50 px-4 py-2">
-          <span className="text-[10px] sm:text-xs uppercase tracking-[0.14em] text-saffron-600 font-mono font-semibold">
+            Testimonials folder.
+
+            Mobile layout (operator request 2026-05-26 evening): the
+            heading takes its own line at the top, stats flow on the
+            line below. Forced via `basis-full sm:basis-auto` on the
+            heading + `text-center sm:text-left`, plus the rounded-full
+            pill softens to rounded-2xl on mobile so the multi-line
+            content doesn't get cramped by the pill geometry. */}
+        <div className="mt-6 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 rounded-2xl sm:rounded-full border border-gold-500/45 bg-cream-50 px-4 py-2.5 sm:py-2">
+          <span className="basis-full sm:basis-auto text-center sm:text-left text-[10px] sm:text-xs uppercase tracking-[0.14em] text-saffron-600 font-mono font-semibold">
             {t.statsHeading}
           </span>
           <span aria-hidden className="hidden sm:inline text-gold-500/60">
