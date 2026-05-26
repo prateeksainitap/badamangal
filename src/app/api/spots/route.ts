@@ -142,17 +142,6 @@ export async function GET(req: NextRequest) {
     where: {
       status: "APPROVED",
       expiresAt: { gt: new Date() },
-      // Exclude null-island spots (lat=0 AND lng=0). These are
-      // degraded bot ingests where the source message had no
-      // location share + no EXIF, so the geocoder fell through.
-      // They sit in /admin/spots for the operator to fix before
-      // resurfacing publicly. Without this filter, HappeningNow's
-      // saffron count (which reads from this endpoint on every 15s
-      // poll) diverged from the MapBoard "Spotted N" chip the
-      // moment the first poll fired — the chip filters by
-      // valid coords, the count was unfiltered, visitor sees two
-      // different numbers for the same metric.
-      AND: [{ lat: { not: 0 } }, { lng: { not: 0 } }],
       ...(area ? { area } : {}),
     },
     orderBy: { createdAt: "desc" },

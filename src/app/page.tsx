@@ -813,14 +813,13 @@ export default async function HomePage() {
       {/* HAPPENING NOW, crowd-sourced live spots, sits right under
           the map so the urgency layer reads as an overlay on top of
           the discovery surface. Reads locale from context.
-          Uses liveSpotsWithCoords (NOT liveSpots) so the saffron
-          "X bhandaras spotted live" headline number matches the
-          MapBoard's "Spotted N" filter chip directly above — same
-          spots, same number, no visitor confusion. Spots with
-          lat=0/lng=0 are degraded bot ingests; they sit in
-          /admin/spots for the operator to geocode before they
-          surface publicly. */}
-      <HappeningNow initial={liveSpotsWithCoords} />
+          Receives the FULL liveSpots array (including null-island
+          0,0 entries from bot ingests that lost their coords) so
+          the headline shows the truthful total. HappeningNow itself
+          derives a "M on map · K without location" breakdown line
+          so the visitor sees why the MapBoard chip directly above
+          can be lower than this count. */}
+      <HappeningNow initial={liveSpots} />
 
       {/* CARDS, equal-height grid with filters. Locale reads from
           context inside the component. The saffron headline number

@@ -95,6 +95,21 @@ export default function HappeningNow({ initial }: Props) {
     );
   }, [spots, near]);
 
+  // Split nearbySpots by coord-validity so the heading can show a
+  // truthful breakdown: "M on map · K without location". The bot
+  // pipeline occasionally creates Spots with lat=0/lng=0 when the
+  // source WhatsApp message has neither a location share nor EXIF
+  // on the photo. Those rows still represent a real spotted
+  // bhandara (we have the photo + sender), they just can't be
+  // pinned yet — the operator fills coords in /admin/spots. We want
+  // visitors to see the full count without pretending the orphans
+  // don't exist.
+  const onMapCount = useMemo(
+    () => nearbySpots.filter((s) => s.lat !== 0 || s.lng !== 0).length,
+    [nearbySpots],
+  );
+  const orphanCount = nearbySpots.length - onMapCount;
+
   // Per-area counters for the chips row.
   const byArea = useMemo(() => {
     const m = new Map<string, number>();
@@ -144,6 +159,46 @@ export default function HappeningNow({ initial }: Props) {
               ? "लखनऊ-वालों के द्वारा भेजी गई तस्वीरें, बीते 8 घंटों में।"
               : "Photos sent by Lucknow walkers in the last 8 hours."}
           </p>
+          {/* Breakdown line: how many of the spotted-live total are
+              pinned on the map vs sitting without coords. Bot ingests
+              with neither a location share nor EXIF on the photo land
+              at lat=0/lng=0; we keep them in the public count (they're
+              real bhandaras, real photos) but flag the gap so the
+              MapBoard's "Spotted N" chip not matching this heading
+              reads as honesty rather than a bug. The orphan pill only
+              renders when there's something to show; on clean days the
+              line collapses to a single "X on map" chip. */}
+          {nearbySpots.length > 0 ? (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-saffron-50 border border-saffron-500/40 text-ink-900 px-2.5 py-1">
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-saffron-600" />
+                <span className="font-numerals tabular-nums font-semibold">
+                  {onMapCount}
+                </span>
+                <span className="text-ink-600">
+                  {isHi ? "नक़्शे पर" : "on map"}
+                </span>
+              </span>
+              {orphanCount > 0 ? (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full bg-cream-50 border border-ink-600/25 text-ink-900 px-2.5 py-1"
+                  title={
+                    isHi
+                      ? "लोकेशन के बिना भेजे गए — मॉडरेटर जल्द जोड़ देंगे।"
+                      : "Sent without a location pin — moderator will add coords shortly."
+                  }
+                >
+                  <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-600/55" />
+                  <span className="font-numerals tabular-nums font-semibold">
+                    {orphanCount}
+                  </span>
+                  <span className="text-ink-600">
+                    {isHi ? "बिना लोकेशन" : "without location"}
+                  </span>
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
         <Link
           href="/spot"
