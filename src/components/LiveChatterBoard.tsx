@@ -856,7 +856,12 @@ export default function LiveChatterBoard({
               >
                 <PinIcon />
                 <span className="font-medium">{a.display}</span>
-                <span className="px-1.5 py-0.5 rounded-full bg-gradient-to-br from-saffron-500 to-saffron-600 text-cream-50 text-[10px] font-semibold leading-none">
+                {/* Count badge — dark text on solid saffron for AAA-level
+                    contrast (the previous cream-on-saffron gradient was
+                    ~1.6:1 and read as a saffron blur at 10px). min-w +
+                    text-center keeps single digits from looking
+                    squashed in the round pill. */}
+                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-saffron-500 text-ink-900 text-[11px] font-bold leading-none tabular-nums ring-1 ring-cream-50/15">
                   {a.count}
                 </span>
               </button>
