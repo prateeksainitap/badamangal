@@ -1269,6 +1269,111 @@ function SpotReviewForm({
   const [lng, setLng] = useState(scan.geocode?.lng?.toFixed(6) ?? "");
   const [reporterName, setReporterName] = useState("");
 
+  // Manual-create extras (rendered only when `blank` is true). Scan
+  // mode already has scan.photoUrl + scan.geocode wired up via the
+  // sidebar column, so the helpers below would be redundant noise.
+  const [uploadedPhotoUrl, setUploadedPhotoUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [paste, setPaste] = useState("");
+  const [resolving, setResolving] = useState(false);
+  const [resolveFeedback, setResolveFeedback] = useState<
+    | { kind: "idle" }
+    | { kind: "ok"; source: string; inLucknow: boolean }
+    | { kind: "err"; message: string }
+  >({ kind: "idle" });
+
+  async function uploadPhoto(file: File) {
+    setUploadError(null);
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("Image is over 10 MB. Pick a smaller crop.");
+      return;
+    }
+    if (!/^image\/(jpe?g|png|webp)$/i.test(file.type)) {
+      setUploadError("Use a JPG, PNG, or WebP image.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/admin/upload-image", {
+        method: "POST",
+        body: fd,
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        photoUrl?: string;
+        error?: string;
+      };
+      if (!res.ok || !json.ok || !json.photoUrl) {
+        setUploadError(json.error ?? "Couldn't save that image. Try again.");
+        return;
+      }
+      setUploadedPhotoUrl(json.photoUrl);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function resolveCoords() {
+    const input = paste.trim();
+    if (!input) return;
+    setResolving(true);
+    setResolveFeedback({ kind: "idle" });
+    try {
+      const res = await fetch("/api/admin/resolve-coords", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ input }),
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        lat?: number;
+        lng?: number;
+        source?: string;
+        inLucknow?: boolean;
+        error?: string;
+        detail?: string;
+      };
+      if (
+        !res.ok ||
+        !json.ok ||
+        typeof json.lat !== "number" ||
+        typeof json.lng !== "number"
+      ) {
+        setResolveFeedback({
+          kind: "err",
+          message:
+            json.detail ?? json.error ?? "Couldn't extract coordinates.",
+        });
+        return;
+      }
+      setLat(json.lat.toFixed(6));
+      setLng(json.lng.toFixed(6));
+      setResolveFeedback({
+        kind: "ok",
+        source: json.source ?? "resolved",
+        inLucknow: Boolean(json.inLucknow),
+      });
+      setPaste("");
+    } catch (err) {
+      setResolveFeedback({
+        kind: "err",
+        message: err instanceof Error ? err.message : "Network error",
+      });
+    } finally {
+      setResolving(false);
+    }
+  }
+
+  // photoUrl that actually ships with the publish payload. In blank
+  // mode we prefer the manually-uploaded URL; in scan mode the photo
+  // came from Gemini-scan above and lives on `scan.photoUrl`.
+  const effectivePhotoUrl = uploadedPhotoUrl || scan.photoUrl || "";
+
   const canPublish =
     Number.isFinite(parseFloat(lat)) && Number.isFinite(parseFloat(lng));
 
@@ -1335,6 +1440,126 @@ function SpotReviewForm({
             : "Live spots auto-expire after 8 hours. Photo + lat/lng required."}
         </p>
 
+        {/* Manual-create extras: photo upload + paste-anything address
+            resolver. Render only in blank mode; scan mode has those
+            affordances in the sticky sidebar already. */}
+        {blank ? (
+          <div className="mt-5 grid gap-4">
+            {/* Photo upload card */}
+            <div className="rounded-xl border border-cyan-400/15 bg-[#080A10]/55 p-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
+                    Photo <span className="text-cream-50/50">(optional)</span>
+                  </p>
+                  <p className="text-xs text-cream-50/55 mt-1">
+                    Attach a phone-camera shot of the spot. JPG / PNG / WebP, ≤ 10 MB.
+                  </p>
+                </div>
+                <label className="inline-flex items-center gap-2 rounded-lg border border-cyan-400/30 bg-cyan-400/[0.05] hover:bg-cyan-400/[0.10] hover:border-cyan-400/55 text-cream-50 text-sm px-3 py-1.5 cursor-pointer transition-colors">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(ev) => {
+                      const f = ev.target.files?.[0];
+                      if (f) void uploadPhoto(f);
+                      ev.target.value = "";
+                    }}
+                    className="sr-only"
+                  />
+                  {uploading ? (
+                    <>
+                      <Spinner />
+                      Uploading…
+                    </>
+                  ) : effectivePhotoUrl ? (
+                    "Replace photo"
+                  ) : (
+                    "Add photo"
+                  )}
+                </label>
+              </div>
+              {effectivePhotoUrl ? (
+                <div className="mt-3 flex items-start gap-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={effectivePhotoUrl}
+                    alt="uploaded spot preview"
+                    className="h-20 w-20 rounded-lg object-cover border border-cyan-400/25 bg-[#080A10]/70"
+                  />
+                  <div className="min-w-0 text-[11px] text-cream-50/55 break-all leading-snug">
+                    {effectivePhotoUrl}
+                  </div>
+                </div>
+              ) : null}
+              {uploadError ? (
+                <p className="mt-2 text-xs text-alert-500">{uploadError}</p>
+              ) : null}
+            </div>
+
+            {/* Address-resolver card: paste anything Maps-y and fill lat/lng */}
+            <div className="rounded-xl border border-cyan-400/15 bg-[#080A10]/55 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
+                Resolve location
+              </p>
+              <p className="text-xs text-cream-50/55 mt-1">
+                Paste a Google Maps link, Plus Code, or raw coords. Lat/lng below fill in one click.
+              </p>
+              <div className="mt-2 flex gap-2 flex-wrap">
+                <input
+                  type="text"
+                  value={paste}
+                  onChange={(ev) => setPaste(ev.target.value)}
+                  onKeyDown={(ev) => {
+                    if (ev.key === "Enter") {
+                      ev.preventDefault();
+                      void resolveCoords();
+                    }
+                  }}
+                  placeholder="https://maps.app.goo.gl/…  ·  VXR6+QP Lucknow  ·  26.89,80.96"
+                  className="flex-1 min-w-[220px] rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono text-sm placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => void resolveCoords()}
+                  disabled={resolving || !paste.trim()}
+                  className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-cream-50 font-mono font-semibold border border-cyan-300/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {resolving ? (
+                    <>
+                      <Spinner />
+                      Resolving…
+                    </>
+                  ) : (
+                    "Resolve"
+                  )}
+                </button>
+              </div>
+              {resolveFeedback.kind === "ok" ? (
+                <p className="mt-2 text-xs text-leaf-400 inline-flex items-center gap-1.5">
+                  <IconCheck size={12} />
+                  <span>
+                    Coordinates filled from {resolveFeedback.source.replace(/_/g, " ")}.
+                  </span>
+                  {!resolveFeedback.inLucknow ? (
+                    <span className="ml-1 text-alert-500">
+                      ⚠ Outside Lucknow bbox, double-check.
+                    </span>
+                  ) : null}
+                </p>
+              ) : resolveFeedback.kind === "err" ? (
+                <p className="mt-2 text-xs text-alert-500">
+                  {resolveFeedback.message}
+                </p>
+              ) : (
+                <p className="mt-2 text-[11px] text-cream-50/50 font-mono">
+                  Google Maps → Share → Copy link → paste.
+                </p>
+              )}
+            </div>
+          </div>
+        ) : null}
+
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <Field
             label="Caption"
@@ -1387,7 +1612,11 @@ function SpotReviewForm({
                 address: address || undefined,
                 caption: caption || undefined,
                 language,
-                photoUrl: scan.photoUrl,
+                // Prefer the manually-uploaded URL when present
+                // (blank-mode photo widget); otherwise the Gemini-
+                // scan path's scan.photoUrl. Sending undefined when
+                // truly empty keeps the server schema happy.
+                photoUrl: effectivePhotoUrl || undefined,
                 reporterName: reporterName || undefined,
               })
             }
