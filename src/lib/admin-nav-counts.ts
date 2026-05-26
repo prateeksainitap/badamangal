@@ -46,7 +46,13 @@ async function _fetchNavCounts(): Promise<AdminNavCounts> {
     }),
     prisma.bhandaraMention.count({ where: { status: "PENDING" } }),
     prisma.organiseRequest.count({ where: { status: "NEW" } }),
-    prisma.volunteer.count({ where: { status: "PENDING" } }),
+    // Volunteer count = total signups (any status). Previously
+    // filtered to status="PENDING" which is always 0 because new
+    // signups auto-advance to PROBATIONARY → the badge always
+    // hid. Switching to total so the sidebar shows the size of
+    // the volunteer programme at a glance (operator's view, no
+    // workflow-action implied).
+    prisma.volunteer.count(),
     prisma.contactMessage.count({ where: { status: "NEW" } }),
     // Bot-log badge surfaces last-24h ingest failures so the
     // operator notices Gemini hiccups / R2 upload errors / classify
