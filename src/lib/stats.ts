@@ -85,6 +85,19 @@ export type SiteStats = {
    ──────────────────────────────────────────────────────────────── */
 
 let homepageStatsPromise: Promise<SiteStats> | null = null;
+/** Wall-clock timestamp of when `homepageStatsPromise` was kicked off.
+ *  Drives the cache-TTL gate below — once the promise is older than
+ *  STATS_CACHE_TTL_MS we recompute on the next call instead of handing
+ *  back stale numbers. NaN sentinel means "no cache yet". */
+let homepageStatsPromiseStartedAt = Number.NaN;
+/** Cache-fresh window. Slightly under the homepage's
+ *  `export const revalidate = 60` so a fresh ISR pass always hits a
+ *  fresh stats compute (avoids serving 60-second-old HTML built on
+ *  120-second-old stats). 45s is short enough that the Mentioned-in-
+ *  chat tile follows the bot's traffic with at most ~45s of lag,
+ *  long enough that bursts of homepage views collapse onto a
+ *  shared compute. */
+const STATS_CACHE_TTL_MS = 45 * 1000;
 
 /**
  * Read-only homepage stats, safe to call from a cacheable (ISR) page.
@@ -103,7 +116,21 @@ let homepageStatsPromise: Promise<SiteStats> | null = null;
  * Module-level cached, pass `{ fresh: true }` to skip the cache.
  */
 export function getHomepageStats(opts?: { fresh?: boolean }): Promise<SiteStats> {
-  if (opts?.fresh || !homepageStatsPromise) {
+  const now = Date.now();
+  const ageMs = now - homepageStatsPromiseStartedAt;
+  const isStale =
+    !homepageStatsPromise ||
+    Number.isNaN(homepageStatsPromiseStartedAt) ||
+    ageMs > STATS_CACHE_TTL_MS;
+  if (opts?.fresh || isStale) {
+    // TTL recompute (added 2026-05-26 after operator noticed the
+    // headline "Mentioned in chat" counter lagged the live DB by
+    // a couple of rows for a long time). The earlier implementation
+    // memoised the in-flight promise indefinitely; the cached value
+    // was only ever discarded on rejection, so a successful first
+    // compute would serve the same number for the rest of the
+    // Lambda's lifetime — sometimes hours.
+    //
     // Self-invalidating cache: if the underlying compute rejects
     // (transient Supabase pooler blip during cold start, etc.), we
     // clear the memoised promise so the next caller retries instead
@@ -114,11 +141,15 @@ export function getHomepageStats(opts?: { fresh?: boolean }): Promise<SiteStats>
     // and can degrade locally (see page.tsx Promise.allSettled).
     const p = computeHomepageStats();
     p.catch(() => {
-      if (homepageStatsPromise === p) homepageStatsPromise = null;
+      if (homepageStatsPromise === p) {
+        homepageStatsPromise = null;
+        homepageStatsPromiseStartedAt = Number.NaN;
+      }
     });
     homepageStatsPromise = p;
+    homepageStatsPromiseStartedAt = now;
   }
-  return homepageStatsPromise;
+  return homepageStatsPromise as Promise<SiteStats>;
 }
 
 /**
@@ -128,6 +159,7 @@ export function getHomepageStats(opts?: { fresh?: boolean }): Promise<SiteStats>
  */
 export function invalidateHomepageStatsCache(): void {
   homepageStatsPromise = null;
+  homepageStatsPromiseStartedAt = Number.NaN;
 }
 
 async function computeHomepageStats(): Promise<SiteStats> {
