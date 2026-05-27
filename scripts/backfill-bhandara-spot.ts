@@ -46,7 +46,7 @@ async function main() {
     process.exit(1);
   }
   if (row.lat === 0 || row.lng === 0) {
-    console.error("lat/lng is 0,0 — refuse to plant a wrong pin");
+    console.error("lat/lng is 0,0, refuse to plant a wrong pin");
     process.exit(1);
   }
 
@@ -55,7 +55,7 @@ async function main() {
     select: { id: true, status: true },
   });
   if (existing) {
-    console.log("existing spot:", existing, "— nothing to do");
+    console.log("existing spot:", existing, "- nothing to do");
     return;
   }
 

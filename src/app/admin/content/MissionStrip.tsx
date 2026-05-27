@@ -5,7 +5,7 @@ import { nextBadaMangalAfterToday } from "@/lib/dates";
  * Content Hub Mission Strip.
  *
  * Replaces the old static "Everything you send outbound" hero
- * with a contextual status header — the operator opens this page
+ * with a contextual status header - the operator opens this page
  * on off-days and the first question is always "what should I
  * send today?", not "what is this page".
  *
@@ -27,7 +27,7 @@ import { nextBadaMangalAfterToday } from "@/lib/dates";
  *     those rows.
  *
  * All counts come from the parent's Promise.allSettled so a single
- * EMAXCONN doesn't blank the strip — defensive zeros render
+ * EMAXCONN doesn't blank the strip - defensive zeros render
  * cleanly.
  */
 export default function MissionStrip({
@@ -199,7 +199,7 @@ function StatTile({
         s.ring,
       ].join(" ")}
     >
-      {/* Tone dot, top-right corner — same dot that surfaces on
+      {/* Tone dot, top-right corner - same dot that surfaces on
           the tab strip when this tile has work to do. */}
       <span
         aria-hidden
@@ -238,7 +238,7 @@ function formatCountdown(next: Date): { dateLabel: string; daysLeft: number } {
   const ms = msBetweenIstDates(istToday, istNext);
   const daysLeft = Math.round(ms / (24 * 60 * 60 * 1000));
 
-  // "Tue 2 Jun" — short, scannable, no year (every Bada Mangal in
+  // "Tue 2 Jun" - short, scannable, no year (every Bada Mangal in
   // the season is current-year).
   const dateLabel = next.toLocaleDateString("en-IN", {
     weekday: "short",
@@ -260,7 +260,7 @@ function istDateString(d: Date): string {
 
 function msBetweenIstDates(a: string, b: string): number {
   // a, b are YYYY-MM-DD strings already in IST. Parse them back to
-  // midnight-UTC dates and diff — the resulting ms is exactly the
+  // midnight-UTC dates and diff - the resulting ms is exactly the
   // number of calendar days between them × 86_400_000.
   const aDate = new Date(`${a}T00:00:00Z`);
   const bDate = new Date(`${b}T00:00:00Z`);

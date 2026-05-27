@@ -15,7 +15,7 @@ const prisma = new PrismaClient();
 
 const SOURCE_SLUG = "volunteer-terms-draft.md";
 
-const TITLE = "Volunteer programme — terms & conditions (draft for /volunteer)";
+const TITLE = "Volunteer programme, terms & conditions (draft for /volunteer)";
 
 const SUMMARY =
   "Draft T&C text for the /volunteer signup form. Covers DPDP-compliant data consent, honorarium framing, photo/content rights, suspension grounds, and 18+/Lucknow eligibility. Bilingual summary on top, plain English below. Review for tone + ask a lawyer before publishing.";
@@ -84,19 +84,19 @@ in or familiar with Lucknow. By signing up you confirm both.
 
 When you sign up, we collect:
 
-- **Name** — for coordination and ID card
-- **Phone number** — for WhatsApp messages (your unique volunteer
+- **Name**: for coordination and ID card
+- **Phone number**: for WhatsApp messages (your unique volunteer
   code + Tuesday plans)
-- **UPI ID** — to pay honorarium directly to you
-- **Areas you cover** — to assign you to the right team
+- **UPI ID**: to pay honorarium directly to you
+- **Areas you cover**: to assign you to the right team
 
 After your first call with us, you may share additionally:
 
-- **Photo** — for your ID card
-- **Postal address** — to mail the ID card
-- **Last 4 digits of Aadhaar or voter ID** — trust signal,
+- **Photo**: for your ID card
+- **Postal address**: to mail the ID card
+- **Last 4 digits of Aadhaar or voter ID**: trust signal,
   matched against UPI account name at first payout
-- **Year of birth** — to filter under-18s
+- **Year of birth**: to filter under-18s
 
 **We do not sell, rent, or share any of this data with third
 parties.** We use it only for the volunteer coordination
@@ -157,7 +157,7 @@ We expect every volunteer to:
 
 - Be **respectful** to organizers, community members, and other
   volunteers, regardless of caste, religion, or social standing
-- Use the volunteer code only for **genuine submissions** —
+- Use the volunteer code only for **genuine submissions**:
   fake, duplicate, or speculative submissions are grounds for
   suspension
 - Not impersonate other volunteers, organizers, or BadaMangal
@@ -242,7 +242,7 @@ When wiring this into \`/volunteer\`:
    "मैंने terms पढ़े और मानता/मानती हूँ। I have read and agree to the terms."
    Form Submit button stays disabled until checked.
 
-3. **Schema change** — add to \`Volunteer\`:
+3. **Schema change**: add to \`Volunteer\`:
    \`\`\`prisma
    termsAcceptedAt   DateTime?
    termsVersion      String?    // "2026-05-27" or whatever the
@@ -259,7 +259,7 @@ When wiring this into \`/volunteer\`:
 
 5. **Update the welcome message templates** (already in Content
    Hub) to mention "By replying you reaffirm the terms you
-   accepted at signup" — light touch, not a wall of legalese.
+   accepted at signup", light touch, not a wall of legalese.
 
 ## Things to ask the lawyer
 
@@ -267,17 +267,17 @@ If you want a Lucknow lawyer to review (recommended for a
 ~30-minute review, ~₹2,000-3,000 fee), the specific questions
 worth their attention:
 
-- **Section 5 honorarium framing** — is "discretionary goodwill
+- **Section 5 honorarium framing**: is "discretionary goodwill
   gratuity, not salary" sufficient under Indian Contract Act +
   Payment of Wages Act to prevent re-classification as
   employment? Some lawyers prefer "ex gratia payment" terminology.
-- **Section 6 photo rights** — is "non-exclusive, irrevocable,
+- **Section 6 photo rights**: is "non-exclusive, irrevocable,
   royalty-free license for community purposes" the right phrase,
   or should it be "perpetual" instead of "irrevocable"?
-- **Section 9 liability disclaimer** — Indian consumer
+- **Section 9 liability disclaimer**: Indian consumer
   protection law sometimes voids broad disclaimers. Worth
   asking which parts of section 9 are actually enforceable.
-- **Section 12 governing law + jurisdiction** — exclusive vs
+- **Section 12 governing law + jurisdiction**: exclusive vs
   non-exclusive jurisdiction, do you need an arbitration clause
   for a community programme of this size? (Probably not, but
   ask.)
@@ -321,7 +321,7 @@ async function main() {
     },
     select: { id: true, title: true },
   });
-  console.log(`[seed] inserted: ${created.id} — ${created.title}`);
+  console.log(`[seed] inserted: ${created.id}, ${created.title}`);
   await prisma.$disconnect();
 }
 

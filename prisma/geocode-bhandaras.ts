@@ -35,7 +35,7 @@ function loadEnvLocal() {
       if (!process.env[key]) process.env[key] = val;
     }
   } catch {
-    /* file missing — env may already be in process.env */
+    /* file missing - env may already be in process.env */
   }
 }
 loadEnvLocal();
@@ -52,7 +52,7 @@ if (!OLA_API_KEY) {
 // a server-side script the request has no Referer by default, and the
 // API rejects with `"Domain is not allowed."`. Faking these headers to
 // match the whitelisted localhost origin lets the script geocode
-// against the same key the browser uses — no separate "server key"
+// against the same key the browser uses - no separate "server key"
 // needed.
 const REFERER_HEADERS = {
   Origin: "http://localhost:3030",
@@ -92,7 +92,7 @@ type GeocodeHit = {
  * Try the Geocode endpoint first; if it returns nothing usable, fall
  * back to Autocomplete + take the first prediction. Autocomplete is
  * forgiving with messy addresses (which our WhatsApp invites tend to
- * be — "Awadh Tent House, E-3851, Rajajipuram, Lucknow").
+ * be - "Awadh Tent House, E-3851, Rajajipuram, Lucknow").
  */
 async function geocode(address: string): Promise<GeocodeHit | null> {
   // ── 1) Geocode API ───────────────────────────────────────────────
@@ -182,7 +182,7 @@ const PINNED_SLUGS = new Set<string>([
   "hanuman-mandir-civil-hospital-mahanagar",
   // Janki Plaza: Ola couldn't find the venue and kept resolving the
   // bare "Jankipuram" query to a generic Lucknow centroid 7 km off. We
-  // hand-pinned it to Sector G/H — don't let the bulk pass regress.
+  // hand-pinned it to Sector G/H - don't let the bulk pass regress.
   "janki-plaza-bhandara-jankipuram",
 ]);
 
@@ -209,7 +209,7 @@ async function main() {
     if (!/lucknow/i.test(b.address)) {
       candidates.push(`${b.address}, Lucknow`);
     }
-    // Also try landmark + area + Lucknow as a last resort — that's
+    // Also try landmark + area + Lucknow as a last resort - that's
     // often the most specific search-engine-friendly form.
     if (b.landmark) {
       candidates.push(`${b.landmark}, ${b.area}, Lucknow`);
@@ -229,7 +229,7 @@ async function main() {
 
     if (!hit) {
       console.log(`  · ${b.name}`);
-      console.log(`    ⚠ no match — keeping (${b.lat}, ${b.lng})`);
+      console.log(`    ⚠ no match, keeping (${b.lat}, ${b.lng})`);
       skipped += 1;
       continue;
     }

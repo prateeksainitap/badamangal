@@ -8,12 +8,12 @@ import DbHealth from "./DbHealth";
  * pill, hence the name. After Bada Mangal #4 we wanted a DB-health
  * pill in the same slot. Rather than plumb a new prop through 17
  * admin pages, the default export now renders BOTH pills (DB first,
- * bot second) wrapped in a single flex container — every page that
+ * bot second) wrapped in a single flex container - every page that
  * already passes `<BotHeartbeat />` into AdminShell's `botHeartbeat`
  * slot automatically picks up the DB pill too.
  *
  * If you add a third pill (R2 health, Gemini status, …) the same
- * convention applies — add it here and every admin page gets it.
+ * convention applies - add it here and every admin page gets it.
  */
 export default function BotHeartbeat() {
   return (

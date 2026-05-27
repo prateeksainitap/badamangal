@@ -18,18 +18,18 @@
  *   2. nano ~/bm-ingest/bot.mjs
  *   3. Paste the block below at the END of the file (after every
  *      existing line). It assumes `sock`, `INGEST_URL`, and the
- *      `BOT_INGEST_SECRET` env var are already in scope — they are
+ *      `BOT_INGEST_SECRET` env var are already in scope - they are
  *      in the existing bot. If you renamed those, update the three
  *      references marked with "ASSUMPTION" below.
  *   4. Save (Ctrl-O, Enter), exit (Ctrl-X).
  *   5. Restart the launchd-managed bot:
  *        launchctl kickstart -k gui/$UID/com.badamangal.bot
- *      (replace the label with whatever your plist uses — `launchctl
+ *      (replace the label with whatever your plist uses - `launchctl
  *      list | grep badamangal` will show it.)
  *   6. Watch the log:
  *        tail -F ~/bm-ingest/bot.log | grep -E "text|location|message"
  *   7. From your personal phone, drop a text into BM Ingest 2:
- *        Bhandara at Ram Mandir, Sector E, Aliganj — 11 AM aaj
+ *        Bhandara at Ram Mandir, Sector E, Aliganj - 11 AM aaj
  *      Then check badamangal.com/admin/mentions for the PENDING row.
  *
  * If anything errors, paste the log lines back to me.
@@ -145,7 +145,7 @@ async function postBotMessage(body, kindLabel) {
   }
 }
 
-// In-memory dedup across reconnects — same belt-and-braces pattern as
+// In-memory dedup across reconnects - same belt-and-braces pattern as
 // the image listener. Server also dedupes on msgId, but skipping the
 // wire saves a Gemini call and a log line.
 const seenMessageIds = new Set();
@@ -166,7 +166,7 @@ sock.ev.on("messages.upsert", async ({ messages, type }) => {
       if (msgId && seenMessageIds.has(msgId)) continue;
       if (msgId) seenMessageIds.add(msgId);
 
-      // Skip images entirely — that's the existing listener's job.
+      // Skip images entirely - that's the existing listener's job.
       // We pick up the caption on the image-ingest side already.
       if (m.message?.imageMessage) continue;
 
@@ -198,7 +198,7 @@ sock.ev.on("messages.upsert", async ({ messages, type }) => {
       // ── Plain text / extended text ────────────────────────────
       const text = extractText(m);
       if (!text) continue;
-      // Skip pure-emoji or super-short noise — the server's
+      // Skip pure-emoji or super-short noise - the server's
       // classifier would route to UNRELATED anyway. Two chars is a
       // generous floor; "ok" / "ji" / "👍" all skip; "AKA" passes.
       if (text.length < 3) continue;

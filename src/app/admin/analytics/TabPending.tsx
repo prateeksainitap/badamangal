@@ -11,7 +11,7 @@ import { useLinkStatus } from "next/link";
  * operator know a tab click registered, even on a cold-pool
  * tab that takes ~500-1000 ms to land.
  *
- * Used INSIDE each <Link> child in /admin/analytics/page.tsx —
+ * Used INSIDE each <Link> child in /admin/analytics/page.tsx -
  * the hook gives the pending status of the nearest ancestor Link.
  */
 export default function TabPending() {

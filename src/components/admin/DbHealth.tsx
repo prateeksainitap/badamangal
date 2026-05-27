@@ -9,7 +9,7 @@ import { prisma } from "@/lib/db";
  *
  * Why count(APPROVED) and not a generic `SELECT 1`? The failure
  * mode we actually got bitten by during Bada Mangal #4 wasn't
- * "the connection is dead" — it was "the connection is alive
+ * "the connection is dead" - it was "the connection is alive
  * but every query in flight starts rejecting / timing out, and
  * the homepage's catch fallback fires its empty stub, so the
  * banner says 'All 0'". A trivial `SELECT 1` would still report
@@ -26,7 +26,7 @@ import { prisma } from "@/lib/db";
  *   - otherwise           → "DB · online" (green)
  *
  * The pill renders ~30-80 ms warm. Acceptable to run on every
- * admin page render — the operator stares at this pill exactly so
+ * admin page render - the operator stares at this pill exactly so
  * they catch the moment the homepage flips to empty BEFORE a
  * visitor reports it.
  */

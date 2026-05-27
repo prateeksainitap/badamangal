@@ -69,10 +69,13 @@ const COPY = {
       generic: "कुछ गड़बड़ी हुई। फिर से कोशिश करें।",
     },
     submit: {
-      submitting: "आपका application भेजा जा रहा है…",
-      idle: "🙏 मेरा application भेजें",
+      submitting: "आपका आवेदन भेजा जा रहा है…",
+      idle: "🙏 मेरा आवेदन भेजें",
       tnc:
-        "हर application हम मैनुअली review करते हैं। आपका volunteer code 24 घंटे के अंदर आपके WhatsApp पर भेज दिया जाएगा।",
+        "हर आवेदन की हम स्वयं समीक्षा करते हैं। आपका स्वयंसेवक कोड 24 घंटे के भीतर आपके वॉट्सऐप पर भेज दिया जाएगा।",
+      viewTerms: "नियम और शर्तें पढ़ें →",
+      tncPrefix: "आवेदन भेजने से पहले कृपया",
+      tncSuffix: "देख लीजिए।",
     },
     success: {
       greetingPrefix: "जय श्री राम,",
@@ -130,6 +133,9 @@ const COPY = {
       idle: "🙏 Submit my application",
       tnc:
         "Applications are reviewed manually. Your volunteer code will be sent to your WhatsApp within 24 hours.",
+      viewTerms: "View terms & conditions →",
+      tncPrefix: "Before submitting, please review our",
+      tncSuffix: ".",
     },
     success: {
       greetingPrefix: "Jai Shree Ram,",
@@ -349,6 +355,19 @@ export default function VolunteerSignupForm() {
           )}
         </button>
         <p className="text-center text-xs text-ink-600">{t.submit.tnc}</p>
+        <p className="text-center text-xs text-ink-600">
+          {t.submit.tncPrefix}{" "}
+          <Link
+            href="/volunteer/terms"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-ga="volunteer_signup_view_terms"
+            className="text-saffron-600 hover:text-sindoor-700 underline underline-offset-2 font-medium"
+          >
+            {t.submit.viewTerms}
+          </Link>
+          {t.submit.tncSuffix}
+        </p>
       </div>
     </form>
   );

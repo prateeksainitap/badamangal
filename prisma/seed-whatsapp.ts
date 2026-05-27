@@ -6,7 +6,7 @@
  *   1. WIPES all existing `Spot` rows
  *   2. WIPES all existing `Bhandara` rows (including the demo seed)
  *   3. Inserts 19 bhandaras with status = APPROVED so they go live on
- *      the city map immediately. `isVerified` stays false — the team
+ *      the city map immediately. `isVerified` stays false - the team
  *      will phone-confirm later to add the green badge.
  *
  * Photos are pre-copied to `/public/uploads/whatsapp/<slug>.jpg` so the
@@ -24,7 +24,7 @@ import { menuHiFor } from "../src/lib/menu";
 
 const prisma = new PrismaClient();
 
-// Tuesday 12 May 2026 — the first Bada Mangal of the 2026 season.
+// Tuesday 12 May 2026 - the first Bada Mangal of the 2026 season.
 const TUE_12_MAY = "2026-05-12";
 const TUE_19_MAY = "2026-05-19";
 const SAT_16_MAY = "2026-05-16"; // Shani Jayanti Bhandara
@@ -51,7 +51,7 @@ type SeedBhandara = {
 };
 
 const ROWS: SeedBhandara[] = [
-  // 1) Pragati Mart, LU 2nd Campus, Jankipuram — 10:15 AM
+  // 1) Pragati Mart, LU 2nd Campus, Jankipuram - 10:15 AM
   {
     slug: "bada-mangal-mahotsav-pragati-mart",
     name: "Bada Mangal Mahotsav 2026",
@@ -76,11 +76,11 @@ const ROWS: SeedBhandara[] = [
     photoSlug: "pragati-mart-jankipuram",
   },
 
-  // 2) Hanuman Mandir, Cotton Mill, Talkatora — 9 AM Sundarkand + 12 PM Bhandara
+  // 2) Hanuman Mandir, Cotton Mill, Talkatora - 9 AM Sundarkand + 12 PM Bhandara
   {
     slug: "hanuman-mandir-talkatora-bhandara",
-    name: "Hanuman Mandir Bhandara — Talkatora",
-    nameHi: "हनुमान मंदिर भंडारा — तालकटोरा",
+    name: "Hanuman Mandir Bhandara, Talkatora",
+    nameHi: "हनुमान मंदिर भंडारा, तालकटोरा",
     description:
       "Sundarkand Path from 9 AM, Vishal Bhandara from 12 PM onwards at Hanuman Mandir, Cotton Mill, Talkatora.",
     descriptionHi:
@@ -99,7 +99,7 @@ const ROWS: SeedBhandara[] = [
     photoSlug: "hanuman-mandir-talkatora",
   },
 
-  // 3) Awadh Tent House, E-3851, Rajajipuram — Shrivastav Pariwar
+  // 3) Awadh Tent House, E-3851, Rajajipuram - Shrivastav Pariwar
   {
     slug: "shrivastav-pariwar-rajajipuram",
     name: "Shrivastav Pariwar Bhandara",
@@ -122,15 +122,15 @@ const ROWS: SeedBhandara[] = [
     photoSlug: "awadh-tent-house-rajajipuram",
   },
 
-  // 4) Hotel ANR, Gurudwara Road, Naka Hindola — 12 PM
+  // 4) Hotel ANR, Gurudwara Road, Naka Hindola - 12 PM
   {
     slug: "vishal-bhandara-hotel-anr-naka-hindola",
-    name: "Vishal Bhandara — Hotel ANR",
-    nameHi: "विशाल भंडारा — होटल ए.एन.आर.",
+    name: "Vishal Bhandara, Hotel ANR",
+    nameHi: "विशाल भंडारा, होटल ए.एन.आर.",
     description:
       "Vishal Bhandara on the auspicious second Bada Mangal, Tuesday 12 May 2026.",
     descriptionHi:
-      "द्वितीय बड़ा मंगल निमंत्रण — विशाल भंडारा का आयोजन।",
+      "द्वितीय बड़ा मंगल निमंत्रण, विशाल भंडारा का आयोजन।",
     area: "Naka Hindola",
     address:
       "Hotel ANR, Gurudwara Road, Naka Hindola, Lucknow",
@@ -149,8 +149,8 @@ const ROWS: SeedBhandara[] = [
   // 5) Nawab Pasad Chauraha, Near TD Girls College
   {
     slug: "bhandara-nawab-pasad-chauraha",
-    name: "Bhandara — Nawab Pasad Chauraha",
-    nameHi: "भंडारा — नवाब पसाद चौराहा",
+    name: "Bhandara, Nawab Pasad Chauraha",
+    nameHi: "भंडारा, नवाब पसाद चौराहा",
     description:
       "Bada Mangal Bhandara at Nawab Pasad Chauraha, near TD Girls Inter College.",
     descriptionHi:
@@ -161,7 +161,7 @@ const ROWS: SeedBhandara[] = [
     addressHi:
       "नवाब पसाद चौराहा, टी.डी. गर्ल्स इंटर कॉलेज के पास, लखनऊ",
     landmark: "Near TD Girls Inter College",
-    // Ola geocode: Beli Garad Chauraha Main Rd, Sector J, Aliganj —
+    // Ola geocode: Beli Garad Chauraha Main Rd, Sector J, Aliganj -
     // the chauraha is colloquially called "Nawab Pasand" by locals.
     lat: 26.8993,
     lng: 80.9453,
@@ -173,11 +173,11 @@ const ROWS: SeedBhandara[] = [
     photoSlug: "nawab-pasad-chauraha",
   },
 
-  // 6) Vishesh Khand, Gomti Nagar — Hotel The Sara Grand / Digital Ninja Labs
+  // 6) Vishesh Khand, Gomti Nagar - Hotel The Sara Grand / Digital Ninja Labs
   {
     slug: "bhandara-vishesh-khand-gomti-nagar",
-    name: "Vishal Bhandara — Vishesh Khand",
-    nameHi: "विशाल भंडारा — विशेष खंड",
+    name: "Vishal Bhandara, Vishesh Khand",
+    nameHi: "विशाल भंडारा, विशेष खंड",
     description:
       "Sundarkand from 10 AM, Vishal Bhandara from 2 PM at Vishesh Khand, Gomti Nagar. Hosted by Digital Ninja Labs, Premium Shoe Care & Service, and Hotel The Sara Grand.",
     descriptionHi:
@@ -197,11 +197,11 @@ const ROWS: SeedBhandara[] = [
     photoSlug: "vishesh-khand-gomti-nagar",
   },
 
-  // 7) Ram Janki Mandir, Daroga Kheda — Mayfair / Vasudha Estate, Sarojini Nagar
+  // 7) Ram Janki Mandir, Daroga Kheda - Mayfair / Vasudha Estate, Sarojini Nagar
   {
     slug: "ram-janki-mandir-daroga-kheda-bhandara",
-    name: "Ram Janki Mandir Bhandara — Daroga Kheda",
-    nameHi: "राम जानकी मंदिर भंडारा — दरोगा खेड़ा",
+    name: "Ram Janki Mandir Bhandara, Daroga Kheda",
+    nameHi: "राम जानकी मंदिर भंडारा, दरोगा खेड़ा",
     description:
       "Sundarkand Path from 8 AM, Bhavya Bhandara from 10 AM at Ram Janki Mandir, near Outer Ring Road, Daroga Kheda, Kanpur Road.",
     descriptionHi:
@@ -222,7 +222,7 @@ const ROWS: SeedBhandara[] = [
     photoSlug: "ram-janki-daroga-kheda",
   },
 
-  // 8) Indu Medical Center, Sector-K, Aliganj — 11:30 AM
+  // 8) Indu Medical Center, Sector-K, Aliganj - 11:30 AM
   {
     slug: "indu-medical-bhandara-aliganj",
     name: "Indu Medical Center Bhandara",
@@ -253,7 +253,7 @@ const ROWS: SeedBhandara[] = [
     description:
       "Bada Mangal Mahotsav + Sundarkand Path at Devendram Complex, Indiranagar. Hosted by Arena Animation Lucknow Indiranagar, T-Institutes, Coffea, H²Glam Studio, and Oriental Engineers.",
     descriptionHi:
-      "बड़ा मंगल महोत्सव एवं सुंदरकांड पाठ — देवेंद्रम कॉम्प्लेक्स, इंदिरा नगर।",
+      "बड़ा मंगल महोत्सव एवं सुंदरकांड पाठ, देवेंद्रम कॉम्प्लेक्स, इंदिरा नगर।",
     area: "Indira Nagar",
     address:
       "C164, Aravali Marg, Indiranagar (Near Indiranagar Metro Station), Lucknow 226016",
@@ -298,8 +298,8 @@ const ROWS: SeedBhandara[] = [
   // 11) Janki Plaza, Jankipuram
   {
     slug: "janki-plaza-bhandara-jankipuram",
-    name: "Bada Mangal Bhandara — Janki Plaza",
-    nameHi: "बड़ा मंगल भंडारा — जानकी प्लाज़ा",
+    name: "Bada Mangal Bhandara, Janki Plaza",
+    nameHi: "बड़ा मंगल भंडारा, जानकी प्लाज़ा",
     description:
       "Bhandara at Janki Plaza on the second Bada Mangal of 2026.",
     descriptionHi:
@@ -321,11 +321,11 @@ const ROWS: SeedBhandara[] = [
     photoSlug: "janki-plaza-jankipuram",
   },
 
-  // 12) Patel Puram, Gomti Nagar Vistar — Anurag Singh Chauhan
+  // 12) Patel Puram, Gomti Nagar Vistar - Anurag Singh Chauhan
   {
     slug: "patel-puram-bhandara-gomti-vistar",
-    name: "Patel Puram Bhandara — Gomti Nagar Vistar",
-    nameHi: "पटेल पुरम भंडारा — गोमती नगर विस्तार",
+    name: "Patel Puram Bhandara, Gomti Nagar Vistar",
+    nameHi: "पटेल पुरम भंडारा, गोमती नगर विस्तार",
     description:
       "Sundarkand from 12:30 PM and Prasad Vitran from 2 PM, organised by Anurag Singh Chauhan, Advocate.",
     descriptionHi:
@@ -337,7 +337,7 @@ const ROWS: SeedBhandara[] = [
       "पटेल पुरम, निकट ग्रीनवुड अपार्टमेन्ट, ब्रॉड गोदाम ब्रिज के नीचे, लिफ्ट होटल, गोमती नगर विस्तार, लखनऊ",
     landmark: "Near Greenwood Apartment, under Brand Godam Bridge",
     // Ola geocode: Satlaj Apartment, Greenwood Ave, Sector 4 Gomti
-    // Nagar Vistar — same complex named in the invite.
+    // Nagar Vistar - same complex named in the invite.
     lat: 26.8342,
     lng: 81.0059,
     tuesdayDates: [TUE_12_MAY],
@@ -348,15 +348,15 @@ const ROWS: SeedBhandara[] = [
     photoSlug: "patel-puram-gomti-vistar",
   },
 
-  // 13) Virendra Construction, Verma Market, BBD, Tiwariganj — 6 PM
+  // 13) Virendra Construction, Verma Market, BBD, Tiwariganj - 6 PM
   {
     slug: "virendra-construction-bbd-tiwariganj",
-    name: "Sundarkand & Prasad Bhandara — Tiwariganj",
-    nameHi: "सुंदरकांड एवं प्रसाद भंडारा — तिवारीगंज",
+    name: "Sundarkand & Prasad Bhandara, Tiwariganj",
+    nameHi: "सुंदरकांड एवं प्रसाद भंडारा, तिवारीगंज",
     description:
       "Prasad Bhandara from 6 PM at Virendra Construction & Electrical, Verma Market, BBD, Tiwariganj.",
     descriptionHi:
-      "शाम 6 बजे से प्रसाद भंडारा — वीरेंद्र कंस्ट्रक्शन एंड इलेक्ट्रिकल।",
+      "शाम 6 बजे से प्रसाद भंडारा, वीरेंद्र कंस्ट्रक्शन एंड इलेक्ट्रिकल।",
     area: "Chinhat",
     address:
       "Virendra Construction & Electrical, Shop N-9, Verma Market, BBD, Tiwariganj, Lucknow",
@@ -398,7 +398,7 @@ const ROWS: SeedBhandara[] = [
     photoSlug: "blackwood-vikrant-khand",
   },
 
-  // 15) Shani Dev Mandir behind Hotel Clarks Avadh — Saturday 16 May (Shani Jayanti)
+  // 15) Shani Dev Mandir behind Hotel Clarks Avadh - Saturday 16 May (Shani Jayanti)
   {
     slug: "shani-janmotsav-clarks-avadh",
     name: "Shani Janmotsav Bhandara",
@@ -406,7 +406,7 @@ const ROWS: SeedBhandara[] = [
     description:
       "Bhandara on Shani Jayanti (Saturday 16 May 2026) at Shani Dev Mandir behind Hotel Clarks Avadh.",
     descriptionHi:
-      "दिन शनिवार, 16 मई 2026 को भण्डारे का आयोजन — शनि देव मन्दिर, होटल क्लार्क अवध के पीछे।",
+      "दिन शनिवार, 16 मई 2026 को भण्डारे का आयोजन, शनि देव मन्दिर, होटल क्लार्क अवध के पीछे।",
     area: "Hazratganj",
     address:
       "Shani Dev Mandir, behind Hotel Clarks Avadh, Lucknow",
@@ -423,15 +423,15 @@ const ROWS: SeedBhandara[] = [
     photoSlug: "shani-mandir-clarks-avadh",
   },
 
-  // 16) Mohan Mekin Gate, Daliganj — Tuesday 19 May 2026 (3rd Bada Mangal)
+  // 16) Mohan Mekin Gate, Daliganj - Tuesday 19 May 2026 (3rd Bada Mangal)
   {
     slug: "bada-mangal-mohan-mekin-daliganj",
-    name: "Bada Mangal — Mohan Mekin Gate",
-    nameHi: "बड़ा मंगल — मोहन मेकिन गेट",
+    name: "Bada Mangal, Mohan Mekin Gate",
+    nameHi: "बड़ा मंगल, मोहन मेकिन गेट",
     description:
       "Bada Mangal Bhandara at Mohan Mekin Gate, Bagshah Ji, Daliganj on 19 May 2026.",
     descriptionHi:
-      "मोहन मेकिन गेट, बगशाह जी, डालीगंज लखनऊ — दिनांक 19 मई 2026।",
+      "मोहन मेकिन गेट, बगशाह जी, डालीगंज लखनऊ, दिनांक 19 मई 2026।",
     area: "Daliganj",
     address: "Mohan Mekin Gate, Bagshah Ji, Daliganj, Lucknow",
     addressHi: "मोहन मेकिन गेट, बगशाह जी, डालीगंज लखनऊ",
@@ -446,21 +446,21 @@ const ROWS: SeedBhandara[] = [
     photoSlug: "mohan-mekin-daliganj",
   },
 
-  // 17) Hind Nagar Vyapar Mandal — Chungi Parag Road (Krishna Nagar zone)
+  // 17) Hind Nagar Vyapar Mandal - Chungi Parag Road (Krishna Nagar zone)
   {
     slug: "hind-nagar-vyapar-mandal-chungi-parag",
-    name: "Bada Mangal Bhandara — Hind Nagar Vyapar Mandal",
-    nameHi: "बड़ा मंगल भंडारा — हिन्द नगर व्यापार मंडल",
+    name: "Bada Mangal Bhandara, Hind Nagar Vyapar Mandal",
+    nameHi: "बड़ा मंगल भंडारा, हिन्द नगर व्यापार मंडल",
     description:
       "Bada Mangal Bhandara hosted by Hind Nagar Vyapar Mandal at Chungi, Parag Road, Lucknow.",
     descriptionHi:
-      "बड़ा मंगल भंडारा — आयोजक: हिन्द नगर व्यापार मंडल, चुंगी पराग रोड, लखनऊ।",
+      "बड़ा मंगल भंडारा, आयोजक: हिन्द नगर व्यापार मंडल, चुंगी पराग रोड, लखनऊ।",
     area: "Krishna Nagar",
     address: "Chungi, Parag Road, Hind Nagar, Krishna Nagar, Lucknow",
     addressHi: "चुंगी, पराग रोड, हिन्द नगर, कृष्णा नगर, लखनऊ",
     landmark: "Chungi, Parag Road",
     // Ola Maps geocode: "Chungi - Parag Rd, Hind Nagar, Sector C1, LDA
-    // Colony" — exact match for the invite's location.
+    // Colony" - exact match for the invite's location.
     lat: 26.78433,
     lng: 80.89219,
     tuesdayDates: [TUE_12_MAY],
@@ -471,11 +471,11 @@ const ROWS: SeedBhandara[] = [
     photoSlug: "hind-nagar-vyapar-mandal",
   },
 
-  // 18) Lucknow University Main Campus — Gate No. 3 & 4 parking, 12 May 12 PM
+  // 18) Lucknow University Main Campus - Gate No. 3 & 4 parking, 12 May 12 PM
   {
     slug: "lucknow-university-main-campus-bhandara",
-    name: "Bhandara — Lucknow University (Main Campus)",
-    nameHi: "भंडारा — लखनऊ विश्वविद्यालय (मुख्य परिसर)",
+    name: "Bhandara, Lucknow University (Main Campus)",
+    nameHi: "भंडारा, लखनऊ विश्वविद्यालय (मुख्य परिसर)",
     description:
       "Bada Mangal Bhandara at Lucknow University Main Campus parking between Gate No. 3 and 4. Prasad from 12 PM until Prabhu Iccha.",
     descriptionHi:
@@ -499,11 +499,11 @@ const ROWS: SeedBhandara[] = [
     photoSlug: "lucknow-university-gate-3-4",
   },
 
-  // 19) Hanuman Mandir near Civil Hospital, Mahanagar — Tue 12 May, 11 AM
+  // 19) Hanuman Mandir near Civil Hospital, Mahanagar - Tue 12 May, 11 AM
   {
     slug: "hanuman-mandir-civil-hospital-mahanagar",
-    name: "Vishal Bhandara — Hanuman Mandir, Mahanagar",
-    nameHi: "विशाल भंडारा — हनुमान मंदिर, महानगर",
+    name: "Vishal Bhandara, Hanuman Mandir, Mahanagar",
+    nameHi: "विशाल भंडारा, हनुमान मंदिर, महानगर",
     description:
       "Vishal Bhandara on the second Bada Mangal at Hanuman Mandir, near Civil Hospital, Mahanagar.",
     descriptionHi:
@@ -515,7 +515,7 @@ const ROWS: SeedBhandara[] = [
       "हनुमान मंदिर, निकट सिविल हॉस्पिटल, महानगर, लखनऊ",
     landmark: "Near Civil Hospital, Mahanagar",
     // Ola Maps geocode → "Civil Hospital, Bhau Rao Devras Hospital,
-    // Mandir Marg, Mahanagar Colony" — exact match for the invite.
+    // Mandir Marg, Mahanagar Colony" - exact match for the invite.
     lat: 26.875276,
     lng: 80.953652,
     tuesdayDates: [TUE_12_MAY],

@@ -9,7 +9,7 @@
  */
 import { PrismaClient } from "@prisma/client";
 
-// Rough centroid per Lucknow area. Hand-picked from satellite — accurate
+// Rough centroid per Lucknow area. Hand-picked from satellite - accurate
 // to ±1 km, which is what we need for "is this pin in the right
 // neighbourhood?" sanity checks.
 const AREA_CENTROIDS: Record<string, { lat: number; lng: number }> = {

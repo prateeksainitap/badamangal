@@ -30,7 +30,7 @@ export const dynamic = "force-dynamic";
  * /admin/content, the Content Hub.
  *
  * On off-days (every day except Tuesday during the Adhik Mas
- * season) this is the most-used admin page — the operator's
+ * season) this is the most-used admin page - the operator's
  * outreach cockpit. The redesigned header surfaces three things
  * that matter:
  *
@@ -41,7 +41,7 @@ export const dynamic = "force-dynamic";
  *      filtered Pitches view
  *
  * Tabs (Pitches / Templates / Strategy / Images / Prompts) get a
- * coloured dot when they have work waiting — green = ready,
+ * coloured dot when they have work waiting - green = ready,
  * saffron = needs follow-up. So the operator can scan the strip
  * and triage without expanding anything.
  *
@@ -96,19 +96,19 @@ export default async function ContentHubPage({
   // Tab counts + Mission Strip counts in a single parallel batch.
   //
   //   Tab counts (5):
-  //     0 — pitches ACTIVE count
-  //     1 — templates ACTIVE count
-  //     2 — strategy ACTIVE count
-  //     3 — gallery photos (tagged for Content Hub) count
-  //     4 — active prompts count
+  //     0 - pitches ACTIVE count
+  //     1 - templates ACTIVE count
+  //     2 - strategy ACTIVE count
+  //     3 - gallery photos (tagged for Content Hub) count
+  //     4 - active prompts count
   //
   //   Mission Strip counts (4), each filtered to PITCH so the strip
   //   reflects outbound pitch work specifically (templates are
   //   internal-org-facing, not "what did I send to a journalist"):
-  //     5 — ready: ACTIVE pitches with no recent send
-  //     6 — drafts: DRAFT pitches
-  //     7 — sent 7d: pitches lastSentAt > now - 7d
-  //     8 — awaiting reply: pitches awaitingReply = true
+  //     5 - ready: ACTIVE pitches with no recent send
+  //     6 - drafts: DRAFT pitches
+  //     7 - sent 7d: pitches lastSentAt > now - 7d
+  //     8 - awaiting reply: pitches awaitingReply = true
   //
   // Promise.allSettled so any single transient EMAXCONN renders as
   // a zero in that tile rather than 500ing the whole page.
@@ -291,7 +291,7 @@ export default async function ContentHubPage({
                   </span>
                 ) : null}
                 {/* Status dot. Sits to the right of the count when
-                    a tab has work pending — saffron for follow-up,
+                    a tab has work pending, saffron for follow-up,
                     cyan for ready. */}
                 {status ? (
                   <span
@@ -321,7 +321,7 @@ export default async function ContentHubPage({
             page), the chrome above stays mounted while only the
             body shows a skeleton fallback. Without this, the
             entire route awaits the tab's findMany before any
-            of the page paints — operator stares at blank space
+            of the page paints, operator stares at blank space
             for ~500-1500 ms per nav. The Suspense key on each
             includes the searchParams that drive that tab's
             query, so flipping audience / channel / q / filter

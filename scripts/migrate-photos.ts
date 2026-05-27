@@ -1,5 +1,5 @@
 /**
- * Phase 2b — One-shot Supabase Storage → Cloudflare R2 photo migration.
+ * Phase 2b - One-shot Supabase Storage → Cloudflare R2 photo migration.
  *
  * What it does:
  *   1. Walks every row in the 5 models that hold photo/file URLs.
@@ -17,7 +17,7 @@
  * Idempotency:
  *   Safe to re-run. Skips URLs that aren't on supabase.co (already
  *   migrated, external URLs, or local /uploads/ paths). Re-uploading
- *   the same file to R2 is also idempotent — same key, same body.
+ *   the same file to R2 is also idempotent - same key, same body.
  *
  * NewsItem.imageUrl is intentionally NOT touched. Those URLs are
  * scraped from publisher CDNs (Hindustan Times, Amar Ujala, etc),
@@ -26,14 +26,14 @@
  * Source-pointed credit.
  *
  * Required env vars (loaded from .env.local via @next/env):
- *   DATABASE_URL                — Postgres URL (Supabase or wherever)
- *   SUPABASE_URL                — https://<ref>.supabase.co
- *   SUPABASE_SERVICE_ROLE_KEY   — service-role key for Storage read
+ *   DATABASE_URL                - Postgres URL (Supabase or wherever)
+ *   SUPABASE_URL                - https://<ref>.supabase.co
+ *   SUPABASE_SERVICE_ROLE_KEY   - service-role key for Storage read
  *   R2_ACCOUNT_ID
  *   R2_ACCESS_KEY_ID
  *   R2_SECRET_ACCESS_KEY
- *   R2_BUCKET_NAME              — defaults to badamangal-photos
- *   R2_PUBLIC_URL               — defaults to https://cdn.badamangal.com
+ *   R2_BUCKET_NAME              - defaults to badamangal-photos
+ *   R2_PUBLIC_URL               - defaults to https://cdn.badamangal.com
  *
  * Run:
  *   npm run migrate:photos

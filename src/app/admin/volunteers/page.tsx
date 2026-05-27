@@ -351,7 +351,7 @@ function PendingApplicationCard({
             </a>
             <span className="font-mono">💳 {v.upi}</span>
             {areas.length > 0 ? (
-              // Wrap onto its own line, never truncate — same
+              // Wrap onto its own line, never truncate - same
               // rationale as the PENDING card variant above.
               <span className="basis-full">
                 📍 {areas.join(", ")}

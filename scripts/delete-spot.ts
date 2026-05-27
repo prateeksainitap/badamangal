@@ -1,7 +1,7 @@
 /**
  * One-off: delete a Spot by id. Used to clean up the wrongly-
  * backfilled Spot that the previous `backfill-bhandara-spot.ts`
- * created for a pamphlet bhandara — pamphlets belong in the admin
+ * created for a pamphlet bhandara - pamphlets belong in the admin
  * queue only, not as Spots on the live chat panel.
  *
  * Usage:

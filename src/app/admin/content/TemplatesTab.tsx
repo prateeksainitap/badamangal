@@ -4,13 +4,13 @@ import { FilterBar, EmptyState, TEMPLATE_AUDIENCE_OPTIONS } from "./PitchesTab";
 import { safeContentFindMany } from "./contentQuery";
 
 /**
- * Templates tab — Content rows where kind = "TEMPLATE".
+ * Templates tab - Content rows where kind = "TEMPLATE".
  *
  * Copy-paste templates for WhatsApp / email / Instagram. Audience
  * pivot here is organiser / volunteer / donor (vs sponsor / press
  * for pitches), since templates skew toward community comms.
  *
- * No status filter row (unlike Pitches) — templates aren't sent
+ * No status filter row (unlike Pitches) - templates aren't sent
  * one-off to a journalist, they're snippets the operator pastes
  * many times. The send-tracking model doesn't fit. Filter bar
  * still gives audience + channel + search.
@@ -60,7 +60,7 @@ export default async function TemplatesTab({
       }
     : (baseWhere as Record<string, unknown>);
 
-  // Defensive query via the shared helper — same migration-safe
+  // Defensive query via the shared helper - same migration-safe
   // fallback as PitchesTab so this page renders even when the
   // send-tracking columns haven't been added to Postgres yet.
   const rows = await safeContentFindMany({

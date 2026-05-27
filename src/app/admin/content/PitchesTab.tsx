@@ -4,7 +4,7 @@ import ContentEditor from "./ContentEditor";
 import { safeContentFindMany } from "./contentQuery";
 
 /**
- * Pitches tab — outbound pitch decks (sponsor, influencer, press).
+ * Pitches tab - outbound pitch decks (sponsor, influencer, press).
  * The most-used surface on off-days.
  *
  * Redesigned 2026-05-27: single-row audience nav, channel as a
@@ -76,7 +76,7 @@ export default async function PitchesTab({
   if (activeFilter === "ready") {
     where.status = "ACTIVE";
     // OR clause for "never sent OR stale-sent". Note this collides
-    // with the search OR below — both end up in the same property,
+    // with the search OR below - both end up in the same property,
     // so when search is also active we fold the conditions into AND
     // shape downstream.
     where.OR = [
@@ -229,7 +229,7 @@ export function FilterBar({
 
   return (
     <div className="rounded-2xl border border-cyan-400/15 bg-[#0B0E16]/85 backdrop-blur-sm p-3 sm:p-4 space-y-3">
-      {/* Status filter row — Pitches only. Mirrors the Mission
+      {/* Status filter row - Pitches only. Mirrors the Mission
           Strip's four tiles so the operator can pivot between
           tiles + chips and feel oriented. */}
       {showStatusRow ? (
@@ -260,7 +260,7 @@ export function FilterBar({
         </div>
       ) : null}
 
-      {/* Audience row — primary horizontal nav. */}
+      {/* Audience row - primary horizontal nav. */}
       <div className="flex items-center gap-1.5 flex-wrap">
         <span className="text-[10px] uppercase tracking-[0.16em] font-mono text-cream-50/45 mr-1">
           Audience
@@ -287,7 +287,7 @@ export function FilterBar({
       </div>
 
       {/* Channel + search row. Channel is a native <select> styled
-          to match — saves a row over the previous chip rendering
+          to match, saves a row over the previous chip rendering
           and reduces the cognitive load of two horizontal chip
           stacks competing for attention. */}
       <form
@@ -401,7 +401,7 @@ export const TEMPLATE_AUDIENCE_OPTIONS = [
   { key: "COMMUNITY", label: "Community" },
 ];
 
-// Legacy export — TemplatesTab still imports `FilterStrip` from
+// Legacy export - TemplatesTab still imports `FilterStrip` from
 // here. Aliased to the new FilterBar so we don't have to touch
 // TemplatesTab unless its UX also needs the redesign.
 export { FilterBar as FilterStrip };

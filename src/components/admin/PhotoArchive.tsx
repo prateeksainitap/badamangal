@@ -22,12 +22,12 @@ import { prisma } from "@/lib/db";
  *   - Image bytes served from R2 / Supabase CDN, NOT from our DB
  *   - <img loading="lazy"> defers actual byte-fetch until scrolled
  *     into view
- *   - No polling, no client-side fetching, no real-time updates —
+ *   - No polling, no client-side fetching, no real-time updates -
  *     a refresh-to-update page so admins can audit at will without
  *     adding background load
  *
  * The "live" set is approximated by status only, not by upcoming
- * Tuesday dates — an APPROVED bhandara whose tuesdayDates are all
+ * Tuesday dates - an APPROVED bhandara whose tuesdayDates are all
  * in the past will show up under Live here even though it isn't
  * rendered on the public homepage. Acceptable simplification; the
  * exact "rendered on the public homepage right now" check requires
@@ -55,7 +55,7 @@ export default async function PhotoArchive({ mode }: { mode: Mode }) {
   // mode only). Parallel via allSettled so a transient EMAXCONN on
   // any single query yields zero rather than blanking the section.
   const settled = await Promise.allSettled([
-    // 0..2 — counts for LIVE
+    // 0..2 - counts for LIVE
     prisma.bhandara.count({
       where: { status: "APPROVED", photoUrl: { not: null } },
     }),
@@ -68,7 +68,7 @@ export default async function PhotoArchive({ mode }: { mode: Mode }) {
     }),
     prisma.galleryPhoto.count({ where: { status: "VISIBLE" } }),
 
-    // 3..5 — counts for STORED (the inverse predicates)
+    // 3..5 - counts for STORED (the inverse predicates)
     prisma.bhandara.count({
       where: { status: { not: "APPROVED" }, photoUrl: { not: null } },
     }),
@@ -83,7 +83,7 @@ export default async function PhotoArchive({ mode }: { mode: Mode }) {
     }),
     prisma.galleryPhoto.count({ where: { status: { not: "VISIBLE" } } }),
 
-    // 6..8 — list rows for the ACTIVE mode only
+    // 6..8 - list rows for the ACTIVE mode only
     prisma.bhandara.findMany({
       where:
         mode === "live"
@@ -337,7 +337,7 @@ export default async function PhotoArchive({ mode }: { mode: Mode }) {
           <div className="text-[11px] text-cream-50/55 mt-1 font-mono">
             {mode === "live"
               ? "Nothing approved + non-expired is currently in flight."
-              : "Nothing archived yet — every photo is still live."}
+              : "Nothing archived yet, every photo is still live."}
           </div>
         </div>
       ) : (

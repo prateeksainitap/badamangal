@@ -66,7 +66,7 @@ export default async function AdminDashboardPage() {
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   // Upcoming + today's season service-days (Tuesdays + Saturdays
   // through end of season). Used by the "Live bhandaras" tile to
-  // match the public-homepage filter exactly — same predicate as
+  // match the public-homepage filter exactly - same predicate as
   // lib/dates.ts:hasUpcomingDate, just expressed at the SQL layer
   // so we don't have to fetch every APPROVED row to count.
   const todayIso = istTodayIso(now);
@@ -113,7 +113,7 @@ export default async function AdminDashboardPage() {
     // today or in the future. A plain status=APPROVED count would
     // over-report by including rows whose tuesdayDates are entirely
     // in the past (still APPROVED but auto-hidden from the public
-    // surface — see lib/dates.ts:hasUpcomingDate).
+    // surface - see lib/dates.ts:hasUpcomingDate).
     //
     // tuesdayDates is a JSON-encoded string column ('["2026-05-19",
     // "2026-06-02",…]'); Prisma's `contains` filter runs Postgres
@@ -289,7 +289,7 @@ export default async function AdminDashboardPage() {
           was removed, the tiles themselves are self-explanatory
           and the divider was visual chrome with no information value. */}
       {/* Trimmed from six tiles down to two: scan_and_publish
-          and emails — the only destinations the operator hits
+          and emails, the only destinations the operator hits
           frequently enough to deserve top-of-dashboard real
           estate. Everything else (review queue, discover,
           content hub, volunteers) is one click away via the
@@ -752,7 +752,7 @@ function QuickAction({
 
 /* ───────── KPI Icons, sized for the larger 44×44 icon plate
  *  on each KpiTile. Stroke 2.2 reads bold without going pictographic. */
-/** Diya for the "Live bhandaras" KPI tile — same silhouette as
+/** Diya for the "Live bhandaras" KPI tile - same silhouette as
  *  the sidebar's Bhandaras nav glyph (gada-on-disc flame on top
  *  of an arched plate), upscaled to 22 px to match the bolder
  *  KPI icon weight. The flame fills with currentColor so the

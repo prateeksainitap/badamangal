@@ -152,7 +152,7 @@ export async function deleteContentAction(id: string): Promise<void> {
  * chains. The operator owns the truth.
  * ─────────────────────────────────────────────────────────────────── */
 
-/** Mark a Content row as sent — captures the timestamp, optional
+/** Mark a Content row as sent - captures the timestamp, optional
  *  recipient note, and flips awaitingReply=true. If the row was a
  *  DRAFT it flips to ACTIVE so "sent" automatically promotes work
  *  out of the drafts pile. Surfaces in the row pill as
@@ -169,7 +169,7 @@ export async function markSentAction(
       lastSentAt: new Date(),
       lastSentTo,
       awaitingReply: true,
-      // If the row was DRAFT, promote it to ACTIVE — the act of
+      // If the row was DRAFT, promote it to ACTIVE - the act of
       // sending is the strongest possible signal that it's
       // production-ready. ARCHIVED rows are left as-is so an
       // operator who clicks "Mark sent" on an archived row by
@@ -181,7 +181,7 @@ export async function markSentAction(
 }
 
 /** Mark the awaited reply as received (or closed). Doesn't touch
- *  lastSentAt — the row still shows "Sent 5 days ago" until it gets
+ *  lastSentAt - the row still shows "Sent 5 days ago" until it gets
  *  re-sent. Just clears the awaitingReply flag so the Mission
  *  Strip's count goes down. */
 export async function markRepliedAction(id: string): Promise<void> {
@@ -193,7 +193,7 @@ export async function markRepliedAction(id: string): Promise<void> {
   revalidatePath("/admin/content");
 }
 
-/** Undo a "Mark sent" — clears every send-tracking field. Use case:
+/** Undo a "Mark sent" - clears every send-tracking field. Use case:
  *  operator clicked Sent on the wrong row, or wants to reset a row
  *  back to "never sent" before a new season. */
 export async function unmarkSentAction(id: string): Promise<void> {
@@ -228,7 +228,7 @@ export async function toggleDraftAction(id: string): Promise<void> {
   revalidatePath("/admin/content");
 }
 
-/** Internal helper for markSentAction — checks if the row is
+/** Internal helper for markSentAction - checks if the row is
  *  currently a DRAFT so we can auto-promote on send. Extracted to
  *  keep the action body readable. */
 async function isContentDraft(id: string): Promise<boolean> {

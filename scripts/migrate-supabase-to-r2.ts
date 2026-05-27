@@ -4,7 +4,7 @@
  * cdn.badamangal.com CDN. Every new upload already goes R2-first
  * (see /api/uploads, /api/bot/ingest, /api/admin/upload-image,
  * /api/admin/scan, /api/public/scan-bhandara, /api/volunteer/upload-
- * media) — this script reconciles the historical rows so the public
+ * media) - this script reconciles the historical rows so the public
  * surfaces never serve a Supabase URL.
  *
  * For each row:
@@ -12,7 +12,7 @@
  *   2. Re-upload to R2 with the SAME filename so any [bot:…] hash
  *      tags / cross-reference paths still resolve.
  *   3. Update the row's photoUrl in the DB.
- * The Supabase object is NOT deleted — operators may want to roll
+ * The Supabase object is NOT deleted - operators may want to roll
  * back. Schedule a separate sweep when confidence is high.
  *
  * Idempotent: rows already on cdn.badamangal.com (or any non-

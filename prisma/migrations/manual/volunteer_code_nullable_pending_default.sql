@@ -12,7 +12,7 @@
 --   2. Volunteer.status default flips from PROBATIONARY to PENDING
 --
 -- Postgres allows multiple NULL values in a UNIQUE column, so the
--- existing unique constraint on `code` keeps working — it just gates
+-- existing unique constraint on `code` keeps working - it just gates
 -- issued codes, not the placeholder NULL for unapproved rows.
 --
 -- Existing rows are NOT migrated (they already have codes + status).

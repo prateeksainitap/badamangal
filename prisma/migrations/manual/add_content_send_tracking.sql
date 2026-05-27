@@ -1,4 +1,4 @@
--- Content Hub — send-tracking columns.
+-- Content Hub - send-tracking columns.
 --
 -- Adds three columns to "Content" so the operator can track outbound
 -- activity (which pitches were sent, to whom, when, and which are

@@ -3,7 +3,7 @@
  * the corrected lat/lng for each. Output is hand-applied to the file
  * since the temple list is static TypeScript content (not a DB table).
  *
- * Same referer-spoofing trick as `geocode-bhandaras.ts` — see that
+ * Same referer-spoofing trick as `geocode-bhandaras.ts` - see that
  * file for the full explanation.
  *
  * Run:
@@ -134,7 +134,7 @@ async function geocode(q: string): Promise<Hit | null> {
 async function main() {
   console.log(`Geocoding ${TEMPLES.length} temples…\n`);
   for (const t of TEMPLES) {
-    // Walk through progressively more general queries — the temple's
+    // Walk through progressively more general queries - the temple's
     // English name first (most specific), then with area, then just
     // the area as a last resort.
     const queries = [
@@ -156,7 +156,7 @@ async function main() {
     }
 
     if (!hit) {
-      console.log(`  ⚠ ${t.slug}: no match — keep ${t.lat}, ${t.lng}`);
+      console.log(`  ⚠ ${t.slug}: no match, keep ${t.lat}, ${t.lng}`);
       continue;
     }
 

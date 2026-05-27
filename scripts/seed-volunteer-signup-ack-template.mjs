@@ -106,18 +106,18 @@ That's the only manual edit. Everything else is fixed copy.
 2. **Lists what happens next as bullets** (not a wall of text)
    so it's scannable on a phone, the only place this gets read.
 3. **Asks one small question** ("which part of Lucknow do you
-   know best?") — three benefits:
+   know best?"), three benefits:
    - Confirms the WhatsApp number is real + reachable (if they
      reply, you have a live person)
    - Gives them an immediate action while waiting for approval
    - Surfaces local-area knowledge that helps you assign them
      to a Tuesday team
 4. **No em dashes** (site-wide style rule).
-5. **No emojis in body** — WhatsApp Web's preview pane renders
+5. **No emojis in body**: WhatsApp Web's preview pane renders
    them as \`�\` on certain clients.
-6. **Hindi first, English second** — matches the welcome
+6. **Hindi first, English second**: matches the welcome
    template's posture; respects the audience.
-7. **Signed as "Prateek" + first-person** — per the
+7. **Signed as "Prateek" + first-person**: per the
    user_profile.md voice rule.
 
 ## Wiring it into the admin flow (optional follow-up)
@@ -171,7 +171,7 @@ async function main() {
     },
     select: { id: true, title: true },
   });
-  console.log(`[seed] inserted: ${created.id} — ${created.title}`);
+  console.log(`[seed] inserted: ${created.id}, ${created.title}`);
   await prisma.$disconnect();
 }
 

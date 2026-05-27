@@ -31,7 +31,7 @@ export type ContentRow = Awaited<
   ReturnType<typeof prisma.content.findMany>
 >[number];
 
-/** OrderBy shape Prisma's findMany accepts — either a single
+/** OrderBy shape Prisma's findMany accepts - either a single
  *  object or an array, with the send-tracking columns allowed
  *  alongside the legacy ones. */
 type OrderBy =

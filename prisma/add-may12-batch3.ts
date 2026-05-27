@@ -130,13 +130,13 @@ async function main() {
     console.log(`    match : ${hit.matched}`);
     console.log(`    coords: ${lat}, ${lng}`);
   } else {
-    console.log(`  ⚠ no geocode hit — fallback ${lat}, ${lng}`);
+    console.log(`  ⚠ no geocode hit, fallback ${lat}, ${lng}`);
   }
 
   const menu = ["puri", "sabzi", "prasad"];
   const data = {
-    name: "Vishal Bhandara — Hanuman Mandir, Mahanagar",
-    nameHi: "विशाल भंडारा — हनुमान मंदिर, महानगर",
+    name: "Vishal Bhandara, Hanuman Mandir, Mahanagar",
+    nameHi: "विशाल भंडारा, हनुमान मंदिर, महानगर",
     description:
       "Vishal Bhandara on the second Bada Mangal at Hanuman Mandir, near Civil Hospital, Mahanagar.",
     descriptionHi:

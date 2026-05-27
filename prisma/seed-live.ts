@@ -15,7 +15,7 @@ const prisma = new PrismaClient();
 const SEED_TAG_IP = crypto.createHash("sha256").update("seed:live:v1").digest("hex");
 const SEED_TAG_PHONE = crypto.createHash("sha256").update("seed:live:phone").digest("hex");
 
-// Real bhandara photos shipped under /public/illustrations/bhandara — used
+// Real bhandara photos shipped under /public/illustrations/bhandara - used
 // for the Live feed + Spot cards so /live and "Happening now" feel grounded.
 const PHOTOS = [
   "/illustrations/bhandara/seva-lucknow.webp",
@@ -40,7 +40,7 @@ const TEXT_POSTS: Array<{
     authorName: "Anjali Sharma",
     language: "en",
     text:
-      "Aliganj is glowing. Volunteers serving 5,000 plates already and the queue is still growing — Jai Hanuman 🙏",
+      "Aliganj is glowing. Volunteers serving 5,000 plates already and the queue is still growing, Jai Hanuman 🙏",
     photoIdx: 0,
     agoMin: 6,
   },
@@ -48,7 +48,7 @@ const TEXT_POSTS: Array<{
     authorName: "रवि तिवारी",
     language: "hi",
     text:
-      "हनुमान सेतु पर बहुत अच्छी व्यवस्था। पूड़ी, सब्ज़ी, बूँदी, ठंडा शरबत — सब मिल रहा है। श्रद्धालु हज़ारों में हैं। जय बजरंगबली!",
+      "हनुमान सेतु पर बहुत अच्छी व्यवस्था। पूड़ी, सब्ज़ी, बूँदी, ठंडा शरबत, सब मिल रहा है। श्रद्धालु हज़ारों में हैं। जय बजरंगबली!",
     photoIdx: 2,
     agoMin: 18,
   },
@@ -64,7 +64,7 @@ const TEXT_POSTS: Array<{
     authorName: "सीमा अग्रवाल",
     language: "hi",
     text:
-      "गोमती नगर एक्सटेंशन में एक छोटा सा पंडाल — पर सेवा भाव बहुत बड़ा है। लड्डू-इमरती, और ठंडाई भी।",
+      "गोमती नगर एक्सटेंशन में एक छोटा सा पंडाल, पर सेवा भाव बहुत बड़ा है। लड्डू-इमरती, और ठंडाई भी।",
     photoIdx: 5,
     agoMin: 42,
   },
@@ -72,7 +72,7 @@ const TEXT_POSTS: Array<{
     authorName: "Mohit",
     language: "mixed",
     text:
-      "Bada Hanuman Khun Khun Ji ke saamne aaj qatar lag rahi hai — jaise pure shahar ka khaana yahin chal raha ho 🪔",
+      "Bada Hanuman Khun Khun Ji ke saamne aaj qatar lag rahi hai, jaise pure shahar ka khaana yahin chal raha ho 🪔",
     photoIdx: 4,
     agoMin: 58,
   },
@@ -80,7 +80,7 @@ const TEXT_POSTS: Array<{
     authorName: "Priya Verma",
     language: "en",
     text:
-      "Drove past Indira Nagar — three pandals on one stretch of road. Lucknow really does become one kitchen on Bada Mangal.",
+      "Drove past Indira Nagar, three pandals on one stretch of road. Lucknow really does become one kitchen on Bada Mangal.",
     photoIdx: 6,
     agoMin: 73,
   },
@@ -114,7 +114,7 @@ const TEXT_POSTS: Array<{
   },
 ];
 
-// Spots — each gets a Lucknow-area lat/lng + photo so they show on the map.
+// Spots - each gets a Lucknow-area lat/lng + photo so they show on the map.
 const SPOTS: Array<{
   area: string;
   address: string;
@@ -222,14 +222,14 @@ async function main() {
 
   const now = Date.now();
 
-  // The Post model (per-bhandara live comments) was removed — this seed
+  // The Post model (per-bhandara live comments) was removed - this seed
   // now only inserts Spots. The TEXT_POSTS / SEED_TAG_PHONE constants
   // are kept above as reference material in case the team ever wants
   // to seed Spot captions from the old post copy.
   void TEXT_POSTS;
   void SEED_TAG_PHONE;
 
-  // 2) Spots — all "live" (not expired).
+  // 2) Spots - all "live" (not expired).
   for (const s of SPOTS) {
     const createdAt = new Date(now - s.agoMin * 60 * 1000);
     const expiresAt = new Date(createdAt.getTime() + 8 * 60 * 60 * 1000);

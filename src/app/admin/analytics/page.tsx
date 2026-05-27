@@ -18,21 +18,21 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 /**
- * /admin/analytics — operator analytics, weekly-summary first.
+ * /admin/analytics - operator analytics, weekly-summary first.
  *
  * Two surfaces in one page:
- *   1. Weekly summary (top) — Live chat + spot map activity since
+ *   1. Weekly summary (top) - Live chat + spot map activity since
  *      the most recent Friday at 00:00 IST. Mirrors the
  *      scripts/live-chat-insights.mjs output but live-queried.
  *      This is the "what just happened" view.
- *   2. All-time sections (below) — funnels, top areas, top
+ *   2. All-time sections (below) - funnels, top areas, top
  *      organisers, 14-day timeseries. The "where are we overall"
  *      view.
  *
  * Everything pulls from our own Postgres tables; no GA round-trip,
  * no service-account JSON. Page is force-dynamic so it always
  * reflects the live DB. ~9 parallel queries via Promise.allSettled
- * so a single transient EMAXCONN doesn't 500 the page — each
+ * so a single transient EMAXCONN doesn't 500 the page - each
  * section degrades to zero independently.
  */
 
@@ -104,7 +104,7 @@ export default async function AnalyticsPage({
             </h1>
             <p className="text-sm text-cream-50/55 mt-1 font-mukta">
               Weekly summary up top, all-time funnels + top movers
-              below. Every number is live from the database — no
+              below. Every number is live from the database, no
               GA, no service-account, no caching window.
             </p>
           </div>
@@ -117,14 +117,14 @@ export default async function AnalyticsPage({
           </Link>
         </div>
 
-        {/* Weekly summary — the lead. Suspense-wrapped so the
+        {/* Weekly summary - the lead. Suspense-wrapped so the
             page paints chrome before the 9 parallel queries
             resolve. */}
         <Suspense fallback={<WeeklySummarySkeleton sinceLabel={SINCE_LABEL} />}>
           <WeeklySummary since={SINCE} sinceLabel={SINCE_LABEL} />
         </Suspense>
 
-        {/* Qualitative insights — pattern-based observations
+        {/* Qualitative insights - pattern-based observations
             derived from the same DB queries, surfaced as
             color-coded callouts so the operator gets the "what
             this means" without reading every chart. Independent
@@ -175,7 +175,7 @@ export default async function AnalyticsPage({
                     aria-selected={active}
                     prefetch={false}
                     // scroll={false} preserves the operator's
-                    // current scroll position on tab nav — without
+                    // current scroll position on tab nav - without
                     // this, Next.js would auto-scroll to top each
                     // click which is jarring once the operator has
                     // scrolled past the section header.
@@ -187,7 +187,7 @@ export default async function AnalyticsPage({
                         : "text-cream-50/65 hover:text-cream-50 hover:bg-cyan-400/[0.06]",
                     ].join(" ")}
                   >
-                    {/* Inline pending spinner — `useLinkStatus` flips
+                    {/* Inline pending spinner - `useLinkStatus` flips
                         visible the moment this Link starts navigating.
                         Sits to the left of the label so the layout
                         stays stable (a 12px gap appears only when
@@ -212,7 +212,7 @@ export default async function AnalyticsPage({
           </Suspense>
         </section>
 
-        {/* All-time funnels + tables — secondary surface. */}
+        {/* All-time funnels + tables - secondary surface. */}
         <Suspense fallback={<AllTimeSkeleton />}>
           <AllTimeSection />
         </Suspense>
@@ -326,7 +326,7 @@ async function WeeklySummary({
   const asking = intentMap.get("ASKING") ?? 0;
   const mentioning = intentMap.get("MENTIONING") ?? 0;
 
-  // Ingest funnel — collapse to two numbers for the headline tile
+  // Ingest funnel - collapse to two numbers for the headline tile
   const ingestTotal = ingestRows.reduce((s, r) => s + r._count._all, 0);
   const ingestSuccess =
     ingestRows.find((r) => r.outcome === "SUCCESS_SPOT")?._count._all ?? 0;
@@ -335,7 +335,7 @@ async function WeeklySummary({
   const ingestSuccessRate =
     ingestTotal > 0
       ? (((ingestSuccess + ingestSuccessBh) / ingestTotal) * 100).toFixed(0)
-      : "—";
+      : "-";
 
   // Total community signals = mentions + spots + bhandaras
   const totalSignals = mentions + spots + bhandaras;
@@ -479,11 +479,11 @@ async function WeeklySummary({
             <ul className="space-y-1.5">
               {topGroups.map((g) => (
                 <li
-                  key={g.groupName ?? "—"}
+                  key={g.groupName ?? "-"}
                   className="flex items-center justify-between gap-2 text-[12.5px]"
                 >
                   <span className="text-cream-50/85 truncate">
-                    {g.groupName ?? "—"}
+                    {g.groupName ?? "-"}
                   </span>
                   <span className="text-cream-50/70 font-mono tabular-nums">
                     {g._count._all}
@@ -514,7 +514,7 @@ async function WeeklySummary({
         </Panel>
       </div>
 
-      {/* Ingest funnel — full breakdown */}
+      {/* Ingest funnel - full breakdown */}
       <div className="mt-4">
         <Panel
           title="Bot ingest funnel"
@@ -650,7 +650,7 @@ async function AllTimeSection() {
     const key = (r.organizerName ?? "").trim().toLowerCase();
     if (!key) continue;
     const e = organiserMap.get(key) ?? {
-      name: r.organizerName ?? "—",
+      name: r.organizerName ?? "-",
       phone: r.organizerPhone,
       count: 0,
     };
@@ -764,7 +764,7 @@ async function AllTimeSection() {
 
         <Panel
           title="Top organisers"
-          subtitle="2+ approved bhandaras — candidates for thank-you outreach"
+          subtitle="2+ approved bhandaras, candidates for thank-you outreach"
         >
           {topOrganisers.length === 0 ? (
             <EmptyHint text="No organisers with multiple listings yet." />
@@ -785,7 +785,7 @@ async function AllTimeSection() {
                   >
                     <td className="py-2 px-1 text-cream-50/85">{o.name}</td>
                     <td className="py-2 px-1 text-cream-50/55 font-mono text-[11px]">
-                      {o.phone ?? "—"}
+                      {o.phone ?? "-"}
                     </td>
                     <td className="py-2 px-1 text-right text-saffron-300 tabular-nums font-mono font-semibold">
                       {o.count}
@@ -840,7 +840,7 @@ async function AllTimeSection() {
                       {total > 0 ? (
                         total
                       ) : (
-                        <span className="text-cream-50/25">—</span>
+                        <span className="text-cream-50/25">-</span>
                       )}
                     </div>
                   </div>
@@ -870,17 +870,17 @@ async function AllTimeSection() {
  * Pattern-based "what we're seeing" callouts derived from the
  * same DB the rest of the page queries. Each rule below checks a
  * threshold or comparison and emits a card if the condition is
- * worth surfacing — so the operator doesn't have to read every
+ * worth surfacing - so the operator doesn't have to read every
  * chart to know what to do this week.
  *
  * Tone vocabulary:
- *   • good   — green; momentum + healthy signals
- *   • watch  — saffron; worth keeping an eye on, not urgent
- *   • fire   — red/alert; needs action today
- *   • info   — cyan; neutral observation, no judgement
+ *   • good   - green; momentum + healthy signals
+ *   • watch  - saffron; worth keeping an eye on, not urgent
+ *   • fire   - red/alert; needs action today
+ *   • info   - cyan; neutral observation, no judgement
  *
  * Rules currently implemented (more can be added by appending to
- * the rules array — each rule is a pure function of `data`):
+ * the rules array - each rule is a pure function of `data`):
  *   1. Tuesday concentration         (info)
  *   2. Week-over-week growth         (good / watch / info)
  *   3. Top-group concentration risk  (watch)
@@ -898,13 +898,13 @@ async function QualitativeInsights({ since }: { since: Date }) {
   const priorSince = new Date(since.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   const settled = await Promise.allSettled([
-    // 0 — this week mention count
+    // 0 - this week mention count
     prisma.bhandaraMention.count({ where: { createdAt: { gte: since } } }),
-    // 1 — last week mention count
+    // 1 - last week mention count
     prisma.bhandaraMention.count({
       where: { createdAt: { gte: priorSince, lt: since } },
     }),
-    // 2 — this week SHARING + ASKING + Tuesday-share + Sunday count
+    // 2 - this week SHARING + ASKING + Tuesday-share + Sunday count
     //     via raw SQL so we get the IST-grouped day-of-week breakdown
     prisma.$queryRaw<
       Array<{
@@ -932,7 +932,7 @@ async function QualitativeInsights({ since }: { since: Date }) {
       FROM "BhandaraMention"
       WHERE "createdAt" >= ${since}
     `,
-    // 3 — top WhatsApp group this week (for concentration calc)
+    // 3 - top WhatsApp group this week (for concentration calc)
     prisma.bhandaraMention.groupBy({
       by: ["groupName"],
       where: { createdAt: { gte: since }, groupName: { not: null } },
@@ -940,14 +940,14 @@ async function QualitativeInsights({ since }: { since: Date }) {
       orderBy: { _count: { groupName: "desc" } },
       take: 1,
     }),
-    // 4 — coverage gap: approved bhandaras with lat=0 or lng=0
+    // 4 - coverage gap: approved bhandaras with lat=0 or lng=0
     prisma.bhandara.count({
       where: {
         status: "APPROVED",
         OR: [{ lat: 0 }, { lng: 0 }],
       },
     }),
-    // 5 — this week spot quality: total + rich (photo + coords)
+    // 5 - this week spot quality: total + rich (photo + coords)
     prisma.$queryRaw<
       Array<{ total: bigint | number; rich: bigint | number }>
     >`
@@ -960,11 +960,11 @@ async function QualitativeInsights({ since }: { since: Date }) {
       FROM "Spot"
       WHERE "createdAt" >= ${since}
     `,
-    // 6 — this week map plots (mentions with coords + rich spots)
+    // 6 - this week map plots (mentions with coords + rich spots)
     prisma.bhandaraMention.count({
       where: { createdAt: { gte: since }, lat: { not: null } },
     }),
-    // 7 — last week map plots for WoW comparison
+    // 7 - last week map plots for WoW comparison
     prisma.bhandaraMention.count({
       where: { createdAt: { gte: priorSince, lt: since }, lat: { not: null } },
     }),
@@ -1031,7 +1031,7 @@ async function QualitativeInsights({ since }: { since: Date }) {
       insights.push({
         kind: wow > 0 ? "good" : "watch",
         title: `Mentions ${direction} ${Math.abs(Math.round(wow))}% WoW`,
-        body: `${weekMentions.toLocaleString("en-IN")} this week vs ${lastWeekMentions.toLocaleString("en-IN")} last week. ${wow > 0 ? "Momentum building — keep the outreach steady." : "Watch for the cause: bot health, group activity, or upstream noise."}`,
+        body: `${weekMentions.toLocaleString("en-IN")} this week vs ${lastWeekMentions.toLocaleString("en-IN")} last week. ${wow > 0 ? "Momentum building, keep the outreach steady." : "Watch for the cause: bot health, group activity, or upstream noise."}`,
       });
     }
   }
@@ -1057,7 +1057,7 @@ async function QualitativeInsights({ since }: { since: Date }) {
       insights.push({
         kind: "watch",
         title: "Group concentration risk",
-        body: `"${topGroup.groupName ?? "—"}" carries ${Math.round(groupShare * 100)}% of chat volume this week. If this single source goes dark, ${Math.round((1 - groupShare) * 100)}% of the firehose remains.`,
+        body: `"${topGroup.groupName ?? "-"}" carries ${Math.round(groupShare * 100)}% of chat volume this week. If this single source goes dark, ${Math.round((1 - groupShare) * 100)}% of the firehose remains.`,
       });
     }
   }
@@ -1075,7 +1075,7 @@ async function QualitativeInsights({ since }: { since: Date }) {
       insights.push({
         kind: "good",
         title: "Supply ahead of demand",
-        body: `Only ${Math.round(askingShare * 100)}% of mentions are people asking — organizers are advertising proactively. Direct visitors to the map.`,
+        body: `Only ${Math.round(askingShare * 100)}% of mentions are people asking, organizers are advertising proactively. Direct visitors to the map.`,
       });
     }
   }
@@ -1085,7 +1085,7 @@ async function QualitativeInsights({ since }: { since: Date }) {
     insights.push({
       kind: "fire",
       title: `${coverageGap} bhandaras invisible on the map`,
-      body: `Approved listings that auto-publish passed through but the geocode chain couldn't resolve. Fix before next Tuesday — visitors won't find them.`,
+      body: `Approved listings that auto-publish passed through but the geocode chain couldn't resolve. Fix before next Tuesday, visitors won't find them.`,
       action: {
         href: "/admin/bhandaras?status=LIVE",
         label: "Triage now",
@@ -1140,7 +1140,7 @@ async function QualitativeInsights({ since }: { since: Date }) {
     insights.push({
       kind: "info",
       title: "Sunday is dark",
-      body: "Zero mentions on Sunday — consistent with the Tue+Sat live-chat schedule. If you ever want Sunday signal (Diwali / Holi prep), it's a green field.",
+      body: "Zero mentions on Sunday, consistent with the Tue+Sat live-chat schedule. If you ever want Sunday signal (Diwali / Holi prep), it's a green field.",
     });
   }
 
@@ -1149,7 +1149,7 @@ async function QualitativeInsights({ since }: { since: Date }) {
     insights.push({
       kind: "info",
       title: "Nothing unusual this week",
-      body: "No threshold rules tripped. Either the week is mid-cycle quiet or all signals are healthy — scroll down for the raw breakdown.",
+      body: "No threshold rules tripped. Either the week is mid-cycle quiet or all signals are healthy, scroll down for the raw breakdown.",
     });
   }
 
@@ -1285,7 +1285,7 @@ function InsightsSkeleton() {
   );
 }
 
-/* ───────────────── Live Chat — detailed feature breakdown ────── */
+/* ───────────────── Live Chat - detailed feature breakdown ────── */
 
 /**
  * Deep dive into the Live Chat feature (BhandaraMention table).
@@ -1297,7 +1297,7 @@ function InsightsSkeleton() {
  * don't:
  *   • Hourly heatmap of when the chat fires (peak hour signal)
  *   • Location sources breakdown (whatsapp_share / google_maps_url
- *     / extracted / manual / none) — tells us how the map plots
+ *     / extracted / manual / none) - tells us how the map plots
  *     actually got their coords
  *   • Engagement signals: quoted replies (threading), bhandara
  *     linking rate (chat → listing pipeline), avg message length
@@ -1313,33 +1313,33 @@ function InsightsSkeleton() {
  */
 async function LiveChatDeepDive({ since }: { since: Date }) {
   const settled = await Promise.allSettled([
-    // 0 — all-time mention count
+    // 0 - all-time mention count
     prisma.bhandaraMention.count(),
-    // 1 — unique groups (DISTINCT groupName, non-null)
+    // 1 - unique groups (DISTINCT groupName, non-null)
     prisma.bhandaraMention.findMany({
       where: { groupName: { not: null } },
       select: { groupName: true },
       distinct: ["groupName"],
     }),
-    // 2 — unique senders (DISTINCT senderName, non-null)
+    // 2 - unique senders (DISTINCT senderName, non-null)
     prisma.bhandaraMention.findMany({
       where: { senderName: { not: null } },
       select: { senderName: true },
       distinct: ["senderName"],
     }),
-    // 3 — locationSource breakdown (all-time)
+    // 3 - locationSource breakdown (all-time)
     prisma.bhandaraMention.groupBy({
       by: ["locationSource"],
       _count: { _all: true },
       orderBy: { _count: { locationSource: "desc" } },
     }),
-    // 4 — language breakdown (all-time)
+    // 4 - language breakdown (all-time)
     prisma.bhandaraMention.groupBy({
       by: ["language"],
       _count: { _all: true },
       orderBy: { _count: { language: "desc" } },
     }),
-    // 5 — engagement: quoted-reply count + bhandara-linked count
+    // 5 - engagement: quoted-reply count + bhandara-linked count
     //     + APPROVED count + REJECTED count + avg confidence + avg
     //     message length. Single raw-SQL roundtrip is cheaper than
     //     5 Prisma counts.
@@ -1364,7 +1364,7 @@ async function LiveChatDeepDive({ since }: { since: Date }) {
         AVG(LENGTH(COALESCE("cleanedText", "originalText")))::float AS avg_len
       FROM "BhandaraMention"
     `,
-    // 6 — hourly heatmap (24 bars, IST hour-of-day, all-time)
+    // 6 - hourly heatmap (24 bars, IST hour-of-day, all-time)
     prisma.$queryRaw<Array<{ hour: number; n: bigint | number }>>`
       SELECT
         EXTRACT(HOUR FROM ("createdAt" AT TIME ZONE 'Asia/Kolkata'))::int AS hour,
@@ -1373,7 +1373,7 @@ async function LiveChatDeepDive({ since }: { since: Date }) {
       GROUP BY hour
       ORDER BY hour ASC
     `,
-    // 7 — top 8 senders all-time (anonymize to first name only)
+    // 7 - top 8 senders all-time (anonymize to first name only)
     prisma.bhandaraMention.groupBy({
       by: ["senderName"],
       where: { senderName: { not: null } },
@@ -1381,11 +1381,11 @@ async function LiveChatDeepDive({ since }: { since: Date }) {
       orderBy: { _count: { senderName: "desc" } },
       take: 8,
     }),
-    // 8 — weekly count (for the side-by-side this-week delta)
+    // 8 - weekly count (for the side-by-side this-week delta)
     prisma.bhandaraMention.count({
       where: { createdAt: { gte: since } },
     }),
-    // 9 — weekly quoted/linked/avg-conf for the delta column
+    // 9 - weekly quoted/linked/avg-conf for the delta column
     prisma.$queryRaw<
       Array<{
         quoted: bigint | number;
@@ -1500,7 +1500,7 @@ async function LiveChatDeepDive({ since }: { since: Date }) {
         <WeekTile
           label="Auto-approval"
           value={Math.round(autoApprovePct)}
-          sub={`${rejectedPct.toFixed(1)}% rejected · avg conf ${avgConfE != null ? avgConfE.toFixed(2) : "—"}`}
+          sub={`${rejectedPct.toFixed(1)}% rejected · avg conf ${avgConfE != null ? avgConfE.toFixed(2) : "-"}`}
           tone="saffron"
           isPercentage
         />
@@ -1606,7 +1606,7 @@ async function LiveChatDeepDive({ since }: { since: Date }) {
                   ? `+${Number(weekEng.quoted ?? 0).toLocaleString("en-IN")} this wk`
                   : null
               }
-              hint="Chat threading — someone replied to a quoted message"
+              hint="Chat threading, someone replied to a quoted message"
             />
             <EngagementRow
               label="Linked to a Bhandara"
@@ -1632,7 +1632,7 @@ async function LiveChatDeepDive({ since }: { since: Date }) {
             />
             <EngagementRow
               label="Avg classifier confidence"
-              value={avgConfE != null ? avgConfE.toFixed(3) : "—"}
+              value={avgConfE != null ? avgConfE.toFixed(3) : "-"}
               weekValue={
                 weekEng?.avg_conf != null
                   ? `${weekEng.avg_conf.toFixed(3)} this wk`
@@ -1645,7 +1645,7 @@ async function LiveChatDeepDive({ since }: { since: Date }) {
               value={
                 avgLenE != null
                   ? `${Math.round(avgLenE).toLocaleString("en-IN")} chars`
-                  : "—"
+                  : "-"
               }
               weekValue={null}
               hint="cleanedText (or originalText if cleaned is null)"
@@ -1658,7 +1658,7 @@ async function LiveChatDeepDive({ since }: { since: Date }) {
       <div className="grid gap-4 lg:grid-cols-2 mt-4">
         <Panel
           title="Top 8 contributors"
-          subtitle="Senders by mention volume — first names only for privacy"
+          subtitle="Senders by mention volume, first names only for privacy"
         >
           {topSenderRows.length === 0 ? (
             <EmptyHint text="No named senders yet." />
@@ -1670,7 +1670,7 @@ async function LiveChatDeepDive({ since }: { since: Date }) {
                   totalAll > 0 ? (s._count._all / totalAll) * 100 : 0;
                 return (
                   <li
-                    key={s.senderName ?? "—"}
+                    key={s.senderName ?? "-"}
                     className="flex items-center justify-between gap-2 text-[12.5px]"
                   >
                     <span className="text-cream-50/85 truncate">{display}</span>
@@ -1741,21 +1741,21 @@ async function LiveChatDeepDive({ since }: { since: Date }) {
  */
 async function LiveMapDeepDive() {
   const settled = await Promise.allSettled([
-    // 0 — approved bhandaras with valid coords (plottable)
+    // 0 - approved bhandaras with valid coords (plottable)
     prisma.bhandara.count({
       where: {
         status: "APPROVED",
         AND: [{ lat: { not: 0 } }, { lng: { not: 0 } }],
       },
     }),
-    // 1 — approved bhandaras with no/zero coords (NOT plottable)
+    // 1 - approved bhandaras with no/zero coords (NOT plottable)
     prisma.bhandara.count({
       where: {
         status: "APPROVED",
         OR: [{ lat: 0 }, { lng: 0 }],
       },
     }),
-    // 2 — approved non-expired spots with valid coords
+    // 2 - approved non-expired spots with valid coords
     prisma.spot.count({
       where: {
         status: "APPROVED",
@@ -1763,7 +1763,7 @@ async function LiveMapDeepDive() {
         AND: [{ lat: { not: 0 } }, { lng: { not: 0 } }],
       },
     }),
-    // 3 — approved non-expired spots with NO coords
+    // 3 - approved non-expired spots with NO coords
     prisma.spot.count({
       where: {
         status: "APPROVED",
@@ -1771,17 +1771,17 @@ async function LiveMapDeepDive() {
         OR: [{ lat: 0 }, { lng: 0 }],
       },
     }),
-    // 4 — mentions with coords (chat overlay plots)
+    // 4 - mentions with coords (chat overlay plots)
     prisma.bhandaraMention.count({
       where: { status: "APPROVED", lat: { not: null } },
     }),
-    // 5 — distinct areas (bhandara)
+    // 5 - distinct areas (bhandara)
     prisma.bhandara.findMany({
       where: { status: "APPROVED" },
       select: { area: true },
       distinct: ["area"],
     }),
-    // 6 — top 10 areas by combined (bhandaras + spots) approved volume
+    // 6 - top 10 areas by combined (bhandaras + spots) approved volume
     prisma.bhandara.groupBy({
       by: ["area"],
       where: { status: "APPROVED" },
@@ -1935,7 +1935,7 @@ async function LiveMapDeepDive() {
 
       <div className="grid gap-4 lg:grid-cols-2 mt-4">
         <Panel
-          title="Coverage gap — bhandaras without coords"
+          title="Coverage gap, bhandaras without coords"
           subtitle="Approved listings that DON'T appear on the map (lat=0 or lng=0)"
         >
           {bhUnplottable === 0 ? (
@@ -2035,15 +2035,15 @@ function CompositionRow({
  */
 async function SpotsDeepDive({ since }: { since: Date }) {
   const settled = await Promise.allSettled([
-    // 0 — total all-time
+    // 0 - total all-time
     prisma.spot.count(),
-    // 1 — this week
+    // 1 - this week
     prisma.spot.count({ where: { createdAt: { gte: since } } }),
-    // 2 — currently live
+    // 2 - currently live
     prisma.spot.count({
       where: { status: "APPROVED", expiresAt: { gt: new Date() } },
     }),
-    // 3 — quality matrix via raw SQL (4 buckets in one round-trip)
+    // 3 - quality matrix via raw SQL (4 buckets in one round-trip)
     prisma.$queryRaw<
       Array<{
         photo_coords: bigint | number;
@@ -2075,7 +2075,7 @@ async function SpotsDeepDive({ since }: { since: Date }) {
         SUM(CASE WHEN "caption" IS NOT NULL AND LENGTH("caption") > 0 THEN 1 ELSE 0 END)::int AS with_caption
       FROM "Spot"
     `,
-    // 4 — hourly heatmap (IST hour-of-day, all-time)
+    // 4 - hourly heatmap (IST hour-of-day, all-time)
     prisma.$queryRaw<Array<{ hour: number; n: bigint | number }>>`
       SELECT
         EXTRACT(HOUR FROM ("createdAt" AT TIME ZONE 'Asia/Kolkata'))::int AS hour,
@@ -2084,7 +2084,7 @@ async function SpotsDeepDive({ since }: { since: Date }) {
       GROUP BY hour
       ORDER BY hour ASC
     `,
-    // 5 — top 8 reporters (anonymized first names)
+    // 5 - top 8 reporters (anonymized first names)
     prisma.spot.groupBy({
       by: ["reporterName"],
       where: { reporterName: { not: null } },
@@ -2261,7 +2261,7 @@ async function SpotsDeepDive({ since }: { since: Date }) {
         </Panel>
         <Panel
           title="Top 8 reporters"
-          subtitle="Spotters by volume — first names only for privacy"
+          subtitle="Spotters by volume, first names only for privacy"
         >
           {topReporters.length === 0 ? (
             <EmptyHint text="No named reporters yet." />
@@ -2272,7 +2272,7 @@ async function SpotsDeepDive({ since }: { since: Date }) {
                   totalAll > 0 ? (r._count._all / totalAll) * 100 : 0;
                 return (
                   <li
-                    key={r.reporterName ?? "—"}
+                    key={r.reporterName ?? "-"}
                     className="flex items-center justify-between gap-2 text-[12.5px]"
                   >
                     <span className="text-cream-50/85 truncate">
@@ -2333,26 +2333,26 @@ function QualityBucket({
 /* ───────────── Listings deep-dive ─────────────────────────────── */
 
 /**
- * Bhandara creation flow — bot vs human, auto-publish quality,
+ * Bhandara creation flow - bot vs human, auto-publish quality,
  * Tuesday-dates distribution, repeat organizers, completeness.
  */
 async function ListingsDeepDive() {
   const settled = await Promise.allSettled([
-    // 0 — total all-time
+    // 0 - total all-time
     prisma.bhandara.count(),
-    // 1 — bot-ingested (description contains "[bot:")
+    // 1 - bot-ingested (description contains "[bot:")
     prisma.bhandara.count({ where: { description: { contains: "[bot:" } } }),
-    // 2 — auto-published (description contains "auto-publish")
+    // 2 - auto-published (description contains "auto-publish")
     prisma.bhandara.count({
       where: { description: { contains: "auto-publish" } },
     }),
-    // 3 — approved count
+    // 3 - approved count
     prisma.bhandara.count({ where: { status: "APPROVED" } }),
-    // 4 — verified
+    // 4 - verified
     prisma.bhandara.count({
       where: { status: "APPROVED", isVerified: true },
     }),
-    // 5 — quality: has photo / has phone / has time / has menu
+    // 5 - quality: has photo / has phone / has time / has menu
     prisma.$queryRaw<
       Array<{
         with_photo: bigint | number;
@@ -2367,7 +2367,7 @@ async function ListingsDeepDive() {
       FROM "Bhandara"
       WHERE "status" = 'APPROVED'
     `,
-    // 6 — organizer name groupBy (for repeat-organizer count).
+    // 6 - organizer name groupBy (for repeat-organizer count).
     //     organizerName is a required String column (not nullable),
     //     so we filter against empty string rather than null.
     prisma.bhandara.groupBy({
@@ -2376,7 +2376,7 @@ async function ListingsDeepDive() {
       _count: { _all: true },
       having: { organizerName: { _count: { gt: 1 } } },
     }),
-    // 7 — sample of tuesdayDates JSON strings to analyse multi-Tuesday
+    // 7 - sample of tuesdayDates JSON strings to analyse multi-Tuesday
     //     coverage. Cheap: only need the column.
     prisma.bhandara.findMany({
       where: { status: "APPROVED" },
@@ -2556,7 +2556,7 @@ async function ListingsDeepDive() {
 
         <Panel
           title="Repeat organisers"
-          subtitle={`${repeatOrgs.length} names with 2+ approved listings — top 8`}
+          subtitle={`${repeatOrgs.length} names with 2+ approved listings, top 8`}
         >
           {repeatOrgs.length === 0 ? (
             <EmptyHint text="No repeat organisers yet." />
@@ -2567,11 +2567,11 @@ async function ListingsDeepDive() {
                 .slice(0, 8)
                 .map((r) => (
                   <li
-                    key={r.organizerName ?? "—"}
+                    key={r.organizerName ?? "-"}
                     className="flex items-center justify-between gap-2 text-[12.5px]"
                   >
                     <span className="text-cream-50/85 truncate">
-                      {r.organizerName ?? "—"}
+                      {r.organizerName ?? "-"}
                     </span>
                     <span className="text-cream-50/70 font-mono tabular-nums">
                       {r._count._all.toLocaleString("en-IN")} listings
@@ -2636,7 +2636,7 @@ async function VolunteersDeepDive({ since }: { since: Date }) {
 
   // Tally areas across all 10 recent volunteers (and total
   // volunteers for the popular-area panel). Better would be a
-  // separate query on all volunteers — but areas is a JSON column,
+  // separate query on all volunteers - but areas is a JSON column,
   // so a Prisma groupBy can't reach inside it. Keep this scoped
   // to recent for now.
   const areaTally = new Map<string, number>();
@@ -2846,9 +2846,9 @@ function formatHour(h: number): string {
  *  collapsing to first-name-only matches the public-facing chat
  *  feed's posture (we never publish full names without consent). */
 function anonymizeSender(name: string | null): string {
-  if (!name) return "—";
+  if (!name) return "-";
   const trimmed = name.trim();
-  if (!trimmed) return "—";
+  if (!trimmed) return "-";
   const parts = trimmed.split(/\s+/);
   if (parts.length === 1) return parts[0];
   return `${parts[0]} ${parts[1].charAt(0).toUpperCase()}.`;

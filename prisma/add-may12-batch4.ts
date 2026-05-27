@@ -7,7 +7,7 @@
  *   • idempotent upsert keyed on slug (safe to re-run)
  *   • Ola Maps geocode with area-centroid fallback so we never error
  *     on a missing API key or a quiet pooler
- *   • photoUrl points to /uploads/whatsapp/<slug>.jpg — those images
+ *   • photoUrl points to /uploads/whatsapp/<slug>.jpg - those images
  *     are committed to the repo via the `!public/uploads/whatsapp/`
  *     exception in .gitignore
  *
@@ -134,8 +134,8 @@ type Entry = {
 const ENTRIES: Entry[] = [
   {
     slug: "hanuman-mandir-matiyari-chinhat",
-    name: "Bhandara — Hanuman Mandir, Matiyari, Chinhat",
-    nameHi: "भंडारा — हनुमान मंदिर, मटियारी, चिनहट",
+    name: "Bhandara, Hanuman Mandir, Matiyari, Chinhat",
+    nameHi: "भंडारा, हनुमान मंदिर, मटियारी, चिनहट",
     description:
       "Bada Mangal bhandara at Hanuman Mandir, near Anand Lok Colony, Matiyari, Chinhat.",
     descriptionHi:
@@ -162,8 +162,8 @@ const ENTRIES: Entry[] = [
   },
   {
     slug: "obsession-institute-aashiana",
-    name: "Bhandara & Sundarkand — Obsession Institute, Aashiana",
-    nameHi: "भंडारा एवं सुंदरकांड पाठ — ऑब्सेशन इंस्टीट्यूट, आशियाना",
+    name: "Bhandara & Sundarkand, Obsession Institute, Aashiana",
+    nameHi: "भंडारा एवं सुंदरकांड पाठ, ऑब्सेशन इंस्टीट्यूट, आशियाना",
     description:
       "Sundarkand path from 2 PM, vishal bhandara from 5 PM at Obsession Institute, 1/16 Ruchikhand, Sharda Nagar, Aashiana.",
     descriptionHi:
@@ -191,8 +191,8 @@ const ENTRIES: Entry[] = [
   },
   {
     slug: "arena-animation-indiranagar-c164",
-    name: "Bada Mangal Mahotsav & Sundarkand — Arena Animation, Indiranagar",
-    nameHi: "बड़ा मंगल महोत्सव एवं सुंदरकांड पाठ — एरीना एनिमेशन, इंदिरानगर",
+    name: "Bada Mangal Mahotsav & Sundarkand, Arena Animation, Indiranagar",
+    nameHi: "बड़ा मंगल महोत्सव एवं सुंदरकांड पाठ, एरीना एनिमेशन, इंदिरानगर",
     description:
       "Sundarkand path at 10 AM, prasad distribution to follow, at C-164, Aravali Marg, Indiranagar (near Indiranagar Metro Station).",
     descriptionHi:
@@ -220,8 +220,8 @@ const ENTRIES: Entry[] = [
   },
   {
     slug: "sapeyul-aman-nagar-rajajipuram",
-    name: "Bada Mangal Bhandara — Sapeyul Aman Nagar, Rajajipuram",
-    nameHi: "बड़ा मंगल भंडारा — सपेयुल अमन नगर, राजाजीपुरम",
+    name: "Bada Mangal Bhandara, Sapeyul Aman Nagar, Rajajipuram",
+    nameHi: "बड़ा मंगल भंडारा, सपेयुल अमन नगर, राजाजीपुरम",
     description:
       "Bada Mangal bhandara at Sapeyul Aman Nagar, near the Neem Ka Ped landmark in Rajajipuram.",
     descriptionHi:
@@ -246,8 +246,8 @@ const ENTRIES: Entry[] = [
   },
   {
     slug: "janki-plaza-jankipuram",
-    name: "Bada Mangal Bhandara — Janki Plaza, Jankipuram",
-    nameHi: "बड़ा मंगल भंडारा — जानकी प्लाज़ा, जानकीपुरम",
+    name: "Bada Mangal Bhandara, Janki Plaza, Jankipuram",
+    nameHi: "बड़ा मंगल भंडारा, जानकी प्लाज़ा, जानकीपुरम",
     description:
       "Bada Mangal bhandara at Janki Plaza, Jankipuram, from 11 AM.",
     descriptionHi:
@@ -271,8 +271,8 @@ const ENTRIES: Entry[] = [
   },
   {
     slug: "indra-dental-bhitholi",
-    name: "Bada Mangal Bhandara — Indra Dental Clinic, Bhitholi",
-    nameHi: "बड़ा मंगल भंडारा — इंद्रा डेंटल क्लिनिक, भिटौली",
+    name: "Bada Mangal Bhandara, Indra Dental Clinic, Bhitholi",
+    nameHi: "बड़ा मंगल भंडारा, इंद्रा डेंटल क्लिनिक, भिटौली",
     description:
       "Bada Mangal bhandara from 1 PM at Indra Dental Clinic, near MRF Tyre, Bhitholi. Co-hosted by Sushma Vihar Colony Pariwar.",
     descriptionHi:
@@ -298,8 +298,8 @@ const ENTRIES: Entry[] = [
   },
   {
     slug: "fi-plaza-bada-chand-ganj",
-    name: "Vishal Bhandara — FI Plaza, Bada Chand Ganj",
-    nameHi: "विशाल भंडारा — एफ़आई प्लाज़ा, बड़ा चाँद गंज",
+    name: "Vishal Bhandara, FI Plaza, Bada Chand Ganj",
+    nameHi: "विशाल भंडारा, एफ़आई प्लाज़ा, बड़ा चाँद गंज",
     description:
       "Vishal bhandara from 1:30 PM onwards at FI Plaza, Bada Chand Ganj. Organized by Pathseshan Diagnostic & Vimla Girls PG.",
     descriptionHi:
@@ -325,8 +325,8 @@ const ENTRIES: Entry[] = [
   },
   {
     slug: "shree-manas-mandir-manas-city",
-    name: "Bada Mangal Bhandara — Shree Manas Mandir, Manas City",
-    nameHi: "बड़ा मंगल भंडारा — श्री मानस मंदिर, मानस सिटी",
+    name: "Bada Mangal Bhandara, Shree Manas Mandir, Manas City",
+    nameHi: "बड़ा मंगल भंडारा, श्री मानस मंदिर, मानस सिटी",
     description:
       "Bada Mangal bhandara from 12 PM at Shree Manas Mandir, Manas City (near the Peepal Tree). Hosted by Chhavi Batra & family.",
     descriptionHi:
@@ -353,8 +353,8 @@ const ENTRIES: Entry[] = [
   },
   {
     slug: "cg-city-ansal-api-swati-krutika",
-    name: "Dwitiya Vishal Bhandara — Swati-Krutika, CG City, Ansal API",
-    nameHi: "द्वितीय विशाल भंडारा — स्वाति-कृतिका, सीजी सिटी, अंसल एपीआई",
+    name: "Dwitiya Vishal Bhandara, Swati-Krutika, CG City, Ansal API",
+    nameHi: "द्वितीय विशाल भंडारा, स्वाति-कृतिका, सीजी सिटी, अंसल एपीआई",
     description:
       "Second-Bada-Mangal vishal bhandara from 9 AM at Swati-Krutika Apartment Gate, CG City, Ansal API.",
     descriptionHi:
@@ -382,8 +382,8 @@ const ENTRIES: Entry[] = [
   },
   {
     slug: "balaji-store-topkhana-cantt",
-    name: "Prasad Vitran (Bhandara) — Balaji Store, Topkhana Bazar, Cantt",
-    nameHi: "प्रसाद वितरण (भंडारा) — बालाजी स्टोर, तोपखाना बाज़ार, कैंट",
+    name: "Prasad Vitran (Bhandara), Balaji Store, Topkhana Bazar, Cantt",
+    nameHi: "प्रसाद वितरण (भंडारा), बालाजी स्टोर, तोपखाना बाज़ार, कैंट",
     description:
       "Prasad distribution from 12 PM to evening at Balaji Store, Topkhana Bazar, Cantt, Lucknow.",
     descriptionHi:

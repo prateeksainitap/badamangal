@@ -1,9 +1,9 @@
--- BotIngestionLog — audit row for every /api/bot/ingest attempt.
+-- BotIngestionLog - audit row for every /api/bot/ingest attempt.
 --
 -- Additive only: new table, no changes to existing models. Safe to
 -- run on production; the bot endpoint writes to this table from the
 -- next deploy onward. Empty rows mean "either no ingests have run
--- since deploy, or the endpoint isn't writing" — both diagnosable
+-- since deploy, or the endpoint isn't writing" - both diagnosable
 -- from the row count.
 --
 -- Idempotent (IF NOT EXISTS) so re-running is a no-op.

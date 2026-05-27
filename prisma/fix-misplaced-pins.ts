@@ -108,7 +108,7 @@ const FIXES: Fix[] = [
       "TD Girls Inter College, Aliganj, Lucknow",
       "Sector D Aliganj, Lucknow",
     ],
-    // TD Girls Inter College Aliganj — Sector D crossing.
+    // TD Girls Inter College Aliganj - Sector D crossing.
     fallback: {
       lat: 26.8885,
       lng: 80.9359,
@@ -145,7 +145,7 @@ const FIXES: Fix[] = [
   },
 ];
 
-// Area centroids reused for distance check on the candidate hit — we
+// Area centroids reused for distance check on the candidate hit - we
 // refuse any geocode result more than 3.5 km from the area centroid,
 // otherwise Ola sometimes resolves to a same-name venue in another part
 // of the city.
@@ -197,7 +197,7 @@ async function main() {
         haversineKm(centroid, { lat: hit.lat, lng: hit.lng }) > ACCEPT_THRESHOLD_KM
       ) {
         console.log(
-          `  · ${f.slug}: rejected hit ${hit.lat},${hit.lng} (${hit.matched}) — too far from ${existing.area}`,
+          `  · ${f.slug}: rejected hit ${hit.lat},${hit.lng} (${hit.matched}), too far from ${existing.area}`,
         );
         continue;
       }

@@ -3,9 +3,9 @@ import { SkeletonLine, SkeletonBlock } from "@/components/admin/Skeleton";
 import ContentTabSkeleton from "./ContentTabSkeleton";
 
 /**
- * Loading skeleton for /admin/content. Mirrors the new layout —
+ * Loading skeleton for /admin/content. Mirrors the new layout -
  * brand row, Mission Strip (countdown eyebrow + four status tiles
- * + CTA), tab strip, then the tab body skeleton — so the swap to
+ * + CTA), tab strip, then the tab body skeleton - so the swap to
  * real content lands without a reflow.
  *
  * Fires when the operator lands cold on /admin/content. Tab-to-tab
@@ -60,7 +60,7 @@ export default function ContentLoading() {
           ))}
         </div>
 
-        {/* Tab body skeleton — same one each tab uses during nav.
+        {/* Tab body skeleton - same one each tab uses during nav.
             Keeps the cold-land / tab-nav experience consistent. */}
         <ContentTabSkeleton />
       </div>

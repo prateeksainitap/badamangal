@@ -1,9 +1,9 @@
--- Content Hub — pitches, templates, prompts, image tagging.
+-- Content Hub - pitches, templates, prompts, image tagging.
 --
 -- Adds /admin/content's three storage surfaces:
---   1. Content       — pitches / templates / strategy markdown
---   2. Prompt        — AI/LLM prompts with cached last-run output
---   3. GalleryPhoto.tags — re-use existing photos with channel tags
+--   1. Content       - pitches / templates / strategy markdown
+--   2. Prompt        - AI/LLM prompts with cached last-run output
+--   3. GalleryPhoto.tags - re-use existing photos with channel tags
 --                          (ig | wa | reddit | press | pamphlet | brand …)
 --
 -- All changes are ADDITIVE:

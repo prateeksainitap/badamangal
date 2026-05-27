@@ -21,7 +21,7 @@ function fmtInt(n) {
   return n.toLocaleString("en-IN");
 }
 function pct(part, whole) {
-  if (whole === 0) return "—";
+  if (whole === 0) return "-";
   return `${((part / whole) * 100).toFixed(1)}%`;
 }
 

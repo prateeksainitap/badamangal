@@ -124,9 +124,9 @@ they actually know multiple, or if they checked boxes hopefully.
 |---|---|
 | "इन areas में से कौन-सा आप सबसे अच्छे से जानते हैं?" | Pick a PRIMARY area for assignment |
 | "अगर हम आपको पास के दूसरे area में भेजें (e.g., Aliganj instead of Indira Nagar) तो problem है?" | Flexibility check; useful when one area is over-staffed |
-| "कैसे travel करते हैं — पैदल, scooter, गाड़ी?" | Determines coverage radius |
+| "कैसे travel करते हैं, पैदल, scooter, गाड़ी?" | Determines coverage radius |
 | "8 बड़े मंगल में से कितने पर आ सकते हैं?" | Commitment depth; one-off helpers OK but flag separately |
-| "Bada Mangal के दिन subah, dopahar, ya shaam — best time?" | Morning (8-11am) is peak; afternoon (12-3) is secondary |
+| "Bada Mangal के दिन subah, dopahar, ya shaam, best time?" | Morning (8-11am) is peak; afternoon (12-3) is secondary |
 | "Bada Shanivar पर भी active रहेंगे?" | Optional extension |
 
 **Capture:** 1 primary area, 2-3 secondary areas, transport mode,
@@ -161,7 +161,7 @@ remember.
 
 **Honorarium:**
 
-> *हम हर submission के बाद थोड़ा honorarium देते हैं — chai-paani*
+> *हम हर submission के बाद थोड़ा honorarium देते हैं, chai-paani*
 > *जितना, कोई salary नहीं समझिए। मंगलवार शाम तक UPI पर आ जाता है।*
 > *Exact amount काम के हिसाब से तय होता है।*
 >
@@ -181,13 +181,13 @@ forever. Better to undersell.
 
 **Communication cadence:**
 
-> *हर सोमवार शाम मैं आपको WhatsApp करूँगा — अगले मंगलवार का plan*
+> *हर सोमवार शाम मैं आपको WhatsApp करूँगा, अगले मंगलवार का plan*
 > *कौन से area में, क्या-क्या करना है, कितने लोग हैं team में।*
 > *Tuesday subah 7am tak respond कर दीजिएगा confirmed या नहीं।*
 
 **Opt-out is OK:**
 
-> *अगर किसी मंगलवार आप busy हैं, बस मुझे बता दीजिए — कोई problem*
+> *अगर किसी मंगलवार आप busy हैं, बस मुझे बता दीजिए, कोई problem*
 > *नहीं। साल भर fixed commitment नहीं है।*
 
 This lowering of pressure paradoxically increases retention.
@@ -205,7 +205,7 @@ every Tuesday".
 > *कोई और सवाल है आपका हमसे?*
 
 Let them ask. Most don't. The ones who do are the ones who'll
-become reliable — they care enough to ask.
+become reliable, they care enough to ask.
 
 End with:
 
@@ -240,23 +240,23 @@ End with:
 
 ---
 
-## Disqualification — when to NOT approve
+## Disqualification - when to NOT approve
 
 Don't issue a code if any of these are true. Mark SUSPENDED with
 a one-line reason in the notes.
 
-- **Phone goes to a completely different name** — signup might
+- **Phone goes to a completely different name**: signup might
   be impersonation
 - **Refuses to share photo + address** for ID card after the
-  expectation is set — operational blocker; we can't issue an ID
+  expectation is set, operational blocker; we can't issue an ID
 - **Aggressive about the honorarium** ("how much exactly will I
   get for Tuesday morning?") with no genuine interest in the
-  seva angle — wrong fit
-- **Cannot commit to even 2 Tuesdays of the 8** — too thin to
+  seva angle, wrong fit
+- **Cannot commit to even 2 Tuesdays of the 8**: too thin to
   train + retain
-- **Lives outside Lucknow district** — out of scope for now
-- **Under 16 years old** — legal + safety; can re-apply at 18
-- **Has been suspended on a previous BM Ingest group** — name +
+- **Lives outside Lucknow district**: out of scope for now
+- **Under 16 years old**: legal + safety; can re-apply at 18
+- **Has been suspended on a previous BM Ingest group**: name +
   phone-suffix check against the existing community moderation
   log
 
@@ -334,7 +334,7 @@ async function main() {
     },
     select: { id: true, title: true },
   });
-  console.log(`[seed] inserted: ${created.id} — ${created.title}`);
+  console.log(`[seed] inserted: ${created.id}, ${created.title}`);
   await prisma.$disconnect();
 }
 

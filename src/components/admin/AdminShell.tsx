@@ -179,7 +179,7 @@ export default function AdminShell({
   //
   // We initialise to "expanded" / "closed" on first render to
   // match SSR'd markup, then hydrate the collapsed preference in
-  // the effect — this avoids a flash of the wrong sidebar width.
+  // the effect - this avoids a flash of the wrong sidebar width.
   const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -330,7 +330,7 @@ export default function AdminShell({
               Icon: a "sidebar panel" glyph (rectangle with a
               vertical bar at the left), the de-facto standard
               used by Notion / Linear / VS Code / macOS Finder for
-              "toggle sidebar". Not a chevron — chevrons read as
+              "toggle sidebar". Not a chevron, chevrons read as
               "navigate" rather than "show / hide a panel". */}
           <div
             className={[
@@ -351,7 +351,7 @@ export default function AdminShell({
                   alt="Bada Mangal"
                   width="1660"
                   height="479"
-                  // h-9 (36px) — pairs with the 36 px toggle
+                  // h-9 (36px) - pairs with the 36 px toggle
                   // button so brand + toggle baseline-align in
                   // the expanded header.
                   className="block w-auto h-9 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)] group-hover:opacity-90 transition-opacity"
@@ -426,7 +426,7 @@ export default function AdminShell({
                       uses `inset-y-0 my-auto` (NOT `top-1/2
                       -translate-y-1/2`) because the .admin-nav-slide-in
                       keyframe animates `transform`, and CSS animations
-                      beat utility transforms on the same property —
+                      beat utility transforms on the same property -
                       that conflict was leaving the bar hanging below
                       row centre. Auto-margins on a known height (h-5)
                       centre cleanly without touching transform. */}
@@ -499,7 +499,7 @@ export default function AdminShell({
           </nav>
 
           {/* Sidebar footer. Hidden entirely when the sidebar is
-              collapsed to its 56 px icon rail — the gallery /
+              collapsed to its 56 px icon rail, the gallery /
               public-site shortcuts and the build chip aren't
               critical enough to deserve real estate when the
               operator has explicitly asked for more horizontal
@@ -665,7 +665,7 @@ export default function AdminShell({
           sidebar uses, with badges + active highlights, so the
           mobile experience reaches feature-parity with desktop
           (the previous drawer rendered only icon + label, no
-          badge counts — operators couldn't see "5 pending
+          badge counts, operators couldn't see "5 pending
           spots" without leaving the screen they were on).
           z-50 to beat every other admin overlay (header is z-20,
           row-popovers are z-30); body scroll is locked while the
@@ -791,7 +791,7 @@ export default function AdminShell({
             </nav>
 
             {/* Drawer footer: same shortcuts as desktop (gallery +
-                public site). Build chip omitted on purpose — the
+                public site). Build chip omitted on purpose, the
                 screen real estate on phones is more valuable for
                 the nav itself. */}
             <div className="px-3 pb-4 pt-2 border-t border-cyan-400/[0.08]">
@@ -826,7 +826,7 @@ export default function AdminShell({
   );
 }
 
-/** Sidebar-panel toggle icon — a rectangle with a vertical bar
+/** Sidebar-panel toggle icon - a rectangle with a vertical bar
  *  inside, the de-facto "toggle sidebar" glyph used by Notion,
  *  Linear, VS Code, and macOS Finder. The bar's tint flips based
  *  on collapsed state so the icon also reads as a state indicator

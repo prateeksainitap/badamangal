@@ -3,15 +3,15 @@
 Generate the BadaMangal QR code with a faded brand logo in the center.
 
 Outputs (under public/brand/qr/):
-  • badamangal-qr-1200.png        — branded + faded logo, 1200×1200 (newsprint / web)
-  • badamangal-qr-3000.png        — branded + faded logo, 3000×3000 (poster / vinyl)
-  • badamangal-qr-plain-1200.png  — branded sindoor, NO logo, 1200×1200
-  • badamangal-qr-plain-3000.png  — branded sindoor, NO logo, 3000×3000
-  • badamangal-qr-flat.png        — pure B&W, no logo (printer fallback / scanner test)
+  • badamangal-qr-1200.png       , branded + faded logo, 1200×1200 (newsprint / web)
+  • badamangal-qr-3000.png       , branded + faded logo, 3000×3000 (poster / vinyl)
+  • badamangal-qr-plain-1200.png , branded sindoor, NO logo, 1200×1200
+  • badamangal-qr-plain-3000.png , branded sindoor, NO logo, 3000×3000
+  • badamangal-qr-flat.png       , pure B&W, no logo (printer fallback / scanner test)
 
 Design choices:
   • Encodes the canonical brandable URL `https://badamangal.com` (NOT a
-    UTM-tagged variant — printed QRs live for years, UTMs go stale; we
+    UTM-tagged variant, printed QRs live for years, UTMs go stale; we
     track print-source attribution via a referrer-string survey instead).
   • ERROR_CORRECT_H (30% module recovery) so the faded center logo can
     obscure up to ~22% of the modules without breaking scans.
@@ -20,9 +20,9 @@ Design choices:
     iOS + Android default cameras.
   • Logo is rendered from logo-primary.svg (the 8-rayed sun + gada),
     composited at ~32% opacity over a soft cream halo so the QR
-    pattern is visible THROUGH the logo — this is what makes the
+    pattern is visible THROUGH the logo, this is what makes the
     "faded" effect work without killing scannability.
-  • Quiet zone (border) is 4 modules — slightly above the 1-module
+  • Quiet zone (border) is 4 modules, slightly above the 1-module
     spec minimum, because Indian newsprint ink-spread eats the edge.
 """
 
@@ -55,7 +55,7 @@ def render_logo(target_px: int) -> Image.Image:
     image at the requested pixel size. We strip the two <text>
     wordmark elements ("BadaMangal" + "बड़ा मंगल") and crop the
     viewBox to 480×480 (the icon area) before handing to cairosvg
-    — otherwise the Devanagari wordmark renders as tofu boxes
+   , otherwise the Devanagari wordmark renders as tofu boxes
     because cairosvg can't reach a Devanagari font on macOS, and
     the wordmarks would clutter the center anyway. Mark-only is
     the right visual: iconic, instantly recognisable, doesn't
@@ -92,7 +92,7 @@ def make_qr(
 ) -> None:
     """Build a single QR at the given pixel size and write it to
     out_path. When with_logo is True, the brand mark is faded over
-    the center. fill_color overrides the module colour — pass
+    the center. fill_color overrides the module colour, pass
     SINDOOR_700 for a no-logo branded variant; leave None to get
     the defaults (sindoor with logo, ink-black without)."""
 
@@ -127,7 +127,7 @@ def make_qr(
         qr_img = qr_img.resize((size_px, size_px), Image.LANCZOS)
 
     if with_logo:
-        # Logo occupies ~22% of QR width — well inside the 30%
+        # Logo occupies ~22% of QR width - well inside the 30%
         # error-correction headroom. Center it precisely.
         logo_size = int(size_px * 0.22)
         logo = render_logo(logo_size)
@@ -184,12 +184,12 @@ def main() -> None:
     # of the module area.
     make_qr(1200, with_logo=False, out_path=OUT_DIR / "badamangal-qr-plain-1200.png", fill_color=SINDOOR_700)
     make_qr(3000, with_logo=False, out_path=OUT_DIR / "badamangal-qr-plain-3000.png", fill_color=SINDOOR_700)
-    # Pure B&W flat — printer-bulletproof fallback when a print shop
+    # Pure B&W flat - printer-bulletproof fallback when a print shop
     # rejects the colour version (cheap offset presses sometimes do).
     make_qr(1200, with_logo=False, out_path=OUT_DIR / "badamangal-qr-flat.png")
 
     print("\nDone. Verify by opening any of the PNGs with your phone")
-    print("camera — should auto-detect and offer to open badamangal.com.")
+    print("camera, should auto-detect and offer to open badamangal.com.")
 
 
 if __name__ == "__main__":

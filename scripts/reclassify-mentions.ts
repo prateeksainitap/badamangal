@@ -15,7 +15,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 // Next.js auto-loads .env at runtime; standalone tsx doesn't, and
-// dotenv isn't in the project's deps. Parse the file manually —
+// dotenv isn't in the project's deps. Parse the file manually -
 // enough KEY="value" / KEY=value handling for our subset
 // (DATABASE_URL, GEMINI_API_KEY).
 function loadEnv(filename: string) {
@@ -80,7 +80,7 @@ async function main() {
     // classifier returns more than one location, the existing row
     // is one slice of a split (locationLabels[i]) and we can't tell
     // which i it was. Skip the label update and keep the existing
-    // value — at worst we miss a precision bump on a multi-location
+    // value - at worst we miss a precision bump on a multi-location
     // row, which is far better than collapsing Chinhat/Amity rows
     // onto Kamta the way the first run did.
     const isMultiLocation = (classified.locationLabels?.length ?? 0) > 1;

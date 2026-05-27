@@ -55,7 +55,7 @@ export default function ContentTabSkeleton({
         </div>
       </div>
 
-      {/* "+ Draft new" trigger row — slim button placeholder. */}
+      {/* "+ Draft new" trigger row - slim button placeholder. */}
       <div>
         <SkeletonLine w="w-32" h="h-9" className="rounded-lg" />
       </div>

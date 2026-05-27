@@ -5,7 +5,7 @@
 //
 // Why both? The action's hard-coded template guarantees a working
 // flow even if the DB is unreachable. This Content row is the
-// editable copy-paste reference — when you tweak the wording
+// editable copy-paste reference - when you tweak the wording
 // here, also update the action's literal so they stay in sync.
 //
 // Place it in /admin/content under Templates → Volunteer audience,
@@ -25,13 +25,13 @@ const TITLE = "Volunteer welcome (auto-sent on approval)";
 const SUMMARY =
   "The bilingual WhatsApp message that fires the moment you click 'Approve & send code on WhatsApp' on a Pending volunteer. Code + submit-link auto-merged from the DB row.";
 
-const BODY = `# Volunteer welcome message — auto-generated on approval
+const BODY = `# Volunteer welcome message, auto-generated on approval
 
 This is the **WhatsApp message that gets sent automatically** the
 moment you click \`✅ Approve & send code on WhatsApp\` on a
 pending volunteer in \`/admin/volunteers\`.
 
-You don't need to type or copy anything — the platform merges
+You don't need to type or copy anything, the platform merges
 \`{{name}}\` and \`{{code}}\` from the volunteer's row, then opens
 \`wa.me/91<phone>?text=<merged-message>\` in a new tab. All you
 do is tap Send in WhatsApp.
@@ -53,7 +53,7 @@ When a volunteer signs up via \`/volunteer\`:
 4. New tab opens at \`web.whatsapp.com\` (or the WhatsApp app on mobile)
 5. You tap Send
 
-The flow is **idempotent** — clicking twice re-opens the same
+The flow is **idempotent**: clicking twice re-opens the same
 wa.me link with the same code (no duplicate codes are issued).
 
 ## Placeholders
@@ -102,7 +102,7 @@ wa.me link with the same code (no duplicate codes are issued).
 2. **No em dashes.** Site-wide style rule. Uses commas + hyphens
    instead.
 3. **No emojis in the message body.** WhatsApp Web's preview pane
-   uses a font without emoji support and renders them as \`�\` —
+   uses a font without emoji support and renders them as \`�\` -
    the delivered message would be fine, but the preview looks
    broken. We keep the body bulletproof across every WA client.
 4. **Code displayed twice.** Once in the Hindi block, once in
@@ -112,7 +112,7 @@ wa.me link with the same code (no duplicate codes are issued).
    (lookup code, view dashboard, etc.) is reachable from there.
    One link = less cognitive load on first read.
 6. **"Save this code" instruction in both languages.** Bahut zaroori
-   — without the code, every future submission is a manual lookup
+  , without the code, every future submission is a manual lookup
    for us.
 
 ## If you want to change the wording
@@ -179,7 +179,7 @@ async function main() {
     },
     select: { id: true, title: true },
   });
-  console.log(`[seed] inserted: ${created.id} — ${created.title}`);
+  console.log(`[seed] inserted: ${created.id}, ${created.title}`);
   await prisma.$disconnect();
 }
 

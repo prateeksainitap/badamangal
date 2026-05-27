@@ -1,4 +1,4 @@
--- Volunteer programme tables (Tier A — minimal, no OTP).
+-- Volunteer programme tables (Tier A - minimal, no OTP).
 --
 -- See schema.prisma → Volunteer / VolunteerSubmission for the design
 -- rationale. Idempotent: safe to re-run if Supabase's SQL editor
@@ -7,7 +7,7 @@
 -- Run via: Supabase Dashboard → SQL Editor → New query →
 --          paste this whole file → Run.
 --
--- Order matters — VolunteerSubmission FKs to Volunteer, so create
+-- Order matters - VolunteerSubmission FKs to Volunteer, so create
 -- Volunteer first.
 
 -- ─── 1. Volunteer ─────────────────────────────────────────────────

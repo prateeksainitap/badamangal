@@ -1,4 +1,4 @@
--- DonationIntent — audit row per "Sponsor this bhandara" tap.
+-- DonationIntent - audit row per "Sponsor this bhandara" tap.
 --
 -- We don't see the actual UPI transaction (bank ↔ bank), only the
 -- intent: the donor opened the UPI app via our deep-link. This table
@@ -10,7 +10,7 @@
 -- so a duplicate webhook callback can't double-create rows when the
 -- Phase 2 PG integration ships.
 --
--- Additive only — no existing column or table is touched. Idempotent
+-- Additive only - no existing column or table is touched. Idempotent
 -- via IF NOT EXISTS so re-running is safe.
 --
 -- Run via: Supabase Dashboard → SQL Editor → New query → paste → Run.

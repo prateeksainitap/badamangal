@@ -2,7 +2,7 @@
  * One-off fix: two slugs from batch-4 got geocoded into the wrong
  * neighbourhood (the Ola geocoder fell through to a same-name venue
  * in another locality). Pin them to the curated area centroid instead
- * — within ~1 km of where they should be, which is close enough for
+ * - within ~1 km of where they should be, which is close enough for
  * "show me bhandaras in this part of the city" UX.
  *
  *   npx tsx prisma/fix-batch4-pins.ts

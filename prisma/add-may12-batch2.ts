@@ -2,7 +2,7 @@
  * Append-only seed for the May 12 second-batch WhatsApp invites
  * (Hind Nagar Vyapar Mandal + Lucknow University Main Campus).
  *
- * Unlike `seed-whatsapp.ts` this script does NOT wipe — it only adds
+ * Unlike `seed-whatsapp.ts` this script does NOT wipe - it only adds
  * the 2 new rows via upsert (so re-running is idempotent) and runs
  * the same Ola-Maps geocode pass we used for the first batch so the
  * pins land precisely instead of at the area centroid.
@@ -137,12 +137,12 @@ type Row = {
 const ROWS: Row[] = [
   {
     slug: "hind-nagar-vyapar-mandal-chungi-parag",
-    name: "Bada Mangal Bhandara — Hind Nagar Vyapar Mandal",
-    nameHi: "बड़ा मंगल भंडारा — हिन्द नगर व्यापार मंडल",
+    name: "Bada Mangal Bhandara, Hind Nagar Vyapar Mandal",
+    nameHi: "बड़ा मंगल भंडारा, हिन्द नगर व्यापार मंडल",
     description:
       "Bada Mangal Bhandara hosted by Hind Nagar Vyapar Mandal at Chungi, Parag Road, Lucknow.",
     descriptionHi:
-      "बड़ा मंगल भंडारा — आयोजक: हिन्द नगर व्यापार मंडल, चुंगी पराग रोड, लखनऊ।",
+      "बड़ा मंगल भंडारा, आयोजक: हिन्द नगर व्यापार मंडल, चुंगी पराग रोड, लखनऊ।",
     area: "Krishna Nagar",
     address: "Chungi, Parag Road, Hind Nagar, Krishna Nagar, Lucknow",
     addressHi: "चुंगी, पराग रोड, हिन्द नगर, कृष्णा नगर, लखनऊ",
@@ -164,8 +164,8 @@ const ROWS: Row[] = [
   },
   {
     slug: "lucknow-university-main-campus-bhandara",
-    name: "Bhandara — Lucknow University (Main Campus)",
-    nameHi: "भंडारा — लखनऊ विश्वविद्यालय (मुख्य परिसर)",
+    name: "Bhandara, Lucknow University (Main Campus)",
+    nameHi: "भंडारा, लखनऊ विश्वविद्यालय (मुख्य परिसर)",
     description:
       "Bada Mangal Bhandara at Lucknow University Main Campus parking between Gate No. 3 and 4. Prasad from 12 PM until Prabhu Iccha.",
     descriptionHi:
@@ -218,7 +218,7 @@ async function main() {
       console.log(`    match : ${hit.matched}`);
       console.log(`    coords: ${lat}, ${lng}`);
     } else {
-      console.log(`  ⚠ ${r.slug}: no geocode hit — using fallback ${lat}, ${lng}`);
+      console.log(`  ⚠ ${r.slug}: no geocode hit, using fallback ${lat}, ${lng}`);
     }
 
     await prisma.bhandara.upsert({

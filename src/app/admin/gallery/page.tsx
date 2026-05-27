@@ -180,8 +180,8 @@ export default async function AdminGalleryPage({
             gallery. Shows every photoUrl across bhandaras + spots
             + gallery rows, split into Live (currently rendered on
             the public site) and Stored (everything else). Cost is
-            ~150 ms warm — 6 indexed count queries + 3 findManys
-            with LIMIT 100 per source, all in parallel — so this
+            ~150 ms warm, 6 indexed count queries + 3 findManys
+            with LIMIT 100 per source, all in parallel, so this
             adds about one round-trip's worth of latency to the
             gallery page. Image bytes are CDN-served from R2 /
             Supabase, NOT from our DB, and <img loading="lazy">

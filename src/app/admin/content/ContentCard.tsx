@@ -112,7 +112,7 @@ export default function ContentCard({ row }: { row: ContentRow }) {
               // and triaging which need follow-up first.
               "border-saffron-500/35 hover:border-saffron-500/55 hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.55)]"
             : isDraft
-              ? // Drafts stay quieter — they're WIP, not eyes-on.
+              ? // Drafts stay quieter, they're WIP, not eyes-on.
                 "border-violet-400/20 hover:border-violet-400/45 hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.55)]"
               : `border-cyan-400/15 ${tone.hover} hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.55)]`,
       ].join(" ")}
@@ -207,7 +207,7 @@ export default function ContentCard({ row }: { row: ContentRow }) {
                 </span>
               ) : null}
             </div>
-            {/* "Last sent to" detail line — shown when the row was
+            {/* "Last sent to" detail line - shown when the row was
                 marked sent with a recipient note. Gives the
                 operator the context they need to write a
                 follow-up without reopening the editor. */}
@@ -373,7 +373,7 @@ export default function ContentCard({ row }: { row: ContentRow }) {
               </details>
             ) : null}
 
-            {/* Mark Replied — only shown when this row is awaiting
+            {/* Mark Replied - only shown when this row is awaiting
                 a reply. Toggles awaitingReply=false, leaves
                 lastSentAt intact so history is preserved. */}
             {awaitingReply ? (

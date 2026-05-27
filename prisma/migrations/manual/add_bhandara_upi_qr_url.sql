@@ -1,4 +1,4 @@
--- Bhandara.upiQrUrl — uploaded UPI QR image companion to upiId.
+-- Bhandara.upiQrUrl - uploaded UPI QR image companion to upiId.
 --
 -- Additive only: a new nullable column on the existing Bhandara
 -- table. No data is touched, no existing query can break. The

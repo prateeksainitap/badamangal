@@ -65,7 +65,7 @@ export default function ContentEditor({
   // 50k char DB cap.
   const [bodyLen, setBodyLen] = useState(editing?.body.length ?? 0);
   const [copied, setCopied] = useState(false);
-  // Keep the pending flag — the submit button reads it to show a
+  // Keep the pending flag - the submit button reads it to show a
   // spinner + the "Saving…" / "Creating…" label so clicks don't
   // feel frozen during the server action round-trip (300-800 ms
   // typical, longer on cold DB pool).

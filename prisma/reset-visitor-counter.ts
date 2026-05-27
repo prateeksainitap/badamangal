@@ -7,13 +7,13 @@
  * very first production hit reads as visitor #1 and the number
  * grows organically from there.
  *
- * The counter is otherwise fully live — every server-side render
+ * The counter is otherwise fully live - every server-side render
  * of the homepage increments it via `getHomepageStats()` in
  * src/lib/stats.ts (a Prisma upsert + increment, atomic). So
- * after this reset, no further code change is needed — production
+ * after this reset, no further code change is needed - production
  * traffic just builds it back up.
  *
- * Safe to re-run. Idempotent — if the counter is already 0 it
+ * Safe to re-run. Idempotent - if the counter is already 0 it
  * stays 0; if it's bigger, it goes to 0.
  *
  * Run:

@@ -42,21 +42,21 @@ Expo (React Native) v1 for Bada Mangal 2027.
 The web app is doing 95% of what an app needs to do. The 5% gap is
 where an app earns its keep:
 
-1. **Tuesday wake-up push** — the single most-asked feature. "Wake me
+1. **Tuesday wake-up push**: the single most-asked feature. "Wake me
    up at 7 AM with the nearest 5 bhandaras." Web can't do this.
    WhatsApp can (and the bot does), but only for the 9,600 who're
    already in the groups.
-2. **Camera-first spot reporting** — current web flow needs the
+2. **Camera-first spot reporting**: current web flow needs the
    visitor to (a) open browser, (b) load homepage, (c) tap a CTA,
    (d) approve camera + GPS. Native short-circuits to (b) and (c).
    Tuesday spot volume could 3-5x with a 2-tap report.
-3. **Offline "my Tuesday"** — visitors plan on Sunday, walk on
+3. **Offline "my Tuesday"**: visitors plan on Sunday, walk on
    Tuesday with patchy 4G. A cached list of 5 saved bhandaras + map
    tiles means the app works in a bhandara queue with no signal.
-4. **Discoverability beyond WhatsApp** — anyone who lands via reddit
+4. **Discoverability beyond WhatsApp**: anyone who lands via reddit
    or press has no obvious "save this for later" affordance on web.
    App icon on the home screen is a year-round retention hook.
-5. **Year-round liturgical use cases** — pamphlet builder for any
+5. **Year-round liturgical use cases**: pamphlet builder for any
    bhandara (Sawan, Navratri, Diwali, Makar Sankranti, Holi),
    organizer registration, volunteer matching. Off-season needs a
    home; web traffic dies between Tuesdays but a notification can
@@ -75,13 +75,13 @@ where an app earns its keep:
 
 Build in this exact order. Walker is the largest segment (~80% of
 expected app installs). Organizer + Volunteer cover the long tail.
-Operator is convenience-only — desktop admin already works.
+Operator is convenience-only, desktop admin already works.
 
 ---
 
 ## What goes in (feature scope by release)
 
-### MVP (v0) — Capacitor wrapper
+### MVP (v0) - Capacitor wrapper
 
 **Goal:** prove the three native superpowers work and people want them.
 
@@ -101,7 +101,7 @@ flow, payments, in-app messaging.
 **Effort:** 3-4 weeks solo. Reuses every API route the web already
 exposes.
 
-### v1 — Native Expo build
+### v1 - Native Expo build
 
 **Trigger:** MVP retention > 30% week-2, push opt-in > 50%, or 500+
 installs by November 2026.
@@ -119,7 +119,7 @@ installs by November 2026.
 **Effort:** 8-10 weeks solo. Build in Feb-April 2027 with eye on
 season launch.
 
-### v2 — Post-2027-season
+### v2 - Post-2027-season
 
 - Operator/admin app (compress /admin into 4 screens)
 - One-tap WhatsApp → app forward (capture share intent from the bot
@@ -128,18 +128,18 @@ season launch.
 - In-app live chat (currently the LiveChatterBoard webview is fine,
   but native chat with WhatsApp-style bubbles would feel native)
 - Apple Watch / Wear OS companion ("nearest bhandara" complication
-  on Tuesday morning — high-effort, very low impact)
+  on Tuesday morning, high-effort, very low impact)
 
 ---
 
-## How — three realistic stacks
+## How - three realistic stacks
 
 ### Option A: Capacitor wrapping the existing PWA  ★ RECOMMENDED for MVP
 
 - The Next.js web app is the core; Capacitor is a thin native shell
 - Native bridges for camera, push, geolocation, share
 - Single codebase, no parallel mobile codebase to maintain
-- Operator already speaks Next.js + React — zero new tech learning
+- Operator already speaks Next.js + React, zero new tech learning
 - App Store risk: Apple's 4.2 ("doesn't provide enough native value")
   is real for naive WebView wrappers, but mitigated by genuine native
   features (camera, push, share intent, biometric save)
@@ -149,7 +149,7 @@ season launch.
 
 - Proper native app, native screens, native nav
 - Higher quality, longer build
-- Operator already writes React — JSX shape transfers
+- Operator already writes React, JSX shape transfers
 - EAS Build + Submit handles iOS + Android one-click
 - **6-10 weeks to MVP**, **3-4 months to v1**
 
@@ -164,7 +164,7 @@ season launch.
 **Capacitor (Option A) for the off-season MVP.** Cheap, fast, reuses
 everything that works. If retention + push opt-in clear the v1 trigger
 bar by November 2026, **rebuild on Expo for the 2027 season**. The
-Capacitor codebase isn't load-bearing past v1 — it's a probe.
+Capacitor codebase isn't load-bearing past v1, it's a probe.
 
 ---
 
@@ -244,7 +244,7 @@ cash cost is trivial.
 | **November-December 2026** | Festival uses (Diwali pamphlet, etc.) drive year-round retention. |
 | **January 2027** | Re-evaluate: 500+ installs, > 30% W2 retention, > 50% push opt-in? |
 | **Feb-Apr 2027** | If GO, build Expo v1 with native screens + organizer + volunteer flows. |
-| **May 2027** | Bada Mangal 2027 launch — primary use case lands with native polish. |
+| **May 2027** | Bada Mangal 2027 launch, primary use case lands with native polish. |
 
 ---
 
@@ -266,7 +266,7 @@ queues.
 
 ## Open questions to settle before week 1
 
-1. Push provider — OneSignal vs Expo Notifications vs Firebase Cloud
+1. Push provider, OneSignal vs Expo Notifications vs Firebase Cloud
    Messaging? (Capacitor talks to all three; OneSignal is the easiest
    for non-FCM-native setups.)
 2. Hindi-first UI vs English-first with a toggle? (Web is currently
@@ -321,7 +321,7 @@ async function main() {
     },
     select: { id: true, title: true },
   });
-  console.log(`[seed] inserted: ${created.id} — ${created.title}`);
+  console.log(`[seed] inserted: ${created.id}, ${created.title}`);
   await prisma.$disconnect();
 }
 
