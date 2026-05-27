@@ -105,6 +105,15 @@ export default async function AnalyticsPage() {
           <WeeklySummary since={SINCE} sinceLabel={SINCE_LABEL} />
         </Suspense>
 
+        {/* Feature breakdowns. Each feature gets its own
+            independently-suspended block so the analytics page
+            stays usable even if one feature's queries reject.
+            Live Chat is the first one; Live Map / Spots / etc.
+            will land here as separate panels in follow-up commits. */}
+        <Suspense fallback={<FeatureBreakdownSkeleton />}>
+          <LiveChatDeepDive since={SINCE} />
+        </Suspense>
+
         {/* All-time funnels + tables — secondary surface. */}
         <Suspense fallback={<AllTimeSkeleton />}>
           <AllTimeSection />
@@ -757,6 +766,558 @@ async function AllTimeSection() {
   );
 }
 
+/* ───────────────── Live Chat — detailed feature breakdown ────── */
+
+/**
+ * Deep dive into the Live Chat feature (BhandaraMention table).
+ * Sits between the Weekly Summary (which aggregates across
+ * features) and the All-time section (which covers funnels +
+ * top movers across the whole platform).
+ *
+ * Surfaces feature-specific metrics that the other two views
+ * don't:
+ *   • Hourly heatmap of when the chat fires (peak hour signal)
+ *   • Location sources breakdown (whatsapp_share / google_maps_url
+ *     / extracted / manual / none) — tells us how the map plots
+ *     actually got their coords
+ *   • Engagement signals: quoted replies (threading), bhandara
+ *     linking rate (chat → listing pipeline), avg message length
+ *   • Moderation health: auto-approve % + avg classifier
+ *     confidence + rejection trend
+ *   • Top contributors (named, anonymized to first name)
+ *   • Language split
+ *
+ * All-time view is the default; an inline "this week" delta
+ * column shows the weekly slice for the metrics where it makes
+ * sense. Promise.allSettled wraps every query so any rejection
+ * degrades to zero in that tile rather than 500-ing the section.
+ */
+async function LiveChatDeepDive({ since }: { since: Date }) {
+  const settled = await Promise.allSettled([
+    // 0 — all-time mention count
+    prisma.bhandaraMention.count(),
+    // 1 — unique groups (DISTINCT groupName, non-null)
+    prisma.bhandaraMention.findMany({
+      where: { groupName: { not: null } },
+      select: { groupName: true },
+      distinct: ["groupName"],
+    }),
+    // 2 — unique senders (DISTINCT senderName, non-null)
+    prisma.bhandaraMention.findMany({
+      where: { senderName: { not: null } },
+      select: { senderName: true },
+      distinct: ["senderName"],
+    }),
+    // 3 — locationSource breakdown (all-time)
+    prisma.bhandaraMention.groupBy({
+      by: ["locationSource"],
+      _count: { _all: true },
+      orderBy: { _count: { locationSource: "desc" } },
+    }),
+    // 4 — language breakdown (all-time)
+    prisma.bhandaraMention.groupBy({
+      by: ["language"],
+      _count: { _all: true },
+      orderBy: { _count: { language: "desc" } },
+    }),
+    // 5 — engagement: quoted-reply count + bhandara-linked count
+    //     + APPROVED count + REJECTED count + avg confidence + avg
+    //     message length. Single raw-SQL roundtrip is cheaper than
+    //     5 Prisma counts.
+    prisma.$queryRaw<
+      Array<{
+        total: bigint | number;
+        quoted: bigint | number;
+        linked: bigint | number;
+        approved: bigint | number;
+        rejected: bigint | number;
+        avg_conf: number | null;
+        avg_len: number | null;
+      }>
+    >`
+      SELECT
+        COUNT(*)::int                                       AS total,
+        SUM(CASE WHEN "quotedText" IS NOT NULL THEN 1 ELSE 0 END)::int AS quoted,
+        SUM(CASE WHEN "bhandaraId" IS NOT NULL THEN 1 ELSE 0 END)::int AS linked,
+        SUM(CASE WHEN "status" = 'APPROVED' THEN 1 ELSE 0 END)::int    AS approved,
+        SUM(CASE WHEN "status" = 'REJECTED' THEN 1 ELSE 0 END)::int    AS rejected,
+        AVG("confidence")::float                            AS avg_conf,
+        AVG(LENGTH(COALESCE("cleanedText", "originalText")))::float AS avg_len
+      FROM "BhandaraMention"
+    `,
+    // 6 — hourly heatmap (24 bars, IST hour-of-day, all-time)
+    prisma.$queryRaw<Array<{ hour: number; n: bigint | number }>>`
+      SELECT
+        EXTRACT(HOUR FROM ("createdAt" AT TIME ZONE 'Asia/Kolkata'))::int AS hour,
+        COUNT(*)::int AS n
+      FROM "BhandaraMention"
+      GROUP BY hour
+      ORDER BY hour ASC
+    `,
+    // 7 — top 8 senders all-time (anonymize to first name only)
+    prisma.bhandaraMention.groupBy({
+      by: ["senderName"],
+      where: { senderName: { not: null } },
+      _count: { _all: true },
+      orderBy: { _count: { senderName: "desc" } },
+      take: 8,
+    }),
+    // 8 — weekly count (for the side-by-side this-week delta)
+    prisma.bhandaraMention.count({
+      where: { createdAt: { gte: since } },
+    }),
+    // 9 — weekly quoted/linked/avg-conf for the delta column
+    prisma.$queryRaw<
+      Array<{
+        quoted: bigint | number;
+        linked: bigint | number;
+        avg_conf: number | null;
+      }>
+    >`
+      SELECT
+        SUM(CASE WHEN "quotedText" IS NOT NULL THEN 1 ELSE 0 END)::int AS quoted,
+        SUM(CASE WHEN "bhandaraId" IS NOT NULL THEN 1 ELSE 0 END)::int AS linked,
+        AVG("confidence")::float                            AS avg_conf
+      FROM "BhandaraMention"
+      WHERE "createdAt" >= ${since}
+    `,
+  ]);
+
+  const unwrap = <T,>(i: number, fallback: T): T =>
+    settled[i]?.status === "fulfilled"
+      ? ((settled[i] as PromiseFulfilledResult<T>).value)
+      : fallback;
+
+  const totalAll = unwrap<number>(0, 0);
+  const groupRows = unwrap<Array<{ groupName: string | null }>>(1, []);
+  const senderRows = unwrap<Array<{ senderName: string | null }>>(2, []);
+  const uniqueGroups = groupRows.length;
+  const uniqueSenders = senderRows.length;
+  const locationRows = unwrap<
+    Array<{ locationSource: string; _count: { _all: number } }>
+  >(3, []);
+  const langRows = unwrap<
+    Array<{ language: string; _count: { _all: number } }>
+  >(4, []);
+  const engagementRows = unwrap<
+    Array<{
+      total: bigint | number;
+      quoted: bigint | number;
+      linked: bigint | number;
+      approved: bigint | number;
+      rejected: bigint | number;
+      avg_conf: number | null;
+      avg_len: number | null;
+    }>
+  >(5, []);
+  const eng = engagementRows[0];
+  const hourlyRows = unwrap<Array<{ hour: number; n: bigint | number }>>(
+    6,
+    [],
+  );
+  const topSenderRows = unwrap<
+    Array<{ senderName: string | null; _count: { _all: number } }>
+  >(7, []);
+  const weekTotal = unwrap<number>(8, 0);
+  const weekEngagementRows = unwrap<
+    Array<{
+      quoted: bigint | number;
+      linked: bigint | number;
+      avg_conf: number | null;
+    }>
+  >(9, []);
+  const weekEng = weekEngagementRows[0];
+
+  // Compose hourly heatmap as a fixed 24-cell array. Hours that
+  // never fired stay at zero so the visual reads as a real
+  // 24-hour clock.
+  const hourly: number[] = Array.from({ length: 24 }, () => 0);
+  for (const r of hourlyRows) {
+    const h = Number(r.hour);
+    if (h >= 0 && h < 24) hourly[h] = Number(r.n);
+  }
+  const hourlyMax = Math.max(...hourly, 1);
+  const peakHour = hourly.indexOf(Math.max(...hourly));
+
+  const totalE = Number(eng?.total ?? 0);
+  const quotedE = Number(eng?.quoted ?? 0);
+  const linkedE = Number(eng?.linked ?? 0);
+  const approvedE = Number(eng?.approved ?? 0);
+  const rejectedE = Number(eng?.rejected ?? 0);
+  const avgConfE = eng?.avg_conf ?? null;
+  const avgLenE = eng?.avg_len ?? null;
+  const autoApprovePct = totalE > 0 ? (approvedE / totalE) * 100 : 0;
+  const rejectedPct = totalE > 0 ? (rejectedE / totalE) * 100 : 0;
+  const quotedPct = totalE > 0 ? (quotedE / totalE) * 100 : 0;
+  const linkedPct = totalE > 0 ? (linkedE / totalE) * 100 : 0;
+
+  return (
+    <section className="mt-10">
+      <div className="mb-1 flex items-baseline gap-2 flex-wrap font-mono text-[10.5px] uppercase tracking-[0.18em]">
+        <span className="text-violet-300">Feature deep-dive</span>
+        <span className="text-cream-50/30">·</span>
+        <span className="text-cream-50/65">Live chat</span>
+      </div>
+      <h2 className="font-fraunces text-cream-50 text-lg mb-1">
+        Live chat &mdash; full breakdown
+      </h2>
+      <p className="text-[12px] text-cream-50/55 mb-4 font-mukta">
+        Everything the BhandaraMention table can tell us. All-time
+        numbers with this-week deltas where meaningful.
+      </p>
+
+      {/* 4 hero tiles */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <WeekTile
+          label="Mentions ever"
+          value={totalAll}
+          sub={`+${weekTotal.toLocaleString("en-IN")} this week`}
+          tone="cyan"
+        />
+        <WeekTile
+          label="Unique groups"
+          value={uniqueGroups}
+          sub="WhatsApp sources"
+          tone="violet"
+        />
+        <WeekTile
+          label="Unique senders"
+          value={uniqueSenders}
+          sub="Distinct contributors"
+          tone="leaf"
+        />
+        <WeekTile
+          label="Auto-approval"
+          value={Math.round(autoApprovePct)}
+          sub={`${rejectedPct.toFixed(1)}% rejected · avg conf ${avgConfE != null ? avgConfE.toFixed(2) : "—"}`}
+          tone="saffron"
+          isPercentage
+        />
+      </div>
+
+      {/* Hourly heatmap */}
+      <Panel
+        title="Hourly heatmap (all-time, IST)"
+        subtitle={
+          peakHour >= 0
+            ? `Peak hour: ${formatHour(peakHour)} (${hourly[peakHour].toLocaleString("en-IN")} mentions)`
+            : "No data yet"
+        }
+      >
+        <div className="grid grid-cols-12 sm:grid-cols-24 gap-1 mt-1">
+          {hourly.map((n, h) => {
+            const heightPct = (n / hourlyMax) * 100;
+            const isPeak = h === peakHour && n > 0;
+            return (
+              <div
+                key={h}
+                className="flex flex-col items-stretch gap-1"
+                title={`${formatHour(h)} · ${n.toLocaleString("en-IN")} mentions`}
+              >
+                <div className="h-20 flex items-end">
+                  <div
+                    className={[
+                      "w-full rounded-sm transition-all",
+                      isPeak
+                        ? "bg-saffron-500/85"
+                        : n > hourlyMax * 0.5
+                          ? "bg-cyan-400/70"
+                          : n > hourlyMax * 0.2
+                            ? "bg-cyan-400/40"
+                            : "bg-cyan-400/15",
+                    ].join(" ")}
+                    style={{ height: `${Math.max(heightPct, n > 0 ? 6 : 0)}%` }}
+                  />
+                </div>
+                <div
+                  className={[
+                    "text-[8.5px] text-center font-mono tabular-nums",
+                    isPeak ? "text-saffron-300" : "text-cream-50/45",
+                  ].join(" ")}
+                >
+                  {h.toString().padStart(2, "0")}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Panel>
+
+      {/* Location sources + Engagement signals side by side */}
+      <div className="grid gap-4 lg:grid-cols-2 mt-4">
+        <Panel
+          title="How map plots get their coordinates"
+          subtitle="Mention.locationSource breakdown, all-time"
+        >
+          {locationRows.length === 0 ? (
+            <EmptyHint text="No mentions logged yet." />
+          ) : (
+            <ul className="space-y-2">
+              {locationRows.map((r) => {
+                const pct = totalAll > 0 ? (r._count._all / totalAll) * 100 : 0;
+                const label = LOCATION_SOURCE_LABELS[r.locationSource] ?? r.locationSource;
+                return (
+                  <li key={r.locationSource} className="text-[12px]">
+                    <div className="flex items-baseline justify-between mb-1">
+                      <span className="text-cream-50/85 font-mono">
+                        {label}
+                      </span>
+                      <span className="text-cream-50/65 font-mono tabular-nums">
+                        {r._count._all.toLocaleString("en-IN")}{" "}
+                        <span className="text-cream-50/45">
+                          ({pct.toFixed(1)}%)
+                        </span>
+                      </span>
+                    </div>
+                    <div className="h-2 bg-cream-50/[0.04] rounded overflow-hidden">
+                      <div
+                        className="h-full bg-cyan-400/65"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel
+          title="Engagement signals"
+          subtitle="Replies, listing-linked, message length, moderation health"
+        >
+          <dl className="space-y-2.5 text-[12.5px]">
+            <EngagementRow
+              label="Quoted replies"
+              value={`${quotedE.toLocaleString("en-IN")} (${quotedPct.toFixed(1)}%)`}
+              weekValue={
+                weekEng
+                  ? `+${Number(weekEng.quoted ?? 0).toLocaleString("en-IN")} this wk`
+                  : null
+              }
+              hint="Chat threading — someone replied to a quoted message"
+            />
+            <EngagementRow
+              label="Linked to a Bhandara"
+              value={`${linkedE.toLocaleString("en-IN")} (${linkedPct.toFixed(1)}%)`}
+              weekValue={
+                weekEng
+                  ? `+${Number(weekEng.linked ?? 0).toLocaleString("en-IN")} this wk`
+                  : null
+              }
+              hint="The mention-to-listing pipeline working"
+            />
+            <EngagementRow
+              label="Approved"
+              value={`${approvedE.toLocaleString("en-IN")} (${autoApprovePct.toFixed(1)}%)`}
+              weekValue={null}
+              hint="Including auto-approved bot ingests"
+            />
+            <EngagementRow
+              label="Rejected"
+              value={`${rejectedE.toLocaleString("en-IN")} (${rejectedPct.toFixed(1)}%)`}
+              weekValue={null}
+              hint="Classifier or admin moderation"
+            />
+            <EngagementRow
+              label="Avg classifier confidence"
+              value={avgConfE != null ? avgConfE.toFixed(3) : "—"}
+              weekValue={
+                weekEng?.avg_conf != null
+                  ? `${weekEng.avg_conf.toFixed(3)} this wk`
+                  : null
+              }
+              hint="Gemini's self-reported 0-1 score"
+            />
+            <EngagementRow
+              label="Avg message length"
+              value={
+                avgLenE != null
+                  ? `${Math.round(avgLenE).toLocaleString("en-IN")} chars`
+                  : "—"
+              }
+              weekValue={null}
+              hint="cleanedText (or originalText if cleaned is null)"
+            />
+          </dl>
+        </Panel>
+      </div>
+
+      {/* Top senders + language split */}
+      <div className="grid gap-4 lg:grid-cols-2 mt-4">
+        <Panel
+          title="Top 8 contributors"
+          subtitle="Senders by mention volume — first names only for privacy"
+        >
+          {topSenderRows.length === 0 ? (
+            <EmptyHint text="No named senders yet." />
+          ) : (
+            <ul className="space-y-1.5">
+              {topSenderRows.map((s) => {
+                const display = anonymizeSender(s.senderName);
+                const pct =
+                  totalAll > 0 ? (s._count._all / totalAll) * 100 : 0;
+                return (
+                  <li
+                    key={s.senderName ?? "—"}
+                    className="flex items-center justify-between gap-2 text-[12.5px]"
+                  >
+                    <span className="text-cream-50/85 truncate">{display}</span>
+                    <span className="text-cream-50/70 font-mono tabular-nums shrink-0">
+                      {s._count._all.toLocaleString("en-IN")}{" "}
+                      <span className="text-cream-50/45">
+                        ({pct.toFixed(1)}%)
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel
+          title="Language mix"
+          subtitle="Gemini-detected language of each mention"
+        >
+          {langRows.length === 0 ? (
+            <EmptyHint text="No language signal yet." />
+          ) : (
+            <ul className="space-y-2">
+              {langRows.map((l) => {
+                const pct =
+                  totalAll > 0 ? (l._count._all / totalAll) * 100 : 0;
+                const label = LANGUAGE_LABELS[l.language] ?? l.language;
+                return (
+                  <li key={l.language} className="text-[12px]">
+                    <div className="flex items-baseline justify-between mb-1">
+                      <span className="text-cream-50/85 font-mono">
+                        {label}
+                      </span>
+                      <span className="text-cream-50/65 font-mono tabular-nums">
+                        {l._count._all.toLocaleString("en-IN")}{" "}
+                        <span className="text-cream-50/45">
+                          ({pct.toFixed(1)}%)
+                        </span>
+                      </span>
+                    </div>
+                    <div className="h-2 bg-cream-50/[0.04] rounded overflow-hidden">
+                      <div
+                        className="h-full bg-violet-400/65"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+      </div>
+    </section>
+  );
+}
+
+const LOCATION_SOURCE_LABELS: Record<string, string> = {
+  whatsapp_share: "WhatsApp location share",
+  google_maps_url: "Google Maps URL in message",
+  extracted_address: "Address extracted by Gemini",
+  manual: "Manually pinned by admin",
+  none: "No coordinates (chat-only)",
+};
+
+const LANGUAGE_LABELS: Record<string, string> = {
+  mixed: "Hinglish (mixed)",
+  en: "English",
+  hi: "Hindi",
+};
+
+/** Format a 0-23 hour as "12 AM", "1 AM", … "11 PM". Used by the
+ *  hourly heatmap's peak-hour subtitle. */
+function formatHour(h: number): string {
+  if (h === 0) return "12 AM";
+  if (h === 12) return "12 PM";
+  return h < 12 ? `${h} AM` : `${h - 12} PM`;
+}
+
+/** Anonymize a sender name to first name + last-name initial.
+ *  "Vimla Mishra" → "Vimla M." | "Akanksha" → "Akanksha". WhatsApp
+ *  display names are user-set and not strictly private, but
+ *  collapsing to first-name-only matches the public-facing chat
+ *  feed's posture (we never publish full names without consent). */
+function anonymizeSender(name: string | null): string {
+  if (!name) return "—";
+  const trimmed = name.trim();
+  if (!trimmed) return "—";
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[1].charAt(0).toUpperCase()}.`;
+}
+
+function EngagementRow({
+  label,
+  value,
+  weekValue,
+  hint,
+}: {
+  label: string;
+  value: string;
+  weekValue: string | null;
+  hint: string;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 pb-2 border-b border-cream-50/[0.06] last:border-b-0 last:pb-0">
+      <div className="min-w-0">
+        <div className="text-cream-50/85 font-mono leading-tight">{label}</div>
+        <div className="text-[10.5px] text-cream-50/45 mt-0.5 font-mukta">
+          {hint}
+        </div>
+      </div>
+      <div className="text-right shrink-0">
+        <div className="text-cream-50 tabular-nums font-mono">{value}</div>
+        {weekValue ? (
+          <div className="text-[10.5px] text-cyan-300/70 font-mono mt-0.5">
+            {weekValue}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function FeatureBreakdownSkeleton() {
+  return (
+    <section className="mt-10">
+      <div className="space-y-3 mb-4">
+        <SkeletonLineLocal w="w-48" h="h-3" />
+        <SkeletonLineLocal w="w-72" h="h-6" />
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-xl border border-cream-50/10 bg-[#0B0E16]/85 h-[88px] admin-skeleton motion-safe:animate-pulse"
+          />
+        ))}
+      </div>
+      <div className="rounded-2xl border border-cream-50/10 bg-[#0B0E16]/85 h-48 admin-skeleton motion-safe:animate-pulse mb-4" />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-cream-50/10 bg-[#0B0E16]/85 h-56 admin-skeleton motion-safe:animate-pulse" />
+        <div className="rounded-2xl border border-cream-50/10 bg-[#0B0E16]/85 h-56 admin-skeleton motion-safe:animate-pulse" />
+      </div>
+    </section>
+  );
+}
+
+/** Inline tiny skeleton-line used only by FeatureBreakdownSkeleton. */
+function SkeletonLineLocal({ w, h }: { w: string; h: string }) {
+  return (
+    <div
+      className={`rounded-md admin-skeleton motion-safe:animate-pulse ${w} ${h}`}
+    />
+  );
+}
+
 /* ───────────────────── Reusable atoms ─────────────────────────── */
 
 type Tone = "cyan" | "leaf" | "violet" | "saffron" | "ink";
@@ -804,6 +1365,7 @@ function WeekTile({
   tone,
   emphasis = false,
   isAttemptCount = false,
+  isPercentage = false,
 }: {
   label: string;
   value: number;
@@ -811,6 +1373,7 @@ function WeekTile({
   tone: Tone;
   emphasis?: boolean;
   isAttemptCount?: boolean;
+  isPercentage?: boolean;
 }) {
   const t = TONE_TILE[tone];
   return (
@@ -832,6 +1395,11 @@ function WeekTile({
         ].join(" ")}
       >
         {value.toLocaleString("en-IN")}
+        {isPercentage ? (
+          <span className="text-[16px] text-cream-50/55 ml-0.5 font-mukta">
+            %
+          </span>
+        ) : null}
         {isAttemptCount ? (
           <span className="text-[12px] text-cream-50/45 ml-1.5 font-mukta">
             attempts
