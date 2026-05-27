@@ -25,6 +25,10 @@ import {
   mostRecentOpenDayIST,
   dayNameEn,
 } from "@/lib/live-chat-schedule";
+import {
+  ALL_SEASON_ISO,
+  istTodayIso,
+} from "@/lib/dates";
 import ActivityFeed, {
   ActivityFeedSkeleton,
 } from "@/components/admin/ActivityFeed";
@@ -60,6 +64,13 @@ export default async function AdminDashboardPage() {
 
   const now = new Date();
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  // Upcoming + today's season service-days (Tuesdays + Saturdays
+  // through end of season). Used by the "Live bhandaras" tile to
+  // match the public-homepage filter exactly — same predicate as
+  // lib/dates.ts:hasUpcomingDate, just expressed at the SQL layer
+  // so we don't have to fetch every APPROVED row to count.
+  const todayIso = istTodayIso(now);
+  const upcomingSeasonIso = ALL_SEASON_ISO.filter((d) => d >= todayIso);
 
   // Above-the-fold queries only, KPI counts. The 3 map `findMany`
   // queries (live spots / bhandaras / mentions with coords) used to
@@ -96,6 +107,35 @@ export default async function AdminDashboardPage() {
     // Unread inbox count for the Emails quick-action tile + sidebar.
     // Fast, `status` is indexed via @@index([status, createdAt]).
     prisma.contactMessage.count({ where: { status: "NEW" } }),
+    // Live-on-website bhandara count. Matches the exact predicate
+    // the public homepage uses to decide what to render: APPROVED +
+    // has at least one service-day (Tuesday or Saturday) that's
+    // today or in the future. A plain status=APPROVED count would
+    // over-report by including rows whose tuesdayDates are entirely
+    // in the past (still APPROVED but auto-hidden from the public
+    // surface — see lib/dates.ts:hasUpcomingDate).
+    //
+    // tuesdayDates is a JSON-encoded string column ('["2026-05-19",
+    // "2026-06-02",…]'); Prisma's `contains` filter runs Postgres
+    // LIKE under the hood, and ISO dates are zero-padded so each
+    // upcoming-date substring matches without false positives. We
+    // OR every upcoming service-day in the season window so a
+    // bhandara serving on any future date counts as live.
+    //
+    // End-of-season guard: when no service-days remain, short-circuit
+    // to a literal 0 instead of issuing OR: [] (Prisma's behaviour
+    // on empty OR is version-dependent and we don't want to risk
+    // accidentally counting every APPROVED row off-season).
+    upcomingSeasonIso.length === 0
+      ? Promise.resolve(0)
+      : prisma.bhandara.count({
+          where: {
+            status: "APPROVED",
+            OR: upcomingSeasonIso.map((d) => ({
+              tuesdayDates: { contains: d },
+            })),
+          },
+        }),
   ]);
   const unwrap = <T,>(idx: number, fallback: T): T => {
     const r = settled[idx];
@@ -115,6 +155,7 @@ export default async function AdminDashboardPage() {
   const visitorCount = unwrap<number>(4, 0);
   const pendingVolunteers = unwrap<number>(5, 0);
   const newEmailsCount = unwrap<number>(6, 0);
+  const liveBhandarasCount = unwrap<number>(7, 0);
 
   // "Total reach" = WhatsApp community members + cumulative website
   // visitor count. The KPI tile shows the sum (a single big number
@@ -247,7 +288,15 @@ export default async function AdminDashboardPage() {
           quick.actions divider that used to sit above this strip
           was removed, the tiles themselves are self-explanatory
           and the divider was visual chrome with no information value. */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-7">
+      {/* Trimmed from six tiles down to two: scan_and_publish
+          and emails — the only destinations the operator hits
+          frequently enough to deserve top-of-dashboard real
+          estate. Everything else (review queue, discover,
+          content hub, volunteers) is one click away via the
+          sidebar, so the duplicate quick-action shortcuts were
+          mostly visual noise. Two-column grid below sm so the
+          tiles stay readable at full width on phones. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-7">
         <QuickAction
           href="/admin/scan"
           label="scan_and_publish"
@@ -255,38 +304,6 @@ export default async function AdminDashboardPage() {
           icon={<QuickIconScan />}
           accent="primary"
           shortcut="S"
-        />
-        <QuickAction
-          href="/admin/bhandaras?status=PENDING"
-          label="review_queue"
-          subtitle={`${pendingBhandaras} pending`}
-          icon={<QuickIconClipboard />}
-          accent="violet"
-          shortcut="R"
-        />
-        <QuickAction
-          href="/admin/discover"
-          label="discover"
-          subtitle="Find new bhandaras"
-          icon={<QuickIconCompass />}
-          accent="cyan"
-          shortcut="D"
-        />
-        <QuickAction
-          href="/admin/volunteers"
-          label="volunteers"
-          subtitle={`${pendingVolunteers} new`}
-          icon={<QuickIconUsers />}
-          accent="leaf"
-          shortcut="V"
-        />
-        <QuickAction
-          href="/admin/content"
-          label="content_hub"
-          subtitle="Pitches · IG · prompts"
-          icon={<QuickIconSparkle />}
-          accent="saffron"
-          shortcut="C"
         />
         <QuickAction
           href="/admin/emails"
@@ -310,16 +327,25 @@ export default async function AdminDashboardPage() {
           until cleared. */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-7">
         <KpiTile
-          label="Pending review"
-          value={pendingBhandaras.toLocaleString("en-IN")}
+          label="Live bhandaras"
+          value={liveBhandarasCount.toLocaleString("en-IN")}
+          // Delta line surfaces the pending-review backlog so the
+          // tile still carries the "what needs your attention"
+          // signal that the old PENDING REVIEW tile used to. When
+          // the queue is empty we drop a quiet "all approved"
+          // line instead so the tile doesn't read as suspiciously
+          // silent.
           delta={
             pendingBhandaras > 0
-              ? `${pendingBhandaras} waiting for your call`
-              : "All caught up"
+              ? `${pendingBhandaras} pending review`
+              : "All approved"
           }
+          // Stay green when pending review is empty; flip to the
+          // saffron "attention" glow when pending review > 0 so
+          // the tile doubles as a "you have queue work" cue.
           variant={pendingBhandaras > 0 ? "attention" : "success"}
-          href="/admin/bhandaras?status=PENDING"
-          icon={<KpiIconClipboard />}
+          href="/admin/bhandaras?status=LIVE"
+          icon={<KpiIconDiya />}
         />
         <KpiTile
           label="Live spots"
@@ -726,14 +752,28 @@ function QuickAction({
 
 /* ───────── KPI Icons, sized for the larger 44×44 icon plate
  *  on each KpiTile. Stroke 2.2 reads bold without going pictographic. */
-function KpiIconClipboard() {
+/** Diya for the "Live bhandaras" KPI tile — same silhouette as
+ *  the sidebar's Bhandaras nav glyph (gada-on-disc flame on top
+ *  of an arched plate), upscaled to 22 px to match the bolder
+ *  KPI icon weight. The flame fills with currentColor so the
+ *  variant-tinted ring around the icon reads "lit / live". */
+function KpiIconDiya() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="6" y="4" width="12" height="17" rx="2" />
-      <path d="M9 4 v-1 h6 v1" />
-      <line x1="9" y1="10" x2="15" y2="10" />
-      <line x1="9" y1="14" x2="15" y2="14" />
-      <line x1="9" y1="18" x2="13" y2="18" />
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path
+        d="M12 4 c1.6 1.5 2.5 3.2 0 5.5 c-2.5 -2.3 -1.6 -4 0 -5.5 z"
+        fill="currentColor"
+      />
+      <path d="M4 14 q8 5 16 0 l-2 5 h-12 z" />
     </svg>
   );
 }
@@ -796,41 +836,6 @@ function QuickIconScan() {
       <path d="M3 16 v3 a2 2 0 0 0 2 2 h3" />
       <path d="M21 16 v3 a2 2 0 0 1 -2 2 h-3" />
       <line x1="3" y1="12" x2="21" y2="12" />
-    </svg>
-  );
-}
-function QuickIconClipboard() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="6" y="4" width="12" height="17" rx="2" />
-      <line x1="9" y1="10" x2="15" y2="10" />
-      <line x1="9" y1="14" x2="15" y2="14" />
-      <line x1="9" y1="18" x2="13" y2="18" />
-    </svg>
-  );
-}
-function QuickIconCompass() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" />
-      <polygon points="14.5,9.5 11,13 9.5,14.5 13,11" fill="currentColor" />
-    </svg>
-  );
-}
-function QuickIconUsers() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="9" cy="9" r="3.5" />
-      <path d="M2.5 20 c0 -4 3 -7 6.5 -7 s6.5 3 6.5 7" />
-      <circle cx="17" cy="10" r="2.5" />
-    </svg>
-  );
-}
-function QuickIconSparkle() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3 L13.8 9.2 L20 11 L13.8 12.8 L12 19 L10.2 12.8 L4 11 L10.2 9.2 Z" />
-      <path d="M19 4 L19.6 5.8 L21.5 6.5 L19.6 7.2 L19 9 L18.4 7.2 L16.5 6.5 L18.4 5.8 Z" opacity="0.85" />
     </svg>
   );
 }

@@ -307,41 +307,29 @@ export default function AdminShell({
         >
           {/* Brand mark + collapse toggle.
 
-              Layout invariant: the toggle button is always the
-              FIRST child of this row, sitting at a fixed offset
-              from the sidebar's left edge. Because shrinking the
-              sidebar collapses its RIGHT edge (the left edge
-              doesn't move), the toggle's absolute screen position
-              stays identical across expand / collapse. The brand
-              lockup sits to the right of the toggle when expanded
-              and is hidden entirely when collapsed — no monogram
-              substitute, because the 56 px icon rail reads cleaner
-              with just the toggle on top.
+              Layout:
+                Expanded   → [brand lockup, flex-1] [toggle, right]
+                Collapsed  → [toggle, centred in the 56 px rail]
+
+              The toggle stays at the SAME vertical position (top
+              of the sidebar header row) in both states; only its
+              horizontal position naturally shifts inward as the
+              sidebar narrows. This matches the Notion / Linear
+              pattern: collapse control on the right when the
+              sidebar is open, single visible affordance when it's
+              the icon rail.
 
               Icon: a "sidebar panel" glyph (rectangle with a
               vertical bar at the left), the de-facto standard
               used by Notion / Linear / VS Code / macOS Finder for
               "toggle sidebar". Not a chevron — chevrons read as
               "navigate" rather than "show / hide a panel". */}
-          <div className="flex items-center gap-2 px-2 pt-3 pb-3 min-h-[3.25rem]">
-            <button
-              type="button"
-              onClick={toggleDesktopCollapsed}
-              title={
-                desktopCollapsed ? "Expand sidebar" : "Collapse sidebar"
-              }
-              aria-label={
-                desktopCollapsed ? "Expand sidebar" : "Collapse sidebar"
-              }
-              aria-expanded={!desktopCollapsed}
-              className={[
-                "shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg",
-                "text-cream-50/65 hover:text-cream-50 hover:bg-cream-50/[0.06]",
-                "border border-transparent hover:border-cyan-400/20 transition-colors",
-              ].join(" ")}
-            >
-              <IconSidebarToggle collapsed={desktopCollapsed} />
-            </button>
+          <div
+            className={[
+              "flex items-center pt-3 pb-3 px-2 min-h-[3.25rem]",
+              desktopCollapsed ? "justify-center" : "gap-2",
+            ].join(" ")}
+          >
             {!desktopCollapsed ? (
               <Link
                 href="/admin/home"
@@ -365,6 +353,24 @@ export default function AdminShell({
                 </div>
               </Link>
             ) : null}
+            <button
+              type="button"
+              onClick={toggleDesktopCollapsed}
+              title={
+                desktopCollapsed ? "Expand sidebar" : "Collapse sidebar"
+              }
+              aria-label={
+                desktopCollapsed ? "Expand sidebar" : "Collapse sidebar"
+              }
+              aria-expanded={!desktopCollapsed}
+              className={[
+                "shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg",
+                "text-cream-50/65 hover:text-cream-50 hover:bg-cream-50/[0.06]",
+                "border border-transparent hover:border-cyan-400/20 transition-colors",
+              ].join(" ")}
+            >
+              <IconSidebarToggle collapsed={desktopCollapsed} />
+            </button>
           </div>
 
           {/* Nav */}
