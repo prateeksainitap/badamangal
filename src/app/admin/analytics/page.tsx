@@ -56,8 +56,26 @@ function mostRecentFridayCutoffUTC(now: Date = new Date()): Date {
   return new Date(friday.getTime() - 5.5 * 60 * 60 * 1000);
 }
 
-export default async function AnalyticsPage() {
+const FEATURE_TABS = [
+  { key: "chat", label: "Live chat" },
+  { key: "map", label: "Live map" },
+  { key: "spots", label: "Spots" },
+  { key: "listings", label: "Listings" },
+  { key: "volunteers", label: "Volunteers" },
+] as const;
+type FeatureKey = (typeof FEATURE_TABS)[number]["key"];
+
+export default async function AnalyticsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ feature?: string }>;
+}) {
   if (!(await isAdmin())) redirect("/admin");
+
+  const sp = (await searchParams) ?? {};
+  const feature: FeatureKey = FEATURE_TABS.some((t) => t.key === sp.feature)
+    ? (sp.feature as FeatureKey)
+    : "chat";
 
   const SINCE = mostRecentFridayCutoffUTC();
   const SINCE_LABEL = SINCE.toLocaleDateString("en-IN", {
@@ -105,14 +123,64 @@ export default async function AnalyticsPage() {
           <WeeklySummary since={SINCE} sinceLabel={SINCE_LABEL} />
         </Suspense>
 
-        {/* Feature breakdowns. Each feature gets its own
-            independently-suspended block so the analytics page
-            stays usable even if one feature's queries reject.
-            Live Chat is the first one; Live Map / Spots / etc.
-            will land here as separate panels in follow-up commits. */}
-        <Suspense fallback={<FeatureBreakdownSkeleton />}>
-          <LiveChatDeepDive since={SINCE} />
-        </Suspense>
+        {/* Feature deep-dives. Tabbed (URL param ?feature=...) so
+            five feature panels can coexist without scroll-bloat.
+            Each tab is independently Suspense-wrapped so it streams
+            from the server cleanly and any single feature's query
+            failure stays contained to its tab. */}
+        <section className="mt-10">
+          <div className="mb-1 flex items-baseline gap-2 flex-wrap font-mono text-[10.5px] uppercase tracking-[0.18em]">
+            <span className="text-violet-300">Feature deep-dive</span>
+            <span className="text-cream-50/30">·</span>
+            <span className="text-cream-50/65">
+              {FEATURE_TABS.find((t) => t.key === feature)?.label}
+            </span>
+          </div>
+          <h2 className="font-fraunces text-cream-50 text-lg mb-3">
+            Per-feature breakdown
+          </h2>
+
+          {/* Tab strip — each tab is a Link so deep-links work +
+              prefetch fires the next tab's data on hover. */}
+          <div
+            role="tablist"
+            aria-label="Analytics feature tabs"
+            className="mb-5 inline-flex flex-wrap items-center gap-1 rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm p-1 font-mono"
+          >
+            {FEATURE_TABS.map((t) => {
+              const active = feature === t.key;
+              return (
+                <Link
+                  key={t.key}
+                  href={`/admin/analytics?feature=${t.key}`}
+                  role="tab"
+                  aria-selected={active}
+                  prefetch={false}
+                  scroll={false}
+                  className={[
+                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors",
+                    active
+                      ? "bg-gradient-to-r from-cyan-500 to-violet-500 text-cream-50 shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)]"
+                      : "text-cream-50/65 hover:text-cream-50 hover:bg-cyan-400/[0.06]",
+                  ].join(" ")}
+                >
+                  {t.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          <Suspense
+            key={feature}
+            fallback={<FeatureBreakdownSkeleton />}
+          >
+            {feature === "chat" ? <LiveChatDeepDive since={SINCE} /> : null}
+            {feature === "map" ? <LiveMapDeepDive /> : null}
+            {feature === "spots" ? <SpotsDeepDive since={SINCE} /> : null}
+            {feature === "listings" ? <ListingsDeepDive /> : null}
+            {feature === "volunteers" ? <VolunteersDeepDive since={SINCE} /> : null}
+          </Suspense>
+        </section>
 
         {/* All-time funnels + tables — secondary surface. */}
         <Suspense fallback={<AllTimeSkeleton />}>
@@ -952,15 +1020,7 @@ async function LiveChatDeepDive({ since }: { since: Date }) {
   const linkedPct = totalE > 0 ? (linkedE / totalE) * 100 : 0;
 
   return (
-    <section className="mt-10">
-      <div className="mb-1 flex items-baseline gap-2 flex-wrap font-mono text-[10.5px] uppercase tracking-[0.18em]">
-        <span className="text-violet-300">Feature deep-dive</span>
-        <span className="text-cream-50/30">·</span>
-        <span className="text-cream-50/65">Live chat</span>
-      </div>
-      <h2 className="font-fraunces text-cream-50 text-lg mb-1">
-        Live chat &mdash; full breakdown
-      </h2>
+    <div>
       <p className="text-[12px] text-cream-50/55 mb-4 font-mukta">
         Everything the BhandaraMention table can tell us. All-time
         numbers with this-week deltas where meaningful.
@@ -1214,7 +1274,1096 @@ async function LiveChatDeepDive({ since }: { since: Date }) {
           )}
         </Panel>
       </div>
-    </section>
+    </div>
+  );
+}
+
+/* ───────────── Live Map deep-dive ─────────────────────────────── */
+
+/**
+ * What's actually plottable on the homepage map + how well the
+ * geocode pipeline is doing. Bhandara coords arrive either from
+ * the organizer's form, a Google-Maps URL paste, or Gemini's
+ * address extraction; spot coords arrive from the visitor's
+ * browser-native GPS. This panel tells you whether either of
+ * those channels is leaking quality.
+ */
+async function LiveMapDeepDive() {
+  const settled = await Promise.allSettled([
+    // 0 — approved bhandaras with valid coords (plottable)
+    prisma.bhandara.count({
+      where: {
+        status: "APPROVED",
+        AND: [{ lat: { not: 0 } }, { lng: { not: 0 } }],
+      },
+    }),
+    // 1 — approved bhandaras with no/zero coords (NOT plottable)
+    prisma.bhandara.count({
+      where: {
+        status: "APPROVED",
+        OR: [{ lat: 0 }, { lng: 0 }],
+      },
+    }),
+    // 2 — approved non-expired spots with valid coords
+    prisma.spot.count({
+      where: {
+        status: "APPROVED",
+        expiresAt: { gt: new Date() },
+        AND: [{ lat: { not: 0 } }, { lng: { not: 0 } }],
+      },
+    }),
+    // 3 — approved non-expired spots with NO coords
+    prisma.spot.count({
+      where: {
+        status: "APPROVED",
+        expiresAt: { gt: new Date() },
+        OR: [{ lat: 0 }, { lng: 0 }],
+      },
+    }),
+    // 4 — mentions with coords (chat overlay plots)
+    prisma.bhandaraMention.count({
+      where: { status: "APPROVED", lat: { not: null } },
+    }),
+    // 5 — distinct areas (bhandara)
+    prisma.bhandara.findMany({
+      where: { status: "APPROVED" },
+      select: { area: true },
+      distinct: ["area"],
+    }),
+    // 6 — top 10 areas by combined (bhandaras + spots) approved volume
+    prisma.bhandara.groupBy({
+      by: ["area"],
+      where: { status: "APPROVED" },
+      _count: { _all: true },
+      orderBy: { _count: { area: "desc" } },
+      take: 15,
+    }),
+    prisma.spot.groupBy({
+      by: ["area"],
+      where: { status: "APPROVED" },
+      _count: { _all: true },
+      orderBy: { _count: { area: "desc" } },
+      take: 15,
+    }),
+  ]);
+  const unwrap = <T,>(i: number, fallback: T): T =>
+    settled[i]?.status === "fulfilled"
+      ? ((settled[i] as PromiseFulfilledResult<T>).value)
+      : fallback;
+
+  const bhPlottable = unwrap<number>(0, 0);
+  const bhUnplottable = unwrap<number>(1, 0);
+  const spPlottable = unwrap<number>(2, 0);
+  const spUnplottable = unwrap<number>(3, 0);
+  const mentionPlots = unwrap<number>(4, 0);
+  const areaRows = unwrap<Array<{ area: string | null }>>(5, []);
+  const distinctAreas = new Set(areaRows.map((r) => r.area).filter(Boolean))
+    .size;
+  const bhAreas = unwrap<
+    Array<{ area: string | null; _count: { _all: number } }>
+  >(6, []);
+  const spAreas = unwrap<
+    Array<{ area: string | null; _count: { _all: number } }>
+  >(7, []);
+
+  const totalLivePoints = bhPlottable + spPlottable + mentionPlots;
+  const bhCoverage =
+    bhPlottable + bhUnplottable > 0
+      ? Math.round((bhPlottable / (bhPlottable + bhUnplottable)) * 100)
+      : 0;
+  const spCoverage =
+    spPlottable + spUnplottable > 0
+      ? Math.round((spPlottable / (spPlottable + spUnplottable)) * 100)
+      : 0;
+
+  // Merge top areas across both sources, rank by combined volume
+  const areaMap = new Map<string, { bh: number; sp: number }>();
+  for (const r of bhAreas) {
+    if (!r.area) continue;
+    const e = areaMap.get(r.area) ?? { bh: 0, sp: 0 };
+    e.bh = r._count._all;
+    areaMap.set(r.area, e);
+  }
+  for (const r of spAreas) {
+    if (!r.area) continue;
+    const e = areaMap.get(r.area) ?? { bh: 0, sp: 0 };
+    e.sp = r._count._all;
+    areaMap.set(r.area, e);
+  }
+  const rankedAreas = Array.from(areaMap.entries())
+    .map(([area, v]) => ({ area, ...v, total: v.bh + v.sp }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10);
+  const areaMaxTotal = Math.max(...rankedAreas.map((a) => a.total), 1);
+
+  return (
+    <div>
+      <p className="text-[12px] text-cream-50/55 mb-4 font-mukta">
+        How saturated the homepage map is and where the dead zones
+        are. Plottable means lat / lng are both non-zero.
+      </p>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <WeekTile
+          label="Live points now"
+          value={totalLivePoints}
+          sub={`${bhPlottable} bhandaras · ${spPlottable} spots · ${mentionPlots} chat`}
+          tone="cyan"
+          emphasis
+        />
+        <WeekTile
+          label="Bhandara coverage"
+          value={bhCoverage}
+          sub={`${bhPlottable} mapped · ${bhUnplottable} missing coords`}
+          tone="saffron"
+          isPercentage
+        />
+        <WeekTile
+          label="Spot coverage"
+          value={spCoverage}
+          sub={`${spPlottable} mapped · ${spUnplottable} missing coords`}
+          tone="violet"
+          isPercentage
+        />
+        <WeekTile
+          label="Distinct areas"
+          value={distinctAreas}
+          sub="Curated area tags covered"
+          tone="leaf"
+        />
+      </div>
+
+      <Panel
+        title="Top 10 areas by map plot density"
+        subtitle="Combined approved bhandaras + spots per area, ranked"
+      >
+        {rankedAreas.length === 0 ? (
+          <EmptyHint text="No approved rows with area tags yet." />
+        ) : (
+          <ul className="space-y-1.5">
+            {rankedAreas.map((a) => {
+              const widthPct = (a.total / areaMaxTotal) * 100;
+              return (
+                <li key={a.area} className="text-[12px]">
+                  <div className="flex items-baseline justify-between mb-1">
+                    <span className="text-cream-50/85">{a.area}</span>
+                    <span className="text-cream-50/65 font-mono tabular-nums">
+                      <span className="text-saffron-300">{a.bh}</span>
+                      {" + "}
+                      <span className="text-violet-300">{a.sp}</span>
+                      {" = "}
+                      <span className="text-cream-50">{a.total}</span>
+                    </span>
+                  </div>
+                  <div className="h-2 bg-cream-50/[0.04] rounded overflow-hidden flex">
+                    <div
+                      className="bg-saffron-500/65 h-full"
+                      style={{ width: `${(a.bh / areaMaxTotal) * 100}%` }}
+                    />
+                    <div
+                      className="bg-violet-400/65 h-full"
+                      style={{ width: `${(a.sp / areaMaxTotal) * 100}%` }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <div className="mt-3 flex items-center gap-4 text-[10px] font-mono text-cream-50/55">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-saffron-500/65" />
+            bhandaras
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block w-2.5 h-2.5 rounded-sm bg-violet-400/65" />
+            spots
+          </span>
+        </div>
+      </Panel>
+
+      <div className="grid gap-4 lg:grid-cols-2 mt-4">
+        <Panel
+          title="Coverage gap — bhandaras without coords"
+          subtitle="Approved listings that DON'T appear on the map (lat=0 or lng=0)"
+        >
+          {bhUnplottable === 0 ? (
+            <div className="text-[12px] text-leaf-400 font-mono">
+              ✓ Every approved bhandara is plottable.
+            </div>
+          ) : (
+            <>
+              <div className="text-cream-50 text-2xl font-fraunces mb-1 tabular-nums">
+                {bhUnplottable.toLocaleString("en-IN")}
+              </div>
+              <p className="text-[12px] text-cream-50/65 font-mukta leading-relaxed">
+                These rows pass the auto-publish gate but the
+                geocode pipeline couldn&apos;t resolve coords. Fix
+                them by visiting{" "}
+                <Link
+                  href="/admin/bhandaras?status=LIVE&hasCoords=false"
+                  className="text-cyan-300 hover:underline"
+                >
+                  /admin/bhandaras with the &ldquo;no coords&rdquo; filter
+                </Link>{" "}
+                and pasting a Google Maps URL or pinning manually.
+              </p>
+            </>
+          )}
+        </Panel>
+        <Panel
+          title="Map composition right now"
+          subtitle="Source split of live points currently rendered"
+        >
+          <div className="space-y-2 text-[12.5px]">
+            <CompositionRow
+              label="Listed bhandaras"
+              value={bhPlottable}
+              total={totalLivePoints}
+              tone="saffron"
+            />
+            <CompositionRow
+              label="Live spots"
+              value={spPlottable}
+              total={totalLivePoints}
+              tone="violet"
+            />
+            <CompositionRow
+              label="Chat mentions"
+              value={mentionPlots}
+              total={totalLivePoints}
+              tone="cyan"
+            />
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+function CompositionRow({
+  label,
+  value,
+  total,
+  tone,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  tone: "saffron" | "violet" | "cyan";
+}) {
+  const pct = total > 0 ? (value / total) * 100 : 0;
+  const bar =
+    tone === "saffron"
+      ? "bg-saffron-500/65"
+      : tone === "violet"
+        ? "bg-violet-400/65"
+        : "bg-cyan-400/65";
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-1">
+        <span className="text-cream-50/85 font-mono">{label}</span>
+        <span className="text-cream-50/65 font-mono tabular-nums">
+          {value.toLocaleString("en-IN")}{" "}
+          <span className="text-cream-50/45">({pct.toFixed(1)}%)</span>
+        </span>
+      </div>
+      <div className="h-2 bg-cream-50/[0.04] rounded overflow-hidden">
+        <div className={`h-full ${bar}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+/* ───────────── Spots deep-dive ────────────────────────────────── */
+
+/**
+ * The visitor camera + GPS contribution flow. Quality matrix
+ * (photo × coords), temporal distribution (when do walkers
+ * report), top anonymized reporters, bhandara-linking rate.
+ */
+async function SpotsDeepDive({ since }: { since: Date }) {
+  const settled = await Promise.allSettled([
+    // 0 — total all-time
+    prisma.spot.count(),
+    // 1 — this week
+    prisma.spot.count({ where: { createdAt: { gte: since } } }),
+    // 2 — currently live
+    prisma.spot.count({
+      where: { status: "APPROVED", expiresAt: { gt: new Date() } },
+    }),
+    // 3 — quality matrix via raw SQL (4 buckets in one round-trip)
+    prisma.$queryRaw<
+      Array<{
+        photo_coords: bigint | number;
+        photo_only: bigint | number;
+        coords_only: bigint | number;
+        neither: bigint | number;
+        linked: bigint | number;
+        with_caption: bigint | number;
+      }>
+    >`
+      SELECT
+        SUM(CASE
+          WHEN "photoUrl" IS NOT NULL
+            AND "lat" <> 0 AND "lng" <> 0 THEN 1 ELSE 0
+        END)::int AS photo_coords,
+        SUM(CASE
+          WHEN "photoUrl" IS NOT NULL
+            AND ("lat" = 0 OR "lng" = 0) THEN 1 ELSE 0
+        END)::int AS photo_only,
+        SUM(CASE
+          WHEN "photoUrl" IS NULL
+            AND "lat" <> 0 AND "lng" <> 0 THEN 1 ELSE 0
+        END)::int AS coords_only,
+        SUM(CASE
+          WHEN "photoUrl" IS NULL
+            AND ("lat" = 0 OR "lng" = 0) THEN 1 ELSE 0
+        END)::int AS neither,
+        SUM(CASE WHEN "bhandaraId" IS NOT NULL THEN 1 ELSE 0 END)::int AS linked,
+        SUM(CASE WHEN "caption" IS NOT NULL AND LENGTH("caption") > 0 THEN 1 ELSE 0 END)::int AS with_caption
+      FROM "Spot"
+    `,
+    // 4 — hourly heatmap (IST hour-of-day, all-time)
+    prisma.$queryRaw<Array<{ hour: number; n: bigint | number }>>`
+      SELECT
+        EXTRACT(HOUR FROM ("createdAt" AT TIME ZONE 'Asia/Kolkata'))::int AS hour,
+        COUNT(*)::int AS n
+      FROM "Spot"
+      GROUP BY hour
+      ORDER BY hour ASC
+    `,
+    // 5 — top 8 reporters (anonymized first names)
+    prisma.spot.groupBy({
+      by: ["reporterName"],
+      where: { reporterName: { not: null } },
+      _count: { _all: true },
+      orderBy: { _count: { reporterName: "desc" } },
+      take: 8,
+    }),
+  ]);
+  const unwrap = <T,>(i: number, fallback: T): T =>
+    settled[i]?.status === "fulfilled"
+      ? ((settled[i] as PromiseFulfilledResult<T>).value)
+      : fallback;
+
+  const totalAll = unwrap<number>(0, 0);
+  const weekTotal = unwrap<number>(1, 0);
+  const liveNow = unwrap<number>(2, 0);
+  const qualityRows = unwrap<
+    Array<{
+      photo_coords: bigint | number;
+      photo_only: bigint | number;
+      coords_only: bigint | number;
+      neither: bigint | number;
+      linked: bigint | number;
+      with_caption: bigint | number;
+    }>
+  >(3, []);
+  const q = qualityRows[0];
+  const photoCoords = Number(q?.photo_coords ?? 0);
+  const photoOnly = Number(q?.photo_only ?? 0);
+  const coordsOnly = Number(q?.coords_only ?? 0);
+  const neither = Number(q?.neither ?? 0);
+  const linked = Number(q?.linked ?? 0);
+  const withCaption = Number(q?.with_caption ?? 0);
+  const linkedPct = totalAll > 0 ? (linked / totalAll) * 100 : 0;
+  const captionPct = totalAll > 0 ? (withCaption / totalAll) * 100 : 0;
+  const richPct = totalAll > 0 ? (photoCoords / totalAll) * 100 : 0;
+  const hourlyRows = unwrap<Array<{ hour: number; n: bigint | number }>>(
+    4,
+    [],
+  );
+  const topReporters = unwrap<
+    Array<{ reporterName: string | null; _count: { _all: number } }>
+  >(5, []);
+
+  const hourly: number[] = Array.from({ length: 24 }, () => 0);
+  for (const r of hourlyRows) {
+    const h = Number(r.hour);
+    if (h >= 0 && h < 24) hourly[h] = Number(r.n);
+  }
+  const hourlyMax = Math.max(...hourly, 1);
+  const peakHour = hourly.indexOf(Math.max(...hourly));
+
+  return (
+    <div>
+      <p className="text-[12px] text-cream-50/55 mb-4 font-mukta">
+        Walkers reporting bhandaras via the camera + GPS flow.
+        Quality is photo + coords together (&ldquo;rich&rdquo;);
+        anything less is partial signal.
+      </p>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <WeekTile
+          label="Spots ever"
+          value={totalAll}
+          sub={`+${weekTotal.toLocaleString("en-IN")} this week`}
+          tone="violet"
+        />
+        <WeekTile
+          label="Rich spots"
+          value={Math.round(richPct)}
+          sub={`${photoCoords.toLocaleString("en-IN")} have photo + coords`}
+          tone="leaf"
+          isPercentage
+        />
+        <WeekTile
+          label="Currently live"
+          value={liveNow}
+          sub="Within 8h TTL"
+          tone="cyan"
+          emphasis
+        />
+        <WeekTile
+          label="Linked to bhandara"
+          value={Math.round(linkedPct)}
+          sub={`${linked.toLocaleString("en-IN")} auto-matched to a listing`}
+          tone="saffron"
+          isPercentage
+        />
+      </div>
+
+      <Panel
+        title="Quality matrix"
+        subtitle="Every spot ever, bucketed by what it carries"
+      >
+        <div className="grid grid-cols-2 gap-3">
+          <QualityBucket
+            label="Photo + coords (rich)"
+            value={photoCoords}
+            total={totalAll}
+            tone="leaf"
+          />
+          <QualityBucket
+            label="Photo only (no map plot)"
+            value={photoOnly}
+            total={totalAll}
+            tone="saffron"
+          />
+          <QualityBucket
+            label="Coords only (no photo)"
+            value={coordsOnly}
+            total={totalAll}
+            tone="cyan"
+          />
+          <QualityBucket
+            label="Caption-only (neither)"
+            value={neither}
+            total={totalAll}
+            tone="alert"
+          />
+        </div>
+        <div className="mt-3 text-[11px] text-cream-50/55 font-mukta leading-relaxed">
+          {captionPct.toFixed(0)}% of spots include a written
+          caption ({withCaption.toLocaleString("en-IN")} of{" "}
+          {totalAll.toLocaleString("en-IN")}).
+        </div>
+      </Panel>
+
+      <div className="grid gap-4 lg:grid-cols-2 mt-4">
+        <Panel
+          title="Hourly heatmap (all-time, IST)"
+          subtitle={
+            peakHour >= 0
+              ? `Peak hour: ${formatHour(peakHour)} (${hourly[peakHour].toLocaleString("en-IN")} spots)`
+              : "No data yet"
+          }
+        >
+          <div className="grid grid-cols-12 sm:grid-cols-24 gap-1">
+            {hourly.map((n, h) => {
+              const heightPct = (n / hourlyMax) * 100;
+              const isPeak = h === peakHour && n > 0;
+              return (
+                <div
+                  key={h}
+                  className="flex flex-col items-stretch gap-1"
+                  title={`${formatHour(h)} · ${n.toLocaleString("en-IN")} spots`}
+                >
+                  <div className="h-20 flex items-end">
+                    <div
+                      className={[
+                        "w-full rounded-sm",
+                        isPeak
+                          ? "bg-saffron-500/85"
+                          : n > hourlyMax * 0.5
+                            ? "bg-violet-400/70"
+                            : n > hourlyMax * 0.2
+                              ? "bg-violet-400/40"
+                              : "bg-violet-400/15",
+                      ].join(" ")}
+                      style={{ height: `${Math.max(heightPct, n > 0 ? 6 : 0)}%` }}
+                    />
+                  </div>
+                  <div
+                    className={[
+                      "text-[8.5px] text-center font-mono tabular-nums",
+                      isPeak ? "text-saffron-300" : "text-cream-50/45",
+                    ].join(" ")}
+                  >
+                    {h.toString().padStart(2, "0")}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Panel>
+        <Panel
+          title="Top 8 reporters"
+          subtitle="Spotters by volume — first names only for privacy"
+        >
+          {topReporters.length === 0 ? (
+            <EmptyHint text="No named reporters yet." />
+          ) : (
+            <ul className="space-y-1.5">
+              {topReporters.map((r) => {
+                const pct =
+                  totalAll > 0 ? (r._count._all / totalAll) * 100 : 0;
+                return (
+                  <li
+                    key={r.reporterName ?? "—"}
+                    className="flex items-center justify-between gap-2 text-[12.5px]"
+                  >
+                    <span className="text-cream-50/85 truncate">
+                      {anonymizeSender(r.reporterName)}
+                    </span>
+                    <span className="text-cream-50/70 font-mono tabular-nums shrink-0">
+                      {r._count._all.toLocaleString("en-IN")}{" "}
+                      <span className="text-cream-50/45">
+                        ({pct.toFixed(1)}%)
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+function QualityBucket({
+  label,
+  value,
+  total,
+  tone,
+}: {
+  label: string;
+  value: number;
+  total: number;
+  tone: "leaf" | "saffron" | "cyan" | "alert";
+}) {
+  const pct = total > 0 ? (value / total) * 100 : 0;
+  const styles =
+    tone === "leaf"
+      ? "border-leaf-400/35 bg-leaf-400/[0.06] text-leaf-300"
+      : tone === "saffron"
+        ? "border-saffron-500/35 bg-saffron-500/[0.06] text-saffron-300"
+        : tone === "cyan"
+          ? "border-cyan-400/30 bg-cyan-400/[0.06] text-cyan-200"
+          : "border-alert-500/35 bg-alert-500/[0.06] text-alert-500";
+  return (
+    <div className={`rounded-xl border px-3.5 py-3 ${styles}`}>
+      <div className="text-[10px] uppercase tracking-[0.14em] font-mono text-cream-50/55">
+        {label}
+      </div>
+      <div className="mt-1 font-fraunces text-[1.6rem] leading-none tabular-nums">
+        {value.toLocaleString("en-IN")}
+      </div>
+      <div className="mt-1 text-[11px] font-mono text-cream-50/55 tabular-nums">
+        {pct.toFixed(1)}% of all spots
+      </div>
+    </div>
+  );
+}
+
+/* ───────────── Listings deep-dive ─────────────────────────────── */
+
+/**
+ * Bhandara creation flow — bot vs human, auto-publish quality,
+ * Tuesday-dates distribution, repeat organizers, completeness.
+ */
+async function ListingsDeepDive() {
+  const settled = await Promise.allSettled([
+    // 0 — total all-time
+    prisma.bhandara.count(),
+    // 1 — bot-ingested (description contains "[bot:")
+    prisma.bhandara.count({ where: { description: { contains: "[bot:" } } }),
+    // 2 — auto-published (description contains "auto-publish")
+    prisma.bhandara.count({
+      where: { description: { contains: "auto-publish" } },
+    }),
+    // 3 — approved count
+    prisma.bhandara.count({ where: { status: "APPROVED" } }),
+    // 4 — verified
+    prisma.bhandara.count({
+      where: { status: "APPROVED", isVerified: true },
+    }),
+    // 5 — quality: has photo / has phone / has time / has menu
+    prisma.$queryRaw<
+      Array<{
+        with_photo: bigint | number;
+        with_phone: bigint | number;
+        with_organizer: bigint | number;
+      }>
+    >`
+      SELECT
+        SUM(CASE WHEN "photoUrl" IS NOT NULL THEN 1 ELSE 0 END)::int AS with_photo,
+        SUM(CASE WHEN "organizerPhone" IS NOT NULL AND LENGTH("organizerPhone") > 0 THEN 1 ELSE 0 END)::int AS with_phone,
+        SUM(CASE WHEN "organizerName" IS NOT NULL AND LENGTH("organizerName") > 0 THEN 1 ELSE 0 END)::int AS with_organizer
+      FROM "Bhandara"
+      WHERE "status" = 'APPROVED'
+    `,
+    // 6 — organizer name groupBy (for repeat-organizer count).
+    //     organizerName is a required String column (not nullable),
+    //     so we filter against empty string rather than null.
+    prisma.bhandara.groupBy({
+      by: ["organizerName"],
+      where: { status: "APPROVED", organizerName: { not: "" } },
+      _count: { _all: true },
+      having: { organizerName: { _count: { gt: 1 } } },
+    }),
+    // 7 — sample of tuesdayDates JSON strings to analyse multi-Tuesday
+    //     coverage. Cheap: only need the column.
+    prisma.bhandara.findMany({
+      where: { status: "APPROVED" },
+      select: { tuesdayDates: true },
+    }),
+  ]);
+  const unwrap = <T,>(i: number, fallback: T): T =>
+    settled[i]?.status === "fulfilled"
+      ? ((settled[i] as PromiseFulfilledResult<T>).value)
+      : fallback;
+
+  const totalAll = unwrap<number>(0, 0);
+  const fromBot = unwrap<number>(1, 0);
+  const autoPub = unwrap<number>(2, 0);
+  const approved = unwrap<number>(3, 0);
+  const verified = unwrap<number>(4, 0);
+  const qualityRows = unwrap<
+    Array<{
+      with_photo: bigint | number;
+      with_phone: bigint | number;
+      with_organizer: bigint | number;
+    }>
+  >(5, []);
+  const qq = qualityRows[0];
+  const withPhoto = Number(qq?.with_photo ?? 0);
+  const withPhone = Number(qq?.with_phone ?? 0);
+  const withOrganizer = Number(qq?.with_organizer ?? 0);
+  const repeatOrgs = unwrap<
+    Array<{ organizerName: string | null; _count: { _all: number } }>
+  >(6, []);
+  const tuesdayDatesRows = unwrap<Array<{ tuesdayDates: string }>>(7, []);
+
+  // Compute Tuesday-count histogram: how many bhandaras serve N
+  // Tuesdays? Buckets 1, 2-3, 4-5, 6-8, 0.
+  const tuesdayCountHistogram = new Map<string, number>([
+    ["0", 0],
+    ["1", 0],
+    ["2-3", 0],
+    ["4-5", 0],
+    ["6-8", 0],
+  ]);
+  for (const r of tuesdayDatesRows) {
+    let n = 0;
+    try {
+      const parsed = JSON.parse(r.tuesdayDates || "[]");
+      if (Array.isArray(parsed)) n = parsed.length;
+    } catch {
+      n = 0;
+    }
+    const bucket =
+      n === 0
+        ? "0"
+        : n === 1
+          ? "1"
+          : n <= 3
+            ? "2-3"
+            : n <= 5
+              ? "4-5"
+              : "6-8";
+    tuesdayCountHistogram.set(bucket, (tuesdayCountHistogram.get(bucket) ?? 0) + 1);
+  }
+  const tuesdayBucketMax = Math.max(
+    ...Array.from(tuesdayCountHistogram.values()),
+    1,
+  );
+
+  const humanCount = totalAll - fromBot;
+  const botPct = totalAll > 0 ? (fromBot / totalAll) * 100 : 0;
+  const autoPubPct = fromBot > 0 ? (autoPub / fromBot) * 100 : 0;
+  const verifiedPct = approved > 0 ? (verified / approved) * 100 : 0;
+  const photoPct = approved > 0 ? (withPhoto / approved) * 100 : 0;
+  const phonePct = approved > 0 ? (withPhone / approved) * 100 : 0;
+
+  return (
+    <div>
+      <p className="text-[12px] text-cream-50/55 mb-4 font-mukta">
+        Where bhandaras come from + the completeness of the
+        resulting listing. Bot ingest is the dominant pipeline; the
+        rest is /organise form + admin scan.
+      </p>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <WeekTile
+          label="Bhandaras ever"
+          value={totalAll}
+          sub={`${approved.toLocaleString("en-IN")} approved`}
+          tone="saffron"
+        />
+        <WeekTile
+          label="From bot"
+          value={Math.round(botPct)}
+          sub={`${fromBot} bot · ${humanCount} human`}
+          tone="violet"
+          isPercentage
+        />
+        <WeekTile
+          label="Auto-published"
+          value={autoPub}
+          sub={`${autoPubPct.toFixed(0)}% of bot ingests skip review`}
+          tone="cyan"
+        />
+        <WeekTile
+          label="Repeat organisers"
+          value={repeatOrgs.length}
+          sub="Names with 2+ approved listings"
+          tone="leaf"
+        />
+      </div>
+
+      <Panel
+        title="Tuesday-dates coverage"
+        subtitle="How many service-days each approved bhandara claims (max 8 in the 2026 double-season)"
+      >
+        <ul className="space-y-1.5">
+          {Array.from(tuesdayCountHistogram.entries()).map(([bucket, n]) => {
+            const widthPct = (n / tuesdayBucketMax) * 100;
+            const isFull = bucket === "6-8";
+            return (
+              <li key={bucket} className="text-[12.5px]">
+                <div className="flex items-baseline justify-between mb-1">
+                  <span className="text-cream-50/85 font-mono">
+                    {bucket} Tuesdays
+                    {isFull ? (
+                      <span className="ml-2 text-leaf-400/85 text-[10px]">
+                        ★ committed for full season
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="text-cream-50/70 font-mono tabular-nums">
+                    {n.toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="h-2 bg-cream-50/[0.04] rounded overflow-hidden">
+                  <div
+                    className={`h-full ${isFull ? "bg-leaf-400/70" : "bg-saffron-500/65"}`}
+                    style={{ width: `${widthPct}%` }}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </Panel>
+
+      <div className="grid gap-4 lg:grid-cols-2 mt-4">
+        <Panel
+          title="Listing quality"
+          subtitle="Completeness of approved bhandara rows"
+        >
+          <div className="space-y-2.5 text-[12.5px]">
+            <EngagementRow
+              label="Has photo"
+              value={`${withPhoto.toLocaleString("en-IN")} (${photoPct.toFixed(1)}%)`}
+              weekValue={null}
+              hint="Bhandara card shows a real image, not just an icon"
+            />
+            <EngagementRow
+              label="Has organizer phone"
+              value={`${withPhone.toLocaleString("en-IN")} (${phonePct.toFixed(1)}%)`}
+              weekValue={null}
+              hint="Visitors can call/WhatsApp the organizer directly"
+            />
+            <EngagementRow
+              label="Has organizer name"
+              value={`${withOrganizer.toLocaleString("en-IN")} (${approved > 0 ? ((withOrganizer / approved) * 100).toFixed(1) : "0.0"}%)`}
+              weekValue={null}
+              hint="Even when there's no phone, attribution helps"
+            />
+            <EngagementRow
+              label="Verified by admin"
+              value={`${verified.toLocaleString("en-IN")} (${verifiedPct.toFixed(1)}%)`}
+              weekValue={null}
+              hint="Manually marked trustworthy; shows green check on card"
+            />
+          </div>
+        </Panel>
+
+        <Panel
+          title="Repeat organisers"
+          subtitle={`${repeatOrgs.length} names with 2+ approved listings — top 8`}
+        >
+          {repeatOrgs.length === 0 ? (
+            <EmptyHint text="No repeat organisers yet." />
+          ) : (
+            <ul className="space-y-1.5">
+              {repeatOrgs
+                .sort((a, b) => b._count._all - a._count._all)
+                .slice(0, 8)
+                .map((r) => (
+                  <li
+                    key={r.organizerName ?? "—"}
+                    className="flex items-center justify-between gap-2 text-[12.5px]"
+                  >
+                    <span className="text-cream-50/85 truncate">
+                      {r.organizerName ?? "—"}
+                    </span>
+                    <span className="text-cream-50/70 font-mono tabular-nums">
+                      {r._count._all.toLocaleString("en-IN")} listings
+                    </span>
+                  </li>
+                ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+/* ───────────── Volunteers deep-dive ───────────────────────────── */
+
+/**
+ * The volunteer-signup funnel. Whose phones did we collect, what
+ * status are they in, where do they want to help.
+ */
+async function VolunteersDeepDive({ since }: { since: Date }) {
+  const settled = await Promise.allSettled([
+    prisma.volunteer.count(),
+    prisma.volunteer.count({ where: { createdAt: { gte: since } } }),
+    prisma.volunteer.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+      orderBy: { _count: { status: "desc" } },
+    }),
+    prisma.volunteer.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        areas: true,
+        status: true,
+        createdAt: true,
+      },
+    }),
+  ]);
+  const unwrap = <T,>(i: number, fallback: T): T =>
+    settled[i]?.status === "fulfilled"
+      ? ((settled[i] as PromiseFulfilledResult<T>).value)
+      : fallback;
+
+  const totalAll = unwrap<number>(0, 0);
+  const weekTotal = unwrap<number>(1, 0);
+  const statusRows = unwrap<
+    Array<{ status: string; _count: { _all: number } }>
+  >(2, []);
+  type VolunteerRow = {
+    id: string;
+    name: string;
+    phone: string;
+    areas: string;
+    status: string;
+    createdAt: Date;
+  };
+  const recentRows = unwrap<VolunteerRow[]>(3, []);
+
+  // Tally areas across all 10 recent volunteers (and total
+  // volunteers for the popular-area panel). Better would be a
+  // separate query on all volunteers — but areas is a JSON column,
+  // so a Prisma groupBy can't reach inside it. Keep this scoped
+  // to recent for now.
+  const areaTally = new Map<string, number>();
+  for (const v of recentRows) {
+    try {
+      const list = JSON.parse(v.areas || "[]");
+      if (Array.isArray(list)) {
+        for (const a of list) {
+          if (typeof a === "string" && a.trim()) {
+            const k = a.trim();
+            areaTally.set(k, (areaTally.get(k) ?? 0) + 1);
+          }
+        }
+      }
+    } catch {
+      /* malformed JSON, skip */
+    }
+  }
+  const topAreas = Array.from(areaTally.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8);
+
+  const pending = statusRows.find((r) => r.status === "PENDING")?._count._all ?? 0;
+  const probationary =
+    statusRows.find((r) => r.status === "PROBATIONARY")?._count._all ?? 0;
+  const active = statusRows.find((r) => r.status === "ACTIVE")?._count._all ?? 0;
+
+  return (
+    <div>
+      <p className="text-[12px] text-cream-50/55 mb-4 font-mukta">
+        Volunteer signup funnel. Pending = awaiting your verify
+        click; Probationary = first task assigned; Active = vetted.
+      </p>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+        <WeekTile
+          label="Signups ever"
+          value={totalAll}
+          sub={`+${weekTotal.toLocaleString("en-IN")} this week`}
+          tone="leaf"
+        />
+        <WeekTile
+          label="Pending"
+          value={pending}
+          sub="Awaiting your WhatsApp verify"
+          tone="saffron"
+          emphasis={pending > 0}
+        />
+        <WeekTile
+          label="Probationary"
+          value={probationary}
+          sub="First task assigned"
+          tone="cyan"
+        />
+        <WeekTile
+          label="Active"
+          value={active}
+          sub="Vetted, recurring contributors"
+          tone="violet"
+        />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Panel
+          title="Status breakdown"
+          subtitle="Full distribution across the volunteer pipeline"
+        >
+          {statusRows.length === 0 ? (
+            <EmptyHint text="No volunteer signups yet." />
+          ) : (
+            <ul className="space-y-2">
+              {statusRows.map((r) => {
+                const pct =
+                  totalAll > 0 ? (r._count._all / totalAll) * 100 : 0;
+                return (
+                  <li key={r.status} className="text-[12.5px]">
+                    <div className="flex items-baseline justify-between mb-1">
+                      <span className="text-cream-50/85 font-mono">
+                        {r.status}
+                      </span>
+                      <span className="text-cream-50/65 font-mono tabular-nums">
+                        {r._count._all.toLocaleString("en-IN")}{" "}
+                        <span className="text-cream-50/45">
+                          ({pct.toFixed(1)}%)
+                        </span>
+                      </span>
+                    </div>
+                    <div className="h-2 bg-cream-50/[0.04] rounded overflow-hidden">
+                      <div
+                        className="h-full bg-leaf-400/65"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+
+        <Panel
+          title="Popular volunteer areas"
+          subtitle="From the most recent 10 signups (areas JSON tally)"
+        >
+          {topAreas.length === 0 ? (
+            <EmptyHint text="No area preferences logged yet." />
+          ) : (
+            <ul className="space-y-1.5">
+              {topAreas.map(([area, n]) => (
+                <li
+                  key={area}
+                  className="flex items-center justify-between gap-2 text-[12.5px]"
+                >
+                  <span className="text-cream-50/85">{area}</span>
+                  <span className="text-cream-50/70 font-mono tabular-nums">
+                    {n}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
+
+      <Panel
+        title="Recent signups"
+        subtitle="Last 10 volunteers, freshest first"
+      >
+        {recentRows.length === 0 ? (
+          <EmptyHint text="No volunteers yet." />
+        ) : (
+          <table className="w-full text-[12.5px]">
+            <thead className="text-cream-50/55 font-mono text-[10px] uppercase tracking-[0.14em]">
+              <tr className="border-b border-cream-50/10">
+                <th className="text-left py-2 px-1">Name</th>
+                <th className="text-left py-2 px-1">Phone</th>
+                <th className="text-left py-2 px-1">Status</th>
+                <th className="text-right py-2 px-1">Signed up</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentRows.map((v) => (
+                <tr
+                  key={v.id}
+                  className="border-b border-cream-50/[0.06]"
+                >
+                  <td className="py-2 px-1 text-cream-50/85">{v.name}</td>
+                  <td className="py-2 px-1 text-cream-50/55 font-mono text-[11px]">
+                    {v.phone}
+                  </td>
+                  <td className="py-2 px-1 font-mono text-[10.5px]">
+                    <span
+                      className={[
+                        "inline-block rounded px-1.5 py-0.5",
+                        v.status === "ACTIVE"
+                          ? "bg-leaf-400/15 text-leaf-300"
+                          : v.status === "PROBATIONARY"
+                            ? "bg-cyan-400/15 text-cyan-200"
+                            : "bg-saffron-500/15 text-saffron-300",
+                      ].join(" ")}
+                    >
+                      {v.status}
+                    </span>
+                  </td>
+                  <td className="py-2 px-1 text-right text-cream-50/55 font-mono">
+                    {v.createdAt.toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      timeZone: "Asia/Kolkata",
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Panel>
+    </div>
   );
 }
 
