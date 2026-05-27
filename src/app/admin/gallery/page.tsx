@@ -14,6 +14,7 @@ import BotHeartbeat from "@/components/admin/BotHeartbeat";
 import GalleryUploadForm from "@/components/admin/GalleryUploadForm";
 import AdminPageHero from "@/components/admin/AdminPageHero";
 import SubmitButton from "@/components/admin/SubmitButton";
+import PhotoArchive from "@/components/admin/PhotoArchive";
 
 export const metadata: Metadata = {
   title: "Gallery · Admin · Bada Mangal",
@@ -22,8 +23,19 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminGalleryPage() {
+export default async function AdminGalleryPage({
+  searchParams,
+}: {
+  // ?archive=live|stored, optional. Drives the PhotoArchive tab
+  // below the curated homepage gallery. Defaults to "live" when
+  // absent / unrecognised so a fresh visit shows what's currently
+  // surfaced on the public site.
+  searchParams?: Promise<{ archive?: string }>;
+}) {
   if (!(await isAdmin())) redirect("/admin");
+  const resolvedSearch = (await searchParams) ?? {};
+  const archiveMode: "live" | "stored" =
+    resolvedSearch.archive === "stored" ? "stored" : "live";
 
   const photos = await prisma.galleryPhoto.findMany({
     orderBy: [
@@ -163,6 +175,18 @@ export default async function AdminGalleryPage() {
             ))}
           </ul>
         )}
+
+        {/* Full-platform photo archive, sits below the curated
+            gallery. Shows every photoUrl across bhandaras + spots
+            + gallery rows, split into Live (currently rendered on
+            the public site) and Stored (everything else). Cost is
+            ~150 ms warm — 6 indexed count queries + 3 findManys
+            with LIMIT 100 per source, all in parallel — so this
+            adds about one round-trip's worth of latency to the
+            gallery page. Image bytes are CDN-served from R2 /
+            Supabase, NOT from our DB, and <img loading="lazy">
+            defers byte-fetch until each tile scrolls into view. */}
+        <PhotoArchive mode={archiveMode} />
       </div>
     </AdminShell>
   );
