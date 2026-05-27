@@ -123,6 +123,16 @@ export default async function AnalyticsPage({
           <WeeklySummary since={SINCE} sinceLabel={SINCE_LABEL} />
         </Suspense>
 
+        {/* Qualitative insights — pattern-based observations
+            derived from the same DB queries, surfaced as
+            color-coded callouts so the operator gets the "what
+            this means" without reading every chart. Independent
+            Suspense so a slow query here doesn't block the
+            feature deep-dive section below. */}
+        <Suspense fallback={<InsightsSkeleton />}>
+          <QualitativeInsights since={SINCE} />
+        </Suspense>
+
         {/* Feature deep-dives. Tabbed (URL param ?feature=...) so
             five feature panels can coexist without scroll-bloat.
             Each tab is independently Suspense-wrapped so it streams
@@ -829,6 +839,427 @@ async function AllTimeSection() {
             </span>
           </div>
         </Panel>
+      </div>
+    </section>
+  );
+}
+
+/* ─────────────── Qualitative insights ─────────────────────────── */
+
+/**
+ * Pattern-based "what we're seeing" callouts derived from the
+ * same DB the rest of the page queries. Each rule below checks a
+ * threshold or comparison and emits a card if the condition is
+ * worth surfacing — so the operator doesn't have to read every
+ * chart to know what to do this week.
+ *
+ * Tone vocabulary:
+ *   • good   — green; momentum + healthy signals
+ *   • watch  — saffron; worth keeping an eye on, not urgent
+ *   • fire   — red/alert; needs action today
+ *   • info   — cyan; neutral observation, no judgement
+ *
+ * Rules currently implemented (more can be added by appending to
+ * the rules array — each rule is a pure function of `data`):
+ *   1. Tuesday concentration         (info)
+ *   2. Week-over-week growth         (good / watch / info)
+ *   3. Top-group concentration risk  (watch)
+ *   4. Demand-vs-supply (ASKING:SHARING) (watch / info)
+ *   5. Coverage gap (bhandaras with lat=0/lng=0) (fire / good)
+ *   6. Classifier health             (good / watch)
+ *   7. Spot quality (rich %)         (good / watch / info)
+ *   8. Sunday traffic                (info; intentional dark day)
+ *
+ * Everything runs against the same `since` cutoff the rest of
+ * the page uses + a `priorSince` for week-over-week.
+ */
+async function QualitativeInsights({ since }: { since: Date }) {
+  // Last-week window: from 7 days before `since` until `since`.
+  const priorSince = new Date(since.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const settled = await Promise.allSettled([
+    // 0 — this week mention count
+    prisma.bhandaraMention.count({ where: { createdAt: { gte: since } } }),
+    // 1 — last week mention count
+    prisma.bhandaraMention.count({
+      where: { createdAt: { gte: priorSince, lt: since } },
+    }),
+    // 2 — this week SHARING + ASKING + Tuesday-share + Sunday count
+    //     via raw SQL so we get the IST-grouped day-of-week breakdown
+    prisma.$queryRaw<
+      Array<{
+        sharing: bigint | number;
+        asking: bigint | number;
+        tue_count: bigint | number;
+        sun_count: bigint | number;
+        total: bigint | number;
+        approved: bigint | number;
+      }>
+    >`
+      SELECT
+        SUM(CASE WHEN intent = 'SHARING' THEN 1 ELSE 0 END)::int AS sharing,
+        SUM(CASE WHEN intent = 'ASKING' THEN 1 ELSE 0 END)::int AS asking,
+        SUM(CASE
+          WHEN EXTRACT(DOW FROM ("createdAt" AT TIME ZONE 'Asia/Kolkata')) = 2
+          THEN 1 ELSE 0
+        END)::int AS tue_count,
+        SUM(CASE
+          WHEN EXTRACT(DOW FROM ("createdAt" AT TIME ZONE 'Asia/Kolkata')) = 0
+          THEN 1 ELSE 0
+        END)::int AS sun_count,
+        COUNT(*)::int AS total,
+        SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END)::int AS approved
+      FROM "BhandaraMention"
+      WHERE "createdAt" >= ${since}
+    `,
+    // 3 — top WhatsApp group this week (for concentration calc)
+    prisma.bhandaraMention.groupBy({
+      by: ["groupName"],
+      where: { createdAt: { gte: since }, groupName: { not: null } },
+      _count: { _all: true },
+      orderBy: { _count: { groupName: "desc" } },
+      take: 1,
+    }),
+    // 4 — coverage gap: approved bhandaras with lat=0 or lng=0
+    prisma.bhandara.count({
+      where: {
+        status: "APPROVED",
+        OR: [{ lat: 0 }, { lng: 0 }],
+      },
+    }),
+    // 5 — this week spot quality: total + rich (photo + coords)
+    prisma.$queryRaw<
+      Array<{ total: bigint | number; rich: bigint | number }>
+    >`
+      SELECT
+        COUNT(*)::int AS total,
+        SUM(CASE
+          WHEN "photoUrl" IS NOT NULL AND "lat" <> 0 AND "lng" <> 0
+          THEN 1 ELSE 0
+        END)::int AS rich
+      FROM "Spot"
+      WHERE "createdAt" >= ${since}
+    `,
+    // 6 — this week map plots (mentions with coords + rich spots)
+    prisma.bhandaraMention.count({
+      where: { createdAt: { gte: since }, lat: { not: null } },
+    }),
+    // 7 — last week map plots for WoW comparison
+    prisma.bhandaraMention.count({
+      where: { createdAt: { gte: priorSince, lt: since }, lat: { not: null } },
+    }),
+  ]);
+
+  const unwrap = <T,>(i: number, fallback: T): T =>
+    settled[i]?.status === "fulfilled"
+      ? ((settled[i] as PromiseFulfilledResult<T>).value)
+      : fallback;
+
+  const weekMentions = unwrap<number>(0, 0);
+  const lastWeekMentions = unwrap<number>(1, 0);
+  const intentRows = unwrap<
+    Array<{
+      sharing: bigint | number;
+      asking: bigint | number;
+      tue_count: bigint | number;
+      sun_count: bigint | number;
+      total: bigint | number;
+      approved: bigint | number;
+    }>
+  >(2, []);
+  const intent = intentRows[0];
+  const sharing = Number(intent?.sharing ?? 0);
+  const asking = Number(intent?.asking ?? 0);
+  const tueCount = Number(intent?.tue_count ?? 0);
+  const sunCount = Number(intent?.sun_count ?? 0);
+  const intentTotal = Number(intent?.total ?? 0);
+  const approvedCount = Number(intent?.approved ?? 0);
+  const topGroupRows = unwrap<
+    Array<{ groupName: string | null; _count: { _all: number } }>
+  >(3, []);
+  const topGroup = topGroupRows[0];
+  const coverageGap = unwrap<number>(4, 0);
+  const spotRows = unwrap<
+    Array<{ total: bigint | number; rich: bigint | number }>
+  >(5, []);
+  const weekSpotsTotal = Number(spotRows[0]?.total ?? 0);
+  const weekRichSpots = Number(spotRows[0]?.rich ?? 0);
+  const weekMapPlots = unwrap<number>(6, 0);
+  const lastWeekMapPlots = unwrap<number>(7, 0);
+
+  // ─── Rule set ───────────────────────────────────────────────
+  const insights: Insight[] = [];
+
+  // Rule 1: Tuesday concentration
+  if (intentTotal > 0) {
+    const tueShare = tueCount / intentTotal;
+    if (tueShare > 0.5) {
+      insights.push({
+        kind: "info",
+        title: "Tuesday is the entire product",
+        body: `${Math.round(tueShare * 100)}% of this week's chat activity hit on Tuesday alone. Off-day investment should target retention (notifications) + outreach, not chat features.`,
+      });
+    }
+  }
+
+  // Rule 2: Week-over-week mentions
+  if (lastWeekMentions > 5) {
+    const wow =
+      ((weekMentions - lastWeekMentions) / lastWeekMentions) * 100;
+    if (Math.abs(wow) > 10) {
+      const direction = wow > 0 ? "up" : "down";
+      insights.push({
+        kind: wow > 0 ? "good" : "watch",
+        title: `Mentions ${direction} ${Math.abs(Math.round(wow))}% WoW`,
+        body: `${weekMentions.toLocaleString("en-IN")} this week vs ${lastWeekMentions.toLocaleString("en-IN")} last week. ${wow > 0 ? "Momentum building — keep the outreach steady." : "Watch for the cause: bot health, group activity, or upstream noise."}`,
+      });
+    }
+  }
+
+  // Rule 2b: Map plots WoW
+  if (lastWeekMapPlots > 5) {
+    const wowPlots =
+      ((weekMapPlots - lastWeekMapPlots) / lastWeekMapPlots) * 100;
+    if (Math.abs(wowPlots) > 15) {
+      const direction = wowPlots > 0 ? "up" : "down";
+      insights.push({
+        kind: wowPlots > 0 ? "good" : "watch",
+        title: `Map plots ${direction} ${Math.abs(Math.round(wowPlots))}% WoW`,
+        body: `${weekMapPlots.toLocaleString("en-IN")} plotted this week vs ${lastWeekMapPlots.toLocaleString("en-IN")} last week. ${wowPlots > 0 ? "Geocode chain holding up." : "Check geocode failures + location-share opt-in rate."}`,
+      });
+    }
+  }
+
+  // Rule 3: Top-group concentration
+  if (topGroup && intentTotal > 30) {
+    const groupShare = topGroup._count._all / intentTotal;
+    if (groupShare > 0.35) {
+      insights.push({
+        kind: "watch",
+        title: "Group concentration risk",
+        body: `"${topGroup.groupName ?? "—"}" carries ${Math.round(groupShare * 100)}% of chat volume this week. If this single source goes dark, ${Math.round((1 - groupShare) * 100)}% of the firehose remains.`,
+      });
+    }
+  }
+
+  // Rule 4: Demand-vs-supply (ASKING vs SHARING)
+  if (sharing + asking > 20) {
+    const askingShare = asking / (sharing + asking);
+    if (askingShare > 0.4) {
+      insights.push({
+        kind: "watch",
+        title: "Demand outpacing supply",
+        body: `${Math.round(askingShare * 100)}% of actionable mentions are people ASKING for bhandaras, not announcing them. Push organizer outreach + pamphlet shares before next Tuesday.`,
+      });
+    } else if (askingShare < 0.2) {
+      insights.push({
+        kind: "good",
+        title: "Supply ahead of demand",
+        body: `Only ${Math.round(askingShare * 100)}% of mentions are people asking — organizers are advertising proactively. Direct visitors to the map.`,
+      });
+    }
+  }
+
+  // Rule 5: Coverage gap
+  if (coverageGap >= 5) {
+    insights.push({
+      kind: "fire",
+      title: `${coverageGap} bhandaras invisible on the map`,
+      body: `Approved listings that auto-publish passed through but the geocode chain couldn't resolve. Fix before next Tuesday — visitors won't find them.`,
+      action: {
+        href: "/admin/bhandaras?status=LIVE",
+        label: "Triage now",
+      },
+    });
+  } else if (coverageGap === 0) {
+    insights.push({
+      kind: "good",
+      title: "100% map coverage",
+      body: "Every approved bhandara has valid coords. Map renders the full inventory.",
+    });
+  }
+
+  // Rule 6: Classifier health
+  if (intentTotal > 30) {
+    const autoApprovalRate = approvedCount / intentTotal;
+    if (autoApprovalRate > 0.98) {
+      insights.push({
+        kind: "good",
+        title: "Classifier tuned",
+        body: `${(autoApprovalRate * 100).toFixed(1)}% auto-approval rate this week (${approvedCount.toLocaleString("en-IN")} of ${intentTotal.toLocaleString("en-IN")}). Gemini + BM Ingest bypass + auto-publish are calibrated.`,
+      });
+    } else if (autoApprovalRate < 0.9) {
+      insights.push({
+        kind: "watch",
+        title: "Classifier drift",
+        body: `Only ${(autoApprovalRate * 100).toFixed(1)}% auto-approved this week (vs the typical 99%+). Investigate Gemini output quality or threshold drift.`,
+      });
+    }
+  }
+
+  // Rule 7: Spot quality
+  if (weekSpotsTotal > 8) {
+    const richRate = weekRichSpots / weekSpotsTotal;
+    if (richRate > 0.5) {
+      insights.push({
+        kind: "good",
+        title: "Spot quality strong",
+        body: `${Math.round(richRate * 100)}% of this week's ${weekSpotsTotal.toLocaleString("en-IN")} spots have both photo AND coords. Camera + GPS flow is healthy.`,
+      });
+    } else if (richRate < 0.3) {
+      insights.push({
+        kind: "watch",
+        title: "Spot quality dropping",
+        body: `Only ${Math.round(richRate * 100)}% of spots this week carry both photo + coords. Investigate the GPS approval step or whether visitors are skipping the camera.`,
+      });
+    }
+  }
+
+  // Rule 8: Sunday silence (intentional, but worth noting)
+  if (intentTotal > 50 && sunCount === 0) {
+    insights.push({
+      kind: "info",
+      title: "Sunday is dark",
+      body: "Zero mentions on Sunday — consistent with the Tue+Sat live-chat schedule. If you ever want Sunday signal (Diwali / Holi prep), it's a green field.",
+    });
+  }
+
+  // If absolutely nothing fired, give one default "all quiet" card.
+  if (insights.length === 0) {
+    insights.push({
+      kind: "info",
+      title: "Nothing unusual this week",
+      body: "No threshold rules tripped. Either the week is mid-cycle quiet or all signals are healthy — scroll down for the raw breakdown.",
+    });
+  }
+
+  return (
+    <section className="mt-8">
+      <div className="mb-3 flex items-baseline gap-2 flex-wrap font-mono text-[10.5px] uppercase tracking-[0.18em]">
+        <span className="text-cyan-300/85">What we&apos;re seeing</span>
+        <span className="text-cream-50/30">·</span>
+        <span className="text-cream-50/65">
+          {insights.length} insight{insights.length === 1 ? "" : "s"}{" "}
+          this week
+        </span>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {insights.map((ins, i) => (
+          <InsightCard key={i} insight={ins} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+type Insight = {
+  kind: "good" | "watch" | "fire" | "info";
+  title: string;
+  body: string;
+  action?: { href: string; label: string };
+};
+
+const INSIGHT_TONE: Record<
+  Insight["kind"],
+  { border: string; bg: string; pill: string; icon: string; iconColor: string }
+> = {
+  good: {
+    border: "border-leaf-400/40",
+    bg: "bg-leaf-400/[0.04]",
+    pill: "bg-leaf-400/[0.18] border-leaf-400/40 text-leaf-300",
+    icon: "✓",
+    iconColor: "text-leaf-300",
+  },
+  watch: {
+    border: "border-saffron-500/40",
+    bg: "bg-saffron-500/[0.04]",
+    pill: "bg-saffron-500/[0.18] border-saffron-500/40 text-saffron-300",
+    icon: "⚠",
+    iconColor: "text-saffron-300",
+  },
+  fire: {
+    border: "border-alert-500/45",
+    bg: "bg-alert-500/[0.05]",
+    pill: "bg-alert-500/[0.18] border-alert-500/45 text-alert-500",
+    icon: "🔥",
+    iconColor: "text-alert-500",
+  },
+  info: {
+    border: "border-cyan-400/30",
+    bg: "bg-cyan-400/[0.03]",
+    pill: "bg-cyan-400/[0.15] border-cyan-400/35 text-cyan-200",
+    icon: "✦",
+    iconColor: "text-cyan-300",
+  },
+};
+
+const INSIGHT_KIND_LABEL: Record<Insight["kind"], string> = {
+  good: "Healthy",
+  watch: "Watch",
+  fire: "Needs action",
+  info: "Observation",
+};
+
+function InsightCard({ insight }: { insight: Insight }) {
+  const tone = INSIGHT_TONE[insight.kind];
+  return (
+    <div
+      className={[
+        "rounded-2xl border backdrop-blur-sm p-4 flex flex-col gap-2",
+        tone.border,
+        tone.bg,
+      ].join(" ")}
+    >
+      <div className="flex items-center gap-2">
+        <span
+          className={[
+            "shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-cream-50/[0.06] text-base",
+            tone.iconColor,
+          ].join(" ")}
+        >
+          {tone.icon}
+        </span>
+        <span
+          className={[
+            "inline-flex items-center rounded-full border px-2 py-0.5 text-[9.5px] uppercase tracking-[0.16em] font-mono font-semibold",
+            tone.pill,
+          ].join(" ")}
+        >
+          {INSIGHT_KIND_LABEL[insight.kind]}
+        </span>
+      </div>
+      <div className="font-fraunces text-cream-50 text-[15px] leading-tight">
+        {insight.title}
+      </div>
+      <p className="text-[12px] text-cream-50/70 font-mukta leading-relaxed">
+        {insight.body}
+      </p>
+      {insight.action ? (
+        <Link
+          href={insight.action.href}
+          prefetch={false}
+          className="inline-flex items-center gap-1 self-start mt-1 text-[11px] font-mono text-cyan-300 hover:text-cyan-200 transition-colors"
+        >
+          {insight.action.label} →
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function InsightsSkeleton() {
+  return (
+    <section className="mt-8">
+      <div className="mb-3">
+        <SkeletonLineLocal w="w-56" h="h-3" />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-2xl border border-cream-50/10 bg-[#0B0E16]/85 h-[136px] admin-skeleton motion-safe:animate-pulse"
+          />
+        ))}
       </div>
     </section>
   );
