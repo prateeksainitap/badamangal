@@ -251,7 +251,15 @@ export default async function AdminVolunteersPage() {
                           💳 {v.upi}
                         </span>
                         {areas.length > 0 ? (
-                          <span className="text-cream-50/55 truncate max-w-[18rem]">
+                          // basis-full forces this chip onto its
+                          // own line under the phone+UPI row so
+                          // long area lists never get truncated.
+                          // Previously truncate max-w-[18rem] was
+                          // clipping anything past "Indira Nagar,
+                          // Munshipulia, Polytechnic, Pani gao, …"
+                          // which lost real signal about where the
+                          // volunteer wants to help.
+                          <span className="text-cream-50/55 basis-full">
                             📍 {areas.join(", ")}
                           </span>
                         ) : null}
@@ -343,7 +351,9 @@ function PendingApplicationCard({
             </a>
             <span className="font-mono">💳 {v.upi}</span>
             {areas.length > 0 ? (
-              <span className="truncate max-w-[16rem]">
+              // Wrap onto its own line, never truncate — same
+              // rationale as the PENDING card variant above.
+              <span className="basis-full">
                 📍 {areas.join(", ")}
               </span>
             ) : null}
