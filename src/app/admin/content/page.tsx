@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -16,6 +17,7 @@ import TemplatesTab from "./TemplatesTab";
 import StrategyTab from "./StrategyTab";
 import ImagesTab from "./ImagesTab";
 import PromptsTab from "./PromptsTab";
+import ContentTabSkeleton from "./ContentTabSkeleton";
 
 export const metadata: Metadata = {
   title: "Content Hub · Admin · Bada Mangal",
@@ -313,25 +315,61 @@ export default async function ContentHubPage({
         </div>
 
         {/* Active tab body. Filter / search / audience nav lives
-            inside each tab now so it can specialise per kind. */}
+            inside each tab now so it can specialise per kind.
+            Each tab is wrapped in its own <Suspense> boundary so
+            when the operator switches tabs (or lands cold on the
+            page), the chrome above stays mounted while only the
+            body shows a skeleton fallback. Without this, the
+            entire route awaits the tab's findMany before any
+            of the page paints — operator stares at blank space
+            for ~500-1500 ms per nav. The Suspense key on each
+            includes the searchParams that drive that tab's
+            query, so flipping audience / channel / q / filter
+            also fires the skeleton (otherwise React would
+            reuse the suspended tree). */}
         {tab === "pitches" ? (
-          <PitchesTab
-            audience={sp.aud}
-            channel={sp.channel}
-            q={sp.q}
-            filter={sp.filter}
-          />
+          <Suspense
+            key={`pitches:${sp.aud ?? ""}:${sp.channel ?? ""}:${sp.q ?? ""}:${sp.filter ?? ""}`}
+            fallback={<ContentTabSkeleton />}
+          >
+            <PitchesTab
+              audience={sp.aud}
+              channel={sp.channel}
+              q={sp.q}
+              filter={sp.filter}
+            />
+          </Suspense>
         ) : null}
         {tab === "templates" ? (
-          <TemplatesTab
-            audience={sp.aud}
-            channel={sp.channel}
-            q={sp.q}
-          />
+          <Suspense
+            key={`templates:${sp.aud ?? ""}:${sp.channel ?? ""}:${sp.q ?? ""}`}
+            fallback={<ContentTabSkeleton />}
+          >
+            <TemplatesTab
+              audience={sp.aud}
+              channel={sp.channel}
+              q={sp.q}
+            />
+          </Suspense>
         ) : null}
-        {tab === "strategy" ? <StrategyTab /> : null}
-        {tab === "images" ? <ImagesTab filterTag={sp.channel} /> : null}
-        {tab === "prompts" ? <PromptsTab /> : null}
+        {tab === "strategy" ? (
+          <Suspense fallback={<ContentTabSkeleton rows={4} />}>
+            <StrategyTab />
+          </Suspense>
+        ) : null}
+        {tab === "images" ? (
+          <Suspense
+            key={`images:${sp.channel ?? ""}`}
+            fallback={<ContentTabSkeleton rows={2} />}
+          >
+            <ImagesTab filterTag={sp.channel} />
+          </Suspense>
+        ) : null}
+        {tab === "prompts" ? (
+          <Suspense fallback={<ContentTabSkeleton rows={2} />}>
+            <PromptsTab />
+          </Suspense>
+        ) : null}
       </div>
     </AdminShell>
   );
