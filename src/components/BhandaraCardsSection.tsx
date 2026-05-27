@@ -125,6 +125,20 @@ export default function BhandaraCardsSection({
     });
   }, [listings, area, tuesday, q]);
 
+  // Total CARD count = expanded-by-date instance count, not the raw
+  // listings.length. One bhandara record with 4 upcoming Tuesdays
+  // renders as 4 cards (expandBhandarasByDate below), so the
+  // headline "5 Bhandaras listed" was undercounting what the visitor
+  // actually saw on the grid. This computes the same expansion the
+  // render uses so the headline number == the card count rendered.
+  // Uses `listings` (not `filtered`) so the headline stays stable as
+  // the visitor applies filter chips, matching the design intent
+  // documented in the totalListed-prop comment below.
+  const totalCardCount = useMemo(
+    () => expandBhandarasByDate(listings).length,
+    [listings],
+  );
+
   const areaOptions = [
     { value: "all", label: isHi ? "सभी क्षेत्र" : "All areas" },
     ...areas.map((a) => ({
@@ -170,7 +184,7 @@ export default function BhandaraCardsSection({
               the moment the user picks an area); the row below shows
               the filtered count separately. */}
           <span className="text-saffron-600 tabular-nums mr-1">
-            {totalListed ?? listings.length}
+            {totalListed ?? totalCardCount}
           </span>
           {heading}
         </h2>
