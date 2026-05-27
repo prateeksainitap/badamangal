@@ -8,6 +8,7 @@ import AdminShell from "@/components/admin/AdminShell";
 import { getAdminNavCounts } from "@/lib/admin-nav-counts";
 import BotHeartbeat from "@/components/admin/BotHeartbeat";
 import { istTodayIso } from "@/lib/dates";
+import TabPending from "./TabPending";
 
 export const metadata: Metadata = {
   title: "Analytics · Admin · Bada Mangal",
@@ -174,7 +175,13 @@ export default async function AnalyticsPage({
                       : "text-cream-50/65 hover:text-cream-50 hover:bg-cyan-400/[0.06]",
                   ].join(" ")}
                 >
-                  {t.label}
+                  {/* Inline pending spinner — `useLinkStatus` flips
+                      visible the moment this Link starts navigating.
+                      Sits to the left of the label so the layout
+                      stays stable (a 12px gap appears only when
+                      pending). */}
+                  <TabPending />
+                  <span>{t.label}</span>
                 </Link>
               );
             })}
