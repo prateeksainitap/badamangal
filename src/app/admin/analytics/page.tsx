@@ -151,40 +151,53 @@ export default async function AnalyticsPage({
             Per-feature breakdown
           </h2>
 
-          {/* Tab strip — each tab is a Link so deep-links work +
-              prefetch fires the next tab's data on hover. */}
-          <div
-            role="tablist"
-            aria-label="Analytics feature tabs"
-            className="mb-5 inline-flex flex-wrap items-center gap-1 rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm p-1 font-mono"
-          >
-            {FEATURE_TABS.map((t) => {
-              const active = feature === t.key;
-              return (
-                <Link
-                  key={t.key}
-                  href={`/admin/analytics?feature=${t.key}`}
-                  role="tab"
-                  aria-selected={active}
-                  prefetch={false}
-                  scroll={false}
-                  className={[
-                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors",
-                    active
-                      ? "bg-gradient-to-r from-cyan-500 to-violet-500 text-cream-50 shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)]"
-                      : "text-cream-50/65 hover:text-cream-50 hover:bg-cyan-400/[0.06]",
-                  ].join(" ")}
-                >
-                  {/* Inline pending spinner — `useLinkStatus` flips
-                      visible the moment this Link starts navigating.
-                      Sits to the left of the label so the layout
-                      stays stable (a 12px gap appears only when
-                      pending). */}
-                  <TabPending />
-                  <span>{t.label}</span>
-                </Link>
-              );
-            })}
+          {/* Sticky tab strip wrapper. Sticks to `top-14` (the
+              AdminShell header is `top-0 h-14`, so tabs sit
+              immediately below it once the operator scrolls past
+              the section header). Negative margins extend the
+              backdrop to the page edges so the blur reads as a
+              full-width "section header" not a floating pill.
+              z-10 keeps the tabs above scrolling content but
+              below the admin shell header (which is z-20). */}
+          <div className="sticky top-14 z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 mb-5 pt-2 pb-2 bg-[#080A10]/85 backdrop-blur-md border-b border-cyan-400/[0.08]">
+            <div
+              role="tablist"
+              aria-label="Analytics feature tabs"
+              className="inline-flex flex-wrap items-center gap-1 rounded-2xl border border-cyan-400/20 bg-[#0B0E16]/85 backdrop-blur-sm p-1 font-mono"
+            >
+              {FEATURE_TABS.map((t) => {
+                const active = feature === t.key;
+                return (
+                  <Link
+                    key={t.key}
+                    href={`/admin/analytics?feature=${t.key}`}
+                    role="tab"
+                    aria-selected={active}
+                    prefetch={false}
+                    // scroll={false} preserves the operator's
+                    // current scroll position on tab nav — without
+                    // this, Next.js would auto-scroll to top each
+                    // click which is jarring once the operator has
+                    // scrolled past the section header.
+                    scroll={false}
+                    className={[
+                      "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors",
+                      active
+                        ? "bg-gradient-to-r from-cyan-500 to-violet-500 text-cream-50 shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)]"
+                        : "text-cream-50/65 hover:text-cream-50 hover:bg-cyan-400/[0.06]",
+                    ].join(" ")}
+                  >
+                    {/* Inline pending spinner — `useLinkStatus` flips
+                        visible the moment this Link starts navigating.
+                        Sits to the left of the label so the layout
+                        stays stable (a 12px gap appears only when
+                        pending). */}
+                    <TabPending />
+                    <span>{t.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
 
           <Suspense
