@@ -25,8 +25,13 @@
  */
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { logoutAction } from "@/app/admin/actions";
+
+/** localStorage key for the desktop "collapse sidebar to icon rail"
+ *  preference. Persists across page navigation + reloads so the
+ *  operator's preference sticks. "1" = collapsed, "0" / unset = expanded. */
+const COLLAPSE_KEY = "bm-admin-sidebar-collapsed";
 
 type NavItem = {
   href: string;
@@ -152,6 +157,57 @@ export default function AdminShell({
   const search = useSearchParams();
   const currentType = search?.get("type") ?? "";
 
+  // Sidebar collapse state.
+  //   - desktopCollapsed: shrinks the sidebar to a 56 px icon rail
+  //     (nav still accessible, labels + badges + footer hidden).
+  //     Persisted to localStorage under COLLAPSE_KEY so the
+  //     operator's preference survives navigation + reloads.
+  //   - mobileOpen: full-screen drawer overlay below md. Lives on
+  //     state here (rather than the previous self-contained
+  //     MobileNavToggle) so the drawer can render the same
+  //     NavItem map (with badges + active highlights) the desktop
+  //     sidebar uses, and so a Sidebar-toggle button in the header
+  //     can target the right state for the current viewport.
+  //
+  // We initialise to "expanded" / "closed" on first render to
+  // match SSR'd markup, then hydrate the collapsed preference in
+  // the effect — this avoids a flash of the wrong sidebar width.
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(COLLAPSE_KEY) === "1") {
+        setDesktopCollapsed(true);
+      }
+    } catch {
+      /* localStorage may be disabled (private browsing, etc.), no-op */
+    }
+  }, []);
+
+  // Lock body scroll while the mobile drawer is open so the page
+  // behind the overlay doesn't scroll under the user's finger.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileOpen]);
+
+  function toggleDesktopCollapsed() {
+    setDesktopCollapsed((c) => {
+      const next = !c;
+      try {
+        window.localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
+      } catch {
+        /* localStorage may be disabled, no-op */
+      }
+      return next;
+    });
+  }
+
   function isActive(item: NavItem): boolean {
     // Dashboard is `/admin/home`, exact match.
     if (item.href.startsWith("/admin/home"))
@@ -235,50 +291,108 @@ export default function AdminShell({
             height (which would break sticky). The earlier
             overflow-clip fix on .admin-shell + main is what allows
             sticky to actually engage here. */}
-        <aside className="hidden md:flex md:flex-col md:sticky md:top-0 md:h-dvh w-60 shrink-0 border-r border-cyan-400/10 bg-black/45 backdrop-blur-md">
-          {/* Brand mark, the real Final-Logo-BM-white.svg is a
-              1660×479 horizontal lockup that ALREADY contains both
-              the gada-on-disc mark and the "Bada Mangal" wordmark.
-              We were previously squashing it into a 28×28 saffron-
-              disc square (which clipped to just the mark, with the
-              wordmark vanishing off-frame) and then printing the
-              text "Bada Mangal" + "ops.console" beside it as a
-              hand-rolled duplicate. Now we render the lockup at its
-              natural aspect ratio inside the sidebar's brand row.
-              The ops.console tagline lives below as the only
-              hand-written text, keeps the AI/ops console identity
-              without competing with the wordmark. */}
-          <Link
-            href="/admin/home"
-            prefetch={false}
-            aria-label="Bada Mangal · admin dashboard"
-            className="block px-5 pt-5 pb-4 group"
+        <aside
+          className={[
+            // Sidebar width is the only thing that changes with the
+            // collapse toggle. We animate `width` with a fast 180 ms
+            // transition so the layout shift reads as deliberate
+            // rather than abrupt. Width contains the rest of the
+            // sidebar (logo + nav + footer) which switches its inner
+            // rendering based on `desktopCollapsed`.
+            "hidden md:flex md:flex-col md:sticky md:top-0 md:h-dvh shrink-0",
+            "border-r border-cyan-400/10 bg-black/45 backdrop-blur-md",
+            "transition-[width] duration-200 ease-out",
+            desktopCollapsed ? "w-14" : "w-60",
+          ].join(" ")}
+        >
+          {/* Brand mark + collapse toggle. When expanded we show
+              the full Final-Logo-BM-white.svg lockup (gada-on-disc
+              + "Bada Mangal" wordmark). When collapsed (icon rail
+              mode) we show just a small saffron monogram disc to
+              keep the brand thread visible without pushing the
+              sidebar wider than 56 px. The collapse button is a
+              chevron-left when expanded, chevron-right when
+              collapsed. */}
+          <div
+            className={[
+              "flex items-start gap-1 pt-4 pb-3",
+              desktopCollapsed ? "px-2 flex-col items-center" : "px-3",
+            ].join(" ")}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/brand/Final-Logo-BM-white.svg"
-              alt="Bada Mangal"
-              width="1660"
-              height="479"
-              // h-10 (40px), bumped from h-7 (28px). The lockup
-              // SVG is 1660×479 (~3.46:1) so h-10 keeps the wordmark
-              // legible without overflowing the 240px sidebar width
-              // (40px × 3.46 ≈ 138px wide, well within the column).
-              className="block w-auto h-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)] group-hover:opacity-90 transition-opacity"
-            />
-            <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-cyan-300/65 font-mono">
-              ops.console<span className="admin-cursor" />
-            </div>
-          </Link>
+            <Link
+              href="/admin/home"
+              prefetch={false}
+              aria-label="Bada Mangal · admin dashboard"
+              className="block group flex-1 min-w-0"
+            >
+              {desktopCollapsed ? (
+                <span
+                  aria-hidden
+                  className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-saffron-500/15 border border-saffron-500/40 text-saffron-300 text-[14px] font-bold"
+                >
+                  ॐ
+                </span>
+              ) : (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/brand/Final-Logo-BM-white.svg"
+                    alt="Bada Mangal"
+                    width="1660"
+                    height="479"
+                    // h-10 (40px). The lockup SVG is 1660×479
+                    // (~3.46:1) so h-10 keeps the wordmark legible
+                    // without overflowing the 240px sidebar width
+                    // (40px × 3.46 ≈ 138px wide).
+                    className="block w-auto h-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)] group-hover:opacity-90 transition-opacity"
+                  />
+                  <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-cyan-300/65 font-mono">
+                    ops.console<span className="admin-cursor" />
+                  </div>
+                </>
+              )}
+            </Link>
+            <button
+              type="button"
+              onClick={toggleDesktopCollapsed}
+              title={
+                desktopCollapsed ? "Expand sidebar" : "Collapse sidebar"
+              }
+              aria-label={
+                desktopCollapsed ? "Expand sidebar" : "Collapse sidebar"
+              }
+              aria-expanded={!desktopCollapsed}
+              className={[
+                "shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-lg",
+                "text-cream-50/55 hover:text-cream-50 hover:bg-cream-50/[0.06]",
+                "border border-transparent hover:border-cyan-400/20 transition-colors",
+                desktopCollapsed ? "mt-2" : "mt-1",
+              ].join(" ")}
+            >
+              <IconChevron direction={desktopCollapsed ? "right" : "left"} />
+            </button>
+          </div>
 
           {/* Nav */}
-          <nav className="flex-1 px-2 pt-2 pb-4 space-y-0.5 overflow-y-auto">
+          <nav
+            className={[
+              "flex-1 pt-2 pb-4 space-y-0.5 overflow-y-auto",
+              desktopCollapsed ? "px-1.5" : "px-2",
+            ].join(" ")}
+          >
             {NAV.map((item) => {
               const active = isActive(item);
+              const count = navCounts?.[item.href] ?? 0;
+              const isLiveTone = item.href === "/admin/spots";
               return (
                 <Link
                   key={item.label}
                   href={item.href}
+                  // Native title attribute provides a tooltip with the
+                  // item label when the sidebar is collapsed to icon
+                  // rail mode. No-op when expanded (the label is
+                  // already visible).
+                  title={desktopCollapsed ? item.label : undefined}
                   // Prefetch on hover/viewport, the admin pages are
                   // all `force-dynamic`, so without prefetch every
                   // sidebar click was a cold 1-2s SSR round-trip.
@@ -288,7 +402,10 @@ export default function AdminShell({
                   // shell. The `auto` default keeps client-router
                   // cache + hover prefetch enabled.
                   className={[
-                    "group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] transition-colors",
+                    "group relative flex items-center rounded-xl text-[15px] transition-colors",
+                    desktopCollapsed
+                      ? "justify-center px-0 py-2.5"
+                      : "gap-3 px-3 py-2.5",
                     active
                       ? "text-cream-50 bg-gradient-to-r from-cyan-400/[0.16] via-cyan-400/[0.06] to-transparent"
                       : "text-cream-50/70 hover:text-cream-50 hover:bg-cream-50/[0.04]",
@@ -297,18 +414,15 @@ export default function AdminShell({
                   {/* Active indicator, cyan accent bar inset just
                       inside the rounded gradient so it reads as part
                       of the highlighted row, not a stray line hanging
-                      off the menu item's outer edge. Inset by left-1.5
-                      (6px) to clear the rounded-xl corner curve.
-                      Vertical centring uses `inset-y-0 my-auto` (NOT
-                      `top-1/2 -translate-y-1/2`) because the
-                      .admin-nav-slide-in keyframe animates the
-                      `transform` property (`scaleY` from 0.4 → 1) and
-                      CSS animations win against utility transforms on
-                      the same property, that conflict was leaving the
-                      bar hanging below the row centre. Auto-margins
-                      on a known height (`h-5`) centre cleanly without
-                      touching transform. */}
-                  {active ? (
+                      off the menu item's outer edge. Vertical centring
+                      uses `inset-y-0 my-auto` (NOT `top-1/2
+                      -translate-y-1/2`) because the .admin-nav-slide-in
+                      keyframe animates `transform`, and CSS animations
+                      beat utility transforms on the same property —
+                      that conflict was leaving the bar hanging below
+                      row centre. Auto-margins on a known height (h-5)
+                      centre cleanly without touching transform. */}
+                  {active && !desktopCollapsed ? (
                     <span
                       aria-hidden
                       className="admin-nav-slide-in absolute left-1.5 inset-y-0 my-auto h-5 w-[3px] rounded-full bg-cyan-400 shadow-[0_0_6px_0_rgba(34,211,238,0.7)]"
@@ -316,7 +430,7 @@ export default function AdminShell({
                   ) : null}
                   <span
                     className={[
-                      "shrink-0 w-5 h-5 inline-flex items-center justify-center",
+                      "shrink-0 w-5 h-5 inline-flex items-center justify-center relative",
                       active
                         ? "text-cyan-300"
                         : "text-cream-50/60 group-hover:text-cream-50/90",
@@ -324,88 +438,137 @@ export default function AdminShell({
                     aria-hidden
                   >
                     {item.icon}
-                  </span>
-                  <span
-                    className={[
-                      "truncate flex-1 tracking-tight",
-                      active ? "font-bold" : "font-semibold",
-                    ].join(" ")}
-                  >
-                    {item.label}
-                  </span>
-                  {/* Counter badge, only renders when the parent
-                      page passed a count for this href and it's > 0.
-                      Tone follows urgency: pending things (bhandaras,
-                      mentions, volunteers, organise, emails) get
-                      saffron for "needs attention"; spots get cyan
-                      for "live now". */}
-                  {(() => {
-                    const count = navCounts?.[item.href];
-                    if (!count || count <= 0) return null;
-                    const isLiveTone = item.href === "/admin/spots";
-                    return (
+                    {/* Collapsed-mode badge: a small dot in the
+                        top-right corner of the icon. We can't fit
+                        a number pill in a 56px rail, but a single
+                        coloured dot is enough to signal "this nav
+                        item has new items waiting", which is the
+                        whole point of the badge. */}
+                    {desktopCollapsed && count > 0 ? (
                       <span
                         aria-label={`${count} ${isLiveTone ? "live" : "new"}`}
                         className={[
-                          "shrink-0 inline-flex items-center justify-center min-w-[1.25rem] h-[18px] px-1.5 rounded-full text-[10px] font-bold font-mono tabular-nums leading-none",
-                          isLiveTone
-                            ? "bg-cyan-400/[0.18] border border-cyan-400/40 text-cyan-200"
-                            : active
-                              ? "bg-saffron-500/30 border border-saffron-500/55 text-saffron-200"
-                              : "bg-saffron-500/[0.18] border border-saffron-500/40 text-saffron-300 group-hover:bg-saffron-500/25 group-hover:text-saffron-200",
+                          "absolute -top-0.5 -right-0.5 inline-block w-2 h-2 rounded-full border border-[#0B0E16]",
+                          isLiveTone ? "bg-cyan-400" : "bg-saffron-500",
+                        ].join(" ")}
+                      />
+                    ) : null}
+                  </span>
+                  {!desktopCollapsed ? (
+                    <>
+                      <span
+                        className={[
+                          "truncate flex-1 tracking-tight",
+                          active ? "font-bold" : "font-semibold",
                         ].join(" ")}
                       >
-                        {count > 99 ? "99+" : count}
+                        {item.label}
                       </span>
-                    );
-                  })()}
+                      {/* Counter badge, only renders when the parent
+                          page passed a count > 0. Tone follows urgency:
+                          pending things get saffron for "needs
+                          attention"; spots get cyan for "live now". */}
+                      {count > 0 ? (
+                        <span
+                          aria-label={`${count} ${isLiveTone ? "live" : "new"}`}
+                          className={[
+                            "shrink-0 inline-flex items-center justify-center min-w-[1.25rem] h-[18px] px-1.5 rounded-full text-[10px] font-bold font-mono tabular-nums leading-none",
+                            isLiveTone
+                              ? "bg-cyan-400/[0.18] border border-cyan-400/40 text-cyan-200"
+                              : active
+                                ? "bg-saffron-500/30 border border-saffron-500/55 text-saffron-200"
+                                : "bg-saffron-500/[0.18] border border-saffron-500/40 text-saffron-300 group-hover:bg-saffron-500/25 group-hover:text-saffron-200",
+                          ].join(" ")}
+                        >
+                          {count > 99 ? "99+" : count}
+                        </span>
+                      ) : null}
+                    </>
+                  ) : null}
                 </Link>
               );
             })}
           </nav>
 
-          {/* Sidebar footer */}
-          <div className="px-3 pb-4 pt-2 border-t border-cyan-400/[0.08] mt-1">
-            <Link
-              href="/admin/gallery"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] text-cream-50/70 hover:text-cream-50 hover:bg-cream-50/[0.04] transition-colors"
-            >
-              <span aria-hidden className="shrink-0 w-5 h-5 inline-flex items-center justify-center text-cream-50/60">
-                <IconImage />
-              </span>
-              <span className="font-semibold tracking-tight">Gallery</span>
-            </Link>
-            <Link
-              href="/"
-              prefetch={false}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] text-cream-50/70 hover:text-cream-50 hover:bg-cream-50/[0.04] transition-colors"
-            >
-              <span aria-hidden className="shrink-0 w-5 h-5 inline-flex items-center justify-center text-cream-50/60">
-                <IconExternal />
-              </span>
-              <span className="font-semibold tracking-tight">View public site</span>
-            </Link>
-            {/* Build-state chip, small AI/ops detail at the very
-                bottom that reads as "this is a system being
-                operated", not a cms login. */}
-            <div className="mt-3 mx-3 rounded-lg border border-cyan-400/15 bg-cyan-400/[0.03] px-2 py-1.5 font-mono text-[10px] leading-tight">
-              <div className="flex items-center justify-between text-cream-50/45">
-                <span>build</span>
-                <span className="text-cyan-300/85">v2.1.0</span>
-              </div>
-              <div className="flex items-center justify-between text-cream-50/45">
-                <span>region</span>
-                <span className="text-cream-50/75">iad1</span>
+          {/* Sidebar footer. Hidden entirely when the sidebar is
+              collapsed to its 56 px icon rail — the gallery /
+              public-site shortcuts and the build chip aren't
+              critical enough to deserve real estate when the
+              operator has explicitly asked for more horizontal
+              breathing room. */}
+          {!desktopCollapsed ? (
+            <div className="px-3 pb-4 pt-2 border-t border-cyan-400/[0.08] mt-1">
+              <Link
+                href="/admin/gallery"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] text-cream-50/70 hover:text-cream-50 hover:bg-cream-50/[0.04] transition-colors"
+              >
+                <span aria-hidden className="shrink-0 w-5 h-5 inline-flex items-center justify-center text-cream-50/60">
+                  <IconImage />
+                </span>
+                <span className="font-semibold tracking-tight">Gallery</span>
+              </Link>
+              <Link
+                href="/"
+                prefetch={false}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] text-cream-50/70 hover:text-cream-50 hover:bg-cream-50/[0.04] transition-colors"
+              >
+                <span aria-hidden className="shrink-0 w-5 h-5 inline-flex items-center justify-center text-cream-50/60">
+                  <IconExternal />
+                </span>
+                <span className="font-semibold tracking-tight">View public site</span>
+              </Link>
+              {/* Build-state chip, small AI/ops detail at the very
+                  bottom that reads as "this is a system being
+                  operated", not a cms login. */}
+              <div className="mt-3 mx-3 rounded-lg border border-cyan-400/15 bg-cyan-400/[0.03] px-2 py-1.5 font-mono text-[10px] leading-tight">
+                <div className="flex items-center justify-between text-cream-50/45">
+                  <span>build</span>
+                  <span className="text-cyan-300/85">v2.1.0</span>
+                </div>
+                <div className="flex items-center justify-between text-cream-50/45">
+                  <span>region</span>
+                  <span className="text-cream-50/75">iad1</span>
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
         </aside>
 
         {/* ───── MAIN AREA ──────────────────────────────────────── */}
         <div className="flex-1 min-w-0 flex flex-col">
           {/* Top bar */}
           <header className="sticky top-0 z-20 h-14 border-b border-cyan-400/[0.08] bg-[#080A10]/85 backdrop-blur-md px-4 sm:px-6 flex items-center gap-3">
-            <MobileNavToggle />
+            {/* Mobile menu trigger, opens the full-NAV drawer
+                overlay defined at the bottom of this component.
+                Styled bigger + with a thin border so it reads as
+                a real button on small screens (the previous
+                ghost-style 3-line icon was easy to miss against
+                the dark backdrop on a phone). */}
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
+              aria-expanded={mobileOpen}
+              className="md:hidden inline-flex items-center gap-1.5 rounded-lg px-2.5 h-9 text-cream-50/85 bg-cream-50/[0.04] border border-cream-50/15 hover:bg-cream-50/[0.10] hover:border-cyan-400/35 hover:text-cream-50 transition-colors"
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden
+              >
+                <line x1="4" y1="7" x2="20" y2="7" />
+                <line x1="4" y1="12" x2="20" y2="12" />
+                <line x1="4" y1="17" x2="20" y2="17" />
+              </svg>
+              <span className="text-[12px] font-semibold tracking-tight">
+                Menu
+              </span>
+            </button>
 
             {/* Page title (set per-route) */}
             <div className="flex-1 min-w-0">
@@ -487,67 +650,196 @@ export default function AdminShell({
           </main>
         </div>
       </div>
+
+      {/* ───── MOBILE NAV DRAWER ────────────────────────────────
+          Slides in from the left when the header's "Menu" button
+          is tapped. Renders the same NavItem array the desktop
+          sidebar uses, with badges + active highlights, so the
+          mobile experience reaches feature-parity with desktop
+          (the previous drawer rendered only icon + label, no
+          badge counts — operators couldn't see "5 pending
+          spots" without leaving the screen they were on).
+          z-50 to beat every other admin overlay (header is z-20,
+          row-popovers are z-30); body scroll is locked while the
+          drawer is open via the useEffect higher up. */}
+      {mobileOpen ? (
+        <div
+          className="md:hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+        >
+          <div
+            className="absolute left-0 top-0 bottom-0 w-72 max-w-[82vw] bg-[#080A10] border-r border-cyan-400/15 overflow-y-auto flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer header: brand on the left, close button on
+                the right. Mirrors the desktop sidebar's brand row
+                so the operator's spatial memory transfers. */}
+            <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-3 border-b border-cyan-400/[0.08]">
+              <Link
+                href="/admin/home"
+                prefetch={false}
+                onClick={() => setMobileOpen(false)}
+                aria-label="Bada Mangal · admin dashboard"
+                className="block group flex-1 min-w-0"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/brand/Final-Logo-BM-white.svg"
+                  alt="Bada Mangal"
+                  width="1660"
+                  height="479"
+                  className="block w-auto h-9 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]"
+                />
+                <div className="mt-1.5 text-[10px] uppercase tracking-[0.18em] text-cyan-300/65 font-mono">
+                  ops.console
+                </div>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close menu"
+                className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg text-cream-50/75 hover:text-cream-50 hover:bg-cream-50/[0.05] border border-transparent hover:border-cyan-400/25 transition-colors"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  aria-hidden
+                >
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <line x1="6" y1="18" x2="18" y2="6" />
+                </svg>
+              </button>
+            </div>
+
+            <nav className="flex-1 px-2 pt-3 pb-4 space-y-0.5 overflow-y-auto">
+              {NAV.map((item) => {
+                const active = isActive(item);
+                const count = navCounts?.[item.href] ?? 0;
+                const isLiveTone = item.href === "/admin/spots";
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    prefetch={false}
+                    onClick={() => setMobileOpen(false)}
+                    className={[
+                      "group relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] transition-colors",
+                      active
+                        ? "text-cream-50 bg-gradient-to-r from-cyan-400/[0.16] via-cyan-400/[0.06] to-transparent"
+                        : "text-cream-50/80 hover:text-cream-50 hover:bg-cream-50/[0.04]",
+                    ].join(" ")}
+                  >
+                    {active ? (
+                      <span
+                        aria-hidden
+                        className="absolute left-1.5 inset-y-0 my-auto h-5 w-[3px] rounded-full bg-cyan-400 shadow-[0_0_6px_0_rgba(34,211,238,0.7)]"
+                      />
+                    ) : null}
+                    <span
+                      className={[
+                        "shrink-0 w-5 h-5 inline-flex items-center justify-center",
+                        active
+                          ? "text-cyan-300"
+                          : "text-cream-50/65 group-hover:text-cream-50/90",
+                      ].join(" ")}
+                      aria-hidden
+                    >
+                      {item.icon}
+                    </span>
+                    <span
+                      className={[
+                        "truncate flex-1 tracking-tight",
+                        active ? "font-bold" : "font-semibold",
+                      ].join(" ")}
+                    >
+                      {item.label}
+                    </span>
+                    {count > 0 ? (
+                      <span
+                        aria-label={`${count} ${isLiveTone ? "live" : "new"}`}
+                        className={[
+                          "shrink-0 inline-flex items-center justify-center min-w-[1.25rem] h-[18px] px-1.5 rounded-full text-[10px] font-bold font-mono tabular-nums leading-none",
+                          isLiveTone
+                            ? "bg-cyan-400/[0.18] border border-cyan-400/40 text-cyan-200"
+                            : active
+                              ? "bg-saffron-500/30 border border-saffron-500/55 text-saffron-200"
+                              : "bg-saffron-500/[0.18] border border-saffron-500/40 text-saffron-300",
+                        ].join(" ")}
+                      >
+                        {count > 99 ? "99+" : count}
+                      </span>
+                    ) : null}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Drawer footer: same shortcuts as desktop (gallery +
+                public site). Build chip omitted on purpose — the
+                screen real estate on phones is more valuable for
+                the nav itself. */}
+            <div className="px-3 pb-4 pt-2 border-t border-cyan-400/[0.08]">
+              <Link
+                href="/admin/gallery"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] text-cream-50/75 hover:text-cream-50 hover:bg-cream-50/[0.04] transition-colors"
+              >
+                <span aria-hidden className="shrink-0 w-5 h-5 inline-flex items-center justify-center text-cream-50/65">
+                  <IconImage />
+                </span>
+                <span className="font-semibold tracking-tight">Gallery</span>
+              </Link>
+              <Link
+                href="/"
+                prefetch={false}
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[15px] text-cream-50/75 hover:text-cream-50 hover:bg-cream-50/[0.04] transition-colors"
+              >
+                <span aria-hidden className="shrink-0 w-5 h-5 inline-flex items-center justify-center text-cream-50/65">
+                  <IconExternal />
+                </span>
+                <span className="font-semibold tracking-tight">
+                  View public site
+                </span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-/** Mobile-only hamburger, sidebar collapses to a drawer below md. */
-function MobileNavToggle() {
-  const [open, setOpen] = useState(false);
+/** Chevron used by the desktop sidebar's collapse / expand toggle.
+ *  `direction="left"` points at the sidebar (collapse cue when
+ *  expanded); `direction="right"` points away (expand cue when
+ *  collapsed). */
+function IconChevron({ direction }: { direction: "left" | "right" }) {
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg text-cream-50/65 hover:text-cream-50 hover:bg-cream-50/[0.05] transition-colors"
-        aria-label="Open menu"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <line x1="4" y1="7" x2="20" y2="7" />
-          <line x1="4" y1="12" x2="20" y2="12" />
-          <line x1="4" y1="17" x2="20" y2="17" />
-        </svg>
-      </button>
-      {open ? (
-        <div
-          className="md:hidden fixed inset-0 z-30 bg-black/70 backdrop-blur-sm"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="absolute left-0 top-0 bottom-0 w-64 bg-ink-900 border-r border-cream-50/10 p-4 overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="ml-auto block w-9 h-9 rounded-lg text-cream-50/65 hover:text-cream-50 hover:bg-cream-50/[0.05]"
-              aria-label="Close menu"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="6" y1="6" x2="18" y2="18" />
-                <line x1="6" y1="18" x2="18" y2="6" />
-              </svg>
-            </button>
-            <nav className="mt-3 space-y-1">
-              {NAV.map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  prefetch={false}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-cream-50/85 hover:text-cream-50 hover:bg-cream-50/[0.05]"
-                >
-                  <span className="shrink-0 w-5 h-5 inline-flex items-center justify-center text-cream-50/65">
-                    {item.icon}
-                  </span>
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-        </div>
-      ) : null}
-    </>
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      style={{
+        transform: direction === "right" ? "rotate(180deg)" : undefined,
+      }}
+    >
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
   );
 }
 

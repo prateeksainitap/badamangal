@@ -49,6 +49,14 @@ export type BhandaraQueueRow = {
   address: string | null;
   timeStart: string | null;
   timeEnd: string | null;
+  /** JSON-encoded string[] of ISO dates (YYYY-MM-DD), the Tuesday(s)
+   *  this bhandara is serving on. The DB column is `String` (not
+   *  `Json`) because SQLite has no native arrays; rendered into a
+   *  compact "5 May · 12 May · 19 May …" chip strip on the card so
+   *  the operator can spot multi-Tuesday listings (or stale rows
+   *  with only past dates) at a glance. Defensive JSON.parse, an
+   *  empty / malformed value silently degrades to no dates strip. */
+  tuesdayDates: string | null;
   status: string;
   isVerified: boolean;
   organizerName: string | null;
@@ -100,6 +108,33 @@ export default function BhandaraRow({ bhandara: b, index }: Props) {
   } catch {
     menuItems = [];
   }
+
+  // Tuesday dates, JSON-encoded YYYY-MM-DD string array. Same
+  // defensive pattern as menu. Sorted ascending so the strip reads
+  // chronologically, "today" or "next" is always to the right of
+  // already-past Tuesdays.
+  let tuesdayDateStrs: string[] = [];
+  try {
+    const parsed = JSON.parse(b.tuesdayDates ?? "[]");
+    if (Array.isArray(parsed)) {
+      tuesdayDateStrs = parsed
+        .filter(
+          (d): d is string =>
+            typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d),
+        )
+        .sort();
+    }
+  } catch {
+    tuesdayDateStrs = [];
+  }
+  // "Today" in IST as YYYY-MM-DD so we can string-compare against
+  // tuesdayDateStrs (ASCII order matches chronological because of
+  // zero-padded ISO format). Adding 5.5h to UTC then taking the
+  // ISO date prefix is a no-dependency way to read "the date in
+  // Asia/Kolkata right now" on the server.
+  const istTodayStr = new Date(Date.now() + 5.5 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 
   const timeRange =
     b.timeStart && b.timeEnd
@@ -221,6 +256,43 @@ export default function BhandaraRow({ bhandara: b, index }: Props) {
               />
             </div>
           </div>
+
+          {/* Tuesday dates strip. Bullet-separated "5 May · 12 May ·
+              19 May", upcoming Tuesdays in leaf-green, the current
+              IST date in saffron, past Tuesdays dimmed so an at-a-
+              glance scan tells the operator "is this row still
+              relevant or is every date already behind us." Omitted
+              entirely when the JSON parses empty so legacy rows
+              without the field don't render a barren strip. */}
+          {tuesdayDateStrs.length > 0 ? (
+            <div className="mt-2 text-[11px] flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+              <span aria-hidden className="text-cream-50/45">📅</span>
+              {tuesdayDateStrs.map((d, i) => {
+                const isPast = d < istTodayStr;
+                const isToday = d === istTodayStr;
+                return (
+                  <span key={d} className="inline-flex items-center gap-x-1.5">
+                    <span
+                      className={
+                        isToday
+                          ? "text-saffron-300 font-semibold"
+                          : isPast
+                            ? "text-cream-50/30"
+                            : "text-leaf-400 font-medium"
+                      }
+                    >
+                      {formatTuesdayDate(d)}
+                    </span>
+                    {i < tuesdayDateStrs.length - 1 ? (
+                      <span aria-hidden className="text-cream-50/25">
+                        ·
+                      </span>
+                    ) : null}
+                  </span>
+                );
+              })}
+            </div>
+          ) : null}
 
           {/* Compact details */}
           <div className="mt-3 text-xs text-cream-50/65 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
@@ -560,4 +632,31 @@ function formatTime(hhmm: string): string {
   const period = h >= 12 ? "PM" : "AM";
   const h12 = h % 12 === 0 ? 12 : h % 12;
   return `${h12}:${mm} ${period}`;
+}
+
+/** Tuesday-date formatter: "2026-05-05" → "5 May". The strip on
+ *  the admin card is compact, so we omit the year (every Tuesday
+ *  in the queue is in the current Adhik Mas season, the year is
+ *  implicit). Falls back to the raw string if the input isn't a
+ *  well-formed ISO date so we never throw on malformed DB data. */
+function formatTuesdayDate(isoDate: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+  if (!m) return isoDate;
+  const monthIdx = Number(m[2]) - 1;
+  const day = Number(m[3]);
+  const MONTHS = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  return `${day} ${MONTHS[monthIdx] ?? m[2]}`;
 }

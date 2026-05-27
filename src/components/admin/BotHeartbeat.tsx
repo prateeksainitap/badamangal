@@ -1,8 +1,32 @@
 import { prisma } from "@/lib/db";
+import DbHealth from "./DbHealth";
 
 /**
- * Small server-rendered pill that shows when the OpenClaw ingestion
- * agent (on the spare MacBook) last pinged the heartbeat endpoint.
+ * Status-pill cluster for the AdminShell header.
+ *
+ * Historical note: this file used to render only the bot heartbeat
+ * pill, hence the name. After Bada Mangal #4 we wanted a DB-health
+ * pill in the same slot. Rather than plumb a new prop through 17
+ * admin pages, the default export now renders BOTH pills (DB first,
+ * bot second) wrapped in a single flex container — every page that
+ * already passes `<BotHeartbeat />` into AdminShell's `botHeartbeat`
+ * slot automatically picks up the DB pill too.
+ *
+ * If you add a third pill (R2 health, Gemini status, …) the same
+ * convention applies — add it here and every admin page gets it.
+ */
+export default function BotHeartbeat() {
+  return (
+    <span className="inline-flex items-center gap-2 flex-wrap">
+      <DbHealth />
+      <BotPill />
+    </span>
+  );
+}
+
+/**
+ * Bot-heartbeat pill, shows when the OpenClaw ingestion agent
+ * (on the spare MacBook) last pinged the heartbeat endpoint.
  *
  * Reads the `bot_heartbeat_mbp` row from SiteCounter. The MacBook's
  * cron POSTs to `/api/bot/heartbeat?source=mbp` every 5 minutes, so a
@@ -14,7 +38,7 @@ import { prisma } from "@/lib/db";
  * never pinged). We don't want a noisy red badge on first load,
  * before the user has set up the cron.
  */
-export default async function BotHeartbeat() {
+async function BotPill() {
   // Try/catch around the single DB read so a transient EMAXCONN on
   // peak traffic doesn't take down the entire admin tree. This
   // component sits in the AdminShell header, which wraps every
