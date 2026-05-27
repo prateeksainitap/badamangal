@@ -70,6 +70,14 @@ const NAV: NavItem[] = [
     icon: <IconCompass />,
   },
   {
+    // Operator analytics: weekly Live-chat summary + all-time
+    // funnels + top movers. Sits between Discover and Organise
+    // because it's a read-only insight surface, not a queue.
+    href: "/admin/analytics",
+    label: "Analytics",
+    icon: <IconChartLine />,
+  },
+  {
     href: "/admin/organise",
     label: "Organise",
     icon: <IconClipboard />,
@@ -909,6 +917,19 @@ function IconClipboard() {
       <line x1="9" y1="10" x2="15" y2="10" />
       <line x1="9" y1="14" x2="15" y2="14" />
       <line x1="9" y1="18" x2="13" y2="18" />
+    </svg>
+  );
+}
+/** Chart-line icon for the /admin/analytics nav item.
+ *  Bar-chart frame with an overlaid line-graph to read both as
+ *  "metrics" (bars) and "trend" (line). Matches the line-art
+ *  weight of the other sidebar nav icons. */
+function IconChartLine() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 3 v18 h18" />
+      <polyline points="7 15 11 10 14 13 20 6" />
+      <circle cx="20" cy="6" r="1" fill="currentColor" stroke="none" />
     </svg>
   );
 }
