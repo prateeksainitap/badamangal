@@ -305,53 +305,25 @@ export default function AdminShell({
             desktopCollapsed ? "w-14" : "w-60",
           ].join(" ")}
         >
-          {/* Brand mark + collapse toggle. When expanded we show
-              the full Final-Logo-BM-white.svg lockup (gada-on-disc
-              + "Bada Mangal" wordmark). When collapsed (icon rail
-              mode) we show just a small saffron monogram disc to
-              keep the brand thread visible without pushing the
-              sidebar wider than 56 px. The collapse button is a
-              chevron-left when expanded, chevron-right when
-              collapsed. */}
-          <div
-            className={[
-              "flex items-start gap-1 pt-4 pb-3",
-              desktopCollapsed ? "px-2 flex-col items-center" : "px-3",
-            ].join(" ")}
-          >
-            <Link
-              href="/admin/home"
-              prefetch={false}
-              aria-label="Bada Mangal · admin dashboard"
-              className="block group flex-1 min-w-0"
-            >
-              {desktopCollapsed ? (
-                <span
-                  aria-hidden
-                  className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-saffron-500/15 border border-saffron-500/40 text-saffron-300 text-[14px] font-bold"
-                >
-                  ॐ
-                </span>
-              ) : (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src="/brand/Final-Logo-BM-white.svg"
-                    alt="Bada Mangal"
-                    width="1660"
-                    height="479"
-                    // h-10 (40px). The lockup SVG is 1660×479
-                    // (~3.46:1) so h-10 keeps the wordmark legible
-                    // without overflowing the 240px sidebar width
-                    // (40px × 3.46 ≈ 138px wide).
-                    className="block w-auto h-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)] group-hover:opacity-90 transition-opacity"
-                  />
-                  <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-cyan-300/65 font-mono">
-                    ops.console<span className="admin-cursor" />
-                  </div>
-                </>
-              )}
-            </Link>
+          {/* Brand mark + collapse toggle.
+
+              Layout invariant: the toggle button is always the
+              FIRST child of this row, sitting at a fixed offset
+              from the sidebar's left edge. Because shrinking the
+              sidebar collapses its RIGHT edge (the left edge
+              doesn't move), the toggle's absolute screen position
+              stays identical across expand / collapse. The brand
+              lockup sits to the right of the toggle when expanded
+              and is hidden entirely when collapsed — no monogram
+              substitute, because the 56 px icon rail reads cleaner
+              with just the toggle on top.
+
+              Icon: a "sidebar panel" glyph (rectangle with a
+              vertical bar at the left), the de-facto standard
+              used by Notion / Linear / VS Code / macOS Finder for
+              "toggle sidebar". Not a chevron — chevrons read as
+              "navigate" rather than "show / hide a panel". */}
+          <div className="flex items-center gap-2 px-2 pt-3 pb-3 min-h-[3.25rem]">
             <button
               type="button"
               onClick={toggleDesktopCollapsed}
@@ -363,14 +335,36 @@ export default function AdminShell({
               }
               aria-expanded={!desktopCollapsed}
               className={[
-                "shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-lg",
-                "text-cream-50/55 hover:text-cream-50 hover:bg-cream-50/[0.06]",
+                "shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-lg",
+                "text-cream-50/65 hover:text-cream-50 hover:bg-cream-50/[0.06]",
                 "border border-transparent hover:border-cyan-400/20 transition-colors",
-                desktopCollapsed ? "mt-2" : "mt-1",
               ].join(" ")}
             >
-              <IconChevron direction={desktopCollapsed ? "right" : "left"} />
+              <IconSidebarToggle collapsed={desktopCollapsed} />
             </button>
+            {!desktopCollapsed ? (
+              <Link
+                href="/admin/home"
+                prefetch={false}
+                aria-label="Bada Mangal · admin dashboard"
+                className="block group flex-1 min-w-0"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/brand/Final-Logo-BM-white.svg"
+                  alt="Bada Mangal"
+                  width="1660"
+                  height="479"
+                  // h-9 (36px) — pairs with the 36 px toggle
+                  // button so brand + toggle baseline-align in
+                  // the expanded header.
+                  className="block w-auto h-9 drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)] group-hover:opacity-90 transition-opacity"
+                />
+                <div className="mt-1 text-[10px] uppercase tracking-[0.18em] text-cyan-300/65 font-mono">
+                  ops.console<span className="admin-cursor" />
+                </div>
+              </Link>
+            ) : null}
           </div>
 
           {/* Nav */}
@@ -818,27 +812,42 @@ export default function AdminShell({
   );
 }
 
-/** Chevron used by the desktop sidebar's collapse / expand toggle.
- *  `direction="left"` points at the sidebar (collapse cue when
- *  expanded); `direction="right"` points away (expand cue when
- *  collapsed). */
-function IconChevron({ direction }: { direction: "left" | "right" }) {
+/** Sidebar-panel toggle icon — a rectangle with a vertical bar
+ *  inside, the de-facto "toggle sidebar" glyph used by Notion,
+ *  Linear, VS Code, and macOS Finder. The bar's tint flips based
+ *  on collapsed state so the icon also reads as a state indicator
+ *  (filled bar = "sidebar is currently shown", outlined bar =
+ *  "sidebar is currently hidden") on top of being a button. */
+function IconSidebarToggle({ collapsed }: { collapsed: boolean }) {
   return (
     <svg
-      width="14"
-      height="14"
+      width="18"
+      height="18"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.8"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden
-      style={{
-        transform: direction === "right" ? "rotate(180deg)" : undefined,
-      }}
     >
-      <polyline points="15 18 9 12 15 6" />
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <line x1="9" y1="5" x2="9" y2="19" />
+      {/* When the sidebar is currently EXPANDED, fill the left
+          bar so the icon visually conveys "the sidebar is on".
+          When collapsed, the bar stays as outline-only. */}
+      {!collapsed ? (
+        <rect
+          x="3"
+          y="5"
+          width="6"
+          height="14"
+          rx="2"
+          fill="currentColor"
+          opacity="0.25"
+          stroke="none"
+        />
+      ) : null}
     </svg>
   );
 }
