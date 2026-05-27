@@ -1065,24 +1065,38 @@ async function SpotsView({
     prisma.spot.count({ where: { status: "REJECTED" } }),
     prisma.spot.count({}),
   ]);
-  const pickS = <T,>(idx: number, fallback: T): T => {
-    const r = spotsSettled[idx];
-    if (r && r.status === "fulfilled") return r.value as T;
-    if (r && r.status === "rejected") {
-      console.error(
-        `[admin/page spotsView] query ${idx} rejected:`,
-        r.reason instanceof Error ? r.reason.message : r.reason,
-      );
-    }
-    return fallback;
-  };
-  const spots = pickS<
-    Awaited<ReturnType<typeof prisma.spot.findMany>>
-  >(0, []);
-  const liveCount = pickS<number>(1, 0);
-  const expiredCount = pickS<number>(2, 0);
-  const rejectedCount = pickS<number>(3, 0);
-  const allCount = pickS<number>(4, 0);
+  // Generic helper preserves the include-augmented row type via TS
+  // inference. The previous version used
+  // `Awaited<ReturnType<typeof prisma.spot.findMany>>` as the fallback
+  // type, which is the BARE Spot[] (no include). That broke compile
+  // at `s.bhandara?.name` downstream because the union narrowed to the
+  // bare type. unwrapArr<T> infers T from each PromiseSettledResult's
+  // resolved tuple shape, so the include's `bhandara` field flows
+  // through cleanly.
+  function unwrapArr<T>(
+    r: PromiseSettledResult<T[]>,
+    label: string,
+  ): T[] {
+    if (r.status === "fulfilled") return r.value;
+    console.error(
+      `[admin/page spotsView] ${label} query rejected:`,
+      r.reason instanceof Error ? r.reason.message : r.reason,
+    );
+    return [];
+  }
+  function unwrapN(r: PromiseSettledResult<number>, label: string): number {
+    if (r.status === "fulfilled") return r.value;
+    console.error(
+      `[admin/page spotsView] ${label} query rejected:`,
+      r.reason instanceof Error ? r.reason.message : r.reason,
+    );
+    return 0;
+  }
+  const spots = unwrapArr(spotsSettled[0], "spots.findMany");
+  const liveCount = unwrapN(spotsSettled[1], "liveCount");
+  const expiredCount = unwrapN(spotsSettled[2], "expiredCount");
+  const rejectedCount = unwrapN(spotsSettled[3], "rejectedCount");
+  const allCount = unwrapN(spotsSettled[4], "allCount");
   const countOf = (s: string) =>
     s === "LIVE"
       ? liveCount
