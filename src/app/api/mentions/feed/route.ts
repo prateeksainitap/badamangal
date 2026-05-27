@@ -34,9 +34,15 @@ import { ipHash, readClientIp } from "@/lib/crypto";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-/** Cap the `?since=` lookback. Mirror of /api/feed's defense, scrapers
- *  pasting `?since=2020-01-01` get clamped to the last 24h. */
-const MAX_SINCE_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+/** Cap the `?since=` lookback. Mirror of /api/feed's 7-day defense.
+ *  Bumped from 24h on 2026-05-28 so the mobile app's Live tab can
+ *  ask for "last Tuesday's chat archive" on off-days (Wed-Sun).
+ *  Scrapers pasting `?since=2020-01-01` still get clamped, just to
+ *  the last 7 days instead of 24h. The data exposed (public chat
+ *  posts) was already serveable via the same endpoint on the open
+ *  day, so this just widens the read window, not the privacy
+ *  surface. */
+const MAX_SINCE_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 
 type PublicMention = {
   /** Always "mention:" prefix + db id, so the client can route per-kind. */
