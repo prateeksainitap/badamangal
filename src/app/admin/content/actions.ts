@@ -145,6 +145,100 @@ export async function deleteContentAction(id: string): Promise<void> {
   revalidatePath("/admin/content");
 }
 
+/* ──────────────── Content send-tracking ────────────────────────────
+ * Four actions powering the Mission Strip + per-card status pills.
+ * All operator-driven (no auto-detection) because outbound happens
+ * outside the platform: email, WhatsApp, Instagram DM, press email
+ * chains. The operator owns the truth.
+ * ─────────────────────────────────────────────────────────────────── */
+
+/** Mark a Content row as sent — captures the timestamp, optional
+ *  recipient note, and flips awaitingReply=true. If the row was a
+ *  DRAFT it flips to ACTIVE so "sent" automatically promotes work
+ *  out of the drafts pile. Surfaces in the row pill as
+ *  "Sent N days ago to X". */
+export async function markSentAction(
+  id: string,
+  formData: FormData,
+): Promise<void> {
+  await requireAdmin();
+  const lastSentTo = readString(formData, "lastSentTo", 200) || null;
+  await prisma.content.update({
+    where: { id },
+    data: {
+      lastSentAt: new Date(),
+      lastSentTo,
+      awaitingReply: true,
+      // If the row was DRAFT, promote it to ACTIVE — the act of
+      // sending is the strongest possible signal that it's
+      // production-ready. ARCHIVED rows are left as-is so an
+      // operator who clicks "Mark sent" on an archived row by
+      // accident doesn't accidentally un-archive it.
+      ...(await isContentDraft(id) ? { status: "ACTIVE" } : {}),
+    },
+  });
+  revalidatePath("/admin/content");
+}
+
+/** Mark the awaited reply as received (or closed). Doesn't touch
+ *  lastSentAt — the row still shows "Sent 5 days ago" until it gets
+ *  re-sent. Just clears the awaitingReply flag so the Mission
+ *  Strip's count goes down. */
+export async function markRepliedAction(id: string): Promise<void> {
+  await requireAdmin();
+  await prisma.content.update({
+    where: { id },
+    data: { awaitingReply: false },
+  });
+  revalidatePath("/admin/content");
+}
+
+/** Undo a "Mark sent" — clears every send-tracking field. Use case:
+ *  operator clicked Sent on the wrong row, or wants to reset a row
+ *  back to "never sent" before a new season. */
+export async function unmarkSentAction(id: string): Promise<void> {
+  await requireAdmin();
+  await prisma.content.update({
+    where: { id },
+    data: {
+      lastSentAt: null,
+      lastSentTo: null,
+      awaitingReply: false,
+    },
+  });
+  revalidatePath("/admin/content");
+}
+
+/** Toggle between DRAFT and ACTIVE status. The Mission Strip's
+ *  Drafts tile counts DRAFT rows; the Ready tile counts ACTIVE rows
+ *  with no recent send. Operator flips a row to DRAFT when it's
+ *  still being written, back to ACTIVE when ready to send. */
+export async function toggleDraftAction(id: string): Promise<void> {
+  await requireAdmin();
+  const row = await prisma.content.findUnique({
+    where: { id },
+    select: { status: true },
+  });
+  if (!row) return;
+  const next = row.status === "DRAFT" ? "ACTIVE" : "DRAFT";
+  await prisma.content.update({
+    where: { id },
+    data: { status: next },
+  });
+  revalidatePath("/admin/content");
+}
+
+/** Internal helper for markSentAction — checks if the row is
+ *  currently a DRAFT so we can auto-promote on send. Extracted to
+ *  keep the action body readable. */
+async function isContentDraft(id: string): Promise<boolean> {
+  const row = await prisma.content.findUnique({
+    where: { id },
+    select: { status: true },
+  });
+  return row?.status === "DRAFT";
+}
+
 /* ────────────────────────── Prompt CRUD ─────────────────────────── */
 
 export async function createPromptAction(formData: FormData): Promise<void> {

@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/db";
 import ContentCard from "./ContentCard";
 import ContentEditor from "./ContentEditor";
 import { EmptyState } from "./PitchesTab";
+import { safeContentFindMany } from "./contentQuery";
 
 /**
  * Strategy tab, long-form planning docs.
@@ -11,7 +11,9 @@ import { EmptyState } from "./PitchesTab";
  * have; they're internal planning material with a flatter list.
  */
 export default async function StrategyTab() {
-  const rows = await prisma.content.findMany({
+  // Same migration-safe helper PitchesTab uses, so this page renders
+  // even when the send-tracking columns aren't in the DB yet.
+  const rows = await safeContentFindMany({
     where: { kind: "STRATEGY", status: "ACTIVE" },
     orderBy: { updatedAt: "desc" },
   });

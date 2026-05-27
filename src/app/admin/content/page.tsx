@@ -10,6 +10,7 @@ import SubmitButton from "@/components/admin/SubmitButton";
 import {
   importNotesAction,
 } from "./actions";
+import MissionStrip from "./MissionStrip";
 import PitchesTab from "./PitchesTab";
 import TemplatesTab from "./TemplatesTab";
 import StrategyTab from "./StrategyTab";
@@ -26,15 +27,28 @@ export const dynamic = "force-dynamic";
 /**
  * /admin/content, the Content Hub.
  *
- * One stop for everything outbound: pitches, templates, strategy docs,
- * AI-generated images for IG/WA, and a runnable prompt library. Each
- * tab pulls from its own DB table (or filters GalleryPhoto for the
- * Images tab); selection is by `?tab=` query param so deep links
+ * On off-days (every day except Tuesday during the Adhik Mas
+ * season) this is the most-used admin page — the operator's
+ * outreach cockpit. The redesigned header surfaces three things
+ * that matter:
+ *
+ *   1. Where we are in the season ("Tue 2 Jun in 6 days")
+ *   2. What needs attention right now (Ready / Drafts / Sent 7d /
+ *      Awaiting reply tiles)
+ *   3. One-click drilldowns from each tile into the matching
+ *      filtered Pitches view
+ *
+ * Tabs (Pitches / Templates / Strategy / Images / Prompts) get a
+ * coloured dot when they have work waiting — green = ready,
+ * saffron = needs follow-up. So the operator can scan the strip
+ * and triage without expanding anything.
+ *
+ * Each tab pulls from its own DB table (or filters GalleryPhoto
+ * for Images); selection is by `?tab=` query param so deep links
  * survive a refresh and prefetch works.
  *
- * Auth is gated server-side at the top; the layout already gates too,
- * but the redirect here is defense-in-depth (matches every other
- * admin page).
+ * Auth is gated server-side at the top; the layout already gates
+ * too, but the redirect here is defense-in-depth.
  */
 
 type Tab = "pitches" | "templates" | "strategy" | "images" | "prompts";
@@ -46,41 +60,24 @@ const TAB_ORDER: Tab[] = [
   "prompts",
 ];
 
-const TAB_META: Record<
-  Tab,
-  { label: string; sublabel: string; eyebrow: string }
-> = {
-  pitches: {
-    label: "Pitches",
-    sublabel: "Sponsor · Influencer · Press",
-    eyebrow: "Outreach",
-  },
-  templates: {
-    label: "Templates",
-    sublabel: "WhatsApp · Email · Instagram",
-    eyebrow: "Copy",
-  },
-  strategy: {
-    label: "Strategy",
-    sublabel: "Personas · Calendar · Off-season",
-    eyebrow: "Planning",
-  },
-  images: {
-    label: "Images",
-    sublabel: "AI + curated for IG / WA / pamphlet",
-    eyebrow: "Assets",
-  },
-  prompts: {
-    label: "Prompts",
-    sublabel: "Saved prompts · Run with ChatGPT",
-    eyebrow: "AI runner",
-  },
+const TAB_META: Record<Tab, { label: string }> = {
+  pitches: { label: "Pitches" },
+  templates: { label: "Templates" },
+  strategy: { label: "Strategy" },
+  images: { label: "Images" },
+  prompts: { label: "Prompts" },
 };
 
 export default async function ContentHubPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string; aud?: string; channel?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    aud?: string;
+    channel?: string;
+    q?: string;
+    filter?: string;
+  }>;
 }) {
   if (!(await isAdmin())) redirect("/admin");
   const sp = await searchParams;
@@ -88,22 +85,71 @@ export default async function ContentHubPage({
     ? (sp.tab as Tab)
     : "pitches";
 
-  // Counts for the tab pills, drives the small badge next to each
-  // label so the operator sees "5 pitches" at a glance. All 5 counts
-  // resolved in parallel so the tab strip doesn't wait per tab.
-  const [
-    pitchesCount,
-    templatesCount,
-    strategyCount,
-    imagesCount,
-    promptsCount,
-  ] = await Promise.all([
+  // Window for the "Sent 7d" tile and the "sent recently" pill
+  // logic downstream. Computed once at request time so every tile +
+  // tab counts agree on the same cutoff.
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  // Tab counts + Mission Strip counts in a single parallel batch.
+  //
+  //   Tab counts (5):
+  //     0 — pitches ACTIVE count
+  //     1 — templates ACTIVE count
+  //     2 — strategy ACTIVE count
+  //     3 — gallery photos (tagged for Content Hub) count
+  //     4 — active prompts count
+  //
+  //   Mission Strip counts (4), each filtered to PITCH so the strip
+  //   reflects outbound pitch work specifically (templates are
+  //   internal-org-facing, not "what did I send to a journalist"):
+  //     5 — ready: ACTIVE pitches with no recent send
+  //     6 — drafts: DRAFT pitches
+  //     7 — sent 7d: pitches lastSentAt > now - 7d
+  //     8 — awaiting reply: pitches awaitingReply = true
+  //
+  // Promise.allSettled so any single transient EMAXCONN renders as
+  // a zero in that tile rather than 500ing the whole page.
+  const settled = await Promise.allSettled([
     prisma.content.count({ where: { status: "ACTIVE", kind: "PITCH" } }),
     prisma.content.count({ where: { status: "ACTIVE", kind: "TEMPLATE" } }),
     prisma.content.count({ where: { status: "ACTIVE", kind: "STRATEGY" } }),
     prisma.galleryPhoto.count({ where: { tags: { isEmpty: false } } }),
     prisma.prompt.count({ where: { status: "ACTIVE" } }),
+    // Ready = ACTIVE pitches that haven't been sent in the last 7d
+    // (so "stale-sent" or "never sent" rows both count as ready
+    // for the next outreach cycle).
+    prisma.content.count({
+      where: {
+        kind: "PITCH",
+        status: "ACTIVE",
+        OR: [
+          { lastSentAt: null },
+          { lastSentAt: { lt: sevenDaysAgo } },
+        ],
+      },
+    }),
+    prisma.content.count({ where: { kind: "PITCH", status: "DRAFT" } }),
+    prisma.content.count({
+      where: { kind: "PITCH", lastSentAt: { gte: sevenDaysAgo } },
+    }),
+    prisma.content.count({
+      where: { kind: "PITCH", awaitingReply: true },
+    }),
   ]);
+  const unwrap = (idx: number): number => {
+    const r = settled[idx];
+    return r && r.status === "fulfilled" ? (r.value as number) : 0;
+  };
+  const pitchesCount = unwrap(0);
+  const templatesCount = unwrap(1);
+  const strategyCount = unwrap(2);
+  const imagesCount = unwrap(3);
+  const promptsCount = unwrap(4);
+  const readyCount = unwrap(5);
+  const draftsCount = unwrap(6);
+  const sentWeekCount = unwrap(7);
+  const awaitingReplyCount = unwrap(8);
 
   const counts: Record<Tab, number> = {
     pitches: pitchesCount,
@@ -113,65 +159,68 @@ export default async function ContentHubPage({
     prompts: promptsCount,
   };
 
-  // First-time empty-state seed CTA: if the DB has ZERO Content rows
-  // total, surface a one-click "Import from /notes/" button so the
-  // operator doesn't stare at four empty tabs.
+  // Per-tab "needs attention" status dot. Green = has ready-to-send
+  // rows. Saffron = has awaiting-reply follow-ups. Both = saffron
+  // wins (follow-up is more urgent). Null = nothing pending.
+  //
+  // Today only the Pitches tab participates (the others don't have
+  // send-tracking yet). When templates get the same data model
+  // next, just add a `templates: …` entry here.
+  const tabStatus: Partial<Record<Tab, "ready" | "followup">> = {
+    pitches:
+      awaitingReplyCount > 0
+        ? "followup"
+        : readyCount > 0
+          ? "ready"
+          : undefined,
+  };
+
+  // First-time empty-state seed CTA: if the DB has ZERO Content
+  // rows total, surface a one-click "Import from /notes/" button
+  // so the operator doesn't stare at four empty tabs.
   const totalContent = pitchesCount + templatesCount + strategyCount;
   const showImportBanner = totalContent === 0;
 
   return (
     <AdminShell navCounts={await getAdminNavCounts()} botHeartbeat={<BotHeartbeat />}>
       <div className="max-w-7xl mx-auto">
-        {/* Compact page header, used to be a big illustrated hero
-            (~280px tall) that pushed real content way below the
-            fold. Now it's a single-row chip+title+backlink strip
-            that fits in ~80px, leaving the tabs + cards as the
-            visual focus. Dashboard hero stays for /admin/home;
-            sub-pages don't need to re-introduce themselves. */}
-        <div className="mb-5 flex items-center justify-between gap-4 flex-wrap">
-          <div className="min-w-0 flex items-center gap-3">
+        {/* Tight top row, brand chip + back link. The full
+            mission-control hero used to sit here, replaced by the
+            MissionStrip below which carries the page's identity AND
+            the operator's status in a single block. */}
+        <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+          <h1 className="font-fraunces text-xl sm:text-[1.4rem] text-cream-50 leading-tight flex items-center gap-2.5">
             <span
               aria-hidden
-              className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-saffron-500/20 via-cyan-500/20 to-violet-500/20 border border-cyan-400/35 text-saffron-300"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-saffron-500/20 via-cyan-500/20 to-violet-500/20 border border-cyan-400/30 text-saffron-300"
             >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M12 3 L13.8 9.2 L20 11 L13.8 12.8 L12 19 L10.2 12.8 L4 11 L10.2 9.2 Z" />
-                <path d="M19 4 L19.6 5.8 L21.5 6.5 L19.6 7.2 L19 9 L18.4 7.2 L16.5 6.5 L18.4 5.8 Z" opacity="0.85" />
               </svg>
             </span>
-            <div className="min-w-0">
-              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-cyan-300/85">
-                Content hub
-              </div>
-              <h1 className="font-fraunces text-xl sm:text-2xl text-cream-50 leading-tight">
-                Everything you send{" "}
-                <span className="bg-gradient-to-r from-cyan-300 via-cyan-200 to-violet-300 bg-clip-text text-transparent">
-                  outbound
-                </span>
-              </h1>
-            </div>
-          </div>
+            <span>Outbound</span>
+          </h1>
           <Link
             href="/admin/home"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/[0.08] border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/[0.16] hover:border-cyan-400/50 hover:text-cyan-100 px-4 py-2 text-sm transition-colors font-mono font-medium"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-400/[0.08] border border-cyan-400/25 text-cyan-200 hover:bg-cyan-400/[0.16] hover:border-cyan-400/50 hover:text-cyan-100 px-3 py-1.5 text-xs transition-colors font-mono font-medium"
           >
             ← Dashboard
           </Link>
         </div>
 
+        {/* Mission Strip: Tuesday countdown + 4 status tiles + CTA.
+            Replaces the old static "Everything you send outbound"
+            hero with something actionable. */}
+        <MissionStrip
+          ready={readyCount}
+          drafts={draftsCount}
+          sent7d={sentWeekCount}
+          awaitingReply={awaitingReplyCount}
+        />
+
         {/* First-run import banner, vanishes once any Content row
-            exists. Calls importNotesAction which idempotent-seeds the
-            seven /notes/*.md files. */}
+            exists. Calls importNotesAction which idempotent-seeds
+            the seven /notes/*.md files. */}
         {showImportBanner ? (
           <div className="mb-6 rounded-2xl border border-cyan-400/25 bg-gradient-to-br from-cyan-500/[0.08] via-[#0B0E16] to-violet-500/[0.08] p-5 sm:p-6">
             <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -183,10 +232,11 @@ export default async function ContentHubPage({
                   Import your existing pitch + strategy notes
                 </h2>
                 <p className="text-sm text-cream-50/65 mt-1.5 font-mono">
-                  Loads the seven markdown files from <code>/notes/</code> into
-                  the hub: sponsor pitch, influencer pitch, press pitch,
-                  visitor personas, off-season strategy, marketing strategy,
-                  and the overnight review. Idempotent, safe to re-run.
+                  Loads the seven markdown files from <code>/notes/</code>
+                  into the hub: sponsor pitch, influencer pitch, press
+                  pitch, visitor personas, off-season strategy, marketing
+                  strategy, and the overnight review. Idempotent, safe
+                  to re-run.
                 </p>
               </div>
               <form action={importNotesAction}>
@@ -198,8 +248,10 @@ export default async function ContentHubPage({
           </div>
         ) : null}
 
-        {/* Tab strip, segmented pill control matching the rest of the
-            admin's queue tabs. Each tab is a Link so deep-links survive. */}
+        {/* Tab strip: section pill control with status dots. The
+            dot tells the operator "this tab has work" without
+            them clicking in. Mirrors the dot system on the
+            MissionStrip tiles for visual consistency. */}
         <div
           role="tablist"
           aria-label="Content hub sections"
@@ -207,6 +259,7 @@ export default async function ContentHubPage({
         >
           {TAB_ORDER.map((t) => {
             const active = tab === t;
+            const status = tabStatus[t];
             return (
               <Link
                 key={t}
@@ -216,7 +269,7 @@ export default async function ContentHubPage({
                 prefetch={false}
                 scroll={false}
                 className={[
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors",
+                  "relative inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors",
                   active
                     ? "bg-gradient-to-r from-cyan-500 to-violet-500 text-cream-50 shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)]"
                     : "text-cream-50/65 hover:text-cream-50 hover:bg-cyan-400/[0.06]",
@@ -235,28 +288,46 @@ export default async function ContentHubPage({
                     {counts[t]}
                   </span>
                 ) : null}
+                {/* Status dot. Sits to the right of the count when
+                    a tab has work pending — saffron for follow-up,
+                    cyan for ready. */}
+                {status ? (
+                  <span
+                    aria-hidden
+                    title={
+                      status === "followup"
+                        ? "Has follow-ups awaiting reply"
+                        : "Has ready-to-send rows"
+                    }
+                    className={[
+                      "ml-0.5 inline-block w-1.5 h-1.5 rounded-full",
+                      status === "followup"
+                        ? "bg-saffron-500 motion-safe:animate-pulse"
+                        : "bg-cyan-400 motion-safe:animate-pulse",
+                    ].join(" ")}
+                  />
+                ) : null}
               </Link>
             );
           })}
         </div>
 
-        {/* Section subtitle for the active tab, sets context without
-            needing the operator to recall what each tab covers. */}
-        <div className="mb-5 flex items-center gap-3">
-          <h2 className="font-fraunces text-cream-50 text-xl">
-            {TAB_META[tab].label}
-          </h2>
-          <span className="text-xs text-cream-50/45 font-mono">
-            · {TAB_META[tab].sublabel}
-          </span>
-        </div>
-
-        {/* Active tab body */}
+        {/* Active tab body. Filter / search / audience nav lives
+            inside each tab now so it can specialise per kind. */}
         {tab === "pitches" ? (
-          <PitchesTab audience={sp.aud} channel={sp.channel} />
+          <PitchesTab
+            audience={sp.aud}
+            channel={sp.channel}
+            q={sp.q}
+            filter={sp.filter}
+          />
         ) : null}
         {tab === "templates" ? (
-          <TemplatesTab audience={sp.aud} channel={sp.channel} />
+          <TemplatesTab
+            audience={sp.aud}
+            channel={sp.channel}
+            q={sp.q}
+          />
         ) : null}
         {tab === "strategy" ? <StrategyTab /> : null}
         {tab === "images" ? <ImagesTab filterTag={sp.channel} /> : null}

@@ -2,6 +2,10 @@ import {
   archiveContentAction,
   restoreContentAction,
   deleteContentAction,
+  markSentAction,
+  markRepliedAction,
+  unmarkSentAction,
+  toggleDraftAction,
 } from "./actions";
 import SubmitButton from "@/components/admin/SubmitButton";
 import ContentEditor from "./ContentEditor";
@@ -62,11 +66,26 @@ type ContentRow = {
   lastEditor: string | null;
   status: string;
   updatedAt: Date;
+  // Send-tracking fields, added 2026-05-27. Nullable so legacy rows
+  // (created before the migration) render cleanly as "never sent".
+  lastSentAt?: Date | null;
+  lastSentTo?: string | null;
+  awaitingReply?: boolean;
 };
 
 export default function ContentCard({ row }: { row: ContentRow }) {
   const isArchived = row.status === "ARCHIVED";
+  const isDraft = row.status === "DRAFT";
   const tone = audienceTone(row.audience);
+
+  // Send-tracking derivations. All three are tolerant of missing
+  // fields so legacy rows pre-migration still render.
+  const lastSentAt = row.lastSentAt ?? null;
+  const awaitingReply = row.awaitingReply ?? false;
+  const sentDaysAgo = lastSentAt
+    ? Math.floor((Date.now() - lastSentAt.getTime()) / (24 * 60 * 60 * 1000))
+    : null;
+  const sentRecently = sentDaysAgo !== null && sentDaysAgo <= 7;
   // Plain-text preview: first 240 chars of body with markdown markers
   // softened, so the card excerpt reads like content rather than
   // raw source. Falls back to summary if body is empty.
@@ -87,7 +106,15 @@ export default function ContentCard({ row }: { row: ContentRow }) {
         "group relative rounded-2xl border bg-[#0B0E16]/85 backdrop-blur-sm overflow-hidden transition-all",
         isArchived
           ? "border-cream-50/10 opacity-60"
-          : `border-cyan-400/15 ${tone.hover} hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.55)]`,
+          : awaitingReply
+            ? // Awaiting-reply rows get a saffron edge so they pull
+              // the eye when the operator is scanning a long list
+              // and triaging which need follow-up first.
+              "border-saffron-500/35 hover:border-saffron-500/55 hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.55)]"
+            : isDraft
+              ? // Drafts stay quieter — they're WIP, not eyes-on.
+                "border-violet-400/20 hover:border-violet-400/45 hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.55)]"
+              : `border-cyan-400/15 ${tone.hover} hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.55)]`,
       ].join(" ")}
     >
       {/* Audience colour stripe, runs the full height of the card on
@@ -143,7 +170,52 @@ export default function ContentCard({ row }: { row: ContentRow }) {
                   · archived
                 </span>
               ) : null}
+              {/* Status pills: DRAFT, SENT, AWAITING. Mirrors the
+                  Mission Strip tones for consistency. Stacked
+                  inline with the kind/audience meta so the
+                  operator reads "PITCH · SPONSOR · EMAIL · sent
+                  3d ago · awaiting" in one sweep. */}
+              {isDraft ? (
+                <span className="inline-flex items-center gap-1 rounded-md bg-violet-400/[0.18] border border-violet-400/40 text-violet-200 px-1.5 py-0.5 tracking-normal lowercase">
+                  draft
+                </span>
+              ) : null}
+              {lastSentAt ? (
+                <span
+                  className={[
+                    "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 tracking-normal lowercase",
+                    sentRecently
+                      ? "bg-leaf-400/[0.12] border-leaf-400/40 text-leaf-300"
+                      : "bg-cream-50/[0.06] border-cream-50/15 text-cream-50/65",
+                  ].join(" ")}
+                  title={`Last sent: ${lastSentAt.toISOString().slice(0, 10)}${row.lastSentTo ? ` · ${row.lastSentTo}` : ""}`}
+                >
+                  {sentDaysAgo === 0
+                    ? "sent today"
+                    : sentDaysAgo === 1
+                      ? "sent 1d ago"
+                      : `sent ${sentDaysAgo}d ago`}
+                </span>
+              ) : null}
+              {awaitingReply ? (
+                <span className="inline-flex items-center gap-1 rounded-md bg-saffron-500/[0.18] border border-saffron-500/45 text-saffron-200 px-1.5 py-0.5 tracking-normal lowercase">
+                  <span aria-hidden className="relative inline-flex h-1.5 w-1.5">
+                    <span className="absolute inset-0 rounded-full bg-saffron-500/70 motion-safe:animate-ping" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-saffron-500" />
+                  </span>
+                  awaiting reply
+                </span>
+              ) : null}
             </div>
+            {/* "Last sent to" detail line — shown when the row was
+                marked sent with a recipient note. Gives the
+                operator the context they need to write a
+                follow-up without reopening the editor. */}
+            {row.lastSentTo ? (
+              <div className="mt-1 text-[11px] text-cream-50/55 font-mono truncate">
+                → {row.lastSentTo}
+              </div>
+            ) : null}
           </div>
 
           {/* Actions cluster, top-right, always visible while scrolling */}
@@ -248,6 +320,100 @@ export default function ContentCard({ row }: { row: ContentRow }) {
             </>
           ) : null}
         </div>
+
+        {/* Row 4.5: Send-tracking actions. Hidden for ARCHIVED rows
+            (no point tracking sends on a hidden row) and for
+            TEMPLATE rows (templates are pasted many times, not
+            sent once to a journalist; the model doesn't fit).
+            Renders as a small action strip with the "Mark sent" /
+            "Mark replied" affordances. */}
+        {!isArchived && row.kind === "PITCH" ? (
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            {/* Mark Sent. Inline <details> popover lets the
+                operator add an optional "sent to" recipient note
+                without leaving the card. Clicking the summary
+                opens the form; submitting fires markSentAction
+                and revalidates. */}
+            {!awaitingReply ? (
+              <details className="relative inline-block">
+                <summary className="cursor-pointer list-none inline-flex items-center gap-1.5 rounded-lg bg-leaf-400/[0.10] border border-leaf-400/35 text-leaf-300 hover:bg-leaf-400/[0.20] hover:border-leaf-400/55 hover:text-leaf-200 px-2.5 py-1 text-[11px] font-mono font-medium transition-colors">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="22 2 11 13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                  <span>{lastSentAt ? "Send again" : "Mark sent"}</span>
+                </summary>
+                <div className="absolute left-0 top-full mt-2 z-10 min-w-[18rem] rounded-xl border border-cream-50/15 bg-ink-900/95 backdrop-blur-md shadow-[0_12px_40px_-8px_rgba(0,0,0,0.7)] p-3">
+                  <form
+                    action={markSentAction.bind(null, row.id)}
+                    className="space-y-2"
+                  >
+                    <label className="block">
+                      <span className="block text-[10px] uppercase tracking-[0.16em] font-mono text-cream-50/55 mb-1">
+                        Sent to (optional)
+                      </span>
+                      <input
+                        type="text"
+                        name="lastSentTo"
+                        placeholder="Times of India · Ashish Kumar"
+                        maxLength={200}
+                        className="block w-full rounded-md border border-cream-50/15 bg-cream-50/[0.04] focus:border-cyan-400/55 focus:bg-cream-50/[0.08] outline-none px-2.5 py-1.5 text-[12px] text-cream-50 placeholder:text-cream-50/35 font-mono"
+                      />
+                    </label>
+                    <div className="text-[10.5px] text-cream-50/55 font-mono leading-relaxed">
+                      Marks this pitch as sent now and flags it as
+                      awaiting reply. Powers the Mission Strip
+                      tiles.
+                    </div>
+                    <SubmitButton variant="primary-green" pendingLabel="Marking…">
+                      ✓ Confirm sent
+                    </SubmitButton>
+                  </form>
+                </div>
+              </details>
+            ) : null}
+
+            {/* Mark Replied — only shown when this row is awaiting
+                a reply. Toggles awaitingReply=false, leaves
+                lastSentAt intact so history is preserved. */}
+            {awaitingReply ? (
+              <form action={markRepliedAction.bind(null, row.id)}>
+                <SubmitButton variant="primary-green" pendingLabel="Marking…">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  <span>Mark replied</span>
+                </SubmitButton>
+              </form>
+            ) : null}
+
+            {/* Toggle DRAFT / ACTIVE. Lets the operator move a row
+                in and out of "still writing" without going through
+                the editor + save. Label flips based on current
+                state. */}
+            <form action={toggleDraftAction.bind(null, row.id)}>
+              <SubmitButton variant="outline-ink" pendingLabel="Flipping…">
+                {isDraft ? "Promote to ready" : "Move to drafts"}
+              </SubmitButton>
+            </form>
+
+            {/* Undo (clear send history). Tucked behind a small
+                "Reset" chip so it's available but doesn't compete
+                with the primary Mark-sent CTA. Only relevant
+                after the row has been marked sent at least once. */}
+            {lastSentAt ? (
+              <form action={unmarkSentAction.bind(null, row.id)}>
+                <SubmitButton
+                  variant="outline-ink"
+                  pendingLabel="Resetting…"
+                  confirm="Clear the send history on this row?"
+                >
+                  ↺ Reset history
+                </SubmitButton>
+              </form>
+            ) : null}
+          </div>
+        ) : null}
 
         {/* Row 5: "Read full document" disclosure, expands into the
             cream reading sheet. Keeps the closed state slim. */}

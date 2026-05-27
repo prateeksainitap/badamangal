@@ -502,18 +502,46 @@ model Content {
   // Where this row came from — usually a `notes/NN-slug.md` filename
   // from the import seed. NULL for hand-written entries.
   source      String?
-  // ACTIVE   — visible in the hub
+  // DRAFT    — work-in-progress, surfaces in the "Drafts" tile +
+  //            row pill, NOT in the "Ready to send" count
+  // ACTIVE   — ready / live, visible in the hub default view
   // ARCHIVED — hidden but kept for history (admin can flip back)
   status      String   @default("ACTIVE")
   // Free-form "last edited by" attribution. Defaults to "Prateek"
   // since this is a single-operator tool today.
   lastEditor  String?
+  // Send-tracking, added 2026-05-27. Powers the Content Hub Mission
+  // Strip (Ready / Drafts / Sent-this-week / Awaiting-reply tiles)
+  // and the "Sent 3d ago to X" pill on each card. All three are
+  // operator-managed via the Mark sent / Mark replied actions —
+  // there's no automated detection, the operator owns the truth
+  // because outbound (email, Instagram DM, WhatsApp, press) happens
+  // outside the platform.
+  /// Timestamp of the most recent "Mark sent" press for this row.
+  /// NULL = never sent (or send history cleared).
+  lastSentAt    DateTime?
+  /// Free-form note for "who was this last sent to?" — operator
+  /// keys in the recipient string ("Times of India · Ashish Kumar")
+  /// when marking sent. Surfaces in the row's status pill.
+  lastSentTo    String?
+  /// True when the operator is expecting a reply, false when
+  /// closed (replied / declined / lapsed). Drives the "Awaiting
+  /// reply" mission tile and the follow-up filter.
+  awaitingReply Boolean   @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([status, kind])
   @@index([kind, audience, channel])
   @@index([updatedAt])
+  /// Used by the Mission Strip's "Sent 7d" tile and any future
+  /// "sent in the last N days" filter; partial-index would be
+  /// nicer (WHERE lastSentAt IS NOT NULL) but Prisma's index DSL
+  /// doesn't expose that yet, plain B-tree handles it fine.
+  @@index([lastSentAt])
+  /// Powers the "Awaiting reply" Mission Strip tile + the
+  /// follow-up filter list.
+  @@index([awaitingReply, lastSentAt])
 }
 
 // ──────────────────────────────────────────────────────────────────
