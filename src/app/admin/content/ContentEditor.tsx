@@ -65,7 +65,11 @@ export default function ContentEditor({
   // 50k char DB cap.
   const [bodyLen, setBodyLen] = useState(editing?.body.length ?? 0);
   const [copied, setCopied] = useState(false);
-  const [, startTransition] = useTransition();
+  // Keep the pending flag — the submit button reads it to show a
+  // spinner + the "Saving…" / "Creating…" label so clicks don't
+  // feel frozen during the server action round-trip (300-800 ms
+  // typical, longer on cold DB pool).
+  const [isPending, startTransition] = useTransition();
 
   const action = editing
     ? updateContentAction.bind(null, editing.id)
@@ -299,14 +303,55 @@ export default function ContentEditor({
             ) : null}
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-cream-50 font-medium border border-cyan-300/40 px-4 py-2 text-sm shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)] transition-colors"
-              data-pending-label={labelPending}
+              disabled={isPending}
+              aria-busy={isPending}
+              className={[
+                "inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium border transition-colors",
+                isPending
+                  ? "bg-gradient-to-r from-cyan-500/60 to-violet-500/60 text-cream-50/85 border-cyan-300/25 shadow-none cursor-not-allowed"
+                  : "bg-gradient-to-r from-cyan-500 to-violet-500 hover:from-cyan-400 hover:to-violet-400 text-cream-50 border-cyan-300/40 shadow-[0_4px_14px_-4px_rgba(34,211,238,0.55)]",
+              ].join(" ")}
             >
-              {labelButton}
+              {isPending ? (
+                <Spinner />
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  {editing ? (
+                    <polyline points="20 6 9 17 4 12" />
+                  ) : (
+                    <>
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </>
+                  )}
+                </svg>
+              )}
+              <span>{isPending ? labelPending : labelButton}</span>
             </button>
           </div>
         </div>
       </form>
     </details>
+  );
+}
+
+/** Tiny inline spinner for the submit button's pending state.
+ *  Matches the visual weight of the +/check icons it replaces so
+ *  the button doesn't reflow when the label flips to "Saving…". */
+function Spinner() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      aria-hidden
+      className="motion-safe:animate-spin"
+    >
+      <path d="M12 3 a9 9 0 1 1 -9 9" />
+    </svg>
   );
 }
