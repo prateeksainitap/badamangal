@@ -952,6 +952,95 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Race-condition mop-up. The byte-hash dedup query above and the
+    // content-dedup query both window on a read-then-insert pattern.
+    // When the same pamphlet is forwarded into two WhatsApp groups
+    // within seconds, both ingest requests pass through the dedup
+    // gates before either has committed, and both insert. Result:
+    // duplicate rows that read out identically on the public list
+    // (one card per date in tuesdayDates, twice over).
+    //
+    // The defense: AFTER our own create commits, re-query for any
+    // other row with the same image hash. If found, the older row
+    // wins (it would have been the canonical match if our query had
+    // seen it). We delete OUR row + tag the winner with a
+    // race-deduped audit line so the operator can trace what
+    // happened. This is the runtime complement to
+    // `scripts/merge-bot-hash-dupes.mjs`, which mops up historical
+    // dupes; this code prevents new ones.
+    if (imageHash) {
+      try {
+        const collisions = await prisma.bhandara.findMany({
+          where: {
+            description: { contains: `hash:${imageHash}` },
+            id: { not: row.id },
+            status: { in: ["PENDING", "APPROVED"] },
+          },
+          select: { id: true, slug: true, description: true, createdAt: true },
+          orderBy: { createdAt: "asc" },
+        });
+        const olderCollision = collisions.find(
+          (c) => c.createdAt < row.createdAt,
+        );
+        if (olderCollision) {
+          // We lost the race. Append a race-deduped audit tag to the
+          // winner so the operator can see this happened, then delete
+          // our row + evict our uploaded photo.
+          const raceTag = `[bot:race-deduped · loser:${row.id} · from:${senderName}${groupFragment} · hash:${imageHash}]`;
+          await prisma.bhandara
+            .update({
+              where: { id: olderCollision.id },
+              data: {
+                description: `${olderCollision.description ?? ""}\n${raceTag}`,
+              },
+            })
+            .catch((err) =>
+              console.warn(
+                "[bot/ingest] race-dedup winner tag-update failed",
+                err,
+              ),
+            );
+          await prisma.bhandara
+            .delete({ where: { id: row.id } })
+            .catch((err) =>
+              console.warn("[bot/ingest] race-dedup loser delete failed", err),
+            );
+          if (photoUrl) {
+            await deleteFromR2(photoUrl).catch((err) =>
+              console.warn(
+                "[bot/ingest] R2 evict (race-dedup) failed",
+                err,
+              ),
+            );
+          }
+          await logIngestion({
+            outcome: "DUPLICATE_CONTENT",
+            senderName,
+            groupName,
+            msgId,
+            imageHash,
+            resultRowId: olderCollision.id,
+            resultRowKind: "bhandara",
+            extractedName: extracted.name ?? null,
+            reason: `Race-condition dup of ${olderCollision.id} (${olderCollision.slug}). Loser ${row.id} deleted.`,
+          });
+          return NextResponse.json({
+            ok: true,
+            kind: "bhandara",
+            duplicate: true,
+            id: olderCollision.id,
+            slug: olderCollision.slug,
+            reviewUrl: `${SITE_URL}/admin/edit/${olderCollision.id}`,
+          });
+        }
+      } catch (err) {
+        // Non-fatal: if the collision check fails we still return the
+        // created row. Worst case we leak a duplicate (caught by the
+        // merge script on a periodic run).
+        console.warn("[bot/ingest] race-dedup post-check failed", err);
+      }
+    }
+
     await logIngestion({
       outcome: "SUCCESS_BHANDARA",
       senderName,
