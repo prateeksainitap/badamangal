@@ -237,7 +237,7 @@ export default async function BhandaraDetailPage({
     ...bhandaraEventSchema({
       slug: b.slug,
       name: b.name,
-      description: b.description ?? null,
+      description: stripBotProvenance(b.description) ?? null,
       address: b.address,
       area: areaLabel,
       lat: b.lat,
@@ -256,7 +256,7 @@ export default async function BhandaraDetailPage({
     bhandaraLocalBusinessSchema({
       slug: b.slug,
       name: b.name,
-      description: b.description ?? null,
+      description: stripBotProvenance(b.description) ?? null,
       address: b.address,
       area: areaLabel,
       lat: b.lat,

@@ -25,6 +25,7 @@ import {
   styleForLocale,
 } from "@/lib/olaMaps";
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from "@/lib/lucknow";
+import { stripBotProvenance } from "@/lib/sanitize";
 import type { Bhandara } from "@/types/bhandara";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import {
@@ -750,9 +751,16 @@ function buildListedBhandaraPopupHtml(
           }
         </p>
         ${
-          b.description
-            ? `<p style="margin:8px 0 0;padding:6px 0 6px 10px;font-size:13px;line-height:1.45;color:#1A1410;border-left:2px solid #F2944C;">${escapeHtml(b.description)}</p>`
-            : ""
+          (() => {
+            // Strip the internal `[bot:…]` provenance tag before the
+            // popup renders the description. The detail page already
+            // does this; the popup is the second public surface that
+            // reads from Bhandara.description.
+            const popupDesc = stripBotProvenance(b.description);
+            return popupDesc
+              ? `<p style="margin:8px 0 0;padding:6px 0 6px 10px;font-size:13px;line-height:1.45;color:#1A1410;border-left:2px solid #F2944C;">${escapeHtml(popupDesc)}</p>`
+              : "";
+          })()
         }
         <div style="margin-top:14px;display:flex;align-items:stretch;gap:6px;">
           <a href="${escapeHtml(detailUrl)}"

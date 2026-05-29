@@ -10,6 +10,7 @@ import OrganiserUpiBlock from "@/components/OrganiserUpiBlock";
 import { JaliCorner } from "@/components/ornaments";
 import { strings } from "@/content/strings";
 import { formatEnglishDate, formatHindiDate, istTodayIso } from "@/lib/dates";
+import { stripBotProvenance } from "@/lib/sanitize";
 import type { Bhandara } from "@/types/bhandara";
 import { areaToSlug } from "@/lib/areaSlug";
 import { useLocaleFromContext } from "@/lib/locale-context";
@@ -104,7 +105,13 @@ export default function BhandaraDetailView({ b, others }: Props) {
 
   const displayName = isHi ? b.nameHi : b.name;
   const displayAddress = isHi ? (b.addressHi ?? b.address) : b.address;
-  const displayDescription = isHi ? (b.descriptionHi ?? b.description) : b.description;
+  // Strip the internal `[bot:…]` provenance tag that the WhatsApp /
+  // dedup-mop-up pipelines append to `description` in the DB. Without
+  // this, lines like `[bot:merged-from-dup · id:… · status:… · …]`
+  // leak under the human prose on the public detail page.
+  const displayDescription = stripBotProvenance(
+    isHi ? (b.descriptionHi ?? b.description) : b.description,
+  );
   const areaLabel = t.areas[b.area] ?? b.area;
 
   const statusPill = servingNow

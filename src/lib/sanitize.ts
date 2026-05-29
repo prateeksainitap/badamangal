@@ -1,27 +1,29 @@
 /**
  * Sanitization helpers shared across public-facing data paths.
  *
- * The WhatsApp ingestion pipeline (/api/bot/ingest) appends a small
- * provenance tag to the `description` of every bhandara it creates,
- * and the `caption` of every spot:
+ * Several internal pipelines append a small provenance tag to the
+ * `description` of bhandaras and the `caption` of spots:
  *
- *   [bot:whatsapp · from:<Sender · Group> · msg:<wa-id> · 2026-05-16T08:12:13Z]
+ *   [bot:whatsapp · from:<Sender · Group> · msg:<wa-id> · …]
+ *   [bot:merged-from-dup · id:<row-id> · status:APPROVED · created:…]
+ *   [bot:scan · session:<id> · …]
  *
- * Admin moderation views parse and surface this tag (see
- * /admin?type=whatsapp's `parseBotTag`), but it's internal metadata
- * and should never leak into a public surface, detail pages, cards,
- * meta tags, JSON APIs, RSS, etc. all need to display the human prose
- * only.
+ * Admin moderation views parse and surface these tags (see
+ * /admin?type=whatsapp's `parseBotTag`), but they're internal
+ * metadata and should never leak into a public surface, detail pages,
+ * cards, meta tags, JSON APIs, RSS, etc. all need to display the
+ * human prose only.
  *
- * `stripBotProvenance` does exactly that, and is the single place this
- * regex lives. If the tag format ever changes, this file is the only
- * thing to update.
+ * `stripBotProvenance` does exactly that, and is the single place
+ * these regexes live. If a new tag kind shows up, it'll match here
+ * automatically (any `[bot:<word>…]`).
  */
 
-// Matches the `[bot:whatsapp · … ]` block plus surrounding blank
-// lines. We anchor on `[bot:whatsapp` so the regex never accidentally
-// catches admin-typed prose that happens to start with `[bot:`.
-const BOT_TAG_RE = /\s*\[bot:whatsapp[^\]]*\]\s*/g;
+// Matches any `[bot:<kind> · … ]` block (whatsapp, merged-from-dup,
+// scan, future variants) plus surrounding blank lines. The kind must
+// start with an ASCII letter so the regex never accidentally catches
+// admin-typed prose like "[bot: please review]".
+const BOT_TAG_RE = /\s*\[bot:[a-zA-Z][^\]]*\]\s*/g;
 
 /**
  * Remove every `[bot:whatsapp …]` provenance tag from a string and
