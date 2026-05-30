@@ -56,8 +56,9 @@ type Testimonial = {
  *  a small social-proof strip at the top of the section so a first-
  *  time visitor sees external validation before a single quote. */
 // Updated 2026-05-26 evening: views ticked 9.2K, 9.4K.
+// Updated 2026-05-30: views ticked to 9.6K.
 const REDDIT_STATS = {
-  views: "9.4K",
+  views: "9.6K",
   upvotes: "133",
   comments: "30",
   community: "r/lucknow",

@@ -159,46 +159,10 @@ export default function HappeningNow({ initial }: Props) {
               ? "लखनऊ-वालों के द्वारा भेजी गई तस्वीरें, बीते 8 घंटों में।"
               : "Photos sent by Lucknow walkers in the last 8 hours."}
           </p>
-          {/* Breakdown line: how many of the spotted-live total are
-              pinned on the map vs sitting without coords. Bot ingests
-              with neither a location share nor EXIF on the photo land
-              at lat=0/lng=0; we keep them in the public count (they're
-              real bhandaras, real photos) but flag the gap so the
-              MapBoard's "Spotted N" chip not matching this heading
-              reads as honesty rather than a bug. The orphan pill only
-              renders when there's something to show; on clean days the
-              line collapses to a single "X on map" chip. */}
-          {nearbySpots.length > 0 ? (
-            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-saffron-50 border border-saffron-500/40 text-ink-900 px-2.5 py-1">
-                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-saffron-600" />
-                <span className="font-numerals tabular-nums font-semibold">
-                  {onMapCount}
-                </span>
-                <span className="text-ink-600">
-                  {isHi ? "नक़्शे पर" : "on map"}
-                </span>
-              </span>
-              {orphanCount > 0 ? (
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-full bg-cream-50 border border-ink-600/25 text-ink-900 px-2.5 py-1"
-                  title={
-                    isHi
-                      ? "लोकेशन के बिना भेजे गए, मॉडरेटर जल्द जोड़ देंगे।"
-                      : "Sent without a location pin, moderator will add coords shortly."
-                  }
-                >
-                  <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-600/55" />
-                  <span className="font-numerals tabular-nums font-semibold">
-                    {orphanCount}
-                  </span>
-                  <span className="text-ink-600">
-                    {isHi ? "बिना लोकेशन" : "without location"}
-                  </span>
-                </span>
-              ) : null}
-            </div>
-          ) : null}
+          {/* Breakdown chips (on map / without location) used to live
+              here under the subtitle; moved 2026-05-30 into the single
+              inline meta row below the header so they sit on the SAME
+              line as the area-filter tags. */}
         </div>
         <Link
           href="/spot"
@@ -210,25 +174,66 @@ export default function HappeningNow({ initial }: Props) {
         </Link>
       </div>
 
-      {/* Area-counter chips, clickable filters. Single inline row that
-          scrolls horizontally rather than wrapping, so a chip like
-          "Ashiana" never drops to a second line (operator request
-          2026-05-30). Negative margin + matching padding lets the row
-          bleed to the section edges; the scrollbar is hidden for a
-          clean strip and shrink-0 keeps each chip its natural width. */}
-      {byArea.length > 0 ? (
+      {/* Inline meta row: the on-map / without-location breakdown sits
+          on the SAME line as the clickable area-filter tags (operator
+          request 2026-05-30, the area tags must not drop to a second
+          line). One horizontally-scrollable strip, scrollbar hidden,
+          negative margin so it bleeds to the section edges, shrink-0 on
+          every chip so nothing compresses. A thin gold rule separates
+          the read-only breakdown chips from the interactive filters.
+
+          Breakdown: how many of the spotted-live total are pinned on
+          the map vs sitting without coords (bot ingests with neither a
+          location share nor photo EXIF land at 0,0). We keep those in
+          the public count but flag the gap so the MapBoard "Spotted N"
+          chip not matching this heading reads as honesty, not a bug. */}
+      {nearbySpots.length > 0 ? (
         <div
-          className="mt-5 -mx-4 sm:-mx-6 flex gap-2 overflow-x-auto px-4 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="mt-4 -mx-4 sm:-mx-6 flex items-center gap-2 overflow-x-auto px-4 sm:px-6 text-xs [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
-          {areaFilter !== null ? (
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-saffron-50 border border-saffron-500/40 text-ink-900 px-2.5 py-1">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-saffron-600" />
+            <span className="font-numerals tabular-nums font-semibold">
+              {onMapCount}
+            </span>
+            <span className="text-ink-600">
+              {isHi ? "नक़्शे पर" : "on map"}
+            </span>
+          </span>
+          {orphanCount > 0 ? (
+            <span
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-cream-50 border border-ink-600/25 text-ink-900 px-2.5 py-1"
+              title={
+                isHi
+                  ? "लोकेशन के बिना भेजे गए, मॉडरेटर जल्द जोड़ देंगे।"
+                  : "Sent without a location pin, moderator will add coords shortly."
+              }
+            >
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ink-600/55" />
+              <span className="font-numerals tabular-nums font-semibold">
+                {orphanCount}
+              </span>
+              <span className="text-ink-600">
+                {isHi ? "बिना लोकेशन" : "without location"}
+              </span>
+            </span>
+          ) : null}
+
+          {/* Divider, only when there are area tags to set apart. */}
+          {byArea.length > 0 ? (
+            <span aria-hidden className="shrink-0 h-4 w-px bg-gold-500/50" />
+          ) : null}
+
+          {/* Clickable area-filter tags */}
+          {byArea.length > 0 && areaFilter !== null ? (
             <button
               type="button"
               onClick={() => {
                 trackEvent("happening_area_filter_clear");
                 setAreaFilter(null);
               }}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-ink-600/30 bg-cream-50 px-3 py-1 text-xs text-ink-900 hover:border-sindoor-700 transition-colors"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-ink-600/30 bg-cream-50 px-3 py-1 text-ink-900 hover:border-sindoor-700 transition-colors"
             >
               <span aria-hidden>×</span>
               <span className="font-medium">{isHi ? "सभी" : "All"}</span>
@@ -245,7 +250,7 @@ export default function HappeningNow({ initial }: Props) {
                   setAreaFilter(active ? null : a);
                 }}
                 aria-pressed={active}
-                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors ${
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 transition-colors ${
                   active
                     ? "bg-saffron-600 border-saffron-600 text-cream-50 shadow-warm"
                     : "bg-saffron-50 border-saffron-500/40 text-ink-900 hover:border-saffron-500"
