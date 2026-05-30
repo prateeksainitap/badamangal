@@ -776,7 +776,7 @@ export default async function HomePage() {
           So: rare-cycle is compressed into a single subtle kicker
           line above the date pill, and everything actionable
           (banner, date pill, timer, timeline) gets to breathe. */}
-      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-12 sm:py-16">
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-16">
         <div className="rounded-3xl border border-gold-500/40 bg-cream-50 px-6 py-10 sm:px-10 sm:py-12">
           {/* Countdown to the next Bada Mangal (or, on a Bada Mangal
               day itself, a big "Today is the Nth" headline + timer
