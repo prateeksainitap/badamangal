@@ -837,7 +837,7 @@ export default async function HomePage() {
           (matches everything else on the page + the stats panel,
           past-only bhandaras live exclusively on /archive). */}
       {listings.length > 0 ? (
-        <BhandaraCardsSection listings={listings} />
+        <BhandaraCardsSection listings={listings} totalListed={listings.length} />
       ) : (
         <HomeCardsEmpty />
       )}
