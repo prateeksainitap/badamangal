@@ -114,25 +114,20 @@ export default function StatsSection({ stats }: Props) {
         </div>
 
         {/* Stats grid. Tiles whose underlying number is 0 are hidden so
-            the panel never reads as "nothing is happening". Six-tile
-            roster grouped in two thematic rows:
-              Row 1, bhandara sources: Listed · Spotted · Mentioned
-              Row 2, community + scale: Community · Areas · Tuesdays
-            Community leads row 2 because it's the largest number and
-            anchors the scale story; Areas + Tuesdays follow as the
-            geographic + temporal scope.
+            the panel never reads as "nothing is happening". Four-tile
+            roster after the 2026-05-30 trim (Mentioned + Tuesdays
+            removed): Listed · Spotted · Community · Areas.
 
-            Responsive grid (rearranged 2026-05-26 from 5-cols which
-            left an orphan tile after the Mentioned tile was added):
-              • mobile  : 2 cols → 3 rows of 2
-              • md      : 3 cols → 2 rows of 3 (balanced)
-              • lg      : 3 cols → 2 rows of 3 (same balance, more
-                          per-tile breathing room than a 6-wide strip)
-              • xl      : 6 cols → 1 row strip (only on wide screens
-                          where tiles don't get cramped)
+            Width + columns (re-tuned 2026-05-30): the grid is capped at
+            max-w-3xl and centred so it shares its left/right edges with
+            the two hero pills above, the four tiles used to sit in a
+            6-col grid that, with only four cards left, filled just four
+            of six columns and left a dead gap on the right.
+              • mobile : 2 cols → 2 rows of 2
+              • md+    : 4 cols → 1 even row, aligned under the pills
             Auto-rows so the cards align top-to-top. */}
         <ol
-          className="mt-6 grid auto-rows-fr gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6"
+          className="mt-6 mx-auto max-w-3xl grid auto-rows-fr gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4"
         >
           {/* ── Row 1, bhandara source breakdown ─────────────────── */}
           {stats.bhandarasListed > 0 ? (
