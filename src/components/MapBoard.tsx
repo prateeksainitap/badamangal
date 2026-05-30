@@ -222,21 +222,36 @@ export default function MapBoard({
   // collapse from "All 109 · Listed 47 · Spotted 62" to e.g. "All 7 ·
   // Listed 4 · Spotted 3", the chips become a live drill-down of the
   // current search rather than lying about the unfiltered totals.
+  // With no active search, the chips show the TRUE totals from the stats
+  // props (which include bot-ingested spots sitting at lat/lng 0,0 with
+  // no EXIF GPS). The on-map `liveSpots` array is coords-only, so
+  // deriving "Spotted" from it alone read 0 while HappeningNow + the
+  // "All N" heading correctly counted the coordless spot. While
+  // searching, fall back to the search-filtered lengths so the chips
+  // stay a live drill-down of the query.
   const tabs: { key: Filter; label: string; count: number }[] = [
     {
       key: "all",
       label: isHi ? "सब" : "All",
-      count: searchedListings.length + searchedSpots.length,
+      count: normQuery
+        ? searchedListings.length + searchedSpots.length
+        : totalCount,
     },
     {
       key: "listed",
       label: isHi ? "लिस्टेड" : "Listed",
-      count: searchedListings.length,
+      count:
+        normQuery || typeof totalListed !== "number"
+          ? searchedListings.length
+          : totalListed,
     },
     {
       key: "spotted",
       label: isHi ? "स्पॉट" : "Spotted",
-      count: searchedSpots.length,
+      count:
+        normQuery || typeof totalSpotted !== "number"
+          ? searchedSpots.length
+          : totalSpotted,
     },
   ];
 

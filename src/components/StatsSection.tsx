@@ -149,13 +149,8 @@ export default function StatsSection({ stats }: Props) {
               label={t.stats.bhandarasSpotted}
             />
           ) : null}
-          {stats.bhandarasMentioned > 0 ? (
-            <StatCard
-              icon={<IconChat />}
-              value={format(stats.bhandarasMentioned, locale)}
-              label={t.stats.bhandarasMentioned}
-            />
-          ) : null}
+          {/* "Mentioned in chat" tile removed 2026-05-30 (operator
+              request, reads as noise next to the concrete counts). */}
           {/* ── Row 2, community + scale ─────────────────────────── */}
           {/* WhatsApp community member total. Bot pushes this via
               /api/bot/community-stats; tile is hidden until the bot
@@ -186,14 +181,9 @@ export default function StatsSection({ stats }: Props) {
               label={t.stats.areasCovered}
             />
           ) : null}
-          {/* Tuesdays-served is calendar-derived, so 0 is a valid value
-              early in the season, keep the tile visible regardless. */}
-          <StatCard
-            icon={<IconMangal />}
-            value={format(stats.tuesdaysSoFar, locale)}
-            suffix={t.stats.tuesdaysOf}
-            label={t.stats.tuesdaysSoFar}
-          />
+          {/* "Tuesdays served" tile removed 2026-05-30 (operator
+              request). Remaining roster: Listed · Spotted · Community ·
+              Areas. */}
         </ol>
       </div>
     </section>

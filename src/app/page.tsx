@@ -11,7 +11,7 @@ import { ALL_TUESDAY_ISO } from "@/lib/dates";
 import { stripBotProvenance } from "@/lib/sanitize";
 import AreaIndexGrid from "@/components/AreaIndexGrid";
 import BhandaraCardsSection from "@/components/BhandaraCardsSection";
-import FeaturedBhandaras from "@/components/FeaturedBhandaras";
+// FeaturedBhandaras hidden until we have paying sponsors (2026-05-30).
 import OrganisePromo from "@/components/OrganisePromo";
 import VolunteerPromo from "@/components/VolunteerPromo";
 import HomeFAQ from "@/components/HomeFAQ";
@@ -756,10 +756,10 @@ export default async function HomePage() {
           bhandaras above the fold so visitors arriving from
           WhatsApp shares + organic search ("bhandara near me today")
           land on a specific answer without scrolling. */}
-      {/* locale is read from React context inside FeaturedBhandaras
-          so the Hindi toggle swaps the section heading + Today
-          pills + area labels synchronously. */}
-      <FeaturedBhandaras listings={listings} />
+      {/* Featured / sponsored bhandaras section hidden until we have
+          paying sponsors on the platform (operator request 2026-05-30).
+          Re-enable by restoring <FeaturedBhandaras listings={listings} />
+          here + its import at the top of this file. */}
 
       {/* COUNTDOWN + 8-MANGAL TIMELINE
           Hierarchy rebuild: the previous version had a giant
