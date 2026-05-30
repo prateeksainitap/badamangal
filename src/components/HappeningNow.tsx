@@ -210,9 +210,17 @@ export default function HappeningNow({ initial }: Props) {
         </Link>
       </div>
 
-      {/* Area-counter chips, clickable filters */}
+      {/* Area-counter chips, clickable filters. Single inline row that
+          scrolls horizontally rather than wrapping, so a chip like
+          "Ashiana" never drops to a second line (operator request
+          2026-05-30). Negative margin + matching padding lets the row
+          bleed to the section edges; the scrollbar is hidden for a
+          clean strip and shrink-0 keeps each chip its natural width. */}
       {byArea.length > 0 ? (
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div
+          className="mt-5 -mx-4 sm:-mx-6 flex gap-2 overflow-x-auto px-4 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
           {areaFilter !== null ? (
             <button
               type="button"
@@ -220,7 +228,7 @@ export default function HappeningNow({ initial }: Props) {
                 trackEvent("happening_area_filter_clear");
                 setAreaFilter(null);
               }}
-              className="inline-flex items-center gap-1.5 rounded-full border border-ink-600/30 bg-cream-50 px-3 py-1 text-xs text-ink-900 hover:border-sindoor-700 transition-colors"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-ink-600/30 bg-cream-50 px-3 py-1 text-xs text-ink-900 hover:border-sindoor-700 transition-colors"
             >
               <span aria-hidden>×</span>
               <span className="font-medium">{isHi ? "सभी" : "All"}</span>
@@ -237,7 +245,7 @@ export default function HappeningNow({ initial }: Props) {
                   setAreaFilter(active ? null : a);
                 }}
                 aria-pressed={active}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors ${
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors ${
                   active
                     ? "bg-saffron-600 border-saffron-600 text-cream-50 shadow-warm"
                     : "bg-saffron-50 border-saffron-500/40 text-ink-900 hover:border-saffron-500"

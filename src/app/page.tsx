@@ -9,7 +9,8 @@ import {
 } from "@/lib/seo";
 import { ALL_TUESDAY_ISO } from "@/lib/dates";
 import { stripBotProvenance } from "@/lib/sanitize";
-import AreaIndexGrid from "@/components/AreaIndexGrid";
+// AreaIndexGrid ("Browse by area") hidden 2026-05-30, the live-chat
+// area chips already cover this. Restore the import to re-enable.
 import BhandaraCardsSection from "@/components/BhandaraCardsSection";
 // FeaturedBhandaras hidden until we have paying sponsors (2026-05-30).
 import OrganisePromo from "@/components/OrganisePromo";
@@ -26,7 +27,8 @@ import MediaCoverage from "@/components/MediaCoverage";
 import HomeTestimonials from "@/components/HomeTestimonials";
 import HomeClosingBenediction from "@/components/HomeClosingBenediction";
 import HomeHero from "@/components/HomeHero";
-import HomeHistoryTeaser from "@/components/HomeHistoryTeaser";
+// HomeHistoryTeaser ("A 400-year-old tradition") hidden 2026-05-30, the
+// /history page is linked from the footer instead. Restore to re-enable.
 import HomepageGallery, { type GalleryItem } from "@/components/HomepageGallery";
 // PamphletPromo intentionally not imported, the homepage section
 // for it is commented out below during the soft-launch phase. See the
@@ -40,7 +42,8 @@ import LiveChatterBoard, {
 } from "@/components/LiveChatterBoard";
 import SeasonTimeline from "@/components/SeasonTimeline";
 import StatsSection from "@/components/StatsSection";
-import FamousBhandaras from "@/components/FamousBhandaras";
+// FamousBhandaras (city landmarks) hidden 2026-05-30, not adding value.
+// Restore the import to re-enable.
 import HomeResourcesTeaser from "@/components/HomeResourcesTeaser";
 import VisitorBeacon from "@/components/VisitorBeacon";
 import { MarigoldDivider } from "@/components/ornaments";
@@ -886,12 +889,9 @@ export default async function HomePage() {
           must not highlight either. The stats panel keeps the
           cumulative "Areas covered" view because its frame is
           "what has the city ever done", a different lens. */}
-      <AreaIndexGrid
-        activeAreaCount={new Set(listings.map((l) => l.area)).size}
-        activeAreaSlugs={
-          new Set(listings.map((l) => areaToSlug(l.area)))
-        }
-      />
+      {/* "Browse by area" (AreaIndexGrid) hidden 2026-05-30 (operator
+          request, already covered by the area chips in the live-chat
+          section above). */}
 
       {/* PAMPHLET PROMO is temporarily hidden, the /pamphlet feature
           ships but is not publicly promoted during the soft-launch
@@ -910,10 +910,9 @@ export default async function HomePage() {
           attributes the inbound channel on the lead's email. */}
       <OrganisePromo />
 
-      {/* FAMOUS BHANDARAS, curated landmark venues. Sits below the
-          listed-bhandaras grid so visitors first see what organisers
-          have actually submitted, then the city-wide landmark anchors. */}
-      <FamousBhandaras />
+      {/* FAMOUS BHANDARAS (city landmarks) hidden 2026-05-30 (operator
+          request, not adding value). Re-enable by restoring
+          <FamousBhandaras /> + its import. */}
 
       {/* STATS, pulled up to lead the lower half of the page. The
           city's running tally (visitors, listings, spotted bhandaras,
@@ -922,25 +921,22 @@ export default async function HomePage() {
           the panel doesn't read as empty on a quiet day. */}
       <StatsSection stats={stats} />
 
-      {/* PRESS / MEDIA COVERAGE band. Sits AFTER the "Lucknow, this
-          season" stats block (was previously right after the hero,
-          moved here 22 May so the stats-then-press flow lets the
-          numbers do the trust-build first and the press logos
-          reinforce as social proof). Re-mounted earlier the same day
-          when Dainik Jagran covered the project. The component reads
-          which outlets to show from its own OUTLETS array, see
+      {/* TESTIMONIALS, "Lucknow is liking us", community feedback
+          band. Sits right after the stats block so the flow reads as
+          "here is the city's running tally, here is what individual
+          Lucknow folks said back". Currently seeded with one real
+          testimonial from the contact form; the array in
+          HomeTestimonials.tsx grows as more come in. */}
+      <HomeTestimonials />
+
+      {/* PRESS / MEDIA COVERAGE band. Moved below the testimonials
+          band 2026-05-30 (operator request) so the social proof reads
+          "real Lucknow folks like us, and the newspapers noticed too"
+          rather than leading with logos. The component reads which
+          outlets to show from its own OUTLETS array, see
           src/components/MediaCoverage.tsx for how to add Times of
           India / Navbharat Times when those stories land. */}
       <MediaCoverage />
-
-      {/* TESTIMONIALS, "Lucknow is liking us", community feedback
-          band. Sits right after press coverage so the flow reads as
-          "newspapers are talking about us → here's what individual
-          Lucknow folks said back" before resources / history /
-          benediction. Currently seeded with one real testimonial
-          from the contact form; the array in HomeTestimonials.tsx
-          grows as more come in. */}
-      <HomeTestimonials />
 
       {/* RESOURCES TEASER, extracted into a client component so the
           card titles + bodies localise from the LocaleProvider context
@@ -959,8 +955,10 @@ export default async function HomePage() {
         <MarigoldDivider size={320} className="text-gold-500" />
       </div>
 
-      {/* HISTORY TEASER, client component, locale from context. */}
-      <HomeHistoryTeaser />
+      {/* HISTORY TEASER ("A 400-year-old tradition") hidden 2026-05-30
+          (operator request). The /history page still exists and is now
+          linked from the footer instead of taking a full homepage band.
+          Re-enable by restoring <HomeHistoryTeaser /> + its import. */}
 
       {/* FAQ, bilingual accordion of the highest-intent questions
           about the tradition, the rare 8-Tuesday 2026 cycle, finding

@@ -312,6 +312,37 @@ function MarqueeColumn({
               referrerPolicy="no-referrer"
               className="block w-full h-full object-cover"
             />
+            {/* Hover magnifier affordance. Without it the marquee
+                reads as a passive decorative strip, visitors didn't
+                realise each photo opens the lightbox (the marquee
+                pauses on hover, so the tile IS clickable, it just
+                lacked a visible "click to zoom" cue). A dark scrim
+                fades in on hover/focus and a circular magnifier badge
+                springs up in the centre. pointer-events-none so it
+                never intercepts the button's own click. Cloned
+                loop-filler tiles don't get it (they're inert). */}
+            {interactive ? (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 flex items-center justify-center bg-ink-900/0 transition-colors duration-200 group-hover:bg-ink-900/35 group-focus-visible:bg-ink-900/35"
+              >
+                <span className="flex h-9 w-9 scale-75 items-center justify-center rounded-full bg-cream-50/95 text-sindoor-700 opacity-0 shadow-warm transition-all duration-200 group-hover:scale-100 group-hover:opacity-100 group-focus-visible:scale-100 group-focus-visible:opacity-100">
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </span>
+              </span>
+            ) : null}
             {fresh ? (
               <span className="pointer-events-none absolute top-1.5 left-1.5 inline-flex items-center gap-1 rounded-full bg-saffron-600 text-cream-50 px-1.5 py-0.5 text-[0.55rem] uppercase tracking-[0.16em] font-bold shadow-sm">
                 <span
