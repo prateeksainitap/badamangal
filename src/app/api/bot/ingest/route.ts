@@ -426,15 +426,27 @@ export async function POST(req: NextRequest) {
     if (requestedKind !== "auto") {
       classified = requestedKind;
     } else if (isTrustedChannel) {
-      // Bypass Gemini classify. Treat as spot, the typical content
-      // in BM Ingest channels is live-photo forwards (pandal,
-      // food, crowd shots), not invite pamphlets. If a pamphlet
-      // does land here, the operator can flip the resulting Spot
-      // to a Bhandara via /admin/edit-spot → "Promote to listing"
-      // (or recreate manually). Spot is the safer default because
-      // it auto-publishes; a wrong-typed Bhandara would sit
-      // PENDING forever otherwise.
-      classified = "spot";
+      // Trusted channels (BM Ingest / BM Curated) are pre-vetted by the
+      // operator, so we never DROP their images as "other" (Gemini
+      // occasionally false-rejects real bhandara content as off-topic).
+      // But we DO still run the classifier so an invite POSTER routes to
+      // a bhandara LISTING (auto-published since 2026-05-26) and a live
+      // PHOTO routes to a spot. The old code hard-coded "spot", which
+      // mis-filed every forwarded pamphlet as a live sighting (the
+      // "spot would sit PENDING" worry is stale, bot bhandaras now
+      // auto-publish). On a classify failure (e.g. Gemini quota 429) or
+      // an "other" verdict, fall back to "spot", the auto-publishing
+      // catch-all, so trusted content is never lost.
+      try {
+        const trustedClass = await classifyImage(base64Webp, "image/webp");
+        classified = trustedClass === "bhandara" ? "bhandara" : "spot";
+      } catch (trustedErr) {
+        console.warn(
+          "[bot/ingest] trusted-channel classify failed, defaulting to spot:",
+          trustedErr instanceof Error ? trustedErr.message : trustedErr,
+        );
+        classified = "spot";
+      }
     } else {
       classified = await classifyImage(base64Webp, "image/webp");
     }
