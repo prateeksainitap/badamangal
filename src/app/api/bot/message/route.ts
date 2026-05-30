@@ -425,6 +425,23 @@ export async function POST(req: NextRequest) {
       reason: "profanity",
     });
   }
+  // Drop echoes of our OWN share / broadcast content. The site + bot
+  // generate "share this bhandara" / "spotted" messages that link back
+  // to badamangal.com ("*Bhandara map:* https://badamangal.com…"). When
+  // a community member forwards one of those back into a watched group,
+  // the bot re-ingests it and it surfaces as a self-referential "A Bada
+  // Mangal bhandara is being served right now… Spotted: X" chat bubble
+  // that contradicts the live-spot counter (0 spots, but chat shows a
+  // sighting, seen 2026-05-30). A genuine community chat message
+  // effectively never contains a badamangal.com link, so treat any
+  // inbound text that does as a self-echo and drop it silently.
+  if (/badamangal\.com/i.test(text)) {
+    return NextResponse.json({
+      ok: true,
+      kind: "ignored",
+      reason: "self_broadcast_echo",
+    });
+  }
   const senderName = (body.senderName ?? "").slice(0, 80) || null;
   const groupName = (body.groupName ?? "").slice(0, 80) || null;
   const msgId = (body.msgId ?? "").slice(0, 120) || null;
