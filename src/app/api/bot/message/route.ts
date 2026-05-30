@@ -321,6 +321,50 @@ async function extractCoordsFromMessage(
   return null;
 }
 
+/**
+ * Offline fallback classifier, used ONLY when Gemini is unreachable
+ * because of a quota / spending-cap 429 (see the classify catch block
+ * in POST). Deliberately conservative: it admits messages carrying a
+ * clear bhandara signal (the word bhandara / prasad / langar in any
+ * common script, or a pasted Google-Maps link) and rejects everything
+ * else as UNRELATED so greetings, "main gate", and "X left" don't flood
+ * the family-facing public feed during the outage.
+ *
+ *   - A message with a Maps link → SHARING (the existing URL-coord path
+ *     can then still promote it to a Spot / map pin).
+ *   - Other keyword-passing text → MENTIONING (chat bubble only; we
+ *     don't plant a map pin from a keyword guess).
+ *   - No signal → UNRELATED (the caller short-circuits to `ignored`).
+ *
+ * Phone numbers + emails are redacted here because the Gemini path that
+ * normally does that PII scrub is the thing that's down.
+ */
+function heuristicClassifyText(
+  raw: string,
+): import("@/lib/vision").ClassifiedText {
+  const SIGNAL =
+    /(bhandar|bhandaara|भंडार|भण्डार|prasad|प्रसाद|langar|लंगर|kadhi chawal|poori sabzi|puri sabzi|halwa|chhole|seva|सेवा|भोग|भण्डारा)/i;
+  const hasMapsUrl =
+    /https?:\/\/[^\s]*(?:google\.[^\s/]+\/maps|maps\.google|maps\.app\.goo\.gl|goo\.gl\/maps)[^\s]*/i.test(
+      raw,
+    );
+  const isBhandara = SIGNAL.test(raw) || hasMapsUrl;
+  const cleaned = raw
+    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "<email>")
+    .replace(/(\+?\d[\d\s().-]{7,}\d)/g, "<phone>")
+    .slice(0, 2000);
+  return {
+    intent: isBhandara ? (hasMapsUrl ? "SHARING" : "MENTIONING") : "UNRELATED",
+    confidence: isBhandara ? 0.5 : 0,
+    language: "mixed",
+    extractedAddress: "",
+    extractedAddresses: [],
+    locationLabel: "",
+    locationLabels: [],
+    cleanedText: cleaned,
+  };
+}
+
 export async function POST(req: NextRequest) {
   // ── 1. Auth ─────────────────────────────────────────────────────
   const expected = process.env.BOT_INGEST_SECRET;
@@ -573,8 +617,27 @@ export async function POST(req: NextRequest) {
       );
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      console.error("[bot/message] gemini classify failed", detail);
-      return jsonError(502, "classify_failed", { detail });
+      // A Gemini monthly spending-cap / quota 429 is NOT a transient
+      // blip the bot should retry, it stays broken until the cap is
+      // lifted or the billing month rolls over. 502-dropping EVERY chat
+      // message for hours silently kills the homepage live chat (exactly
+      // the outage seen 2026-05-30). Degrade gracefully instead: a
+      // conservative keyword heuristic keeps clearly-bhandara messages
+      // flowing while still filtering greetings / off-topic chatter.
+      // Real Gemini classification resumes automatically once it's
+      // healthy again, no redeploy needed.
+      const isQuota =
+        /\b429\b/.test(detail) &&
+        /(spending cap|exceeded|quota|RESOURCE_EXHAUSTED)/i.test(detail);
+      if (!isQuota) {
+        console.error("[bot/message] gemini classify failed", detail);
+        return jsonError(502, "classify_failed", { detail });
+      }
+      console.warn(
+        "[bot/message] Gemini quota/cap hit; using keyword fallback classifier:",
+        detail.slice(0, 140),
+      );
+      classified = heuristicClassifyText(text);
     }
 
     // ── 7. Short-circuit on UNRELATED / low confidence ────────────
