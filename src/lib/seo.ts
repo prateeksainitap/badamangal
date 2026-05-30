@@ -153,7 +153,18 @@ export function eventSchemaForTuesday(opts: {
       url: SITE_URL,
       validFrom: `${isoDate}T00:00:00+05:30`,
     },
-    organizer: { "@id": `${SITE_URL}/#organization` },
+    // Inline name + url (not just an `@id` reference) so Google's
+    // per-Event rich-result parser sees the organiser fields directly,
+    // it doesn't reliably resolve cross-script `@id` references, which
+    // is what triggered the "Missing field url/name (in organizer)"
+    // warnings in Search Console. The `@id` is kept so the entity still
+    // links to the page-level Organization node in the graph.
+    organizer: {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: "BadaMangal",
+      url: SITE_URL,
+    },
     // `performer` is recommended on Event ('who's making this
     // happen'). For the city-wide Tuesday Event, the performer is
     // the loose collective of community organisers across Lucknow.
@@ -213,6 +224,13 @@ export function bhandaraEventSchema(opts: {
   photoUrl?: string | null;
 }) {
   const url = `${SITE_URL}/bhandara/${opts.slug}`;
+  // Auto-published bot rows sometimes land with a blank organizerName
+  // or area, which produced empty `name` fields on organizer /
+  // performer / location and the matching Search Console warnings.
+  // Fall back to honest, non-empty defaults so every Event always
+  // carries a name.
+  const organizer = opts.organizerName?.trim() || "Bada Mangal community seva";
+  const placeName = opts.area?.trim() || "Lucknow";
   return opts.tuesdayDates.map((iso) => ({
     "@context": "https://schema.org",
     "@type": "FoodEvent",
@@ -220,14 +238,14 @@ export function bhandaraEventSchema(opts: {
     name: `${opts.name}, Bada Mangal Bhandara`,
     description:
       opts.description ??
-      `Free Bada Mangal community meal at ${opts.address}, Lucknow. Hosted by ${opts.organizerName}.`,
+      `Free Bada Mangal community meal at ${opts.address}, Lucknow. Hosted by ${organizer}.`,
     startDate: `${iso}T${opts.timeStart}:00+05:30`,
     endDate: `${iso}T${opts.timeEnd || opts.timeStart}:00+05:30`,
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     eventStatus: "https://schema.org/EventScheduled",
     location: {
       "@type": "Place",
-      name: opts.area,
+      name: placeName,
       address: {
         "@type": "PostalAddress",
         streetAddress: opts.address,
@@ -258,7 +276,7 @@ export function bhandaraEventSchema(opts: {
     },
     organizer: {
       "@type": "Organization",
-      name: opts.organizerName,
+      name: organizer,
       // `url` on organizer is recommended by Google. We point at
       // the bhandara detail page since that's where a visitor can
       // reach the organiser (UPI, phone, WhatsApp all live there).
@@ -271,7 +289,7 @@ export function bhandaraEventSchema(opts: {
     // warning.
     performer: {
       "@type": "Organization",
-      name: opts.organizerName,
+      name: organizer,
     },
     url,
     image: opts.photoUrl ?? `${SITE_URL}/illustrations/hanuman-sitting.webp`,

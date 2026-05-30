@@ -48,6 +48,7 @@ import { uploadToR2, deleteFromR2 } from "@/lib/r2";
 import { slugify, ensureUniqueSlug } from "@/lib/slugify";
 import { menuHiFor } from "@/lib/menu";
 import { resolveBhandaraCoords } from "@/lib/geocodeFallback";
+import { geocodeLucknow } from "@/lib/geocodeServer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -1305,10 +1306,43 @@ export async function POST(req: NextRequest) {
     // run, but the image-hash dedup earlier should have caught it.
   }
 
+  // Forward-geocode from the sender's words when the photo carried no
+  // GPS (WhatsApp strips EXIF). The caption is frequently the ONLY
+  // location given ("Ice cream bhandara / Ram Ram bank chauraha /
+  // Aliganj"), so we mine it too, but only when it actually names a
+  // place (SPOT_LOC_HINT) to avoid geocoding a generic "people
+  // enjoying prasad" line to a random Lucknow point. Misses keep the
+  // row at 0,0 (the /api/mentions/feed map filter hides those), exactly
+  // as before. Wrapped so a geocode hiccup never blocks the ingest.
+  let spotLat = 0;
+  let spotLng = 0;
+  try {
+    const captionForGeo = (captionBody || "").replace(/\s+/g, " ").trim();
+    const SPOT_LOC_HINT =
+      /(chauraha|chauk|chowk|tiraha|mandir|temple|road|marg|nagar|ganj|puram|colony|vihar|bagh|crossing|bazaar|market|khand|cinema|hospital|college|school|stadium|park|gate|pul|stand|adda|morh|circle|square|chowraha|aliganj|indira|gomti|hazratganj|chinhat|aminabad|alambagh|rajajipuram|mahanagar|ashiyana|ashiana|kapoorthala|polytechnic)/i;
+    const geoCandidates = [
+      extracted.address?.trim() || null,
+      captionForGeo && SPOT_LOC_HINT.test(captionForGeo)
+        ? `${captionForGeo}, Lucknow`
+        : null,
+      extracted.area ? `${extracted.area}, Lucknow` : null,
+    ].filter((q): q is string => !!q && q.length > 1);
+    for (const q of geoCandidates) {
+      const hit = await geocodeLucknow(q);
+      if (hit) {
+        spotLat = hit.lat;
+        spotLng = hit.lng;
+        break;
+      }
+    }
+  } catch (geoErr) {
+    console.error("[bot/ingest] spot geocode failed (non-fatal)", geoErr);
+  }
+
   const spot = await prisma.spot.create({
     data: {
-      lat: 0,
-      lng: 0,
+      lat: spotLat,
+      lng: spotLng,
       area: extracted.area ?? null,
       address: extracted.address || null,
       photoUrl,
