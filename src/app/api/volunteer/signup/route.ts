@@ -66,6 +66,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const phoneRaw = String(body.phone ?? "").trim();
   const upi = String(body.upi ?? "").trim();
   const areasInput = Array.isArray(body.areas) ? body.areas : [];
+  // Write provenance: mobile app sends "mobile"; website defaults to "web".
+  const source = body.source === "mobile" ? "mobile" : "web";
 
   // ── 2. Validate ──────────────────────────────────────────────
   const fields: Record<string, string> = {};
@@ -149,6 +151,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           status: "PROBATIONARY",
           ipHash: ip,
           userAgent: ua,
+          source,
         },
         select: { id: true },
       });

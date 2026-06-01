@@ -49,6 +49,16 @@ export async function POST(req: NextRequest) {
 
   const data = parsed.data;
 
+  // Write provenance. Only the mobile app sends source:"mobile"; the
+  // website forms send nothing, so they fall back to "web". submitSchema
+  // strips unknown keys, so we read it off the raw body before it's gone.
+  const source =
+    typeof body === "object" &&
+    body !== null &&
+    (body as { source?: unknown }).source === "mobile"
+      ? "mobile"
+      : "web";
+
   // Smart defaults to reduce form friction (see notes in validation.ts):
   //   • If nameHi was left blank, mirror the English name. Most
   //     organisers submitting Hindi-mode forms will still type Hindi;
@@ -133,6 +143,7 @@ export async function POST(req: NextRequest) {
       geoDistrict: data.geoDistrict ?? null,
       geoState: data.geoState ?? null,
       googleMapsUrl,
+      source,
       // New listings go LIVE immediately on submission so the organizer
       // sees their bhandara on the city map within seconds. The team
       // still calls the submitted phone within 24 h to confirm the

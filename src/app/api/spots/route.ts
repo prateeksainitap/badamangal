@@ -265,6 +265,16 @@ export async function POST(req: NextRequest) {
   }
   const data = parsed.data;
 
+  // Write provenance. The mobile app sends source:"mobile"; the website
+  // SpotQuickForm sends nothing, so it defaults to "web". bodySchema
+  // strips unknown keys, so read it off the raw body.
+  const source =
+    typeof body === "object" &&
+    body !== null &&
+    (body as { source?: unknown }).source === "mobile"
+      ? "mobile"
+      : "web";
+
   const ip = ipHash(readClientIp(req.headers));
   const ua = req.headers.get("user-agent") ?? null;
 
@@ -317,6 +327,7 @@ export async function POST(req: NextRequest) {
       bhandaraId,
       ipHash: ip,
       userAgent: ua,
+      source,
       status: "APPROVED",
       expiresAt,
     },
