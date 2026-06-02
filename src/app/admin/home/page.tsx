@@ -507,9 +507,17 @@ export default async function AdminDashboardPage() {
               <div className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/85 font-mono">
                 Stream
               </div>
-              <span className="text-[10.5px] text-cream-50/45 tabular-nums font-mono">
-                last 24h
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[10.5px] text-cream-50/45 tabular-nums font-mono">
+                  last 24h
+                </span>
+                <a
+                  href="/admin/live"
+                  className="text-[10.5px] uppercase tracking-[0.16em] font-mono text-cyan-300 hover:text-cyan-200 transition-colors"
+                >
+                  View all ↗
+                </a>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto">
               <Suspense fallback={<ActivityFeedSkeleton />}>

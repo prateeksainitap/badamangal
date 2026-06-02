@@ -198,10 +198,31 @@ const fetchRecentActivity = unstable_cache(
   { revalidate: 20, tags: ["dashboard-activity"] },
 );
 
-export default async function ActivityFeed() {
-  const [recentBhandaras, recentSpots, recentMentions, recentVolunteers] =
-    await fetchRecentActivity();
-
+/** Pure mapper shared by the dashboard summary (sliceTo=14) and the
+ *  full /admin/live feed, so row shape / edit links / status pills
+ *  never drift between the two surfaces. Inputs are the four source
+ *  arrays with `createdAt` already coerced to an ISO string. */
+export function buildActivityEvents(
+  recentBhandaras: {
+    id: string; slug: string; name: string; area: string;
+    timeStart: string; tuesdayDates: string; organizerName: string;
+    status: string; createdAt: string;
+  }[],
+  recentSpots: {
+    id: string; area: string | null; address: string | null;
+    caption: string | null; reporterName: string | null;
+    createdAt: string; status: string;
+  }[],
+  recentMentions: {
+    id: string; cleanedText: string | null; originalText: string;
+    senderName: string | null; locationLabel: string | null;
+    createdAt: string;
+  }[],
+  recentVolunteers: {
+    id: string; name: string; status: string; createdAt: string;
+  }[],
+  sliceTo: number,
+): ActivityEvent[] {
   const events: ActivityEvent[] = [
     ...recentBhandaras.map((b): ActivityEvent => {
       // Subtitle = "area · time · date · organizer" with empty
@@ -282,17 +303,25 @@ export default async function ActivityFeed() {
     .sort((a, b) =>
       a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0,
     )
-    .slice(0, 14);
+    .slice(0, sliceTo);
+  return events;
+}
 
-  // The dashboard always renders this inside the merged Live-chat
-  // panel which supplies its own shared header (eyebrow + count +
-  // open-live link), so this component emits ONLY the event list
-  // and exposes the count via `events.length` for the parent to
-  // read. `bare=true` keeps the list flush inside the parent's
-  // bordered card without doubling up the ring. `dismissable=true`
-  // adds the inline ✕ button on the right of each deletable row
-  // (spots / bhandaras / mentions) so the operator can prune the
-  // feed without context-switching to the source queue.
+export default async function ActivityFeed() {
+  const [recentBhandaras, recentSpots, recentMentions, recentVolunteers] =
+    await fetchRecentActivity();
+
+  // Dashboard summary: top 14, rendered bare inside the merged
+  // Live-chat panel (which supplies its own header) + dismissable so
+  // the operator can prune noise without leaving the dashboard. The
+  // full, uncapped feed lives at /admin/live.
+  const events = buildActivityEvents(
+    recentBhandaras,
+    recentSpots,
+    recentMentions,
+    recentVolunteers,
+    14,
+  );
   return <ActivityStream events={events} bare dismissable />;
 }
 

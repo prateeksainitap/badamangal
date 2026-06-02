@@ -50,6 +50,11 @@ const NAV: NavItem[] = [
     icon: <IconDashboard />,
   },
   {
+    href: "/admin/live",
+    label: "Live feed",
+    icon: <IconChat />,
+  },
+  {
     href: "/admin/bhandaras",
     label: "Bhandaras",
     icon: <IconDiya />,
