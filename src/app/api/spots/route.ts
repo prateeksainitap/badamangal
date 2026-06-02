@@ -144,6 +144,10 @@ export async function GET(req: NextRequest) {
     );
   }
   const area = url.searchParams.get("area") ?? undefined;
+  // all=1 includes past (expired) spots, mirroring /api/feed?all=1, so the
+  // mobile app's /spots browse + home "Spotted" count are not empty
+  // outside the live 8-hour window (they read the same unbounded set).
+  const includeExpired = url.searchParams.get("all") === "1";
 
   // Try/catch around the DB read so a transient EMAXCONN at Tuesday
   // peak doesn't 500 the homepage poll. HappeningNow fires this every
@@ -164,7 +168,7 @@ export async function GET(req: NextRequest) {
     .findMany({
       where: {
         status: "APPROVED",
-        expiresAt: { gt: new Date() },
+        ...(includeExpired ? {} : { expiresAt: { gt: new Date() } }),
         ...(area ? { area } : {}),
       },
       orderBy: { createdAt: "desc" },
