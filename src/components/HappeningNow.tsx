@@ -73,7 +73,9 @@ export default function HappeningNow({ initial }: Props) {
         const res = await fetch("/api/spots?limit=500", { cache: "no-store" });
         if (!alive || !res.ok) return;
         const data = (await res.json()) as { spots: LiveSpot[] };
-        setSpots(data.spots);
+        // Don't wipe the server-provided recent fallback with an empty
+        // live poll on off-days; only replace when the poll has data.
+        if (data.spots.length > 0) setSpots(data.spots);
       } catch {
         /* ignore */
       }
@@ -110,6 +112,16 @@ export default function HappeningNow({ initial }: Props) {
   );
   const orphanCount = nearbySpots.length - onMapCount;
 
+  // Are any of these spots genuinely live right now (still inside their
+  // 8h TTL)? Drives the live pulse + "spotted live" wording. On off-days
+  // the array is the recent fallback (all expired), so this is false and
+  // the section honestly reads as "recently spotted" rather than faking
+  // a live state for influencer-driven off-day traffic.
+  const liveNow = useMemo(
+    () => nearbySpots.some((s) => new Date(s.expiresAt).getTime() > Date.now()),
+    [nearbySpots],
+  );
+
   // Per-area counters for the chips row.
   const byArea = useMemo(() => {
     const m = new Map<string, number>();
@@ -131,11 +143,19 @@ export default function HappeningNow({ initial }: Props) {
       <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
           <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold inline-flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inset-0 rounded-full bg-saffron-600 opacity-50 motion-safe:animate-ping" />
-              <span className="relative h-2 w-2 rounded-full bg-saffron-600" />
-            </span>
-            {isHi ? "अभी हो रहा है" : "Happening now"}
+            {liveNow ? (
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inset-0 rounded-full bg-saffron-600 opacity-50 motion-safe:animate-ping" />
+                <span className="relative h-2 w-2 rounded-full bg-saffron-600" />
+              </span>
+            ) : null}
+            {liveNow
+              ? isHi
+                ? "अभी हो रहा है"
+                : "Happening now"
+              : isHi
+                ? "हाल ही में देखे गए"
+                : "Recently spotted"}
           </p>
           <h2
             className={`mt-2 text-3xl sm:text-4xl ${
@@ -152,12 +172,22 @@ export default function HappeningNow({ initial }: Props) {
             <span className="text-saffron-600 tabular-nums mr-1">
               {nearbySpots.length}
             </span>
-            {isHi ? "भंडारे लाइव" : "bhandaras spotted live"}
+            {liveNow
+              ? isHi
+                ? "भंडारे लाइव"
+                : "bhandaras spotted live"
+              : isHi
+                ? "भंडारे हाल ही में देखे गए"
+                : "bhandaras spotted recently"}
           </h2>
           <p className="mt-1 text-sm text-ink-600">
-            {isHi
-              ? "लखनऊ-वालों के द्वारा भेजी गई तस्वीरें, बीते 8 घंटों में।"
-              : "Photos sent by Lucknow walkers in the last 8 hours."}
+            {liveNow
+              ? isHi
+                ? "लखनऊ-वालों के द्वारा भेजी गई तस्वीरें, बीते 8 घंटों में।"
+                : "Photos sent by Lucknow walkers in the last 8 hours."
+              : isHi
+                ? "पिछले बड़े मंगल की झलकियाँ, लखनऊ-वालों के द्वारा।"
+                : "Recent sightings from the last Bada Mangal."}
           </p>
           {/* Breakdown chips (on map / without location) used to live
               here under the subtitle; moved 2026-05-30 into the single

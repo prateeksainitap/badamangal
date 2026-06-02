@@ -228,7 +228,15 @@ export default async function HomePage() {
     // bhandaras above, unstable_cache JSON-serializes Date columns
     // and breaks downstream .toISOString() calls.
     prisma.spot.findMany({
-      where: { status: "APPROVED", expiresAt: { gt: new Date() } },
+      // Recent window (not just the live 8h TTL) so the homepage keeps
+      // showing spotted bhandaras between Tuesdays instead of emptying
+      // out for off-day visitors. Genuinely-live spots are still
+      // preferred when any exist (see displaySpotRecords below); this
+      // just guarantees a recent fallback so the section never blanks.
+      where: {
+        status: "APPROVED",
+        createdAt: { gt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000) },
+      },
       orderBy: { createdAt: "desc" },
       take: 500,
       include: {
@@ -292,13 +300,17 @@ export default async function HomePage() {
     prisma.bhandaraMention.findMany({
       where: {
         status: "APPROVED",
-        expiresAt: { gt: new Date() },
+        // Recent window instead of the 24h live TTL, so the chat keeps
+        // showing the last open day's conversation between Tuesdays.
+        // Live rows are still preferred when present (displayMentionRows).
+        createdAt: { gt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000) },
         approvedAt: { not: null },
       },
       orderBy: { approvedAt: "desc" },
       take: 500,
       select: {
         id: true,
+        expiresAt: true,
         cleanedText: true,
         originalText: true,
         language: true,
@@ -406,6 +418,27 @@ export default async function HomePage() {
     "communityCounters",
   );
 
+  // Off-day fallback. Between Bada Mangal Tuesdays the live spot (8h)
+  // and mention (24h) TTLs roll over, and the spotted + chat sections
+  // would otherwise go empty, leaving the homepage looking dead for
+  // off-day visitors (e.g. influencer-driven traffic landing on a
+  // Thursday). We prefer genuinely-live rows when any exist; otherwise
+  // we fall back to the most recent set so the sections stay populated.
+  // The "is this live right now" decision is data-driven (any unexpired
+  // row), so the live pulse + "spotted live" wording only appear when
+  // real-time activity exists; off-days read as "recently spotted".
+  const nowMs = Date.now();
+  const liveSpotRecords = spotRecords.filter(
+    (s) => s.expiresAt.getTime() > nowMs,
+  );
+  const displaySpotRecords =
+    liveSpotRecords.length > 0 ? liveSpotRecords : spotRecords.slice(0, 60);
+  const liveMentionRows = mentionRows.filter(
+    (m) => m.expiresAt.getTime() > nowMs,
+  );
+  const displayMentionRows =
+    liveMentionRows.length > 0 ? liveMentionRows : mentionRows;
+
   // Auto-delist bhandaras whose every service date has already passed
   // (IST calendar). The DB row stays APPROVED so admins still see it
   // in /admin and historical /bhandara/[slug] permalinks keep
@@ -457,7 +490,7 @@ export default async function HomePage() {
   //     MapBoard so the city map never plants an Africa-pin marker at
   //     null-island. Map pins genuinely need real coords; HappeningNow
   //     cards don't.
-  const liveSpots = spotRecords.map((s) => {
+  const liveSpots = displaySpotRecords.map((s) => {
     // Build a multi-photo array so the HappeningNow card can show
     // an in-place carousel when the submitter attached extras.
     // Defensive JSON.parse; primary photoUrl is first.
@@ -498,7 +531,7 @@ export default async function HomePage() {
   // now mirror just the crowd-sourced spots stream. authorName falls
   // back to a generic "Spotter" / "स्पॉटर" label on the client because
   // the page now renders without a server-side locale.
-  const feedInitial = spotRecords
+  const feedInitial = displaySpotRecords
     .map((s) => ({
       id: `spot:${s.id}`,
       bhandaraSlug: s.bhandara?.slug ?? null,
@@ -523,7 +556,7 @@ export default async function HomePage() {
   // converge. `kind` discriminates rendering (photo thumbnail +
   // "view bhandara" link for spots, text-only for mentions).
   const mentionsInitial: ChatterMention[] = [
-    ...mentionRows.map((m): ChatterMention => ({
+    ...displayMentionRows.map((m): ChatterMention => ({
       id: `mention:${m.id}`,
       kind: "mention",
       text:
