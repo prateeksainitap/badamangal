@@ -4,10 +4,6 @@
     {
       "path": "/api/news/refresh",
       "schedule": "30 0 * * *"
-    },
-    {
-      "path": "/api/bot/heartbeat-check",
-      "schedule": "*/10 * * * *"
     }
   ]
 }

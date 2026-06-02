@@ -511,12 +511,12 @@ export default async function AdminDashboardPage() {
                 <span className="text-[10.5px] text-cream-50/45 tabular-nums font-mono">
                   last 24h
                 </span>
-                <a
+                <Link
                   href="/admin/live"
                   className="text-[10.5px] uppercase tracking-[0.16em] font-mono text-cyan-300 hover:text-cyan-200 transition-colors"
                 >
                   View all ↗
-                </a>
+                </Link>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto">
