@@ -59,7 +59,13 @@ export async function GET(req: NextRequest) {
   const bhandaraId = url.searchParams.get("bhandaraId") ?? undefined;
   const bhandaraSlug = url.searchParams.get("bhandara") ?? undefined;
   const limitParam = url.searchParams.get("limit");
-  const limit = Math.max(1, Math.min(60, Number(limitParam ?? "12") || 12));
+  // all=1 (the mobile Community Gallery) includes past spots and wants more
+  // than the live ticker's default, so allow a higher cap in that mode.
+  const includeExpired = url.searchParams.get("all") === "1";
+  const limit = Math.max(
+    1,
+    Math.min(includeExpired ? 120 : 60, Number(limitParam ?? "12") || 12),
+  );
 
   // Parse `since`, clamp to the MAX_SINCE_LOOKBACK_MS boundary so
   // a scraper passing `?since=2020-01-01` only gets the last 7d.
@@ -76,7 +82,9 @@ export async function GET(req: NextRequest) {
   const spotRecords = await prisma.spot.findMany({
     where: {
       status: "APPROVED",
-      expiresAt: { gt: new Date() },
+      // Live ticker shows only the 8h window; the gallery (all=1) wants
+      // past photos too, so drop the expiry filter in that mode.
+      ...(includeExpired ? {} : { expiresAt: { gt: new Date() } }),
       ...(bhandaraId ? { bhandaraId } : {}),
       ...(bhandaraSlug ? { bhandara: { slug: bhandaraSlug } } : {}),
       ...sinceFilter,
