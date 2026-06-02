@@ -12,41 +12,31 @@ import DbHealth from "./DbHealth";
  * already passes `<BotHeartbeat />` into AdminShell's `botHeartbeat`
  * slot automatically picks up the DB pill too.
  *
+ * Same trick for the stale-bot ALERT BANNER (added after the 5th
+ * Bada Mangal, when the bot died at 12:53 and we only noticed via a
+ * missing spot ~15 min later): the default export also emits a loud
+ * fixed banner across the top of every admin page when the heartbeat
+ * crosses STALE_ALERT_MIN. Because the banner is `position: fixed`,
+ * it escapes the header's layout and spans the viewport regardless of
+ * where in the DOM it renders, so the existing header slot is enough -
+ * no new prop, no per-page wiring. It auto-clears the moment the bot
+ * pings again (the 5-min cron refreshes `updatedAt`).
+ *
  * If you add a third pill (R2 health, Gemini status, …) the same
  * convention applies - add it here and every admin page gets it.
  */
-export default function BotHeartbeat() {
-  return (
-    <span className="inline-flex items-center gap-2 flex-wrap">
-      <DbHealth />
-      <BotPill />
-    </span>
-  );
-}
 
-/**
- * Bot-heartbeat pill, shows when the OpenClaw ingestion agent
- * (on the spare MacBook) last pinged the heartbeat endpoint.
- *
- * Reads the `bot_heartbeat_mbp` row from SiteCounter. The MacBook's
- * cron POSTs to `/api/bot/heartbeat?source=mbp` every 5 minutes, so a
- * healthy gap should sit between 0 and ~6 minutes. Anything beyond
- * that surfaces red, either the MacBook is asleep / unplugged or the
- * OpenClaw daemon has died.
- *
- * Renders nothing if the row doesn't exist yet (i.e. the bot has
- * never pinged). We don't want a noisy red badge on first load,
- * before the user has set up the cron.
- */
-async function BotPill() {
-  // Try/catch around the single DB read so a transient EMAXCONN on
-  // peak traffic doesn't take down the entire admin tree. This
-  // component sits in the AdminShell header, which wraps every
-  // /admin/* route, an uncaught reject here bubbles to admin/error.tsx
-  // and surfaces as "Something tripped while rendering this page"
-  // on EVERY admin surface (dashboard, queues, edit pages, all of it).
-  // Silently rendering null on failure is the right degradation: the
-  // pill is non-critical UI and the user can still operate the admin.
+// The heartbeat cron POSTs every 5 minutes, so a healthy gap is 0-6
+// min. We raise the banner at 10 min: that is two missed beats, well
+// past jitter, and means WhatsApp ingestion has very likely stalled.
+const STALE_ALERT_MIN = 10;
+
+export default async function BotHeartbeat() {
+  // Single DB read, shared by the pill and the banner. Try/catch so a
+  // transient EMAXCONN on peak traffic doesn't take down the whole
+  // admin tree (this sits in the AdminShell header, wrapping every
+  // /admin/* route). Silently degrading to "no pill, no banner" is the
+  // right call: it is non-critical chrome.
   let row: { count: number; updatedAt: Date } | null = null;
   try {
     row = await prisma.siteCounter.findUnique({
@@ -59,10 +49,40 @@ async function BotPill() {
       err instanceof Error ? err.message : err,
     );
   }
-  if (!row) return null;
 
-  const ageMs = Date.now() - row.updatedAt.getTime();
-  const ageMin = Math.floor(ageMs / 60_000);
+  const ageMin = row
+    ? Math.floor((Date.now() - row.updatedAt.getTime()) / 60_000)
+    : null;
+
+  return (
+    <>
+      <span className="inline-flex items-center gap-2 flex-wrap">
+        <DbHealth />
+        <BotPill row={row} ageMin={ageMin} />
+      </span>
+      {row && ageMin !== null && ageMin >= STALE_ALERT_MIN ? (
+        <BotStaleBanner ageMin={ageMin} lastSeen={row.updatedAt} />
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Bot-heartbeat pill, shows when the OpenClaw ingestion agent
+ * (on the spare MacBook) last pinged the heartbeat endpoint.
+ *
+ * Renders nothing if the row doesn't exist yet (i.e. the bot has
+ * never pinged). We don't want a noisy red badge on first load,
+ * before the user has set up the cron.
+ */
+function BotPill({
+  row,
+  ageMin,
+}: {
+  row: { count: number; updatedAt: Date } | null;
+  ageMin: number | null;
+}) {
+  if (!row || ageMin === null) return null;
 
   // Three states: fresh (< 7 min, green), stale (7–30 min, gold),
   // dead (> 30 min, red). The ping is supposed to happen every 5 min;
@@ -98,6 +118,58 @@ async function BotPill() {
       />
       {LABEL}
     </span>
+  );
+}
+
+/**
+ * Loud, hard-to-miss banner pinned across the top of every admin page
+ * when the bot heartbeat is stale (>= STALE_ALERT_MIN). The header is
+ * `sticky top-0 z-20 h-14`, so we sit at `top-14` directly beneath it,
+ * full-width, z-30. Amber for the 10–30 min window (likely stalled),
+ * red past 30 (definitely down). Non-dismissible by design: it should
+ * keep nagging until the operator restarts the gateway and the next
+ * heartbeat clears it.
+ */
+function BotStaleBanner({
+  ageMin,
+  lastSeen,
+}: {
+  ageMin: number;
+  lastSeen: Date;
+}) {
+  const dead = ageMin >= 30;
+  const palette = dead
+    ? "bg-alert-500/[0.16] border-alert-500/50 text-white"
+    : "bg-saffron-500/[0.16] border-saffron-500/50 text-white";
+  const dot = dead ? "bg-alert-500" : "bg-gold-500";
+
+  return (
+    <div
+      role="alert"
+      className={`fixed top-14 left-0 right-0 z-30 border-b ${palette} backdrop-blur-md px-4 sm:px-6 py-2 flex items-center gap-2.5 text-[0.78rem] font-mukta`}
+    >
+      <span
+        aria-hidden
+        className={`shrink-0 block w-2 h-2 rounded-full motion-safe:animate-pulse ${dot}`}
+      />
+      <span className="flex-1 leading-snug">
+        <strong className="font-bold uppercase tracking-[0.12em]">
+          {dead ? "Bot offline" : "Bot quiet"}
+        </strong>{" "}
+        — last heartbeat {formatAge(ageMin)}. WhatsApp ingestion is paused;
+        photos and locations dropped now are NOT being captured. Restart the
+        OpenClaw gateway on the bhandara Mac (`openclaw gateway restart`).
+      </span>
+      <a
+        href="/admin/bot-log"
+        className="shrink-0 rounded-full border border-white/30 px-3 py-1 font-semibold uppercase tracking-[0.14em] text-[0.68rem] hover:bg-white/5 transition-colors"
+      >
+        Bot log
+      </a>
+      <span className="hidden sm:block shrink-0 text-[0.62rem] opacity-60 tabular-nums">
+        {lastSeen.toISOString().slice(11, 16)} UTC
+      </span>
+    </div>
   );
 }
 
