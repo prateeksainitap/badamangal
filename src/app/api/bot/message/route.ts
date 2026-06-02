@@ -446,6 +446,33 @@ export async function POST(req: NextRequest) {
   const groupName = (body.groupName ?? "").slice(0, 80) || null;
   const msgId = (body.msgId ?? "").slice(0, 120) || null;
 
+  // ── Internal / volunteer coordination groups ──────────────────
+  // Some watched groups (e.g. "Volunteers - BadaMangal.com") are
+  // operator + volunteer back-channels. Their day-to-day TEXT chatter
+  // is internal and must never seed a BhandaraMention or surface on the
+  // public homepage live feed. We drop the text here, before any
+  // classifier / DB / geocode work (also saves a Gemini call).
+  //
+  // This intentionally does NOT touch image ingestion: a bhandara
+  // POSTER or live PHOTO dropped in one of these groups still flows
+  // through /api/bot/ingest (a separate route) and gets picked up as a
+  // Bhandara / Spot. So "if I publish a bhandara, pick it up" holds,
+  // while internal chat stays off the feed.
+  //
+  // Prefix match (case-insensitive) so sibling names ("Volunteers 2",
+  // "Volunteers - …") are covered without a code change.
+  const INTERNAL_GROUP_PREFIXES = ["volunteers"];
+  if (
+    groupName &&
+    INTERNAL_GROUP_PREFIXES.some((p) => groupName.toLowerCase().startsWith(p))
+  ) {
+    return NextResponse.json({
+      ok: true,
+      kind: "ignored",
+      reason: "internal_group",
+    });
+  }
+
   // ── 4. Dedup on msgId (cross-group re-forwards collapse to one row)
   if (msgId) {
     const existing = await prisma.bhandaraMention.findUnique({

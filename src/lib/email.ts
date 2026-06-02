@@ -364,3 +364,45 @@ export async function sendOrganiseRequestEmail(
     };
   }
 }
+
+/**
+ * Operational alert email (bot offline, etc). Plain-text, sent to
+ * OPS_ALERT_EMAIL (falls back to CONTACT_EMAIL_TO). No-ops cleanly when
+ * Resend is unconfigured. Never throws: a failed alert email must not
+ * break the cron handler that calls it.
+ */
+export async function sendOpsAlert(
+  subject: string,
+  body: string,
+): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
+  const resend = client();
+  if (!resend) return { ok: false, skipped: true };
+  const to =
+    process.env.OPS_ALERT_EMAIL?.trim() ||
+    process.env.CONTACT_EMAIL_TO?.trim() ||
+    "";
+  if (!to) {
+    console.warn("[email] sendOpsAlert: no OPS_ALERT_EMAIL / CONTACT_EMAIL_TO");
+    return { ok: false, skipped: true };
+  }
+  try {
+    const { error } = await sendWithTimeout(
+      resend.emails.send({
+        from: DEFAULT_FROM,
+        to: to.split(",").map((s) => s.trim()).filter(Boolean),
+        subject,
+        text: body,
+      }),
+      RESEND_TIMEOUT_MS,
+      "Resend (ops-alert)",
+    );
+    if (error) {
+      console.error("[email] ops-alert send failed", error);
+      return { ok: false, error: String(error.message ?? error) };
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error("[email] unexpected ops-alert send error", err);
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
