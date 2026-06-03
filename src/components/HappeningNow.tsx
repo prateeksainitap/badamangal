@@ -464,12 +464,15 @@ function SpotCard({
 
   // LIVE pulse, same treatment, lifted into a const so both photo
   // and no-photo branches use it identically.
-  const liveBadge = (
+  // Only show the per-card LIVE badge when spots are genuinely live
+  // (open day with unexpired spots). On off-days these are recent
+  // sightings, not live, so the badge would be a false claim.
+  const liveBadge = liveNow ? (
     <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-saffron-600 text-cream-50 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] font-bold shadow-warm">
       <span className="block w-1.5 h-1.5 rounded-full bg-cream-50 motion-safe:animate-pulse" />
       {isHi ? "लाइव" : "Live"}
     </span>
-  );
+  ) : null;
 
   const inner = (
     <article

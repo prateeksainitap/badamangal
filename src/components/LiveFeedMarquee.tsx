@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { trackEvent } from "@/lib/ga";
 import { JaliCorner, SunburstSpark } from "@/components/ornaments";
+import { isLiveChatOpenToday } from "@/lib/live-chat-schedule";
 
 type FeedPost = {
   id: string;
@@ -52,6 +53,11 @@ export default function LiveFeedMarquee({ initial }: Props) {
   // "be the first to spot one" panels at the same time.
   const isEmpty = posts.length < 3;
 
+  // Only claim "Live" on open days (Tue/Sat IST). On off-days these
+  // are recent sightings from the last Bada Mangal, so we drop the
+  // "Live" wording + the pulsing dot rather than fake a live state.
+  const liveOn = isLiveChatOpenToday();
+
   // Render the post list twice so the CSS marquee animation loops
   // seamlessly, when the first copy has fully translated out of view,
   // the second identical copy is already in position, then the
@@ -65,10 +71,14 @@ export default function LiveFeedMarquee({ initial }: Props) {
       <div className="mx-auto max-w-6xl px-4 sm:px-6 mb-3 flex items-center justify-between gap-3">
         <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold inline-flex items-center gap-2">
           <span aria-hidden className="relative flex h-2 w-2">
-            <span className="absolute inset-0 rounded-full bg-saffron-600 opacity-50 motion-safe:animate-ping" />
+            {liveOn ? (
+              <span className="absolute inset-0 rounded-full bg-saffron-600 opacity-50 motion-safe:animate-ping" />
+            ) : null}
             <span className="relative h-2 w-2 rounded-full bg-saffron-600" />
           </span>
-          Live from Lucknow · auto-moderated
+          {liveOn
+            ? "Live from Lucknow · auto-moderated"
+            : "Recent from Lucknow · auto-moderated"}
         </p>
         <Link
           href="/live"
@@ -132,6 +142,9 @@ function startPolling(onPosts: (posts: FeedPost[]) => void): () => void {
 function FeedCard({ post }: { post: FeedPost }) {
   const initial = post.authorName.trim().charAt(0).toUpperCase() || "•";
   const isHi = post.language === "hi";
+  // "Live" prefix only on open days (Tue/Sat IST); off-days show the
+  // time-ago alone so a recent sighting is not labeled as live.
+  const liveOn = isLiveChatOpenToday();
   // Editorial card design: image hero up top with a floating "live N
   // hours ago" pill, caption as a curly-quoted pull-quote in the
   // middle, author as a quiet em-dash byline at the bottom. Jali
@@ -196,14 +209,18 @@ function FeedCard({ post }: { post: FeedPost }) {
           </div>
         )}
 
-        {/* Floating "LIVE · 2h" pill on the image */}
+        {/* Floating time pill on the image; the "Live" prefix + pulsing
+            dot only appear on open days (Tue/Sat). Off-days show just the
+            time-ago so a recent sighting is not mislabeled as live. */}
         <div className="absolute top-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-black/55 backdrop-blur-sm text-cream-50 pl-2 pr-2.5 py-1 shadow-warm">
           <span aria-hidden className="relative flex h-1.5 w-1.5">
-            <span className="absolute inset-0 rounded-full bg-saffron-500 opacity-80 motion-safe:animate-ping" />
+            {liveOn ? (
+              <span className="absolute inset-0 rounded-full bg-saffron-500 opacity-80 motion-safe:animate-ping" />
+            ) : null}
             <span className="relative h-1.5 w-1.5 rounded-full bg-saffron-500" />
           </span>
           <span className="text-[9.5px] uppercase tracking-[0.22em] font-bold leading-none">
-            Live · {relative(post.createdAt)}
+            {liveOn ? `Live · ${relative(post.createdAt)}` : relative(post.createdAt)}
           </span>
         </div>
 
