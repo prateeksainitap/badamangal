@@ -173,6 +173,13 @@ export async function GET(req: NextRequest) {
    *  non-null lat/lng. The heatmap component uses this to skip the
    *  no-location text-only mentions it can't render. */
   const withCoordsOnly = url.searchParams.get("withCoords") === "1";
+  // all=1 drops the live 8h/24h expiry filter so off-day consumers
+  // (the mobile app's Live tab + home chat preview on Wed-Sun) can
+  // pull the last Bada Mangal's archive instead of an empty stream.
+  // Mirrors /api/feed?all=1 and /api/spots?all=1. Combine with
+  // `?since=<last Tuesday>` to bound the archive to that day. Default
+  // (no param) is unchanged: live window only.
+  const includeExpired = url.searchParams.get("all") === "1";
 
   // Parse + clamp `since`. We filter mentions by approvedAt (so newly
   // admin-approved old PENDING rows surface to the poll) and Spots by
@@ -210,7 +217,7 @@ export async function GET(req: NextRequest) {
     prisma.bhandaraMention.findMany({
       where: {
         status: "APPROVED",
-        expiresAt: { gt: now },
+        ...(includeExpired ? {} : { expiresAt: { gt: now } }),
         approvedAt: { not: null },
         ...(withCoordsOnly ? { lat: { not: null }, lng: { not: null } } : {}),
         ...(sinceDate ? { approvedAt: { gt: sinceDate } } : {}),
@@ -238,7 +245,7 @@ export async function GET(req: NextRequest) {
     prisma.spot.findMany({
       where: {
         status: "APPROVED",
-        expiresAt: { gt: now },
+        ...(includeExpired ? {} : { expiresAt: { gt: now } }),
         // Only include spots that actually have a photo, the whole
         // point of merging them into this feed is to surface the
         // thumbnail. Spots without photoUrl belong in the existing
