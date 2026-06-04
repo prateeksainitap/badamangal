@@ -84,10 +84,12 @@ export default function LiveFeedMarquee({ initial }: Props) {
           href="/live"
           className="inline-flex items-center gap-1.5 text-[11px] text-saffron-600 hover:underline"
         >
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inset-0 rounded-full bg-saffron-600 opacity-50 motion-safe:animate-ping" />
-            <span className="relative h-2 w-2 rounded-full bg-saffron-600" />
-          </span>
+          {liveOn ? (
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inset-0 rounded-full bg-saffron-600 opacity-50 motion-safe:animate-ping" />
+              <span className="relative h-2 w-2 rounded-full bg-saffron-600" />
+            </span>
+          ) : null}
           Open live feed →
         </Link>
       </div>
