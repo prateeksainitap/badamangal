@@ -955,7 +955,15 @@ A "bhandara" is a free community meal traditionally served on Bada Mangal Tuesda
 
                 Replies that promise location data soon ("batata hu abhi udher pahuch ke", "wait, location bhejta hu") are SHARING with low confidence and an empty extractedAddress.
 
-  • MENTIONING: "puri-sabzi was amazing today, thanks Sharma ji", "बहुत अच्छा भंडारा था कल"
+  • MENTIONING: PAST-TENSE praise or commentary about a bhandara that is already over, with no actionable live location, e.g. "puri-sabzi was amazing today, thanks Sharma ji", "बहुत अच्छा भंडारा था कल".
+
+                IMPORTANT, do NOT use MENTIONING for present-tense reports that a bhandara IS happening at a named place. A plain statement of fact that names a place and says a bhandara is there right now, today, or "continue", even with no verb and even when it just gives a COUNT of bhandaras, is SHARING, not MENTIONING. The presence of a Lucknow place name + a live bhandara claim makes it SHARING so the location gets pinned on the map. These are all SHARING (each names a place, extract it):
+                  - "Cyber tower ke pass h bhandara aaj"                         → extractedAddress: "Cyber Tower, Lucknow", locationLabel: "Cyber Tower"
+                  - "Summit building ka bagal me 4 bhandare continue hai"        → extractedAddress: "Summit Building, Lucknow", locationLabel: "Summit Building"
+                  - "Husariya pe ram aashrey ke pass 2 bhandare hai"            → extractedAddress: "Ram Aashrey, Husariya, Lucknow", locationLabel: "Ram Aashrey, Husariya"
+                  - "Hight court se cyber tower ke beech 5 bhandare hai"        → extractedAddress: "Between High Court and Cyber Tower, Lucknow", locationLabel: "High Court to Cyber Tower"
+                  - "India gandhi pratisthan ke pass mountain dew ka bhandara"  → extractedAddress: "Indira Gandhi Pratishthan, Lucknow", locationLabel: "near Indira Gandhi Pratishthan"
+                  - "1 Bhandara Near SGPGI Charam Bhatta Road"                  → extractedAddress: "SGPGI Charam Bhatta Road, Lucknow", locationLabel: "near SGPGI, Charam Bhatta Road"
   • UNRELATED:  "good morning", "happy birthday", "next meeting on Sunday", anything off-topic. Bare acknowledgements ("ok", "ok brother", "thanks", "ji", "hn ji", "acha", "Bta rha", "👍"), one-word reaction replies, sticker reactions, and pure chitchat with no location/food cue stay UNRELATED even in a bhandara group. The give-away for UNRELATED is the absence of BOTH (a) any Lucknow place name AND (b) any bhandara/food/timing/contribution cue.
 
                 ALSO UNRELATED, news-article / press-clipping text. If the message reads like a newspaper headline or article paraphrase ("News article about X and his social organization Y", "Adarsh Dwivedi runs a social initiative", "Vasudhaiva Kutumbakam organisation distributed meals", anything that describes a person, NGO, politician, or campaign in third-person reporter voice rather than telling you where a bhandara is happening), it is UNRELATED. The same applies to recipe instructions, motivational quotes, religious wallpapers transcribed, election material, and corporate / NGO press releases, even when they mention food, Lucknow, or seva. Bhandara mentions are short, local, and actionable ("here", "today", "11 baje"); news-article descriptions are biographical or summary.
@@ -981,6 +989,8 @@ Output ONE JSON object only, no markdown, no commentary, no code fence:
   "locationLabels":     Per-location labels paired 1:1 with extractedAddresses (same length, same order). Same landmark-first rule as locationLabel. Each ≤ 40 chars. Pass empty string at an index if you can't derive a clean label for that one.
   "cleanedText":        The original message with phone numbers redacted to "<phone>" and email addresses redacted to "<email>". Otherwise verbatim. Preserve original language + script.
 }
+
+LOCATION EXTRACTION IS INTENT-INDEPENDENT. Whenever the message names a Lucknow place, landmark, park, temple, shop, road, or neighbourhood, you MUST fill extractedAddress / extractedAddresses / locationLabel / locationLabels, even when the intent is MENTIONING or ASKING, not only for SHARING. A named place is what lets us pin the bhandara on the map; never leave the location fields empty just because the intent is not SHARING. Only leave them empty when the message genuinely names no place.
 
 Be conservative with intent: when the message could go either way, prefer UNRELATED. Never invent locations: only extract what the message literally states. If multiple locations are mentioned but they're really the same place described two ways ("Ram Mandir Sector E" and "Aliganj Sector E"), keep ONE entry, not two.
 
