@@ -165,14 +165,14 @@ function FooterInner() {
               </p>
               <div className="flex flex-wrap gap-2">
                 <a
-                  href="https://www.instagram.com/bada.mangal"
+                  href="https://www.instagram.com/badamangal"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="BadaMangal on Instagram"
                   data-ga="footer_social"
                   data-ga-network="instagram"
                   className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gold-500/45 bg-cream-50 text-sindoor-700 hover:bg-saffron-50 hover:border-saffron-500 hover:text-saffron-600 transition-colors"
-                  title="@bada.mangal on Instagram"
+                  title="@badamangal on Instagram"
                 >
                   <IconInstagram />
                 </a>
