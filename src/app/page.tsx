@@ -43,6 +43,7 @@ import LiveChatterBoard, {
 } from "@/components/LiveChatterBoard";
 import SeasonTimeline from "@/components/SeasonTimeline";
 import StatsSection from "@/components/StatsSection";
+import SupportBadaMangal from "@/components/SupportBadaMangal";
 // FamousBhandaras (city landmarks) hidden 2026-05-30, not adding value.
 // Restore the import to re-enable.
 import HomeResourcesTeaser from "@/components/HomeResourcesTeaser";
@@ -954,6 +955,12 @@ export default async function HomePage() {
           live content that follows. Tiles with value 0 are hidden so
           the panel doesn't read as empty on a quiet day. */}
       <StatsSection stats={stats} />
+
+      {/* SUPPORT / KEEP-IT-RUNNING band. Placed right after the stats
+          block so the "here's the scale we run at" proof flows into
+          "this costs real money to run, chip in". Donates straight to
+          the platform UPI (the maintainer's account). */}
+      <SupportBadaMangal />
 
       {/* TESTIMONIALS, "Lucknow is liking us", community feedback
           band. Sits right after the stats block so the flow reads as
