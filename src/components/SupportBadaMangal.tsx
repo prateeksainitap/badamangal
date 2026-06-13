@@ -142,112 +142,133 @@ export default function SupportBadaMangal() {
             </ul>
           </div>
 
-          {submitted ? (
-            <ThankYou isHi={isHi} onReset={() => setSubmitted(false)} />
-          ) : (
-            <div className="px-6 sm:px-12 pt-8 pb-2 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-12">
-              {/* QR, the primary path: fixed + amount-free. Mobile: on top. */}
-              <aside className="order-1 shrink-0 flex flex-col items-center gap-2.5">
-                <div className="relative rounded-3xl border border-gold-500/40 bg-white p-3.5 shadow-warm">
-                  <JaliCorner position="tl" size={22} className="absolute top-1 left-1 text-saffron-500/55" />
-                  <JaliCorner position="br" size={22} className="absolute bottom-1 right-1 text-saffron-500/55" />
-                  {qrDataUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={qrDataUrl}
-                      alt={t("UPI QR code for BadaMangal", "BadaMangal का UPI QR कोड")}
-                      width="208"
-                      height="208"
-                      className="block rounded-lg"
-                    />
-                  ) : (
-                    <div className="w-[208px] h-[208px] grid place-items-center text-xs text-ink-600">
-                      {t("Generating QR…", "QR बन रहा है…")}
-                    </div>
-                  )}
-                </div>
-                <p className="text-[10px] uppercase tracking-[0.2em] text-saffron-600 font-bold">
-                  {t("Donate by QR", "QR से दान करें")}
-                </p>
-                <p className="text-[11px] text-ink-600 text-center max-w-[13rem] leading-snug">
-                  {t(
-                    "Scan it (or screenshot and upload in your UPI app) and enter any amount you like.",
-                    "स्कैन करें (या स्क्रीनशॉट लेकर अपने UPI ऐप में अपलोड करें) और जो राशि चाहें वह डालें।",
-                  )}
-                </p>
-              </aside>
-
-              {/* Actions: open-app + copy. Mobile: below the QR, centered
-                  to match it; desktop: left-aligned in the right column. */}
-              <div className="order-2 w-full lg:w-auto lg:max-w-md flex flex-col items-center lg:items-start gap-4 text-center lg:text-left">
-                <div className="w-full flex flex-col items-center lg:items-start gap-2.5">
-                  <p className="text-[0.95rem] text-ink-900/80">
-                    {t("You can start with", "आप शुरुआत कर सकते हैं")}
-                  </p>
-                  <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
-                    {SUGGESTED_AMOUNTS.map((a) => (
-                      <span
-                        key={a}
-                        className="rounded-full border border-gold-500/50 bg-white/80 px-4 py-1.5 font-numerals text-base font-bold text-sindoor-700 shadow-sm"
-                      >
-                        ₹{a.toLocaleString("en-IN")}
-                      </span>
-                    ))}
-                    <span className="text-sm text-ink-600">
-                      {t("or any amount", "या कोई भी राशि")}
-                    </span>
+          <div className="px-6 sm:px-12 pt-8 pb-2 flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-12">
+            {/* QR, ALWAYS visible (fixed + amount-free). Mobile: on top. */}
+            <aside className="order-1 shrink-0 flex flex-col items-center gap-2.5">
+              <div className="relative rounded-3xl border border-gold-500/40 bg-white p-3.5 shadow-warm">
+                <JaliCorner position="tl" size={22} className="absolute top-1 left-1 text-saffron-500/55" />
+                <JaliCorner position="br" size={22} className="absolute bottom-1 right-1 text-saffron-500/55" />
+                {qrDataUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={qrDataUrl}
+                    alt={t("UPI QR code for BadaMangal", "BadaMangal का UPI QR कोड")}
+                    width="208"
+                    height="208"
+                    className="block rounded-lg"
+                  />
+                ) : (
+                  <div className="w-[208px] h-[208px] grid place-items-center text-xs text-ink-600">
+                    {t("Generating QR…", "QR बन रहा है…")}
                   </div>
-                </div>
-                {/* Deep-link button is mobile-only: a upi:// link can't
-                    open an app on desktop, where the QR is the path. */}
-                <div className="relative inline-block w-full sm:w-auto lg:hidden">
-                  <span aria-hidden className="absolute -inset-1 rounded-full bg-saffron-500/30 blur-lg" />
-                  <button
-                    type="button"
-                    onClick={handleDonate}
-                    className="relative w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-full bg-gradient-to-r from-saffron-600 to-sindoor-700 text-cream-50 font-semibold px-7 py-3.5 text-[0.95rem] shadow-warm hover:brightness-110 transition-all duration-200"
-                  >
-                    <Heart className="w-[18px] h-[18px]" />
-                    {t("Donate via UPI", "UPI से दान करें")}
-                  </button>
-                </div>
-                {/* Mobile help (button path) */}
-                <p className="lg:hidden text-sm text-ink-600 leading-relaxed max-w-md">
-                  {t(
-                    "Opens your UPI app (GPay, PhonePe, Paytm), enter any amount you'd like to give. No app on this phone? Copy the UPI ID below.",
-                    "आपका UPI ऐप खुलेगा (GPay, PhonePe, Paytm), जो राशि देना चाहें वह डालें। इस फ़ोन में ऐप नहीं? नीचे UPI ID कॉपी करें।",
-                  )}
-                </p>
-                {/* Desktop help (QR path) */}
-                <p className="hidden lg:block text-sm text-ink-600 leading-relaxed max-w-md">
-                  {t(
-                    "Scan the QR with your phone's UPI app and enter any amount you'd like to give. Or copy the UPI ID below.",
-                    "अपने फ़ोन के UPI ऐप से QR स्कैन करें और जो राशि देना चाहें वह डालें। या नीचे UPI ID कॉपी करें।",
-                  )}
-                </p>
+                )}
+              </div>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-saffron-600 font-bold">
+                {t("Donate by QR", "QR से दान करें")}
+              </p>
+              <p className="text-[11px] text-ink-600 text-center max-w-[13rem] leading-snug">
+                {t(
+                  "Scan it (or screenshot and upload in your UPI app) and enter any amount you like.",
+                  "स्कैन करें (या स्क्रीनशॉट लेकर अपने UPI ऐप में अपलोड करें) और जो राशि चाहें वह डालें।",
+                )}
+              </p>
+            </aside>
 
-                <div className="flex items-center gap-2.5 rounded-full border border-gold-500/45 bg-white/70 pl-4 pr-2 py-2 max-w-sm">
-                  <span className="text-[11px] uppercase tracking-[0.16em] text-ink-600 font-semibold shrink-0">
-                    {t("UPI ID", "UPI ID")}
-                  </span>
-                  <code className="flex-1 font-mono text-base text-sindoor-700 truncate">
-                    {PLATFORM_UPI}
-                  </code>
+            {/* Actions. The QR (left) and the UPI ID (bottom) stay visible at
+                all times; only the middle swaps to a thank-you note after the
+                donor taps Donate, so the scan / copy fallbacks never vanish. */}
+            <div className="order-2 w-full lg:w-auto lg:max-w-md flex flex-col items-center lg:items-start gap-4 text-center lg:text-left">
+              {submitted ? (
+                <div className="w-full flex flex-col items-center lg:items-start gap-1.5">
+                  <h3 className="font-fraunces text-2xl text-sindoor-700 font-bold">
+                    {t("Dhanyavaad 🙏", "धन्यवाद 🙏")}
+                  </h3>
+                  <p className="text-sm text-ink-900/75 leading-relaxed max-w-md">
+                    {t(
+                      "Your contribution keeps the map and servers running for all of Lucknow. If your UPI app didn't open, scan the QR or copy the UPI ID below.",
+                      "आपका योगदान पूरे लखनऊ के लिए नक्शा और सर्वर चालू रखता है। अगर UPI ऐप नहीं खुला, QR स्कैन करें या नीचे UPI ID कॉपी करें।",
+                    )}
+                  </p>
                   <button
                     type="button"
-                    onClick={handleCopy}
-                    className={`shrink-0 inline-flex items-center gap-1 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                      copied
-                        ? "bg-leaf-600 text-cream-50"
-                        : "bg-saffron-600 text-cream-50 hover:brightness-110"
-                    }`}
+                    onClick={() => setSubmitted(false)}
+                    className="mt-1 text-sm font-semibold text-saffron-600 hover:underline"
                   >
-                    {copied ? t("Copied ✓", "कॉपी हुआ ✓") : t("Copy", "कॉपी")}
+                    {t("Make another contribution", "फिर से योगदान करें")}
                   </button>
                 </div>
+              ) : (
+                <>
+                  <div className="w-full flex flex-col items-center lg:items-start gap-2.5">
+                    <p className="text-[0.95rem] text-ink-900/80">
+                      {t("You can start with", "आप शुरुआत कर सकते हैं")}
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
+                      {SUGGESTED_AMOUNTS.map((a) => (
+                        <span
+                          key={a}
+                          className="rounded-full border border-gold-500/50 bg-white/80 px-4 py-1.5 font-numerals text-base font-bold text-sindoor-700 shadow-sm"
+                        >
+                          ₹{a.toLocaleString("en-IN")}
+                        </span>
+                      ))}
+                      <span className="text-sm text-ink-600">
+                        {t("or any amount", "या कोई भी राशि")}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Deep-link button is mobile-only: a upi:// link can't
+                      open an app on desktop, where the QR is the path. */}
+                  <div className="relative inline-block w-full sm:w-auto lg:hidden">
+                    <span aria-hidden className="absolute -inset-1 rounded-full bg-saffron-500/30 blur-lg" />
+                    <button
+                      type="button"
+                      onClick={handleDonate}
+                      className="relative w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-full bg-gradient-to-r from-saffron-600 to-sindoor-700 text-cream-50 font-semibold px-7 py-3.5 text-[0.95rem] shadow-warm hover:brightness-110 transition-all duration-200"
+                    >
+                      <Heart className="w-[18px] h-[18px]" />
+                      {t("Donate via UPI", "UPI से दान करें")}
+                    </button>
+                  </div>
+                  {/* Mobile help (button path) */}
+                  <p className="lg:hidden text-sm text-ink-600 leading-relaxed max-w-md">
+                    {t(
+                      "Opens your UPI app (GPay, PhonePe, Paytm), enter any amount you'd like to give. No app on this phone? Copy the UPI ID below.",
+                      "आपका UPI ऐप खुलेगा (GPay, PhonePe, Paytm), जो राशि देना चाहें वह डालें। इस फ़ोन में ऐप नहीं? नीचे UPI ID कॉपी करें।",
+                    )}
+                  </p>
+                  {/* Desktop help (QR path) */}
+                  <p className="hidden lg:block text-sm text-ink-600 leading-relaxed max-w-md">
+                    {t(
+                      "Scan the QR with your phone's UPI app and enter any amount you'd like to give. Or copy the UPI ID below.",
+                      "अपने फ़ोन के UPI ऐप से QR स्कैन करें और जो राशि देना चाहें वह डालें। या नीचे UPI ID कॉपी करें।",
+                    )}
+                  </p>
+                </>
+              )}
+
+              {/* UPI ID + copy, ALWAYS visible (incl. the thank-you state). */}
+              <div className="flex items-center gap-2.5 rounded-full border border-gold-500/45 bg-white/70 pl-4 pr-2 py-2 max-w-sm">
+                <span className="text-[11px] uppercase tracking-[0.16em] text-ink-600 font-semibold shrink-0">
+                  {t("UPI ID", "UPI ID")}
+                </span>
+                <code className="flex-1 font-mono text-base text-sindoor-700 truncate">
+                  {PLATFORM_UPI}
+                </code>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className={`shrink-0 inline-flex items-center gap-1 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                    copied
+                      ? "bg-leaf-600 text-cream-50"
+                      : "bg-saffron-600 text-cream-50 hover:brightness-110"
+                  }`}
+                >
+                  {copied ? t("Copied ✓", "कॉपी हुआ ✓") : t("Copy", "कॉपी")}
+                </button>
               </div>
             </div>
-          )}
+          </div>
 
           <footer className="mt-7 px-6 sm:px-12 pb-5 pt-1 text-[11px] text-ink-600/90 leading-relaxed text-center max-w-2xl mx-auto">
             {t(
@@ -261,38 +282,6 @@ export default function SupportBadaMangal() {
   );
 }
 
-function ThankYou({ isHi, onReset }: { isHi: boolean; onReset: () => void }) {
-  const t = (en: string, hi: string) => (isHi ? hi : en);
-  return (
-    <div className="px-6 sm:px-12 pt-6 pb-9 text-center">
-      <span className="relative inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-saffron-50 to-gold-100 border border-gold-500/50 shadow-warm mb-3">
-        <Heart className="w-8 h-8 text-sindoor-700" />
-      </span>
-      <h3 className="font-fraunces text-2xl text-sindoor-700 font-bold">
-        {t("Dhanyavaad 🙏", "धन्यवाद 🙏")}
-      </h3>
-      <p className="mt-2 text-sm text-ink-900/75 max-w-md mx-auto leading-relaxed">
-        {t(
-          "Your contribution keeps the map and servers running for all of Lucknow.",
-          "आपका योगदान पूरे लखनऊ के लिए नक्शा और सर्वर चालू रखता है।",
-        )}
-      </p>
-      <p className="mt-2 text-xs text-ink-600">
-        {t(
-          "If your UPI app didn't open, scan the QR or copy the UPI ID above.",
-          "अगर UPI ऐप नहीं खुला, ऊपर QR स्कैन करें या UPI ID कॉपी करें।",
-        )}
-      </p>
-      <button
-        type="button"
-        onClick={onReset}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-gold-500/45 hover:border-saffron-500 px-5 py-2 text-sm text-ink-900 hover:text-sindoor-700 transition-colors"
-      >
-        {t("Back", "वापस")}
-      </button>
-    </div>
-  );
-}
 
 /* ────────── Icons ────────── */
 
