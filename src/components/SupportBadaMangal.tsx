@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import { JaliCorner, OmWatermark } from "@/components/ornaments";
@@ -58,12 +58,39 @@ export default function SupportBadaMangal() {
     };
   }, []);
 
+  // Fire-and-forget audit beacon, recorded once per visit. Lets /admin/
+  // donations show platform-support intent. Never blocks the user;
+  // keepalive lets it survive the UPI deep-link navigation. We can't see
+  // the actual payment (device-to-device UPI), so this is intent only.
+  const recordedRef = useRef(false);
+  function recordIntent() {
+    if (recordedRef.current) return;
+    recordedRef.current = true;
+    try {
+      fetch("/api/donations/intent", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          recipientType: "platform",
+          recipientUpiId: PLATFORM_UPI,
+          recipientName: PLATFORM_NAME,
+          amount: 0,
+        }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      /* ignore */
+    }
+  }
+
   function handleDonate() {
+    recordIntent();
     setSubmitted(true);
     window.location.href = UPI_URL;
   }
 
   function handleCopy() {
+    recordIntent();
     navigator.clipboard
       ?.writeText(PLATFORM_UPI)
       .then(() => {

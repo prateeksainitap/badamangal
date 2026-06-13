@@ -61,41 +61,44 @@ export default async function DonationsPage() {
   // we'd need a separate count query, deliberately omitted for
   // simplicity.
   const totalCount = intents.length;
-  const totalIntent = intents.reduce((sum, r) => sum + r.amount, 0);
+  const platformCount = intents.filter(
+    (r) => r.recipientType === "platform",
+  ).length;
+  const bhandaraCount = totalCount - platformCount;
   const confirmedCount = intents.filter((r) =>
     ["DONOR_CONFIRMED", "ORGANISER_CONFIRMED", "PG_CONFIRMED"].includes(
       r.status,
     ),
   ).length;
-  const disputedCount = intents.filter((r) => r.status === "DISPUTED").length;
 
   return (
     <AdminShell navCounts={navCounts}>
       <AdminPageHero
         subject="dashboard"
         eyebrow="Donations"
-        title="Sponsor-tap audit"
-        subtitle="Every Sponsor click captured before the UPI deep-link opens. Intent-tracking, not payment proof, UPI direct-to-organiser flows have no server-side confirmation. See per-row status for evidence layers."
+        title="Donation-tap audit"
+        subtitle="Every donate tap captured before the UPI app opens, both platform support (Help keep BadaMangal running) and bhandara sponsorships. Intent-tracking, not payment proof: UPI is device-to-device, so actual money only shows in the recipient's bank/PhonePe. QR scans aren't captured here."
       />
 
       <section className="mt-6 grid gap-3 sm:grid-cols-4">
         <StatCard label="Taps (loaded)" value={totalCount.toLocaleString("en-IN")} tone="cyan" />
         <StatCard
-          label="Intent total"
-          value={`₹${totalIntent.toLocaleString("en-IN")}`}
-          sub="suggested amounts only"
+          label="Platform"
+          value={platformCount.toLocaleString("en-IN")}
+          sub="support the platform"
           tone="amber"
+        />
+        <StatCard
+          label="Bhandara"
+          value={bhandaraCount.toLocaleString("en-IN")}
+          sub="organiser sponsorships"
+          tone="green"
         />
         <StatCard
           label="Confirmed"
           value={confirmedCount.toLocaleString("en-IN")}
           sub="donor / organiser / PG"
-          tone="green"
-        />
-        <StatCard
-          label="Disputed"
-          value={disputedCount.toLocaleString("en-IN")}
-          tone="red"
+          tone="cyan"
         />
       </section>
 
@@ -129,16 +132,30 @@ export default async function DonationsPage() {
                       {formatTime(r.createdAt)}
                     </td>
                     <td className="px-3 py-2.5">
-                      <Link
-                        href={`/admin/edit/${r.bhandara.id}`}
-                        prefetch={false}
-                        className="text-cyan-200 hover:text-cyan-100 hover:underline"
-                      >
-                        {r.bhandara.name}
-                      </Link>
-                      <div className="text-xs text-cream-50/45">
-                        {r.bhandara.area}
-                      </div>
+                      {r.bhandara ? (
+                        <>
+                          <Link
+                            href={`/admin/edit/${r.bhandara.id}`}
+                            prefetch={false}
+                            className="text-cyan-200 hover:text-cyan-100 hover:underline"
+                          >
+                            {r.bhandara.name}
+                          </Link>
+                          <div className="text-xs text-cream-50/45">
+                            {r.bhandara.area}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="inline-flex items-center gap-1.5 text-amber-300 font-medium">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+                            Platform
+                          </span>
+                          <div className="text-xs text-cream-50/45">
+                            Keep BadaMangal running
+                          </div>
+                        </>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-cream-50/85">
                       {r.donorName ?? (

@@ -794,8 +794,10 @@ model BotIngestionLog {
 ///     the bank reference once webhook integration ships
 model DonationIntent {
   id         String   @id @default(cuid())
-  bhandaraId String
-  bhandara   Bhandara @relation(fields: [bhandaraId], references: [id], onDelete: Cascade)
+  /// Null for PLATFORM donations (support-the-platform taps, no bhandara).
+  /// Set for organiser/bhandara sponsorship taps.
+  bhandaraId String?
+  bhandara   Bhandara? @relation(fields: [bhandaraId], references: [id], onDelete: Cascade)
 
   /// Suggested INR amount we put in the UPI deep link's `am=` param.
   /// User can override inside their UPI app - what they ACTUALLY pay

@@ -35,8 +35,12 @@ export const dynamic = "force-dynamic";
  * POST resolved. If the network drops the beacon we lose ONE audit
  * row, not the user's flow.
  */
-const intentSchema = z.object({
-  bhandaraId: z.string().min(1).max(40),
+const intentSchema = z
+  .object({
+  // Optional: omitted for PLATFORM donations (support-the-platform taps,
+  // no bhandara). Required for organiser donations, enforced by the
+  // refine below.
+  bhandaraId: z.string().min(1).max(40).optional(),
   /** INR amount we put in the UPI deep link's `am=` param.
    *  0 = "no amount suggested, donor types whatever they want in
    *  their UPI app". We dropped the auto-suggested ₹251 because the
@@ -53,7 +57,11 @@ const intentSchema = z.object({
   donorPhone: z.string().max(20).optional(),
   donorEmail: z.string().max(120).optional(),
   donorMessage: z.string().max(280).optional(),
-});
+  })
+  .refine((d) => d.recipientType === "platform" || Boolean(d.bhandaraId), {
+    message: "bhandaraId is required for organiser donations",
+    path: ["bhandaraId"],
+  });
 
 export async function POST(req: NextRequest) {
   // Per-IP rate limit: 30 intents per minute is generous for legit
@@ -88,14 +96,21 @@ export async function POST(req: NextRequest) {
   }
   const d = parsed.data;
 
-  // Verify the bhandara exists before recording, bogus IDs would
-  // create dangling audit rows that the admin queue can't display.
-  const bh = await prisma.bhandara.findUnique({
-    where: { id: d.bhandaraId },
-    select: { id: true, organizerName: true },
-  });
-  if (!bh) {
-    return NextResponse.json({ error: "bhandara_not_found" }, { status: 404 });
+  // Organiser donations must point at a real bhandara (bogus IDs would
+  // create dangling audit rows). Platform donations have no bhandara,
+  // they fund the platform itself, so we skip that check.
+  let resolvedRecipientName = d.recipientName ?? null;
+  if (d.recipientType === "organiser") {
+    const bh = await prisma.bhandara.findUnique({
+      where: { id: d.bhandaraId! },
+      select: { id: true, organizerName: true },
+    });
+    if (!bh) {
+      return NextResponse.json({ error: "bhandara_not_found" }, { status: 404 });
+    }
+    resolvedRecipientName = d.recipientName ?? bh.organizerName ?? null;
+  } else {
+    resolvedRecipientName = d.recipientName ?? "BadaMangal";
   }
 
   // Truncate the UA so a malicious scraper can't blow up the column.
@@ -104,11 +119,11 @@ export async function POST(req: NextRequest) {
 
   const created = await prisma.donationIntent.create({
     data: {
-      bhandaraId: d.bhandaraId,
+      bhandaraId: d.bhandaraId ?? null,
       amount: d.amount,
       recipientType: d.recipientType,
       recipientUpiId: d.recipientUpiId,
-      recipientName: d.recipientName ?? bh.organizerName ?? null,
+      recipientName: resolvedRecipientName,
       donorName: d.donorName ?? null,
       donorPhone: d.donorPhone ?? null,
       donorEmail: d.donorEmail ?? null,
