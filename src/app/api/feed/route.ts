@@ -130,7 +130,7 @@ export async function GET(req: NextRequest) {
         // 15s edge cache so high-frequency polls collapse to ~one origin
         // call per 15s per region (Vercel free-tier protection). Invisible
         // on a live ticker; clients merge rather than replace.
-        "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30",
+        "Cache-Control": "public, s-maxage=5, stale-while-revalidate=20",
       },
     },
   );

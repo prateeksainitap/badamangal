@@ -232,7 +232,7 @@ export async function GET(req: NextRequest) {
         // so the old Netlify cache-poisoning bug (?limit=24 vs ?limit=500
         // sharing a key) does not apply here. 15s staleness is invisible
         // on a live feed; the client merges new items rather than replacing.
-        "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30",
+        "Cache-Control": "public, s-maxage=5, stale-while-revalidate=20",
       },
     },
   );

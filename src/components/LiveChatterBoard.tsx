@@ -102,7 +102,7 @@ type FeedResp = {
   fetchedAt?: string;
 };
 
-const POLL_MS = 20_000;
+const POLL_MS = 12_000;
 const TIME_TICK_MS = 15_000;
 // 500 covers a peak Tuesday with plenty of headroom. Empirically the
 // 4th Bada Mangal of 2026 produced 244+ live signals (listed + spots

@@ -21,7 +21,7 @@ type Props = {
   initial: FeedPost[];
 };
 
-const POLL_MS = 20_000;
+const POLL_MS = 8000;
 const MAX_KEEP = 24;
 
 export default function LiveFeedMarquee({ initial }: Props) {

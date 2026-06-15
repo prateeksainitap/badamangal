@@ -48,7 +48,7 @@ type Props = {
   locale?: Locale;
 };
 
-const POLL_MS = 30_000;
+const POLL_MS = 15_000;
 
 export default function HappeningNow({ initial }: Props) {
   // Cookie-aware locale from context; the locale prop is ignored

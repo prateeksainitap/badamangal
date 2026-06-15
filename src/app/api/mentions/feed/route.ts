@@ -533,7 +533,7 @@ export async function GET(req: NextRequest) {
       headers: {
         // 12s edge cache: collapses the chat-panel polls to ~one origin
         // call per 12s per region (Vercel free-tier protection).
-        "Cache-Control": "public, s-maxage=12, stale-while-revalidate=30",
+        "Cache-Control": "public, s-maxage=5, stale-while-revalidate=20",
       },
     },
   );
