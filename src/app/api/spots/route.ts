@@ -225,23 +225,14 @@ export async function GET(req: NextRequest) {
     { count: spots.length, spots },
     {
       headers: {
-        // Disable the CDN cache entirely. The previous
-        //   `public, s-maxage=10, stale-while-revalidate=30`
-        // looked correct in isolation, but Netlify's edge cache
-        // normalises the URL for cache-keying (query strings get
-        // stripped/collapsed in practice), so a poll for
-        // `?limit=24` from an old tab poisoned the cache and
-        // subsequent `?limit=500` requests from the new
-        // HappeningNow client kept getting served the 24-spot
-        // response. End-user symptom: the homepage headline
-        // ("N bhandaras spotted live") randomly dropped to 24
-        // every poll, depending on which cache entry the CDN
-        // happened to serve. Public-facing damage from skipping
-        // the 10 s edge cache is tiny, the route is a single
-        // Prisma query over an 8h-bounded table (~60-100 rows
-        // peak), runs ~150 ms warm, polled every 15 s by each
-        // homepage tab.
-        "Cache-Control": "private, no-store, must-revalidate",
+        // Edge-cache for 15s so a peak-Tuesday flood of homepage polls
+        // collapses to ~one Prisma call per 15s per region instead of one
+        // function invocation per client per poll (the Vercel free-tier
+        // killer). Vercel's CDN keys by the FULL URL incl. query string,
+        // so the old Netlify cache-poisoning bug (?limit=24 vs ?limit=500
+        // sharing a key) does not apply here. 15s staleness is invisible
+        // on a live feed; the client merges new items rather than replacing.
+        "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30",
       },
     },
   );

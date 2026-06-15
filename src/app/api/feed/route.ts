@@ -127,7 +127,10 @@ export async function GET(req: NextRequest) {
     { count: posts.length, posts },
     {
       headers: {
-        "Cache-Control": "public, s-maxage=2, stale-while-revalidate=8",
+        // 15s edge cache so high-frequency polls collapse to ~one origin
+        // call per 15s per region (Vercel free-tier protection). Invisible
+        // on a live ticker; clients merge rather than replace.
+        "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30",
       },
     },
   );
