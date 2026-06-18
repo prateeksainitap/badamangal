@@ -31,7 +31,7 @@ const UPI_URL = `upi://pay?${new URLSearchParams({
 
 // Suggested amounts, shown as emphasis pills (non-interactive, the QR +
 // deep-link stay amount-free so the donor types whatever they want).
-const SUGGESTED_AMOUNTS = [100, 250, 500, 1000];
+const SUGGESTED_AMOUNTS = [101, 251, 501, 1001];
 
 export default function SupportBadaMangal() {
   const locale = useLocaleFromContext();
