@@ -527,7 +527,17 @@ export default function BhandaraMap({
       // below can re-invoke it on `idle`. `userMovedMapRef` is re-checked
       // here (not just at call sites) so a user who grabbed the map in the
       // gap before a deferred fit fires is never yanked back.
-      const applyFit = () => {
+      // `duration: 0` snaps instantly; `> 0` animates. The initial frame
+      // MUST snap: while the map sits below the fold on a cold homepage
+      // load, MapLibre's animated easing loop does not run for the
+      // off-screen container, so an animated fitBounds silently no-ops and
+      // leaves the map at DEFAULT_ZOOM with most pins off-screen (the
+      // "spots not visible on the map" symptom). An instant fit applies
+      // regardless, and is the right UX anyway: the frame should already
+      // be correct before the user scrolls down to it. Later
+      // filter-driven refits happen with the map on-screen, so those
+      // animate for a smooth re-frame.
+      const applyFit = (duration: number) => {
         if (userMovedMapRef.current) return;
         if (bounds.length > 1) {
           const lngs = bounds.map((p) => p[0]);
@@ -535,36 +545,29 @@ export default function BhandaraMap({
           const sw: [number, number] = [Math.min(...lngs), Math.min(...lats)];
           const ne: [number, number] = [Math.max(...lngs), Math.max(...lats)];
           try {
-            map.fitBounds([sw, ne], {
-              padding: 60,
-              maxZoom: 14,
-              duration: 400,
-            });
+            map.fitBounds([sw, ne], { padding: 60, maxZoom: 14, duration });
           } catch {
-            /* transform not ready yet; the retry loop below covers it */
+            /* transform not ready yet; the cold-load retry covers it */
           }
         } else if (bounds.length === 1) {
           try {
-            map.easeTo({ center: bounds[0], duration: 400 });
+            map.easeTo({ center: bounds[0], duration });
           } catch {
             /* ignore */
           }
         }
       };
-      // Immediate attempt: covers every filter-driven refit (map long
-      // since ready) and is a harmless first try on cold load.
-      applyFit();
-      // One-time cold-load retry. On first mount `mapReady` flips the
-      // instant Ola's init() resolves, before the map transform is ready,
-      // so the immediate fitBounds silently no-ops and the map is left at
-      // DEFAULT_ZOOM with most pins off-screen (the "spots not visible on
-      // the map" symptom). The wrapped Ola map does NOT fire 'load'/'idle'
-      // dependably and reports loaded()===false indefinitely, so we can't
-      // hook an event; instead we re-attempt on a short cadence until the
-      // camera actually leaves its mount position (a successful fitBounds
-      // begins animating the zoom synchronously), then stop. Bails the
-      // instant the user grabs the map. ~3s ceiling so it never spins.
-      if (!initialFitDoneRef.current) {
+      if (initialFitDoneRef.current) {
+        // Subsequent (filter-driven) refit: map is on-screen and ready.
+        applyFit(400);
+      } else {
+        // First mount / cold load. `mapReady` can flip the instant Ola's
+        // init() resolves, before the transform is ready, and the wrapped
+        // Ola map fires neither 'load' nor 'idle' dependably (it reports
+        // loaded()===false indefinitely), so we can't hook an event.
+        // Re-attempt an INSTANT fit on a short cadence until the camera
+        // actually leaves its mount zoom, then stop. Bails the instant the
+        // user grabs the map. ~3s ceiling so it never spins.
         initialFitDoneRef.current = true;
         const startZoom =
           typeof map.getZoom === "function" ? map.getZoom() : null;
@@ -576,13 +579,13 @@ export default function BhandaraMap({
             typeof map.getZoom === "function" &&
             Math.abs(map.getZoom() - startZoom) > 0.01
           ) {
-            return; // fit has visibly taken effect
+            return; // fit has taken effect
           }
           if (tries++ >= 12) return;
-          applyFit();
+          applyFit(0);
           window.setTimeout(retryFit, 250);
         };
-        window.setTimeout(retryFit, 250);
+        retryFit();
       }
     }
   }, [mapReady, listings, liveSpots, onPinClick, router, center]);
