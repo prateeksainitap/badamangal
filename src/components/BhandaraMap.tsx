@@ -133,14 +133,14 @@ export default function BhandaraMap({
    *  (so we don't refit, preserving the user's current view + any
    *  open popup). */
   const prevMarkerKeysRef = useRef<string>("");
-  /** Guards the one-time "initial frame" safety net. On a cold load
-   *  `mapReady` can flip the instant `init()` resolves, which is before
-   *  the first style 'load', so Effect B's synchronous fitBounds runs
-   *  against a not-yet-ready transform and silently no-ops, leaving the
-   *  map parked at DEFAULT_ZOOM with most pins off-screen. We re-run the
-   *  fit once on the next `idle` to guarantee the initial frame lands;
-   *  this ref ensures that deferred fit is scheduled only on the first
-   *  Effect B pass, never on later filter-driven refits. */
+  /** Guards the one-time "initial frame" retry. On a cold load `mapReady`
+   *  can flip the instant `init()` resolves, which is before the map
+   *  transform is ready, so Effect B's synchronous fitBounds silently
+   *  no-ops, leaving the map parked at DEFAULT_ZOOM with most pins
+   *  off-screen. The wrapped Ola map doesn't fire 'load'/'idle' reliably,
+   *  so Effect B re-attempts the fit on a short cadence until it lands;
+   *  this ref ensures that retry runs only on the first Effect B pass,
+   *  never on later filter-driven refits. */
   const initialFitDoneRef = useRef(false);
 
   // ────────────────────────────────────────────────────────────────
@@ -541,7 +541,7 @@ export default function BhandaraMap({
               duration: 400,
             });
           } catch {
-            /* transform not ready; the idle safety net below covers it */
+            /* transform not ready yet; the retry loop below covers it */
           }
         } else if (bounds.length === 1) {
           try {
@@ -551,19 +551,38 @@ export default function BhandaraMap({
           }
         }
       };
-      // Immediate attempt: covers the fully-loaded case and every
-      // filter-driven refit (where the map is long since ready).
+      // Immediate attempt: covers every filter-driven refit (map long
+      // since ready) and is a harmless first try on cold load.
       applyFit();
-      // One-time cold-load safety net. When `mapReady` flips the instant
-      // `init()` resolves, the style/transform isn't ready yet and the
-      // immediate fit above silently no-ops, parking the map at
+      // One-time cold-load retry. On first mount `mapReady` flips the
+      // instant Ola's init() resolves, before the map transform is ready,
+      // so the immediate fitBounds silently no-ops and the map is left at
       // DEFAULT_ZOOM with most pins off-screen (the "spots not visible on
-      // the map" symptom). Re-run the fit once on the next idle so the
-      // initial frame reliably lands. Scheduled only on the first pass so
-      // later filter refits don't re-snap to the original (unfiltered) set.
+      // the map" symptom). The wrapped Ola map does NOT fire 'load'/'idle'
+      // dependably and reports loaded()===false indefinitely, so we can't
+      // hook an event; instead we re-attempt on a short cadence until the
+      // camera actually leaves its mount position (a successful fitBounds
+      // begins animating the zoom synchronously), then stop. Bails the
+      // instant the user grabs the map. ~3s ceiling so it never spins.
       if (!initialFitDoneRef.current) {
         initialFitDoneRef.current = true;
-        map.once?.("idle", applyFit);
+        const startZoom =
+          typeof map.getZoom === "function" ? map.getZoom() : null;
+        let tries = 0;
+        const retryFit = () => {
+          if (userMovedMapRef.current) return;
+          if (
+            startZoom !== null &&
+            typeof map.getZoom === "function" &&
+            Math.abs(map.getZoom() - startZoom) > 0.01
+          ) {
+            return; // fit has visibly taken effect
+          }
+          if (tries++ >= 12) return;
+          applyFit();
+          window.setTimeout(retryFit, 250);
+        };
+        window.setTimeout(retryFit, 250);
       }
     }
   }, [mapReady, listings, liveSpots, onPinClick, router, center]);
