@@ -133,6 +133,15 @@ export default function BhandaraMap({
    *  (so we don't refit, preserving the user's current view + any
    *  open popup). */
   const prevMarkerKeysRef = useRef<string>("");
+  /** Guards the one-time "initial frame" safety net. On a cold load
+   *  `mapReady` can flip the instant `init()` resolves, which is before
+   *  the first style 'load', so Effect B's synchronous fitBounds runs
+   *  against a not-yet-ready transform and silently no-ops, leaving the
+   *  map parked at DEFAULT_ZOOM with most pins off-screen. We re-run the
+   *  fit once on the next `idle` to guarantee the initial frame lands;
+   *  this ref ensures that deferred fit is scheduled only on the first
+   *  Effect B pass, never on later filter-driven refits. */
+  const initialFitDoneRef = useRef(false);
 
   // ────────────────────────────────────────────────────────────────
   // Effect A: mount the map ONCE on first render
@@ -513,33 +522,48 @@ export default function BhandaraMap({
       // Filter changed meaningfully, let the camera re-frame.
       userMovedMapRef.current = false;
     }
-    if (shouldRefit && !userMovedMapRef.current) {
-      if (bounds.length > 1) {
-        const lngs = bounds.map((p) => p[0]);
-        const lats = bounds.map((p) => p[1]);
-        const sw: [number, number] = [
-          Math.min(...lngs),
-          Math.min(...lats),
-        ];
-        const ne: [number, number] = [
-          Math.max(...lngs),
-          Math.max(...lats),
-        ];
-        try {
-          map.fitBounds([sw, ne], {
-            padding: 60,
-            maxZoom: 14,
-            duration: 400,
-          });
-        } catch {
-          /* style not loaded yet, fine, default centre stands */
+    if (shouldRefit) {
+      // The actual camera move, factored out so the cold-load safety net
+      // below can re-invoke it on `idle`. `userMovedMapRef` is re-checked
+      // here (not just at call sites) so a user who grabbed the map in the
+      // gap before a deferred fit fires is never yanked back.
+      const applyFit = () => {
+        if (userMovedMapRef.current) return;
+        if (bounds.length > 1) {
+          const lngs = bounds.map((p) => p[0]);
+          const lats = bounds.map((p) => p[1]);
+          const sw: [number, number] = [Math.min(...lngs), Math.min(...lats)];
+          const ne: [number, number] = [Math.max(...lngs), Math.max(...lats)];
+          try {
+            map.fitBounds([sw, ne], {
+              padding: 60,
+              maxZoom: 14,
+              duration: 400,
+            });
+          } catch {
+            /* transform not ready; the idle safety net below covers it */
+          }
+        } else if (bounds.length === 1) {
+          try {
+            map.easeTo({ center: bounds[0], duration: 400 });
+          } catch {
+            /* ignore */
+          }
         }
-      } else if (bounds.length === 1) {
-        try {
-          map.easeTo({ center: bounds[0], duration: 400 });
-        } catch {
-          /* ignore */
-        }
+      };
+      // Immediate attempt: covers the fully-loaded case and every
+      // filter-driven refit (where the map is long since ready).
+      applyFit();
+      // One-time cold-load safety net. When `mapReady` flips the instant
+      // `init()` resolves, the style/transform isn't ready yet and the
+      // immediate fit above silently no-ops, parking the map at
+      // DEFAULT_ZOOM with most pins off-screen (the "spots not visible on
+      // the map" symptom). Re-run the fit once on the next idle so the
+      // initial frame reliably lands. Scheduled only on the first pass so
+      // later filter refits don't re-snap to the original (unfiltered) set.
+      if (!initialFitDoneRef.current) {
+        initialFitDoneRef.current = true;
+        map.once?.("idle", applyFit);
       }
     }
   }, [mapReady, listings, liveSpots, onPinClick, router, center]);
