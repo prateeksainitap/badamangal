@@ -114,6 +114,14 @@ const NAV: NavItem[] = [
     icon: <IconRupee />,
   },
   {
+    // Push broadcast composer. Send a notification to every device that
+    // opted in via the app (after-Bada-Mangal thank-you, next-event
+    // reminder). Targets the PushToken table; delivered via Expo.
+    href: "/admin/push",
+    label: "Push",
+    icon: <IconChat />,
+  },
+  {
     // Bot-ingest audit. Surfaces every /api/bot/ingest outcome
     // (success / duplicate / ignored / failed) so the operator can
     // answer "I forwarded that poster, what did the bot do with
