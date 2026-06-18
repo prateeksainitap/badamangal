@@ -535,10 +535,12 @@ export default async function HomePage() {
   // operator reported "I still can't see the spots on this live chat
   // map". Feed it the same recent spots-with-coords the main city map
   // already shows so it mirrors that surface instead of going empty.
-  // LiveChatterBoard prefers live geo-mentions and only uses this when
-  // there are none. Shaped to MentionHeatmap's GeoMention contract.
+  // LiveChatterBoard unions this with live geo-mentions (deduped by id),
+  // so the map stays full even once recent bot-spots also appear in the
+  // chat stream. `spot:`-prefixed id matches the chat spot ids so the
+  // dedup collapses the overlap. Shaped to MentionHeatmap's GeoMention.
   const heatmapFallbackSpots: GeoMention[] = liveSpotsWithCoords.map((s) => ({
-    id: s.id,
+    id: `spot:${s.id}`,
     lat: s.lat,
     lng: s.lng,
     intent: "SHARING" as const,
@@ -576,6 +578,23 @@ export default async function HomePage() {
   // Same shape contract as /api/mentions/feed so SSR + client-poll
   // converge. `kind` discriminates rendering (photo thumbnail +
   // "view bhandara" link for spots, text-only for mentions).
+  // Bot-ingested spots for the chat stream, with an off-day fallback
+  // that mirrors displaySpotRecords: prefer live (non-expired) bot-spots,
+  // but when none are live (any day between Bada Mangal Tuesdays) fall
+  // back to the most recent bot-spots so the chat keeps showing last
+  // Tuesday's sightings instead of emptying out to a lone question. The
+  // off-day banner already frames these as "recent". Strict bot-only
+  // (the `[bot:` provenance tag) so user/admin uploads stay out of chat.
+  const botSpotRecords = spotRecords.filter(
+    (s) => s.photoUrl && (s.caption ?? "").includes("[bot:"),
+  );
+  const liveBotSpotRecords = botSpotRecords.filter(
+    (s) => s.expiresAt > new Date(),
+  );
+  const chatSpotRecords =
+    liveBotSpotRecords.length > 0
+      ? liveBotSpotRecords
+      : botSpotRecords.slice(0, 60);
   const mentionsInitial: ChatterMention[] = [
     ...displayMentionRows.map((m): ChatterMention => ({
       id: `mention:${m.id}`,
@@ -602,31 +621,15 @@ export default async function HomePage() {
       senderName: m.senderName,
       createdAt: m.createdAt.toISOString(),
     })),
-    // Spots-with-photos go through the same chat panel. We pull from
-    // the spotRecords already fetched above (so no extra DB hit) and
-    // filter to ones with a real photo + non-zero coords (the same
-    // filter the API endpoint applies, keeps SSR + poll responses
-    // identical in shape).
-    //
-    // STRICT WHATSAPP-ONLY: only bot-ingested spots (caption carries
-    // the `[bot:…]` provenance tag) belong in the live chat. User-
-    // submitted spots via /spot or admin-scan uploads still live in
-    // the homepage gallery + map heatmap, but the chat stream itself
-    // is reserved for things the WhatsApp community actually posted.
-    // Mirror of the same filter on /api/mentions/feed (2026-05).
-    ...spotRecords
-      .filter(
-        (s) =>
-          // Photo + non-expired only. We DO NOT drop lat=0/lng=0
-          // spots here, bot-ingested live photos auto-publish with
-          // 0,0 because WhatsApp strips EXIF GPS, and the chat panel
-          // should still show the photo. The heatmap filters 0,0
-          // separately so no ghost pin lands on null island.
-          s.photoUrl &&
-          s.expiresAt > new Date() &&
-          (s.caption ?? "").includes("[bot:"),
-      )
-      .map((s): ChatterMention => {
+    // Bot-spots-with-photos go through the same chat panel, sourced from
+    // chatSpotRecords above (live bot-spots, or the most recent ones as
+    // an off-day fallback so last Tuesday's chat stays visible). We keep
+    // lat=0/lng=0 spots here, bot photos auto-publish at 0,0 because
+    // WhatsApp strips EXIF GPS, and the chat should still show the photo;
+    // the heatmap filters 0,0 separately so no ghost pin lands on null
+    // island. STRICT WHATSAPP-ONLY (the `[bot:` tag) is enforced when
+    // chatSpotRecords is built, so user/admin uploads never reach chat.
+    ...chatSpotRecords.map((s): ChatterMention => {
         // Parse extra photo URLs (JSON-encoded string column) so the
         // chat-bubble carousel can cycle through primary + extras.
         let extras: string[] = [];

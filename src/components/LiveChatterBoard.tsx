@@ -642,6 +642,22 @@ export default function LiveChatterBoard({
     [mentions],
   );
 
+  // Heatmap data: live geo-mentions UNIONED with the off-day spot
+  // fallback (deduped by id). On live Tuesdays/Saturdays this is the live
+  // chatter; on off-days geoMentions is empty and the map falls back to
+  // recent spots. The union (not a ternary) is what keeps the map at the
+  // full recent set even though recent bot-spots also flow into the chat
+  // stream now, those would otherwise make geoMentions non-empty but
+  // smaller than the fallback and shrink the map.
+  const heatmapData = useMemo<GeoMention[]>(() => {
+    if (heatmapFallback.length === 0) return geoMentions;
+    const seen = new Set(geoMentions.map((m) => m.id));
+    return [
+      ...geoMentions,
+      ...heatmapFallback.filter((s) => !seen.has(s.id)),
+    ];
+  }, [geoMentions, heatmapFallback]);
+
   // Same rule for the "Active areas:" chip strip. An asking mention
   // about Hazratganj shouldn't add to Hazratganj's bhandara-activity
   // tally, "asking about" is a question, not a sighting.
@@ -899,9 +915,7 @@ export default function LiveChatterBoard({
             shared frame ties them visually so they read as "the live
             chat + its map" one instrument. */}
         <div className="chatter-glass relative grid rounded-2xl overflow-hidden lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:h-[40rem]">
-          <MentionHeatmap
-            mentions={geoMentions.length > 0 ? geoMentions : heatmapFallback}
-          />
+          <MentionHeatmap mentions={heatmapData} />
 
           {/* Chat panel, no glass / no border / no rounded chrome of
               its own anymore. Just a left-side hairline divider on lg+
