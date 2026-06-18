@@ -227,7 +227,15 @@ async function computeHomepageStats(): Promise<SiteStats> {
 
   return {
     visitorNumber: counter?.count ?? 0,
-    bhandarasTotal: records.length + spottedCount + mentionedCount,
+    // "Total bhandaras tracked" = listed + spotted ONLY, so the headline
+    // reconciles with the two tiles shown beneath it (230 + 518 = 748).
+    // Chat mentions are intentionally NOT summed in here: a BhandaraMention
+    // is a message about a bhandara, not a distinct bhandara, and the
+    // "Mentioned in chat" tile was removed from display, so folding 416
+    // invisible mentions into the headline made it overcount and stop
+    // adding up on the page. bhandarasMentioned stays computed + exposed
+    // for the API / a future tile, just not part of the headline total.
+    bhandarasTotal: records.length + spottedCount,
     bhandarasListed: records.length,
     bhandarasSpotted: spottedCount,
     bhandarasMentioned: mentionedCount,
