@@ -76,12 +76,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     urlWithAlternates("/live", { changeFrequency: "always", priority: 0.85 }),
     urlWithAlternates("/archive", { changeFrequency: "weekly", priority: 0.7 }),
     urlWithAlternates("/list-bhandara", { changeFrequency: "weekly", priority: 0.7 }),
-    // /organise-bhandara intentionally omitted from the sitemap 2026-05-30,
-    // full-service organising launches next season so we don't promote it
-    // (no homepage card, no footer link, no sitemap weight). The page still
-    // resolves for direct links. Restore the
-    // urlWithAlternates("/organise-bhandara", { ..., priority: 0.85 }) entry
-    // when the flow goes live.
+    // /organise-bhandara, restored to the sitemap 2026-06-18 now that
+    // full-service organising is live (homepage banner + footer link
+    // re-enabled, operator has organisers to fulfil requests).
+    urlWithAlternates("/organise-bhandara", { changeFrequency: "weekly", priority: 0.85 }),
     // /pamphlet intentionally omitted from the sitemap, the feature is
     // shipped but not publicly promoted (no nav, no homepage CTA, no
     // footer link). Direct-link access at /pamphlet still works for

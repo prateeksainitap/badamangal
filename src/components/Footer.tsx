@@ -56,12 +56,14 @@ function FooterInner() {
         //   label: isHi ? "मुफ़्त पैम्फलेट बनाएँ" : "Free pamphlet maker",
         // },
         { href: "/spot", label: isHi ? "भंडारा स्पॉट करें" : "Spot a bhandara" },
-        // Full-service organising ("Organise a bhandara") link removed
-        // 2026-05-30 (operator request, launches next season). The
-        // /organise-bhandara route still works for direct links; it's
-        // just no longer promoted from the footer or homepage. Restore
-        // the { href: "/organise-bhandara?from=footer", ... } entry here
-        // and <OrganisePromo /> in page.tsx to bring it back.
+        // Full-service organising, re-enabled 2026-06-18 (operator now
+        // has organisers). Service-sales for hosts, distinct from the
+        // volunteer entry below (supply-side recruitment). ?from=footer
+        // tags the lead-capture so the source is known.
+        {
+          href: "/organise-bhandara?from=footer",
+          label: isHi ? "भंडारा आयोजित करें" : "Organise a bhandara",
+        },
         // Volunteer programme entry, supply-side recruitment for
         // documenting more bhandaras. Distinct from "Organise"
         // (which is service-sales for hosts). Sits next to the

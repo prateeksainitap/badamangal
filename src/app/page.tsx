@@ -13,8 +13,10 @@ import { stripBotProvenance } from "@/lib/sanitize";
 // area chips already cover this. Restore the import to re-enable.
 import BhandaraCardsSection from "@/components/BhandaraCardsSection";
 // FeaturedBhandaras hidden until we have paying sponsors (2026-05-30).
-// OrganisePromo hidden 2026-05-30 (full-service organising launches
-// next season). Restore the import to re-enable the homepage banner.
+// OrganisePromo re-enabled 2026-06-18: the operator now has organisers
+// to fulfil full-service bhandara organising, so the homepage banner is
+// back on.
+import OrganisePromo from "@/components/OrganisePromo";
 import VolunteerPromo from "@/components/VolunteerPromo";
 import HomeFAQ from "@/components/HomeFAQ";
 import HappeningNow from "@/components/HappeningNow";
@@ -961,13 +963,11 @@ export default async function HomePage() {
           <PamphletPromo />
       */}
 
-      {/* ORGANISE-BHANDARA promo hidden 2026-05-30 (operator request,
-          full-service organising launches next season). The
-          /organise-bhandara route still works for any direct link, but
-          it's no longer promoted from the homepage or the footer.
-          Re-enable by restoring <OrganisePromo /> + its import here and
-          the footer link in Footer.tsx.
-          <OrganisePromo /> */}
+      {/* ORGANISE-BHANDARA promo, re-enabled 2026-06-18. The operator now
+          has organisers to fulfil full-service bhandara organising (tent
+          + catering + logistics). Submissions land in OrganiseRequest and
+          are worked from /admin/organise. Footer link re-enabled too. */}
+      <OrganisePromo />
 
       {/* FAMOUS BHANDARAS (city landmarks) hidden 2026-05-30 (operator
           request, not adding value). Re-enable by restoring
