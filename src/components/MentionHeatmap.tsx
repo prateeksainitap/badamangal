@@ -36,8 +36,10 @@ import {
   OLA_DARK_STYLE,
 } from "@/lib/olaMaps";
 
-/** Mention with guaranteed coords (parent narrows the type). */
-type GeoMention = {
+/** Mention with guaranteed coords (parent narrows the type). Exported
+ *  so the parent (LiveChatterBoard) and page.tsx can build an off-day
+ *  spot fallback in the same shape. */
+export type GeoMention = {
   id: string;
   lat: number;
   lng: number;

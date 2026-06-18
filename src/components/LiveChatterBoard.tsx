@@ -47,7 +47,7 @@ import {
   useRef,
   useState,
 } from "react";
-import MentionHeatmap from "@/components/MentionHeatmap";
+import MentionHeatmap, { type GeoMention } from "@/components/MentionHeatmap";
 import GalleryLightbox, {
   type GalleryItem,
 } from "@/components/GalleryLightbox";
@@ -321,6 +321,7 @@ export default function LiveChatterBoard({
   initial,
   communityMembers,
   communityCountsByKey,
+  heatmapFallback = [],
 }: {
   initial: ChatterMention[];
   /** Total participant count across allowlisted WhatsApp groups +
@@ -329,6 +330,12 @@ export default function LiveChatterBoard({
   /** Per-group/-channel counts keyed by `WHATSAPP_CTAS[].counterKey`.
    *  Missing keys render as ", " in the card. */
   communityCountsByKey: Record<string, number>;
+  /** Off-day fallback for the heatmap. When there are no live geo-located
+   *  mentions (every off-day between Bada Mangal Tuesdays), the map would
+   *  otherwise render blank. These are the same recent spots-with-coords
+   *  the main city map shows, so the "live chat map" mirrors that surface
+   *  instead of going empty. Preferred only when geoMentions is empty. */
+  heatmapFallback?: GeoMention[];
 }) {
   const [mentions, setMentions] = useState<ChatterMention[]>(initial);
   // Lightbox state shared across all chat bubbles. A click on any
@@ -892,7 +899,9 @@ export default function LiveChatterBoard({
             shared frame ties them visually so they read as "the live
             chat + its map" one instrument. */}
         <div className="chatter-glass relative grid rounded-2xl overflow-hidden lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:h-[40rem]">
-          <MentionHeatmap mentions={geoMentions} />
+          <MentionHeatmap
+            mentions={geoMentions.length > 0 ? geoMentions : heatmapFallback}
+          />
 
           {/* Chat panel, no glass / no border / no rounded chrome of
               its own anymore. Just a left-side hairline divider on lg+

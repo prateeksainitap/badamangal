@@ -41,6 +41,7 @@ import LiveFeedMarquee from "@/components/LiveFeedMarquee";
 import LiveChatterBoard, {
   type ChatterMention,
 } from "@/components/LiveChatterBoard";
+import { type GeoMention } from "@/components/MentionHeatmap";
 import SeasonTimeline from "@/components/SeasonTimeline";
 import StatsSection from "@/components/StatsSection";
 import SupportBadaMangal from "@/components/SupportBadaMangal";
@@ -527,6 +528,25 @@ export default async function HomePage() {
   });
   const liveSpotsWithCoords = liveSpots.filter((s) => s.lat !== 0 && s.lng !== 0);
 
+  // Off-day fallback for the LiveChatterBoard's mention heatmap (the
+  // "live chat map"). That map plots geo-located chat mentions only, and
+  // the spots merged into its feed are gated to non-expired rows, so on
+  // any off-day between Bada Mangal Tuesdays it renders blank, the
+  // operator reported "I still can't see the spots on this live chat
+  // map". Feed it the same recent spots-with-coords the main city map
+  // already shows so it mirrors that surface instead of going empty.
+  // LiveChatterBoard prefers live geo-mentions and only uses this when
+  // there are none. Shaped to MentionHeatmap's GeoMention contract.
+  const heatmapFallbackSpots: GeoMention[] = liveSpotsWithCoords.map((s) => ({
+    id: s.id,
+    lat: s.lat,
+    lng: s.lng,
+    intent: "SHARING" as const,
+    locationLabel: s.area ?? null,
+    locationSource: "spot_photo",
+    createdAt: s.createdAt,
+  }));
+
   // Live feed initial payload, active spots only. The Post model
   // (per-bhandara comments) was removed, so the marquee + /live feed
   // now mirror just the crowd-sourced spots stream. authorName falls
@@ -889,6 +909,7 @@ export default async function HomePage() {
           community CTAs follow as supporting context. */}
       <LiveChatterBoard
         initial={mentionsInitial}
+        heatmapFallback={heatmapFallbackSpots}
         communityMembers={
           communityCounterRows.find((r) => r.id === "community_total_members")?.count ?? 0
         }
