@@ -41,6 +41,10 @@ function HeaderInner() {
     { href: "/live", label: locale === "hi" ? "लाइव" : "Live" },
     { href: "/history", label: locale === "hi" ? "इतिहास" : "History" },
     { href: "/resources", label: t.nav.resources },
+    {
+      href: "/organise-bhandara?from=nav",
+      label: locale === "hi" ? "आयोजन" : "Organise",
+    },
   ];
 
   // Mobile-drawer nav: same routes as desktop, but each gets an icon and a
@@ -107,6 +111,16 @@ function HeaderInner() {
           : "Chalisa, aarti, temples",
       icon: <NavIconBook />,
       accent: "leaf",
+    },
+    {
+      href: "/organise-bhandara?from=nav",
+      label: locale === "hi" ? "भंडारा आयोजित करें" : "Organise a bhandara",
+      caption:
+        locale === "hi"
+          ? "टेंट, प्रसाद, लॉजिस्टिक्स, सब हम पर"
+          : "Tent, catering & logistics, handled",
+      icon: <NavIconTent />,
+      accent: "gold",
     },
     {
       href: "/contact",
@@ -416,6 +430,15 @@ function NavIconMap() {
       strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M9 3 3 5v16l6-2 6 2 6-2V3l-6 2-6-2z" />
       <path d="M9 3v16M15 5v16" />
+    </svg>
+  );
+}
+function NavIconTent() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 4 3 20h18L12 4z" />
+      <path d="M12 12 8 20M12 12 16 20" />
     </svg>
   );
 }
