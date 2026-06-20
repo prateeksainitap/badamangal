@@ -385,8 +385,12 @@ function Anon() {
 }
 
 function formatTime(d: Date): string {
-  // "26 May, 02:14 PM", operator-readable, Indian convention.
+  // "26 May, 02:14 PM", operator-readable, Indian convention. Pinned to
+  // Asia/Kolkata so it always shows IST: this renders on the server
+  // (Vercel runs in UTC), so without an explicit timeZone the times came
+  // out in UTC, ~5h30m behind IST.
   return d.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
     day: "numeric",
     month: "short",
     hour: "2-digit",

@@ -1317,6 +1317,7 @@ async function SpotsView({
                         {new Date(s.createdAt).toLocaleString("en-IN", {
                           dateStyle: "medium",
                           timeStyle: "short",
+                          timeZone: "Asia/Kolkata",
                         })}
                       </p>
                     </div>

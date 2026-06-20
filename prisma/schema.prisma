@@ -246,6 +246,43 @@ model OrganiseRequest {
 }
 
 // ──────────────────────────────────────────────────────────────────
+// Sundar Kaand / Hanuman puja intake (public lead-capture)
+// ──────────────────────────────────────────────────────────────────
+//
+// Powers POST /api/organise/sundar-kaand + the /organise/sundar-kaand
+// form. Same store-and-triage shape as OrganiseRequest. JSON-shaped
+// arrays (preferredDates, servicesNeeded) stay strings for parity with
+// the rest of the schema, so the same safeJsonArray reader decodes
+// them. Public surface is date-gated (see src/lib/sundarKaand.ts):
+// goes live after 23 Jun 2026.
+
+model SundarKaandRequest {
+  id             String   @id @default(cuid())
+  // contact
+  name           String
+  phone          String
+  email          String?
+  // event
+  eventType      String   @default("SUNDAR_KAAND") // SUNDAR_KAAND | HANUMAN_PUJA | BOTH
+  area           String? // Lucknow neighbourhood (free-form)
+  addressNotes   String? // landmark / venue / extra location detail
+  preferredDates String   @default("[]") // JSON string[] of ISO YYYY-MM-DD dates
+  preferredTime  String? // free-form preferred time, e.g. "Evening, after 6pm"
+  audienceSize   Int? // expected attendance
+  servicesNeeded String   @default("[]") // JSON string[] of service codes (PANDIT, MANDALI, ...)
+  // misc
+  notes          String? // free-form additional requirements
+  // moderation
+  status         String   @default("NEW") // NEW | CONTACTED | CONFIRMED | COMPLETED | REJECTED
+  // metadata
+  createdAt      DateTime @default(now())
+  ipHash         String
+  userAgent      String?
+
+  @@index([status, createdAt])
+}
+
+// ──────────────────────────────────────────────────────────────────
 // Volunteer programme (Tier A - minimal, no OTP)
 // ──────────────────────────────────────────────────────────────────
 //

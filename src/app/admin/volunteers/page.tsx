@@ -273,6 +273,7 @@ export default async function AdminVolunteersPage() {
                         Joined{" "}
                         {new Date(v.createdAt).toLocaleDateString("en-IN", {
                           dateStyle: "medium",
+                          timeZone: "Asia/Kolkata",
                         })}
                       </div>
                     </div>
@@ -363,6 +364,7 @@ function PendingApplicationCard({
             {new Date(v.createdAt).toLocaleString("en-IN", {
               dateStyle: "medium",
               timeStyle: "short",
+              timeZone: "Asia/Kolkata",
             })}
           </div>
         </div>
