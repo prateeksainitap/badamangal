@@ -12,10 +12,10 @@ import { useLocaleFromContext } from "@/lib/locale-context";
  * locale context like the rest of the homepage.
  */
 
-const STATIONS: { name: string; src: string }[] = [
-  { name: "Radio Mirchi", src: "/press/radio/radio-mirchi.jpg" },
-  { name: "Big FM", src: "/press/radio/big-fm.png" },
-  { name: "Fever FM", src: "/press/radio/fever-fm.jpg" },
+const STATIONS: { name: string; src: string; freq: string }[] = [
+  { name: "Radio Mirchi", src: "/press/radio/radio-mirchi.jpg", freq: "98.3 FM" },
+  { name: "Big FM", src: "/press/radio/big-fm.png", freq: "94.3 FM" },
+  { name: "Fever FM", src: "/press/radio/fever-fm.jpg", freq: "104.0 FM" },
 ];
 
 export default function RadioCoverage() {
@@ -84,8 +84,12 @@ export default function RadioCoverage() {
                     className="max-h-20 w-auto max-w-[82%] rounded-lg object-contain transition-transform duration-300 group-hover:scale-[1.04]"
                   />
                 </div>
-                <p className="font-mukta text-[0.62rem] font-bold uppercase tracking-[0.26em] text-ink-600/70">
-                  {s.name}
+                <p className="flex items-center justify-center gap-1.5 font-mukta text-[0.62rem] font-bold uppercase tracking-[0.22em]">
+                  <span className="text-ink-600/70">{s.name}</span>
+                  <span aria-hidden className="text-gold-500">·</span>
+                  <span className="font-numerals tracking-normal text-saffron-600">
+                    {s.freq}
+                  </span>
                 </p>
               </div>
             </li>
