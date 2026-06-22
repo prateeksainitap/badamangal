@@ -30,6 +30,7 @@ import MediaCoverage from "@/components/MediaCoverage";
 import HomeTestimonials from "@/components/HomeTestimonials";
 import HomeClosingBenediction from "@/components/HomeClosingBenediction";
 import HomeHero from "@/components/HomeHero";
+import RadioCoverage from "@/components/RadioCoverage";
 // HomeHistoryTeaser ("A 400-year-old tradition") hidden 2026-05-30, the
 // /history page is linked from the footer instead. Restore to re-enable.
 import HomepageGallery, { type GalleryItem } from "@/components/HomepageGallery";
@@ -810,6 +811,10 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ON AIR, radio-coverage band directly under the hero: the
+          city's biggest stations have featured BadaMangal. */}
+      <RadioCoverage />
 
       {/* FEATURED BHANDARAS, concrete answer to "where can I go to a
           bhandara today?" up high, before the countdown/map. GA4
