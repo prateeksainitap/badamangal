@@ -40,10 +40,7 @@ export default function RadioCoverage() {
         {/* ON AIR pill + live equalizer */}
         <div className="flex items-center justify-center gap-3">
           <span className="inline-flex items-center gap-2 rounded-full border border-sindoor-700/25 bg-white/85 px-3.5 py-1.5 shadow-warm backdrop-blur">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full rounded-full bg-sindoor-600 opacity-70 motion-safe:animate-ping" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-sindoor-600" />
-            </span>
+            <RadioIcon className="text-sindoor-600 motion-safe:animate-pulse" />
             <span className="font-mukta text-[0.6rem] font-bold uppercase tracking-[0.32em] text-sindoor-700">
               On Air
             </span>
@@ -102,6 +99,30 @@ export default function RadioCoverage() {
         @media (prefers-reduced-motion: reduce) { .bm-eq-bar { animation: none !important; transform: scaleY(0.7); } }
       `}</style>
     </section>
+  );
+}
+
+/** Broadcast-waves radio glyph (inline SVG, the site does not use an icon lib). */
+function RadioIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="14"
+      height="14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9" />
+      <path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5" />
+      <circle cx="12" cy="12" r="2" />
+      <path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5" />
+      <path d="M19.1 4.9C23 8.8 23 15.1 19.1 19" />
+    </svg>
   );
 }
 
