@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { strings } from "@/content/strings";
 import {
@@ -269,12 +270,13 @@ export default function ResourcesHubView() {
                   the secondary stack and the natural height of the
                   headline + excerpt block. min-h-0 keeps the flex
                   item shrinkable on narrow viewports. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={proxiedNewsImage(featuredNews.image, 1200)}
-                alt={featuredNews.imageAlt ?? ""}
-                loading="lazy"
-                className="w-full flex-1 min-h-[200px] object-cover bg-saffron-50"
+              <NewsThumb
+                src={featuredNews.image}
+                alt={featuredNews.imageAlt ?? featuredNews.headline}
+                source={featuredNews.source}
+                width={1200}
+                initialSize="large"
+                className="w-full flex-1 min-h-[200px]"
               />
               <div className="px-6 py-5">
                 <p className="font-mukta uppercase tracking-[0.22em] text-[0.62rem] text-saffron-600 font-semibold inline-flex items-center gap-2">
@@ -318,12 +320,12 @@ export default function ResourcesHubView() {
                     data-ga-source={n.source}
                     className="group flex h-full gap-3 rounded-2xl bg-white border border-gold-500/40 hover:border-saffron-500 shadow-warm overflow-hidden transition-colors"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={proxiedNewsImage(n.image, 320)}
-                      alt={n.imageAlt ?? ""}
-                      loading="lazy"
-                      className="shrink-0 w-24 sm:w-28 h-full min-h-[96px] object-cover bg-saffron-50"
+                    <NewsThumb
+                      src={n.image}
+                      alt={n.imageAlt ?? n.headline}
+                      source={n.source}
+                      width={320}
+                      className="shrink-0 w-24 sm:w-28 h-full min-h-[96px]"
                     />
                     <div className="min-w-0 flex-1 py-3 pr-3">
                       <p className="font-mukta uppercase tracking-[0.18em] text-[0.55rem] text-gold-500 font-semibold truncate">
@@ -494,6 +496,66 @@ function proxiedNewsImage(src: string, width: number): string {
   if (!src) return "";
   const target = src.replace(/^https?:\/\//, "");
   return `https://images.weserv.nl/?url=${encodeURIComponent(target)}&w=${width}&we&output=webp`;
+}
+
+/**
+ * Resilient news thumbnail. A branded placeholder (source initial +
+ * name) sits BEHIND the image, and the <img> hides itself on error
+ * (`onError`) so a failed proxy / hot-linked / 404 source image never
+ * leaves a broken box or stray alt text, it falls back to the warm
+ * placeholder. `referrerPolicy="no-referrer"` strips the Referer so
+ * publisher hot-link rules don't block the load in the first place.
+ */
+function NewsThumb({
+  src,
+  alt,
+  source,
+  width,
+  className,
+  initialSize = "small",
+}: {
+  src: string;
+  alt: string;
+  source: string;
+  width: number;
+  className?: string;
+  initialSize?: "small" | "large";
+}) {
+  const [failed, setFailed] = useState(false);
+  const initial = source.trim().charAt(0).toUpperCase() || "★";
+  const showImg = Boolean(src) && !failed;
+  return (
+    <div
+      className={`relative overflow-hidden bg-gradient-to-br from-saffron-50 to-cream-50 ${className ?? ""}`}
+    >
+      <div className="absolute inset-0 flex items-center justify-center text-center px-2 pointer-events-none">
+        <div>
+          <p
+            className={`font-numerals font-extrabold text-saffron-600/40 leading-none ${
+              initialSize === "large" ? "text-4xl sm:text-6xl" : "text-2xl"
+            }`}
+          >
+            {initial}
+          </p>
+          <p className="mt-1 font-mukta uppercase tracking-[0.24em] text-ink-600/55 text-[0.55rem]">
+            {source}
+          </p>
+        </div>
+      </div>
+      {showImg ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={proxiedNewsImage(src, width)}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      ) : null}
+    </div>
+  );
 }
 
 /* ── Card icons (audio chip + inline play glyph) ───────────────────── */
