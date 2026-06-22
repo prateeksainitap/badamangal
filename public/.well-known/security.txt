@@ -1,0 +1,5 @@
+# Security policy for badamangal.com (RFC 9116)
+Contact: mailto:namaste@badamangal.com
+Expires: 2027-06-21T00:00:00.000Z
+Preferred-Languages: en, hi
+Canonical: https://badamangal.com/.well-known/security.txt
