@@ -212,15 +212,21 @@ export const NEWS: NewsEntry[] = [
     tag: "temple",
   },
   {
-    id: "2026-05-12-bhaktibharat-second-mangal",
-    date: "2026-05-12",
+    id: "2026-06-23-amarujala-eighth-mangal",
+    date: "2026-06-23",
     headline:
-      "Second Bada Mangal of 2026: dates, vidhi and the eight-Tuesday calendar",
+      "A court of devotion on the eighth and final Bada Mangal",
+    headlineHi: "आठवें और आख़िरी बड़े मंगल पर सजेगा भक्ति का दरबार",
     excerpt:
-      "BhaktiBharat's reference page for the season, the eight Jyeshtha Tuesdays, the next Bada Mangal date, and the basic puja vidhi for first-time observers.",
-    source: "BhaktiBharat",
-    url: "https://www.bhaktibharat.com/en/festival/bada-mangal",
-    image: "https://static.bhaktibharat.com/photo/festival/bada-mangal.jpg",
+      "Amar Ujala on Lucknow's eighth and final Bada Mangal of this rare eight-Tuesday season, the temples, the bhandaras and the devotion filling the city today.",
+    excerptHi:
+      "इस दुर्लभ आठ-मंगल वर्ष का आख़िरी बड़ा मंगल, शहर के मंदिरों, भंडारों और भक्ति पर अमर उजाला की रिपोर्ट।",
+    source: "Amar Ujala",
+    url: "https://www.amarujala.com/lucknow/a-court-of-devotion-will-be-set-up-on-the-eighth-and-final-bada-mangal-lucknow-news-c-13-1-lko1028-1795956-2026-06-23",
+    image:
+      "https://staticimg.amarujala.com/assets/images/4cplus/2026/06/23/aathava-oura-aakhara-bugdha-magal-para-sajaga-bhakata-ka-tharabra_4b3c0a35c6b5e5df210efe7af205f30e.jpeg",
+    imageAlt:
+      "Decorated Hanuman temple on Lucknow's eighth and final Bada Mangal",
     tag: "tradition",
   },
   {
