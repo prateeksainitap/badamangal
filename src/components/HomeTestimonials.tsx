@@ -57,8 +57,9 @@ type Testimonial = {
  *  time visitor sees external validation before a single quote. */
 // Updated 2026-05-26 evening: views ticked 9.2K, 9.4K.
 // Updated 2026-05-30: views ticked to 9.6K.
+// Updated 2026-06-24: views crossed 10K.
 const REDDIT_STATS = {
-  views: "9.6K",
+  views: "10K",
   upvotes: "133",
   comments: "30",
   community: "r/lucknow",
