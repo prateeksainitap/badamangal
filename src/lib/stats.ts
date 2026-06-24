@@ -187,7 +187,7 @@ async function computeHomepageStats(): Promise<SiteStats> {
   // expiresAt is also unfiltered, same lens as bhandara + spot,
   // which both keep expired/past rows in the cumulative "so far"
   // tally.
-  const [counter, communityCounter, records, spottedCount, mentionedCount] =
+  const [counter, communityCounter, offsetCounter, records, spottedCount, mentionedCount] =
     await Promise.all([
       prisma.siteCounter.findUnique({
         where: { id: "home" },
@@ -195,6 +195,16 @@ async function computeHomepageStats(): Promise<SiteStats> {
       }),
       prisma.siteCounter.findUnique({
         where: { id: "community_total_members" },
+        select: { count: true },
+      }),
+      // Manual offset for real bhandaras we count but deliberately do NOT
+      // publish (e.g. past-season pamphlets ingested for the record). The
+      // rows stay PENDING (hidden on the map / lists / archive); only this
+      // number lifts the displayed count. Stored as SiteCounter
+      // "bhandaras_listed_offset". Keep those rows PENDING so they are not
+      // double-counted (live APPROVED count + this offset).
+      prisma.siteCounter.findUnique({
+        where: { id: "bhandaras_listed_offset" },
         select: { count: true },
       }),
       prisma.bhandara.findMany({
@@ -225,6 +235,11 @@ async function computeHomepageStats(): Promise<SiteStats> {
     if (r.area) areas.add(r.area);
   }
 
+  // Real-but-unpublished bhandaras counted via the manual offset (see the
+  // SiteCounter read above). Lifts the "listed" + "total" headline numbers
+  // without exposing any row on the site.
+  const listedOffset = offsetCounter?.count ?? 0;
+
   return {
     visitorNumber: counter?.count ?? 0,
     // "Total bhandaras tracked" = listed + spotted ONLY, so the headline
@@ -235,8 +250,8 @@ async function computeHomepageStats(): Promise<SiteStats> {
     // invisible mentions into the headline made it overcount and stop
     // adding up on the page. bhandarasMentioned stays computed + exposed
     // for the API / a future tile, just not part of the headline total.
-    bhandarasTotal: records.length + spottedCount,
-    bhandarasListed: records.length,
+    bhandarasTotal: records.length + listedOffset + spottedCount,
+    bhandarasListed: records.length + listedOffset,
     bhandarasSpotted: spottedCount,
     bhandarasMentioned: mentionedCount,
     areasCovered: areas.size,
