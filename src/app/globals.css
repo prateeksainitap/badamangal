@@ -316,6 +316,43 @@
     z-index: 1;
   }
 
+  /* Hand-textured dark surface, the ink-900 counterpart to
+     .textured-saffron above. Flat ink-900 alone reads as plain black
+     on large bands (hero/press/closing on /recap); this layers in
+     warmth (a sindoor + saffron glow that carries past just the top
+     edge) and the same paper-grain asset, but blended with
+     `overlay` instead of `multiply`, multiply on a near-black base
+     barely lightens at all, overlay actually lifts the grain into
+     visible texture without washing out cream text on top. */
+  .textured-ink {
+    background-color: #241A13;
+    background-image:
+      radial-gradient(1000px 560px at 50% -12%, rgba(242, 148, 76, 0.38), transparent 62%),
+      radial-gradient(760px 460px at 88% 105%, rgba(156, 42, 42, 0.42), transparent 58%),
+      radial-gradient(680px 420px at 2% 100%, rgba(201, 162, 74, 0.24), transparent 58%),
+      linear-gradient(180deg, #2A1E15 0%, #1C140E 55%, #150F0A 100%);
+  }
+  .textured-ink {
+    position: relative;
+    isolation: isolate;
+  }
+  .textured-ink::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("/textures/paper-grain.svg");
+    background-size: 240px;
+    background-repeat: repeat;
+    mix-blend-mode: overlay;
+    opacity: 0.6;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .textured-ink > * {
+    position: relative;
+    z-index: 1;
+  }
+
   /* Page-wide cream paper feel. Apply to <body> via the layout. */
   .paper {
     background-color: #FBF7F0;

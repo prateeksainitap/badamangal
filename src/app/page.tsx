@@ -52,6 +52,7 @@ import SupportBadaMangal from "@/components/SupportBadaMangal";
 // Restore the import to re-enable.
 import HomeResourcesTeaser from "@/components/HomeResourcesTeaser";
 import VisitorBeacon from "@/components/VisitorBeacon";
+import SeasonCompleteBanner from "@/components/SeasonCompleteBanner";
 import { MarigoldDivider } from "@/components/ornaments";
 import { prisma, toBhandara } from "@/lib/db";
 import { areaToSlug } from "@/lib/areaSlug";
@@ -233,15 +234,22 @@ export default async function HomePage() {
     // bhandaras above, unstable_cache JSON-serializes Date columns
     // and breaks downstream .toISOString() calls.
     prisma.spot.findMany({
-      // Recent window (not just the live 8h TTL) so the homepage keeps
-      // showing spotted bhandaras between Tuesdays instead of emptying
-      // out for off-day visitors. Genuinely-live spots are still
-      // preferred when any exist (see displaySpotRecords below); this
-      // just guarantees a recent fallback so the section never blanks.
-      where: {
-        status: "APPROVED",
-        createdAt: { gt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000) },
-      },
+      // No createdAt window (removed the earlier 12-day cutoff, see
+      // below), so the homepage keeps showing spotted bhandaras
+      // regardless of how long the gap since the last one is, between
+      // Tuesdays mid-season, or between one season and the next.
+      // Genuinely-live spots are still preferred when any exist (see
+      // displaySpotRecords below); `take: 500` + the createdAt index
+      // keeps this cheap without needing a date filter to bound it.
+      //
+      // The original 12-day window was tuned for "quiet day inside an
+      // active season", it silently zeroed out the whole section once
+      // the gap since the last Tuesday passed 12 days (verified: this
+      // is exactly why "Spotted" read 0 a month after 2026's season
+      // ended). Sorted desc + take 500 already gives the same
+      // most-recent-first fallback behaviour without an arbitrary
+      // cutoff that expires.
+      where: { status: "APPROVED" },
       orderBy: { createdAt: "desc" },
       take: 500,
       include: {
@@ -438,6 +446,11 @@ export default async function HomePage() {
   );
   const displaySpotRecords =
     liveSpotRecords.length > 0 ? liveSpotRecords : spotRecords.slice(0, 60);
+  // True when HappeningNow is showing the recently-spotted fallback
+  // rather than genuinely-live (unexpired) sightings, drives the
+  // "Spotted this season" past-tense heading instead of "Happening now".
+  const isSpotsPast =
+    liveSpotRecords.length === 0 && displaySpotRecords.length > 0;
   const liveMentionRows = mentionRows.filter(
     (m) => m.expiresAt.getTime() > nowMs,
   );
@@ -478,6 +491,29 @@ export default async function HomePage() {
   const listings = records
     .map(toBhandara)
     .filter((b) => hasUpcomingDate(b) && hasValidLucknowCoords(b));
+
+  // Past-season fallback. When every bhandara's service dates have
+  // passed (true for the whole gap between the last Tuesday of one
+  // season and the first Tuesday of the next), `listings` above is
+  // empty and the homepage map + card grid would otherwise render
+  // nothing, looking like the project stopped rather than like a
+  // season that already happened. Mirrors /archive's own query
+  // (same APPROVED-and-past-dated predicate) so the homepage falls
+  // back to real, already-served bhandaras instead of a blank state.
+  // Sorted most-recently-approved first so the freshest season's
+  // bhandaras lead, not the oldest ones ever recorded.
+  const pastListings = listings.length
+    ? []
+    : records
+        .map(toBhandara)
+        .filter((b) => !hasUpcomingDate(b) && hasValidLucknowCoords(b))
+        .sort((a, z) => {
+          const aLast = a.tuesdayDates.slice().sort().at(-1) ?? "";
+          const zLast = z.tuesdayDates.slice().sort().at(-1) ?? "";
+          return zLast.localeCompare(aLast);
+        });
+  const isPastSeason = listings.length === 0 && pastListings.length > 0;
+  const displayListings = isPastSeason ? pastListings : listings;
   const stats = statsRaw;
 
   // Live "spots", crowd-sourced sightings of bhandaras happening right
@@ -759,6 +795,15 @@ export default async function HomePage() {
         />
       ))}
 
+      {/* Season-complete strip, sits directly under the sticky Header,
+          the very first thing a visitor reads, before the hero even
+          loads. Only rendered once every 2026 date has passed (see the
+          isPastSeason computation above). Moved here 2026-07 from its
+          earlier spot just above the map, "the season is over" is
+          framing the whole homepage now, not just the map section, so
+          it reads before the hero, not several scrolls into it. */}
+      {isPastSeason ? <SeasonCompleteBanner /> : null}
+
       {/* HERO, editorial cream layout with the commissioned Hanuman Ji
           illustration anchoring the right. Replaces the flat saffron band
           with a layered cream-paper composition. */}
@@ -860,7 +905,8 @@ export default async function HomePage() {
           reads its heading + body + "List your bhandara" label from
           the LocaleProvider context, no locale props needed. */}
       <MapBoard
-        listings={listings}
+        listings={displayListings}
+        isPastSeason={isPastSeason}
         liveSpots={liveSpotsWithCoords.map((s) => ({
           id: s.id,
           lat: s.lat,
@@ -884,7 +930,7 @@ export default async function HomePage() {
         // orphans the HappeningNow section already surfaces under
         // its "X without location" pill are also counted in the
         // headline, keeps the two numbers consistent.
-        totalListed={listings.length}
+        totalListed={displayListings.length}
         totalSpotted={liveSpots.length}
       />
 
@@ -904,8 +950,12 @@ export default async function HomePage() {
           is `listings.length`, ie. the upcoming-only filtered total
           (matches everything else on the page + the stats panel,
           past-only bhandaras live exclusively on /archive). */}
-      {listings.length > 0 ? (
-        <BhandaraCardsSection listings={listings} totalListed={listings.length} />
+      {displayListings.length > 0 ? (
+        <BhandaraCardsSection
+          listings={displayListings}
+          totalListed={displayListings.length}
+          isPastSeason={isPastSeason}
+        />
       ) : (
         <HomeCardsEmpty />
       )}

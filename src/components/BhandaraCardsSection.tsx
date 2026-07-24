@@ -37,13 +37,21 @@ type Props = {
    * older number rather than 0.
    */
   totalListed?: number;
+  /** True when the caller passed last season's bhandaras instead of
+   *  upcoming ones (page.tsx's `isPastSeason` fallback). Swaps the
+   *  section heading to past tense; everything else (filters, search,
+   *  card grid) works unchanged on past data. */
+  isPastSeason?: boolean;
 };
 
 type DateFilter = "all" | string;
 
+const PAGE_SIZE = 9;
+
 export default function BhandaraCardsSection({
   listings,
   totalListed,
+  isPastSeason = false,
 }: Props) {
   // Locale + heading derive from the LocaleProvider so the Hindi
   // toggle flips the section title and every label below it
@@ -52,9 +60,14 @@ export default function BhandaraCardsSection({
   const isHi = locale === "hi";
   const langSuffix = isHi ? "" : "?lang=en";
   const t = strings[locale];
-  const heading = t.cards.sectionHeading;
+  const heading = isPastSeason ? t.cards.sectionHeadingPast : t.cards.sectionHeading;
   const [area, setArea] = useState<"all" | string>("all");
   const [tuesday, setTuesday] = useState<DateFilter>("all");
+  // Current page of the card grid, 1-indexed. Reset to 1 whenever the
+  // filtered set changes shape (area/date/search), so a visitor who
+  // filters down from page 4 never lands on a page that no longer
+  // exists (see the effect below).
+  const [page, setPage] = useState(1);
   // `q` is the freetext search filter. Populated either from the
   // URL on mount (Google's sitelinks search box deep-link
   // `${SITE_URL}/?q={search_term_string}`, declared in our
@@ -137,6 +150,35 @@ export default function BhandaraCardsSection({
   const totalCardCount = useMemo(
     () => expandBhandarasByDate(listings).length,
     [listings],
+  );
+
+  // Expand once, shared by both the page count and the slice below,
+  // so pagination always operates on the same per-occurrence instances
+  // the grid actually renders (a bhandara serving multiple dates is
+  // several cards, and each counts toward the 9-per-page limit).
+  const expandedFiltered = useMemo(
+    () => expandBhandarasByDate(filtered),
+    [filtered],
+  );
+  const totalPages = Math.max(
+    1,
+    Math.ceil(expandedFiltered.length / PAGE_SIZE),
+  );
+  // Any change to the filtered set (area, date, search) should land
+  // the visitor back on page 1, a stale page 4 that no longer exists
+  // once a filter narrows the set reads as a bug, not a feature.
+  useEffect(() => {
+    setPage(1);
+  }, [area, tuesday, q]);
+  // Safety clamp: if the underlying data shrinks (e.g. the past-season
+  // fallback swaps in a smaller set) while sitting on a later page,
+  // pull back to the last valid page instead of rendering an empty grid.
+  useEffect(() => {
+    setPage((p) => Math.min(p, totalPages));
+  }, [totalPages]);
+  const pageItems = useMemo(
+    () => expandedFiltered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [expandedFiltered, page],
   );
 
   const areaOptions = [
@@ -305,7 +347,7 @@ export default function BhandaraCardsSection({
         // not the full ~10. So the same code path serves both
         // "browse the season" and "browse one Tuesday" UX.
         <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 items-stretch">
-          {expandBhandarasByDate(filtered).map(({ bhandara, pinnedDate }) => (
+          {pageItems.map(({ bhandara, pinnedDate }) => (
             <div
               key={`${bhandara.id}-${pinnedDate ?? "none"}`}
               className="flex"
@@ -318,7 +360,51 @@ export default function BhandaraCardsSection({
             </div>
           ))}
         </div>
-      ) : (
+      ) : null}
+
+      {/* Pagination, 9 cards/page. Only rendered when there's more than
+          one page, a single-page result doesn't need Prev/Next chrome. */}
+      {filtered.length > 0 && totalPages > 1 ? (
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setPage((p) => Math.max(1, p - 1));
+              sectionRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+              trackEvent("cards_page_change", { direction: "prev", page: page - 1 });
+            }}
+            disabled={page <= 1}
+            className="btn btn-ghost btn-sm disabled:opacity-40 disabled:pointer-events-none"
+          >
+            {isHi ? "← पिछला" : "← Previous"}
+          </button>
+          <span className="font-numerals tabular-nums text-sm text-ink-600">
+            {isHi
+              ? `पृष्ठ ${page} / ${totalPages}`
+              : `Page ${page} of ${totalPages}`}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setPage((p) => Math.min(totalPages, p + 1));
+              sectionRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+              trackEvent("cards_page_change", { direction: "next", page: page + 1 });
+            }}
+            disabled={page >= totalPages}
+            className="btn btn-ghost btn-sm disabled:opacity-40 disabled:pointer-events-none"
+          >
+            {isHi ? "अगला →" : "Next →"}
+          </button>
+        </div>
+      ) : null}
+
+      {filtered.length === 0 ? (
         (() => {
           // Build a human-readable description of what's filtered, so the
           // empty state explains *why* it's empty instead of a generic
@@ -420,7 +506,7 @@ export default function BhandaraCardsSection({
             </div>
           );
         })()
-      )}
+      ) : null}
     </section>
   );
 }

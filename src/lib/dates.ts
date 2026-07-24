@@ -51,6 +51,18 @@ export const ALL_SEASON_ISO: readonly string[] = [
 export const SEASON_START_ISO = "2026-05-01";
 export const SEASON_END_ISO = "2026-06-30";
 
+/**
+ * True once every 2026 Bada Mangal Tuesday has passed (IST). Used to
+ * gate "live right now" chrome (the bottom-left activity ticker's
+ * viewer count, in particular) that would otherwise keep implying
+ * real-time traffic long after the season, and the actual visitors,
+ * are gone.
+ */
+export function isBadaMangalSeasonOver(now: Date = new Date()): boolean {
+  const today = istTodayIso(now);
+  return !ALL_TUESDAY_ISO.some((d) => d >= today);
+}
+
 export function nextBadaMangal(now: Date = new Date()): Date | null {
   for (const d of BADA_MANGAL_DATES_2026) {
     if (d.getTime() > now.getTime()) return d;

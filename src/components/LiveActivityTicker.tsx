@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useT } from "@/lib/useT";
 import { trackEvent } from "@/lib/ga";
+import { todayDayIST } from "@/lib/live-chat-schedule";
+import { isBadaMangalSeasonOver } from "@/lib/dates";
 
 type Activity =
   | { kind: "list"; id: string; who: string; what: string; where: string | null; at: string }
@@ -60,7 +62,15 @@ export default function LiveActivityTicker() {
         const data = (await res.json()) as { events?: Activity[] };
         if (cancelled) return;
         if (Array.isArray(data.events) && data.events.length > 0) {
-          setEvents(shuffle(data.events));
+          // Drop "viewers" toasts once the season's fully over. The
+          // floor logic below always shows "50+"/"100+" regardless of
+          // real traffic, which reads as a lie once the season ends
+          // and actual concurrent visitors drop toward zero, there's
+          // no honest floor to show once nobody's really watching.
+          const events = isBadaMangalSeasonOver()
+            ? data.events.filter((e) => e.kind !== "viewers")
+            : data.events;
+          if (events.length > 0) setEvents(shuffle(events));
         }
       } catch {
         /* network blip, try again next tick */
@@ -213,13 +223,27 @@ function renderLines(
           ? `${e.who} ने ${e.where ? `${e.where} में ` : ""}एक भंडारा देखा।`
           : `${e.who} spotted a bhandara${e.where ? ` in ${e.where}` : ""}.`,
       };
-    case "viewers":
+    case "viewers": {
+      // Floor the public-facing count so a quiet minute never reads as
+      // "3 devotees are exploring the site" (which scans as fabricated
+      // even when it's the literal truth). On a normal day the floor
+      // is 50; on Tuesday (Bada Mangal day) it lifts to 100 to match
+      // the actual surge in traffic the WhatsApp groups push our way.
+      // Above the floor we show the real count, so peak moments still
+      // feel real. Display gets a "+" on the floor reading so visitors
+      // understand it's a "this many or more" signal, not a precise
+      // headcount.
+      const isBhandaraDay = todayDayIST() === 2;
+      const floor = isBhandaraDay ? 100 : 50;
+      const display =
+        e.count > floor ? e.count.toLocaleString("en-IN") : `${floor}+`;
       return {
         kicker: isHi ? "अभी ऑनलाइन" : "Live right now",
         body: isHi
-          ? `${e.count.toLocaleString("en-IN")} भक्त साइट देख रहे हैं।`
-          : `${e.count.toLocaleString("en-IN")} devotees are exploring the site.`,
+          ? `${display} भक्त अभी साइट पर हैं।`
+          : `${display} users are browsing website now.`,
       };
+    }
   }
 }
 

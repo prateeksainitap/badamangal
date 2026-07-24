@@ -80,6 +80,11 @@ type Props = {
    *  arrays if either prop is missing so old callers don't break. */
   totalListed?: number;
   totalSpotted?: number;
+  /** True when page.tsx has fallen back to last season's bhandaras
+   *  because nothing is currently upcoming. Swaps the heading/body
+   *  copy and the "spotted" legend label to past tense so the board
+   *  never implies these pins are live right now. */
+  isPastSeason?: boolean;
 };
 
 /**
@@ -96,6 +101,7 @@ export default function MapBoard({
   communityMembers = 0,
   totalListed,
   totalSpotted,
+  isPastSeason = false,
 }: Props) {
   // Locale + every locale-derived string comes from the client-side
   // context so SSR can render English and we still respect the
@@ -123,8 +129,10 @@ export default function MapBoard({
     typeof totalListed === "number" && typeof totalSpotted === "number"
       ? totalListed + totalSpotted
       : listings.length + liveSpots.length;
-  const heading = t.map.sectionHeading(totalCount);
-  const body = t.map.sectionBody;
+  const heading = isPastSeason
+    ? t.map.sectionHeadingPast(totalCount)
+    : t.map.sectionHeading(totalCount);
+  const body = isPastSeason ? t.map.sectionBodyPast : t.map.sectionBody;
   const listBhandaraLabel = t.cta.listBhandara;
   const [filter, setFilter] = useState<Filter>("all");
   // Search query, matches against name / nameHi / area / address /
@@ -519,9 +527,11 @@ export default function MapBoard({
             />
           </span>
           <span>
-            {isHi
-              ? "अभी स्पॉट किया गया (8 घंटों के लिए लाइव)"
-              : "Spotted live (active for 8 hours)"}
+            {isPastSeason
+              ? t.map.legendSpottedPast
+              : isHi
+                ? "अभी स्पॉट किया गया (8 घंटों के लिए लाइव)"
+                : "Spotted live (active for 8 hours)"}
           </span>
         </span>
       </div>

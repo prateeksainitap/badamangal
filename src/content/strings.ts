@@ -47,11 +47,18 @@ type Dict = {
      *  can say "All 28 …" with a live, server-fresh number. */
     sectionHeading: (count: number) => string;
     sectionBody: string;
+    /** Past-season variants, used when page.tsx's `isPastSeason` is
+     *  true (every bhandara's dates have passed and the homepage is
+     *  showing last season's real listings as a fallback). */
+    sectionHeadingPast: (count: number) => string;
+    sectionBodyPast: string;
     legendOpen: string;
     legendClosed: string;
+    legendSpottedPast: string;
   };
   cards: {
     sectionHeading: string;
+    sectionHeadingPast: string;
     timeAt: string;
     servesPerDay: string;
   };
@@ -263,11 +270,17 @@ const en: Dict = {
     sectionHeading: (count) =>
       `All ${count} Bada Mangal bhandaras in Lucknow, on one map`,
     sectionBody: "Tap any pin to see the menu, time, and how to get there.",
+    sectionHeadingPast: (count) =>
+      `${count} Bada Mangal bhandaras from this season, on one map`,
+    sectionBodyPast:
+      "Season complete. Tap any pin to see what was served, and by whom.",
     legendOpen: "Open now",
     legendClosed: "Closed",
+    legendSpottedPast: "Spotted this season",
   },
   cards: {
     sectionHeading: "Bhandaras listed across the city",
+    sectionHeadingPast: "Bhandaras Lucknow served this season",
     timeAt: "Serving from",
     servesPerDay: "plates / day",
   },
@@ -568,11 +581,17 @@ const hi: Dict = {
     sectionHeading: (count) =>
       `लखनऊ के सभी ${count} बड़े मंगल भण्डारे, एक नक़्शे पर`,
     sectionBody: "किसी भी पिन पर टैप करें: मेन्यू, समय और रास्ता देखें।",
+    sectionHeadingPast: (count) =>
+      `इस सीज़न के ${count} बड़े मंगल भण्डारे, एक नक़्शे पर`,
+    sectionBodyPast:
+      "सत्र पूरा हुआ। किसी भी पिन पर टैप करें: क्या परोसा गया, किसने परोसा।",
     legendOpen: "अभी खुला है",
     legendClosed: "बंद",
+    legendSpottedPast: "इस सीज़न स्पॉट किया गया",
   },
   cards: {
     sectionHeading: "शहर भर में सूचीबद्ध भंडारे",
+    sectionHeadingPast: "इस सीज़न लखनऊ ने जो परोसा",
     timeAt: "समय",
     servesPerDay: "थाली प्रतिदिन",
   },
