@@ -32,6 +32,7 @@ import { useLocaleFromContext } from "@/lib/locale-context";
 import { isLiveChatOpenToday } from "@/lib/live-chat-schedule";
 import { useCity } from "@/lib/city-context";
 import { isInCity } from "@/lib/cities";
+import { useInViewOnce } from "@/lib/useInViewOnce";
 
 type LiveSpotInput = {
   id: string;
@@ -161,6 +162,13 @@ export default function MapBoard({
     status: "idle",
     coords: null,
   });
+  // Only mount the map once it is actually near the viewport. next/dynamic
+  // already code-splits the MapLibre bundle, but it does not stop the
+  // component mounting, so before this every homepage view pulled a
+  // screenful of vector tiles even for visitors who bounced at the hero.
+  // Vector Tiles are ~98.5% of our Ola Maps usage, so this is the single
+  // biggest lever on that bill. See lib/useInViewOnce.ts.
+  const { ref: mapSlotRef, inView: mapInView } = useInViewOnce<HTMLDivElement>();
 
   const normQuery = query.trim().toLowerCase();
 
@@ -560,7 +568,22 @@ export default function MapBoard({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <BhandaraMap listings={filteredListings} liveSpots={mappedLiveSpots} />
+        <div ref={mapSlotRef} className="min-h-[560px] sm:min-h-[640px]">
+          {mapInView ? (
+            <BhandaraMap
+              listings={filteredListings}
+              liveSpots={mappedLiveSpots}
+            />
+          ) : (
+            // Same dimensions + treatment as next/dynamic's own loading
+            // placeholder so there is no layout shift when the real map
+            // swaps in.
+            <div
+              aria-hidden
+              className="h-[560px] sm:h-[640px] w-full rounded-3xl border border-gold-500/40 bg-cream-50/70"
+            />
+          )}
+        </div>
         <MapSideList
           listings={filteredListings}
           liveSpots={filteredSpots as SideListSpot[]}

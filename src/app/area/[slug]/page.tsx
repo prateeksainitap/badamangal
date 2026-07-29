@@ -24,7 +24,8 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import AreaPageView from "@/components/AreaPageView";
-import { ALL_AREA_SLUGS, slugToArea } from "@/lib/areaSlug";
+import { ALL_AREA_SLUGS, slugToAreaCity } from "@/lib/areaSlug";
+import { getCity, areasFor } from "@/lib/cities";
 import { getAllApprovedBhandaras, toBhandara } from "@/lib/db";
 import { hasUpcomingDate } from "@/lib/dates";
 import {
@@ -51,8 +52,12 @@ export async function generateMetadata({
   params: RouteParams;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const area = slugToArea(slug);
-  if (!area) return { title: "Area not found" };
+  const target = slugToAreaCity(slug);
+  if (!target) return { title: "Area not found" };
+  const { area, city: citySlug } = target;
+  // City name is interpolated rather than hardcoded so a Kanpur area
+  // page does not advertise itself as being in Lucknow.
+  const cityName = getCity(citySlug).name;
 
   // Count bhandaras up front so the title + description can include
   // "5 bhandaras" etc., concrete numbers in SERP snippets always
@@ -71,12 +76,12 @@ export async function generateMetadata({
   // keyword), "Lucknow 2026" anchors local + season. Count gives the
   // snippet a concrete number.
   const title = count
-    ? `Bada Mangal in ${area}, Lucknow 2026, ${count} ${count === 1 ? "bhandara" : "bhandaras"}`
-    : `Bada Mangal in ${area}, Lucknow 2026, Find a Bhandara`;
+    ? `Bada Mangal in ${area}, ${cityName} 2026, ${count} ${count === 1 ? "bhandara" : "bhandaras"}`
+    : `Bada Mangal in ${area}, ${cityName} 2026, Find a Bhandara`;
 
   const description = count
-    ? `Find every Bada Mangal bhandara in ${area}, Lucknow for the 2026 8-Tuesday Jyeshtha season. ${count} ${count === 1 ? "bhandara" : "bhandaras"} mapped with timings, prasad menu, organizer details. Free.`
-    : `Looking for a Bada Mangal bhandara in ${area}, Lucknow? Browse the 2026 directory and list yours free.`;
+    ? `Find every Bada Mangal bhandara in ${area}, ${cityName} for the 2026 8-Tuesday Jyeshtha season. ${count} ${count === 1 ? "bhandara" : "bhandaras"} mapped with timings, prasad menu, organizer details. Free.`
+    : `Looking for a Bada Mangal bhandara in ${area}, ${cityName}? Browse the 2026 directory and list yours free.`;
 
   return {
     title,
@@ -109,8 +114,10 @@ export async function generateMetadata({
 
 export default async function AreaPage({ params }: { params: RouteParams }) {
   const { slug } = await params;
-  const area = slugToArea(slug);
-  if (!area) notFound();
+  const target = slugToAreaCity(slug);
+  if (!target) notFound();
+  const { area, city: citySlug } = target;
+  const city = getCity(citySlug);
 
   // Same dedup story as generateMetadata above, share ONE findMany
   // across all 36 area pages during build via the module-level
@@ -118,7 +125,13 @@ export default async function AreaPage({ params }: { params: RouteParams }) {
   // query already orders by isSponsored / isVerified / createdAt so
   // the filtered slice keeps that ordering for free.
   const all = await getAllApprovedBhandaras();
-  const records = all.filter((b) => b.area === area);
+  // Filter on city AND area. Area alone is ambiguous now: Kalyanpur
+  // exists in Lucknow and Kanpur, Civil Lines in three cities, so
+  // matching on area only would blend two cities' bhandaras onto one
+  // page. Legacy rows have city "lucknow" from the backfill.
+  const records = all.filter(
+    (b) => b.area === area && (b.city ?? "lucknow") === citySlug,
+  );
   // Upcoming-only contract, match the homepage main list. Past-only
   // bhandaras live exclusively on /archive; if you land here from an
   // area chip the page shows only what you can actually visit.
@@ -128,11 +141,12 @@ export default async function AreaPage({ params }: { params: RouteParams }) {
   // the 2 areas immediately before and after this one in the
   // alphabetic AREAS list. Good-enough for V1; can be replaced by
   // a real geographic-adjacency map later.
-  const ix = AREAS.indexOf(area);
+  const cityAreas = areasFor(citySlug);
+  const ix = cityAreas.indexOf(area);
   const adjacent: string[] = [];
-  if (ix > 0) adjacent.push(AREAS[ix - 1]!);
-  if (ix < AREAS.length - 1) adjacent.push(AREAS[ix + 1]!);
-  if (ix > 1 && adjacent.length < 3) adjacent.push(AREAS[ix - 2]!);
+  if (ix > 0) adjacent.push(cityAreas[ix - 1]!);
+  if (ix < cityAreas.length - 1) adjacent.push(cityAreas[ix + 1]!);
+  if (ix > 1 && adjacent.length < 3) adjacent.push(cityAreas[ix - 2]!);
 
   const breadcrumbs = breadcrumbSchema([
     { name: "Home", path: "/" },
@@ -142,7 +156,7 @@ export default async function AreaPage({ params }: { params: RouteParams }) {
 
   const faqSchema = faqPageSchema([
     {
-      q: `How many Bada Mangal bhandaras are in ${area}, Lucknow?`,
+      q: `How many Bada Mangal bhandaras are in ${area}, ${city.name}?`,
       a: bhandaras.length
         ? `${bhandaras.length} ${bhandaras.length === 1 ? "bhandara is" : "bhandaras are"} currently listed in ${area} for the 2026 Bada Mangal season. The list is community-sourced and grows as the season progresses.`
         : `No bhandaras are listed in ${area} for the 2026 season yet, be the first to add one (free).`,
@@ -164,7 +178,7 @@ export default async function AreaPage({ params }: { params: RouteParams }) {
   const itemList = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: `Bada Mangal Bhandaras in ${area}, Lucknow 2026`,
+    name: `Bada Mangal Bhandaras in ${area}, ${city.name} 2026`,
     itemListElement: bhandaras.map((b, i) => ({
       "@type": "ListItem",
       position: i + 1,

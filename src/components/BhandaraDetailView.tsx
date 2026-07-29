@@ -497,7 +497,7 @@ export default function BhandaraDetailView({ b, others }: Props) {
           >
             {t.detail.nearbyHeading}{" "}
             <Link
-              href={`/area/${areaToSlug(b.area)}${langSuffix}`}
+              href={`/area/${areaToSlug(b.area, b.city)}${langSuffix}`}
               data-ga="detail_area_link"
               data-ga-area={b.area}
               className="underline decoration-dotted decoration-saffron-600 underline-offset-4 hover:text-saffron-600 transition-colors"
@@ -512,7 +512,7 @@ export default function BhandaraDetailView({ b, others }: Props) {
           </div>
           <div className="mt-5">
             <Link
-              href={`/area/${areaToSlug(b.area)}${langSuffix}`}
+              href={`/area/${areaToSlug(b.area, b.city)}${langSuffix}`}
               data-ga="detail_area_view_all"
               data-ga-area={b.area}
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-saffron-600 hover:text-sindoor-700"

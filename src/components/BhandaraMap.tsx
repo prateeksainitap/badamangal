@@ -25,6 +25,7 @@ import {
   styleForLocale,
 } from "@/lib/olaMaps";
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from "@/lib/lucknow";
+import { useCity } from "@/lib/city-context";
 import { stripBotProvenance } from "@/lib/sanitize";
 import type { Bhandara } from "@/types/bhandara";
 import { useLocaleFromContext } from "@/lib/locale-context";
@@ -95,6 +96,9 @@ export default function BhandaraMap({
   // either language (icon-only popup chrome), so we only need locale
   // for the share-text builder, not for any visible labels.
   const locale = useLocaleFromContext();
+  // Drives maxBounds below so panning is clamped to the city the
+  // visitor is actually browsing.
+  const activeCity = useCity();
   /** Keyed marker registry, kept for future features that need to look
    *  up a marker by its side-list entry key (`org:<id>` / `spot:<id>`).
    *  Currently unused but cheap to maintain. */
@@ -185,12 +189,32 @@ export default function BhandaraMap({
         // left behind (HMR / fast edits / dev tooling).
         ref.current.replaceChildren();
 
+        // TILE-BUDGET GUARDS (2026-07). Vector Tiles are ~98.5% of all
+        // Ola Maps usage on this project, so anything that lets the
+        // camera wander fetches tiles we will never show a bhandara on.
+        //
+        //  • maxBounds clamps panning to the active city plus a ~0.15deg
+        //    margin. Previously a visitor could drag from Lucknow to
+        //    Mumbai and stream tiles the whole way for no product value.
+        //  • maxZoom 17 is the practical ceiling for "which lane is this
+        //    bhandara on". Each extra zoom level past that is a fresh
+        //    tile set for a detail nobody needs.
+        //  • minZoom 9 stops the pinch-out-to-India gesture, which loads
+        //    a whole low-zoom pyramid to show a city we already framed.
+        const b = activeCity.bbox;
+        const M = 0.15;
         const map = await olaMaps.init({
           style: styleForLocale("en"),
           container: ref.current,
           center: [initialLng, initialLat],
           zoom: initialZoom,
           scrollZoom: false,
+          minZoom: 9,
+          maxZoom: 17,
+          maxBounds: [
+            [b.lngMin - M, b.latMin - M],
+            [b.lngMax + M, b.latMax + M],
+          ],
         });
 
         if (cancelled) {

@@ -48,6 +48,7 @@ import {
   useState,
 } from "react";
 import MentionHeatmap, { type GeoMention } from "@/components/MentionHeatmap";
+import { useInViewOnce } from "@/lib/useInViewOnce";
 import GalleryLightbox, {
   type GalleryItem,
 } from "@/components/GalleryLightbox";
@@ -337,6 +338,9 @@ export default function LiveChatterBoard({
    *  instead of going empty. Preferred only when geoMentions is empty. */
   heatmapFallback?: GeoMention[];
 }) {
+  // Defer the heatmap's Ola map until it is actually near the viewport.
+  const { ref: heatmapSlotRef, inView: heatmapInView } =
+    useInViewOnce<HTMLDivElement>();
   const [mentions, setMentions] = useState<ChatterMention[]>(initial);
   // Lightbox state shared across all chat bubbles. A click on any
   // photo opens GalleryLightbox with the bubble's photo array as the
@@ -915,7 +919,19 @@ export default function LiveChatterBoard({
             shared frame ties them visually so they read as "the live
             chat + its map" one instrument. */}
         <div className="chatter-glass relative grid rounded-2xl overflow-hidden lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:h-[40rem]">
-          <MentionHeatmap mentions={heatmapData} />
+          {/* Gated on visibility. This heatmap is a SECOND full Ola map
+              and it sits ~6,400px down the homepage, yet it used to
+              initialise on every single pageview, streaming vector
+              tiles for a panel almost nobody scrolls to. Vector Tiles
+              are ~98.5% of our Ola bill, so this was pure waste.
+              See lib/useInViewOnce.ts. */}
+          <div ref={heatmapSlotRef} className="min-h-[18rem] lg:min-h-0">
+            {heatmapInView ? (
+              <MentionHeatmap mentions={heatmapData} />
+            ) : (
+              <div aria-hidden className="h-full w-full bg-ink-900/40" />
+            )}
+          </div>
 
           {/* Chat panel, no glass / no border / no rounded chrome of
               its own anymore. Just a left-side hairline divider on lg+
