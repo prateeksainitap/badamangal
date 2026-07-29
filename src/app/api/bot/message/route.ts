@@ -75,6 +75,7 @@ import { hasProfanity } from "@/lib/profanity-filter";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ipHash, readClientIp } from "@/lib/crypto";
 import { invalidateHomepageStatsCache } from "@/lib/stats";
+import { isInAnyCity, resolveCityFromCoords, DEFAULT_CITY } from "@/lib/cities";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -119,19 +120,15 @@ const MIN_CONFIDENCE = 0.4;
 /** Lucknow bounding box (matches geocodeServer + admin/resolve-coords).
  *  Any lat/lng outside this is treated as "no location", pasting a
  *  share-pin from Delhi shouldn't put a dot on Lucknow's heatmap. */
-const LKO_BBOX = {
-  latMin: 26.6,
-  latMax: 27.0,
-  lngMin: 80.7,
-  lngMax: 81.2,
-};
+/**
+ * MULTI-CITY (2026-07): this used to be a hardcoded Lucknow bounding
+ * box. It now accepts a pin in ANY city on the registry, so the same
+ * ingest path serves Kanpur, Hardoi and Barabanki. Name kept so call
+ * sites below read unchanged; "inLucknow" now means "in one of our
+ * cities". Use resolveCityFromCoords() when you need to know WHICH.
+ */
 function inLucknow(lat: number, lng: number): boolean {
-  return (
-    lat >= LKO_BBOX.latMin &&
-    lat <= LKO_BBOX.latMax &&
-    lng >= LKO_BBOX.lngMin &&
-    lng <= LKO_BBOX.lngMax
-  );
+  return isInAnyCity(lat, lng);
 }
 
 type IngestBody = {
@@ -1152,6 +1149,13 @@ export async function POST(req: NextRequest) {
         confidence,
         lat: loc.lat,
         lng: loc.lng,
+        // Text-only chatter ("kahin bhandara ho raha hai?") has no pin,
+        // so there is nothing to attribute and it stays on the default
+        // city. Only coord-bearing mentions get a real city.
+        city:
+          loc.lat != null && loc.lng != null
+            ? (resolveCityFromCoords(loc.lat, loc.lng) ?? DEFAULT_CITY).slug
+            : DEFAULT_CITY.slug,
         locationSource: loc.source,
         locationLabel: loc.label,
         groupName,
@@ -1463,6 +1467,7 @@ async function ensureBhandaraSpot(
     data: {
       lat,
       lng,
+      city: (resolveCityFromCoords(lat, lng) ?? DEFAULT_CITY).slug,
       area: locationLabel,
       address: locationLabel,
       photoUrl: null,

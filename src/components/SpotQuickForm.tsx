@@ -11,6 +11,7 @@ import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { olaAutocomplete, olaReverseGeocode } from "@/lib/geocode";
 import { useLocaleFromContext } from "@/lib/locale-context";
+import { isInAnyCity } from "@/lib/cities";
 
 // Leaflet pin-drop map is client-only; lazy-load so it never ships in
 // the SSR bundle and only loads when the user opens the Edit panel.
@@ -51,7 +52,12 @@ type LocStatus =
 const DRAFT_KEY = "bm:spot:draft:v2";
 
 // Lucknow bounding box (same one /api/spots validates against).
-const LKO = { latMin: 26.6, latMax: 27.0, lngMin: 80.7, lngMax: 81.2 };
+/**
+ * MULTI-CITY (2026-07): was the Lucknow box inlined here. A citizen at
+ * a Kanpur bhandara had their pin silently treated as out-of-area.
+ * Now any served city counts.
+ */
+const inServedCity = (lat: number, lng: number) => isInAnyCity(lat, lng);
 
 /**
  * Spot form, designed for "1 minute, every age group".
@@ -200,10 +206,7 @@ export default function SpotQuickForm({
 
   const setManualCoords = (lat: number, lng: number) => {
     const inBounds =
-      lat >= LKO.latMin &&
-      lat <= LKO.latMax &&
-      lng >= LKO.lngMin &&
-      lng <= LKO.lngMax;
+      inServedCity(lat, lng);
     if (!inBounds) {
       setLocStatus("outOfBounds");
       setCoords({ lat, lng });
@@ -262,10 +265,7 @@ export default function SpotQuickForm({
         const lng = pos.coords.longitude;
 
         const inBounds =
-          lat >= LKO.latMin &&
-          lat <= LKO.latMax &&
-          lng >= LKO.lngMin &&
-          lng <= LKO.lngMax;
+          inServedCity(lat, lng);
         if (!inBounds) {
           setLocStatus("outOfBounds");
           setCoords({ lat, lng });

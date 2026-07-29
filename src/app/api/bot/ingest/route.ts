@@ -48,6 +48,7 @@ import { uploadToR2, deleteFromR2 } from "@/lib/r2";
 import { slugify, ensureUniqueSlug } from "@/lib/slugify";
 import { menuHiFor } from "@/lib/menu";
 import { resolveBhandaraCoords } from "@/lib/geocodeFallback";
+import { resolveCityFromCoords, DEFAULT_CITY } from "@/lib/cities";
 import { geocodeLucknow } from "@/lib/geocodeServer";
 
 export const runtime = "nodejs";
@@ -933,6 +934,10 @@ export async function POST(req: NextRequest) {
         nameHi: extracted.nameHi || fallbackNameHi,
         description,
         descriptionHi,
+        // Resolved from the geocoded pin, so a poster forwarded from a
+        // Kanpur WhatsApp group files itself into Kanpur with nothing
+        // for the sender or the operator to select.
+        city: (resolveCityFromCoords(lat, lng) ?? DEFAULT_CITY).slug,
         area: extracted.area ?? "",
         address: extracted.address || "Address pending admin review",
         addressHi: extracted.addressHi || null,
@@ -1343,6 +1348,7 @@ export async function POST(req: NextRequest) {
     data: {
       lat: spotLat,
       lng: spotLng,
+      city: (resolveCityFromCoords(spotLat, spotLng) ?? DEFAULT_CITY).slug,
       area: extracted.area ?? null,
       address: extracted.address || null,
       photoUrl,

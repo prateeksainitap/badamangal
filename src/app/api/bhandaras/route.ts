@@ -5,6 +5,7 @@ import { menuHiFor } from "@/lib/menu";
 import { createBhandaraWithSlugRetry, slugify } from "@/lib/slugify";
 import { submitSchema } from "@/lib/validation";
 import { geocodeLucknow } from "@/lib/geocodeServer";
+import { resolveCityFromCoords, DEFAULT_CITY } from "@/lib/cities";
 
 export const dynamic = "force-dynamic";
 
@@ -123,6 +124,11 @@ export async function POST(req: NextRequest) {
       descriptionHi: data.descriptionHi ?? null,
       address: data.address,
       addressHi: data.addressHi ?? null,
+      // Derived from the geocoded pin rather than asked for. Falls back
+      // to the default city only when the coords failed to resolve at
+      // all, in which case the row is already held PENDING below for a
+      // human to fix, so a wrong city cannot reach the public map.
+      city: (resolveCityFromCoords(lat, lng) ?? DEFAULT_CITY).slug,
       area: data.area,
       landmark: data.landmark ?? null,
       lat,

@@ -19,6 +19,7 @@ import { prisma } from "@/lib/db";
 import { MENU_KEYS, menuHiFor } from "@/lib/menu";
 import { createBhandaraWithSlugRetry, slugify } from "@/lib/slugify";
 import { isAdmin } from "@/lib/admin-auth";
+import { isInAnyCity, resolveCityFromCoords } from "@/lib/cities";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -95,8 +96,11 @@ const bhandaraInput = z.object({
   address: z.string().trim().min(5),
   addressHi: z.string().trim().optional().default(""),
   landmark: z.string().trim().optional().default(""),
-  lat: z.number().min(26.6).max(27.0),
-  lng: z.number().min(80.7).max(81.2),
+  // Sanity envelope only. The Lucknow box that used to live here made
+  // it impossible for an admin to publish a Kanpur or Hardoi listing;
+  // isInAnyCity() below is the real gate.
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
   tuesdayDates: z.array(adminDate).min(1),
   timeStart: z.string().regex(/^\d{2}:\d{2}$/),
   timeEnd: z
@@ -125,8 +129,11 @@ const bhandaraInput = z.object({
 });
 
 const spotInput = z.object({
-  lat: z.number().min(26.6).max(27.0),
-  lng: z.number().min(80.7).max(81.2),
+  // Sanity envelope only. The Lucknow box that used to live here made
+  // it impossible for an admin to publish a Kanpur or Hardoi listing;
+  // isInAnyCity() below is the real gate.
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
   area: areaInput.optional(),
   address: z.string().trim().max(200).optional(),
   caption: z.string().trim().max(200).optional(),

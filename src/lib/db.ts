@@ -2,6 +2,7 @@ import { PrismaClient, type Bhandara as DbBhandara } from "@prisma/client";
 import type { Area } from "@/lib/lucknow";
 import type { Bhandara } from "@/types/bhandara";
 import { stripBotProvenance } from "@/lib/sanitize";
+import type { CitySlug } from "@/lib/cities";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
@@ -285,6 +286,7 @@ export function toBhandara(record: DbBhandara): Bhandara {
     // mapper and therefore gets the cleaned prose only.
     description: stripBotProvenance(record.description),
     descriptionHi: stripBotProvenance(record.descriptionHi),
+    city: (record.city ?? "lucknow") as CitySlug,
     area: record.area as Area,
     address: record.address,
     addressHi: record.addressHi ?? undefined,

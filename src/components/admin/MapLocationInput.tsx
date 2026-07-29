@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { IconCheck } from "@/components/admin/AdminIcons";
+import { isInAnyCity } from "@/lib/cities";
 
 /**
  * Admin-only coordinate picker. Wraps the existing `lat` and `lng`
@@ -47,20 +48,11 @@ type Props = {
   autoResolvedFrom?: string;
 };
 
-const LKO_BBOX = {
-  latMin: 26.6,
-  latMax: 27.0,
-  lngMin: 80.7,
-  lngMax: 81.2,
-};
-
+/** MULTI-CITY (2026-07): true for a pin in ANY served city, not just
+ *  Lucknow. Name kept so the `inLucknow` result field below and its
+ *  consumers stay unchanged. */
 function inLucknow(lat: number, lng: number): boolean {
-  return (
-    lat >= LKO_BBOX.latMin &&
-    lat <= LKO_BBOX.latMax &&
-    lng >= LKO_BBOX.lngMin &&
-    lng <= LKO_BBOX.lngMax
-  );
+  return isInAnyCity(lat, lng);
 }
 
 export default function MapLocationInput({
@@ -231,7 +223,7 @@ export default function MapLocationInput({
             onChange={(e) => setLat(e.target.value)}
             className="rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
           />
-          <span className="text-xs text-cream-50/55 font-mono">Lucknow ≈ 26.6 – 27.0</span>
+          <span className="text-xs text-cream-50/55 font-mono">UP cities ≈ 26.3 – 27.6</span>
         </label>
         <label className="grid gap-1.5">
           <span className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
@@ -251,7 +243,7 @@ export default function MapLocationInput({
             onChange={(e) => setLng(e.target.value)}
             className="rounded-xl border border-cyan-400/20 bg-[#080A10]/70 backdrop-blur-sm px-3 py-2 text-cream-50 font-mono placeholder:text-cream-50/30 focus:outline-none focus:ring-2 focus:ring-cyan-400/45 focus:border-cyan-400/55 transition-colors"
           />
-          <span className="text-xs text-cream-50/55 font-mono">Lucknow ≈ 80.7 – 81.2</span>
+          <span className="text-xs text-cream-50/55 font-mono">UP cities ≈ 79.9 – 81.4</span>
         </label>
       </div>
 

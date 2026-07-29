@@ -36,6 +36,7 @@ import { geocodeLucknow } from "@/lib/geocodeServer";
 import { isAdmin } from "@/lib/admin-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ipHash, readClientIp } from "@/lib/crypto";
+import { isInAnyCity } from "@/lib/cities";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,19 +51,15 @@ const MIN_CONFIDENCE = 0.4;
  *  /api/bot/message; keeps the rolling window consistent across
  *  ingest paths. */
 const MENTION_TTL_HOURS = 24;
-const LKO_BBOX = {
-  latMin: 26.6,
-  latMax: 27.0,
-  lngMin: 80.7,
-  lngMax: 81.2,
-};
+/**
+ * MULTI-CITY (2026-07): this used to be a hardcoded Lucknow bounding
+ * box. It now accepts a pin in ANY city on the registry, so the same
+ * ingest path serves Kanpur, Hardoi and Barabanki. Name kept so call
+ * sites below read unchanged; "inLucknow" now means "in one of our
+ * cities". Use resolveCityFromCoords() when you need to know WHICH.
+ */
 function inLucknow(lat: number, lng: number): boolean {
-  return (
-    lat >= LKO_BBOX.latMin &&
-    lat <= LKO_BBOX.latMax &&
-    lng >= LKO_BBOX.lngMin &&
-    lng <= LKO_BBOX.lngMax
-  );
+  return isInAnyCity(lat, lng);
 }
 
 /** Inline Google-Maps-URL regex extractor (copy of the helper in

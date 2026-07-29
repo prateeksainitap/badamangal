@@ -31,6 +31,7 @@ import { isAdmin } from "@/lib/admin-auth";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ipHash, readClientIp } from "@/lib/crypto";
 import { OpenLocationCode } from "open-location-code";
+import { isInAnyCity } from "@/lib/cities";
 
 // Lucknow centroid; used as the reference point when recovering a
 // short Plus Code (e.g. "VXR6+QP") to a full one. We're in a
@@ -48,19 +49,15 @@ export const dynamic = "force-dynamic";
 // Lucknow bounding box (matches the public bhandara form + geocoder).
 // We use it as a sanity filter, any extracted point outside the box
 // is almost certainly wrong (typo, share of a different city's map).
-const LKO_BBOX = {
-  latMin: 26.6,
-  latMax: 27.0,
-  lngMin: 80.7,
-  lngMax: 81.2,
-};
+/**
+ * MULTI-CITY (2026-07): this used to be a hardcoded Lucknow bounding
+ * box. It now accepts a pin in ANY city on the registry, so the same
+ * ingest path serves Kanpur, Hardoi and Barabanki. Name kept so call
+ * sites below read unchanged; "inLucknow" now means "in one of our
+ * cities". Use resolveCityFromCoords() when you need to know WHICH.
+ */
 function inLucknow(lat: number, lng: number): boolean {
-  return (
-    lat >= LKO_BBOX.latMin &&
-    lat <= LKO_BBOX.latMax &&
-    lng >= LKO_BBOX.lngMin &&
-    lng <= LKO_BBOX.lngMax
-  );
+  return isInAnyCity(lat, lng);
 }
 
 /**

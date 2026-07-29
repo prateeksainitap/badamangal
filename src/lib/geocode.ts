@@ -16,6 +16,7 @@
 "use client";
 
 import { OLA_API_KEY } from "@/lib/olaMaps";
+import { DEFAULT_CITY, isInAnyCity } from "@/lib/cities";
 
 const AUTOCOMPLETE_URL = "https://api.olamaps.io/places/v1/autocomplete";
 const REVERSE_URL = "https://api.olamaps.io/places/v1/reverse-geocode";
@@ -23,13 +24,7 @@ const REVERSE_URL = "https://api.olamaps.io/places/v1/reverse-geocode";
 // Lucknow bounding box, biases autosuggest results to the city.
 // Same box the previous Nominatim queries used, so search relevance is
 // at least as good as before.
-const LUCKNOW_BBOX = {
-  latMin: 26.6,
-  latMax: 27.0,
-  lngMin: 80.7,
-  lngMax: 81.2,
-};
-const LUCKNOW_CENTER = { lat: 26.8467, lng: 80.9462 };
+const LUCKNOW_CENTER = DEFAULT_CITY.center;
 
 // Cap how many cached entries we hold in memory. 200 covers a typical
 // session's worth of unique searches without ballooning memory if a bot
@@ -275,11 +270,12 @@ function extractAreaFromFormatted(formatted: string): string | null {
 }
 
 /** Bbox check, used to flag pins dropped outside Lucknow. */
+/**
+ * MULTI-CITY (2026-07): was a Lucknow-only bbox test. Now true for a
+ * pin in ANY served city. Name preserved because it is imported by
+ * several form components; treat it as "is this pin somewhere we
+ * cover". Use resolveCityFromCoords() to find out which city.
+ */
 export function isInLucknow(lat: number, lng: number): boolean {
-  return (
-    lat >= LUCKNOW_BBOX.latMin &&
-    lat <= LUCKNOW_BBOX.latMax &&
-    lng >= LUCKNOW_BBOX.lngMin &&
-    lng <= LUCKNOW_BBOX.lngMax
-  );
+  return isInAnyCity(lat, lng);
 }

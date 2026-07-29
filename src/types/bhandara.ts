@@ -1,4 +1,5 @@
 import type { Area } from "@/lib/lucknow";
+import type { CitySlug } from "@/lib/cities";
 
 export type Bhandara = {
   id: string;
@@ -7,6 +8,10 @@ export type Bhandara = {
   nameHi: string;
   description?: string;
   descriptionHi?: string;
+  /** City slug this listing belongs to. See @/lib/cities. Present on
+   *  every row since the 2026-07 multi-city migration (legacy rows
+   *  backfilled to "lucknow"). */
+  city: CitySlug;
   area: Area;
   address: string;
   addressHi?: string;

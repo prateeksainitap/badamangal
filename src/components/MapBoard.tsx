@@ -30,6 +30,8 @@ import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import { isLiveChatOpenToday } from "@/lib/live-chat-schedule";
+import { useCity } from "@/lib/city-context";
+import { isInCity } from "@/lib/cities";
 
 type LiveSpotInput = {
   id: string;
@@ -112,6 +114,18 @@ export default function MapBoard({
   const locale = useLocaleFromContext();
   const isHi = locale === "hi";
   const t = strings[locale];
+  // City scoping happens on the CLIENT, not in the page's Prisma
+  // query, on purpose. The homepage is ISR-cached (revalidate 60) and
+  // reading a city cookie server-side would force per-request
+  // rendering, which is exactly the 3-4s click-to-paint regression
+  // this codebase already fixed once for locale. Payload cost is nil
+  // today (every row is Lucknow) and stays small while the cities are
+  // a handful of UP districts.
+  const activeCity = useCity();
+  // Spots carry no city field on the wire, so they are scoped
+  // geometrically against the active city's bbox instead. Same answer,
+  // no extra plumbing.
+  //
   // Live chat only runs on Tue/Sat IST. On other days we keep the
   // community-count + WhatsApp link in the header chip but drop the
   // green LIVE pill so the chrome doesn't lie about being on air.
@@ -153,9 +167,18 @@ export default function MapBoard({
   // Search-only filter (filter chip NOT applied), drives tab counts so
   // the chips reflect "how many in each bucket match the search". The
   // map + side list further narrow by the filter chip below.
+  const cityListings = useMemo(
+    () => listings.filter((b) => !b.city || b.city === activeCity.slug),
+    [listings, activeCity.slug],
+  );
+  const citySpots = useMemo(
+    () => liveSpots.filter((s) => isInCity(s.lat, s.lng, activeCity)),
+    [liveSpots, activeCity],
+  );
+
   const searchedListings = useMemo(() => {
-    if (!normQuery) return listings;
-    return listings.filter((b) => {
+    if (!normQuery) return cityListings;
+    return cityListings.filter((b) => {
       const haystack = [
         b.name,
         b.nameHi,
@@ -172,11 +195,11 @@ export default function MapBoard({
         .toLowerCase();
       return haystack.includes(normQuery);
     });
-  }, [listings, normQuery]);
+  }, [cityListings, normQuery]);
 
   const searchedSpots = useMemo(() => {
-    if (!normQuery) return liveSpots;
-    return liveSpots.filter((s) => {
+    if (!normQuery) return citySpots;
+    return citySpots.filter((s) => {
       const haystack = [
         s.caption,
         s.area,
@@ -188,7 +211,7 @@ export default function MapBoard({
         .toLowerCase();
       return haystack.includes(normQuery);
     });
-  }, [liveSpots, normQuery]);
+  }, [citySpots, normQuery]);
 
   const filteredListings = useMemo(
     () => (filter === "spotted" ? [] : searchedListings),

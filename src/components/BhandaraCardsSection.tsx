@@ -13,6 +13,7 @@ import { AREAS } from "@/lib/lucknow";
 import { areaToSlug } from "@/lib/areaSlug";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import { expandBhandarasByDate } from "@/lib/dates";
+import { useCity } from "@/lib/city-context";
 
 /**
  * Locale-derived heading/locale/isHi were once props (server-rendered
@@ -121,9 +122,13 @@ export default function BhandaraCardsSection({
     return Array.from(set).sort();
   }, [listings]);
 
+  // See MapBoard for why city scoping is client-side rather than in
+  // the page's Prisma query (ISR caching).
+  const activeCity = useCity();
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return listings.filter((b) => {
+      if (b.city && b.city !== activeCity.slug) return false;
       if (area !== "all" && b.area !== area) return false;
       if (tuesday !== "all" && !b.tuesdayDates.includes(tuesday)) return false;
       if (needle) {
@@ -136,7 +141,7 @@ export default function BhandaraCardsSection({
       }
       return true;
     });
-  }, [listings, area, tuesday, q]);
+  }, [listings, area, tuesday, q, activeCity.slug]);
 
   // Total CARD count = expanded-by-date instance count, not the raw
   // listings.length. One bhandara record with 4 upcoming Tuesdays

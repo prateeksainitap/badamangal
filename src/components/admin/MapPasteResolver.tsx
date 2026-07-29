@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { trackEvent } from "@/lib/ga";
 import { IconCheck } from "@/components/admin/AdminIcons";
+import { isInAnyCity } from "@/lib/cities";
 
 /**
  * Compact "paste anything Google-Maps-y → get coordinates" widget.
@@ -34,20 +35,11 @@ type Feedback =
   | { kind: "ok"; source: string; inLucknow: boolean }
   | { kind: "err"; message: string };
 
-const LKO_BBOX = {
-  latMin: 26.6,
-  latMax: 27.0,
-  lngMin: 80.7,
-  lngMax: 81.2,
-};
-
+/** MULTI-CITY (2026-07): true for a pin in ANY served city, not just
+ *  Lucknow. Name kept so the `inLucknow` result field below and its
+ *  consumers stay unchanged. */
 function inLucknow(lat: number, lng: number): boolean {
-  return (
-    lat >= LKO_BBOX.latMin &&
-    lat <= LKO_BBOX.latMax &&
-    lng >= LKO_BBOX.lngMin &&
-    lng <= LKO_BBOX.lngMax
-  );
+  return isInAnyCity(lat, lng);
 }
 
 export default function MapPasteResolver({
