@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import LangToggle from "@/components/LangToggle";
+import CitySwitcher from "@/components/CitySwitcher";
 import { JaliCorner } from "@/components/ornaments";
 import { useT } from "@/lib/useT";
 import { isLiveChatOpenToday } from "@/lib/live-chat-schedule";
@@ -203,6 +204,12 @@ function HeaderInner() {
 
         {/* Right cluster */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* City before language: you pick WHERE you are, then how you
+              want to read it. Hidden on the smallest screens for the
+              same reason LangToggle is, the mobile drawer carries both. */}
+          <div className="hidden sm:block">
+            <CitySwitcher />
+          </div>
           <div className="hidden sm:block">
             <LangToggle />
           </div>

@@ -19,6 +19,7 @@ import ScrollToTopButton from "@/components/ScrollToTopButton";
 import LiveActivityTicker from "@/components/LiveActivityTicker";
 import { ToastProvider } from "@/components/Toast";
 import { LocaleProvider } from "@/lib/locale-context";
+import { CityProvider } from "@/lib/city-context";
 // SITE_URL is the canonical site origin (https://badamangal.com).
 // Sourced from src/lib/seo.ts so this file and the rest of the
 // codebase share ONE constant with ONE safe fallback. metadataBase
@@ -253,6 +254,7 @@ export default async function RootLayout({
         className="paper text-ink-900 font-mukta min-h-dvh flex flex-col"
       >
         <LocaleProvider value={initialLocale}>
+        <CityProvider>
         <ToastProvider>
           {isAdmin ? (
             // Admin world: no public Header/Footer, no Spot CTA, no
@@ -287,6 +289,7 @@ export default async function RootLayout({
             </>
           )}
         </ToastProvider>
+        </CityProvider>
         </LocaleProvider>
 
         {gaId ? (

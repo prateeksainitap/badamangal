@@ -25,6 +25,19 @@ model Bhandara {
   // location
   address           String
   addressHi         String?
+  /// Which city this bhandara belongs to. Slug from src/lib/cities.ts
+  /// ("lucknow" | "kanpur" | "hardoi" | "barabanki").
+  ///
+  /// Added 2026-07 for the multi-city expansion. Defaults to "lucknow"
+  /// because every row that existed before this column WAS Lucknow, the
+  /// product had no other city. Plain String + default (not an enum),
+  /// matching this schema's convention everywhere else: adding a city
+  /// should be a data edit in the registry, never an enum migration.
+  ///
+  /// NOTE: `area` alone can never identify a city. Several area names
+  /// legitimately repeat across cities (Kalyanpur is in both Lucknow
+  /// and Kanpur; Civil Lines is in three). Always filter on `city`.
+  city              String           @default("lucknow")
   area              String // user-facing curated tag (Aliganj, Hazratganj, ...)
   landmark          String?
   lat               Float
@@ -101,6 +114,9 @@ model Bhandara {
   @@index([status])
   @@index([area])
   @@index([senderLid])
+  /// Every public listing query is now city-scoped, and the homepage
+  /// additionally filters on status, so lead with city.
+  @@index([city, status])
 }
 
 // Single-row counter table for site-wide stats (visitor count, etc.).
@@ -127,6 +143,11 @@ model Spot {
   // location
   lat               Float
   lng               Float
+  /// City slug, see the same field on Bhandara. Resolved from the
+  /// spot's own coordinates at ingest via resolveCityFromCoords(), so
+  /// a citizen photo lands in the right city's feed automatically
+  /// without the submitter picking anything.
+  city              String    @default("lucknow")
   area              String? // optional curated tag (Aliganj, Gomti Nagar, …)
   address           String? // free-text or reverse-geocoded
   // content
@@ -159,6 +180,8 @@ model Spot {
 
   @@index([status, expiresAt])
   @@index([area, status])
+  /// City-scoped live feed: "what is happening in Kanpur right now".
+  @@index([city, status, expiresAt])
 }
 
 // ── Contact-form messages ───────────────────────────────────────────────
@@ -715,6 +738,10 @@ model BhandaraMention {
   locationSource String    @default("none")
   /// Human-friendly area label, "Hazratganj", "near GPO", etc. Often
   /// pulled from the same message text the location came from.
+  /// City slug, see Bhandara.city. Resolved from lat/lng when the
+  /// mention carries a location; falls back to the default city when
+  /// it does not (a text-only "kahan ho raha hai" has no coords).
+  city           String    @default("lucknow")
   locationLabel  String?
   // provenance
   groupName      String?
@@ -748,6 +775,7 @@ model BhandaraMention {
   @@index([status, expiresAt])
   @@index([status, expiresAt, lat, lng])
   @@index([createdAt])
+  @@index([city, status, expiresAt])
 }
 
 /// Audit log for every WhatsApp bot ingestion attempt that hits
@@ -830,7 +858,7 @@ model BotIngestionLog {
 ///   - Razorpay onramp: razorpayPaymentId unique-indexed, will hold
 ///     the bank reference once webhook integration ships
 model DonationIntent {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   /// Null for PLATFORM donations (support-the-platform taps, no bhandara).
   /// Set for organiser/bhandara sponsorship taps.
   bhandaraId String?

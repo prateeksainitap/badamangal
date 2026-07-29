@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
+import { isInAnyCity, resolveCityFromCoords } from "@/lib/cities";
 import { ipHash, readClientIp } from "@/lib/crypto";
 import { prisma } from "@/lib/db";
 import { stripBotProvenance } from "@/lib/sanitize";
@@ -62,8 +63,15 @@ function isAllowedPhotoUrl(value: string): boolean {
 // optional.
 const bodySchema = z
   .object({
-    lat: z.number().min(26.6).max(27.0),
-    lng: z.number().min(80.7).max(81.2),
+    // MULTI-CITY (2026-07): these were min(26.6).max(27.0) /
+    // min(80.7).max(81.2), i.e. the Lucknow box inlined into the
+    // validator. A citizen standing at a Kanpur bhandara got a bare
+    // "Validation failed" with no hint that their city was the
+    // problem. Now the range is only a sanity envelope and the real
+    // check is isInAnyCity() in the refine below, which also tells us
+    // WHICH city to stamp on the row.
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
     photoUrl: z
       .string()
       .trim()
@@ -112,6 +120,11 @@ const bodySchema = z
     address: z.string().trim().max(200).optional(),
     reporterName: z.string().trim().min(1).max(60).optional(),
     language: z.enum(["hi", "en", "mixed"]).default("en"),
+  })
+  .refine((v) => isInAnyCity(v.lat, v.lng), {
+    message:
+      "Those coordinates are outside every city BadaMangal covers right now.",
+    path: ["lat"],
   })
   .refine((d) => Boolean(d.photoUrl) || Boolean(d.caption), {
     message: "Add a photo or write a line about the bhandara.",
@@ -309,6 +322,12 @@ export async function POST(req: NextRequest) {
     data: {
       lat: data.lat,
       lng: data.lng,
+      // Derived from the pin, never from user input, so a sighting
+      // files itself into the right city's feed with nothing for the
+      // submitter to choose. The schema refine above already proved
+      // the coords are inside some city, so the ?? is unreachable in
+      // practice and only satisfies the null-returning signature.
+      city: resolveCityFromCoords(data.lat, data.lng)?.slug ?? "lucknow",
       area: data.area ?? null,
       address: data.address ?? null,
       photoUrl: data.photoUrl ?? null,

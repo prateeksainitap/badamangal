@@ -24,41 +24,40 @@
  *   that key's dashboard settings.
  */
 
-const LKO_BBOX = {
-  latMin: 26.6,
-  latMax: 27.0,
-  lngMin: 80.7,
-  lngMax: 81.2,
-};
-import { AREAS } from "@/lib/lucknow";
+import {
+  ALL_CITIES,
+  DEFAULT_CITY,
+  isInCity,
+  resolveCityFromCoords,
+  type City,
+} from "@/lib/cities";
 
-const LKO_CENTER = { lat: 26.8467, lng: 80.9462 };
+/**
+ * MULTI-CITY (2026-07): this module used to hardcode a single Lucknow
+ * bounding box, centre, and area list. Every exported function now
+ * takes an optional `city` that DEFAULTS to Lucknow, so all existing
+ * call sites keep their exact previous behaviour while Kanpur, Hardoi
+ * and Barabanki callers can pass their own city. Without this, a
+ * Kanpur address was geocoded, found correctly by Ola, and then
+ * discarded by the Lucknow bbox filter, which is why listing a Kanpur
+ * bhandara was impossible rather than merely wrong.
+ */
 
-/** Lowercased lookup of the curated Lucknow area list, used to bias
- *  reverse-geocode toward recognizable neighbourhood names over OSM's
- *  generic residential labels ("Sector 4" → prefer "Aliganj" if the
- *  same response has both). */
-const KNOWN_AREAS_LC = new Set<string>(AREAS.map((a) => a.toLowerCase()));
-/** Substring check too: "Jankipuram Extension" should match the
- *  curated "Jankipuram", and the chatter card shows "Jankipuram" as a
- *  cleaner label than the verbose extension name. */
-function matchesKnownArea(s: string): string | null {
+/** Substring-tolerant match against a city's curated area list, used
+ *  to bias reverse-geocode toward recognizable neighbourhood names
+ *  over OSM's generic residential labels ("Sector 4" → prefer
+ *  "Aliganj" if the same response has both). "Jankipuram Extension"
+ *  should match the curated "Jankipuram" too. */
+function matchesKnownArea(s: string, city: City = DEFAULT_CITY): string | null {
   const lc = s.trim().toLowerCase();
-  if (KNOWN_AREAS_LC.has(lc)) return s.trim();
-  for (const a of AREAS) {
+  for (const a of city.areas) {
+    if (a.toLowerCase() === lc) return s.trim();
+  }
+  for (const a of city.areas) {
     const al = a.toLowerCase();
     if (lc.includes(al) || al.includes(lc)) return a;
   }
   return null;
-}
-
-function inLucknow(lat: number, lng: number): boolean {
-  return (
-    lat >= LKO_BBOX.latMin &&
-    lat <= LKO_BBOX.latMax &&
-    lng >= LKO_BBOX.lngMin &&
-    lng <= LKO_BBOX.lngMax
-  );
 }
 
 export type ServerGeocodeHit = {
@@ -70,6 +69,7 @@ export type ServerGeocodeHit = {
 
 export async function geocodeLucknow(
   address: string,
+  city: City = DEFAULT_CITY,
 ): Promise<ServerGeocodeHit | null> {
   // Prefer the dedicated server key. Fall back to the public key
   // (with the legacy spoof, which only works if `localhost:3030`
@@ -118,7 +118,7 @@ export async function geocodeLucknow(
         if (
           typeof lat === "number" &&
           typeof lng === "number" &&
-          inLucknow(lat, lng)
+          isInCity(lat, lng, city)
         ) {
           return {
             lat,
@@ -138,7 +138,7 @@ export async function geocodeLucknow(
     const u = new URL("https://api.olamaps.io/places/v1/autocomplete");
     u.searchParams.set("input", address);
     u.searchParams.set("api_key", key);
-    u.searchParams.set("location", `${LKO_CENTER.lat},${LKO_CENTER.lng}`);
+    u.searchParams.set("location", `${city.center.lat},${city.center.lng}`);
     u.searchParams.set("radius", "15000");
     // 5s timeout (see Ola geocode call above for rationale).
     const res = await fetch(u.toString(), {
@@ -160,7 +160,7 @@ export async function geocodeLucknow(
         if (
           typeof lat === "number" &&
           typeof lng === "number" &&
-          inLucknow(lat, lng)
+          isInCity(lat, lng, city)
         ) {
           return {
             lat,
@@ -213,7 +213,16 @@ export type ReverseGeocodeHit = {
 export async function reverseGeocodeLucknow(
   lat: number,
   lng: number,
+  cityOverride?: City,
 ): Promise<ReverseGeocodeHit | null> {
+  // The coordinates themselves tell us which city we are in, so unlike
+  // the forward geocoder this needs no caller cooperation: an existing
+  // call site that passes nothing still gets the right area list, now
+  // for whichever of the four cities the pin actually falls in.
+  // Falls back to Lucknow for a pin outside every served city so the
+  // label logic below still has an area list to bias toward.
+  const city =
+    cityOverride ?? resolveCityFromCoords(lat, lng) ?? DEFAULT_CITY;
   // Try Nominatim FIRST. Ola Maps' reverse-geocode endpoint is
   // unreliable (during testing it returned consistent `zero_results`
   // for known-good Lucknow coords, even though forward geocode worked
@@ -224,7 +233,7 @@ export async function reverseGeocodeLucknow(
   // we cache results in-process so repeat shares of the same pin
   // don't re-hit the API. Both are easy at our volume (a few hundred
   // bot messages/day at peak).
-  const nominatim = await reverseGeocodeNominatim(lat, lng);
+  const nominatim = await reverseGeocodeNominatim(lat, lng, city);
   if (nominatim) return nominatim;
 
   // ── Ola Maps fallback ───────────────────────────────────────────
@@ -335,6 +344,7 @@ function nominatimCacheKey(lat: number, lng: number): string {
 async function reverseGeocodeNominatim(
   lat: number,
   lng: number,
+  city: City,
 ): Promise<ReverseGeocodeHit | null> {
   const key = nominatimCacheKey(lat, lng);
   const cached = nominatimCache.get(key);
@@ -368,7 +378,7 @@ async function reverseGeocodeNominatim(
       );
     }
     nominatimLastReqAt = Date.now();
-    const result = await nominatimAttemptAtZoom(lat, lng, zoom);
+    const result = await nominatimAttemptAtZoom(lat, lng, zoom, city);
     if (!result) continue;
     if (result.knownArea && !knownAreaHit) {
       knownAreaHit = result.knownArea;
@@ -407,6 +417,7 @@ async function nominatimAttemptAtZoom(
   lat: number,
   lng: number,
   zoom: number,
+  city: City,
 ): Promise<{ knownArea: ReverseGeocodeHit | null; anyUseful: ReverseGeocodeHit | null } | null> {
   try {
     const url =
@@ -446,9 +457,13 @@ async function nominatimAttemptAtZoom(
     // fall through to the next more-specific candidate, ending with
     // display_name's first chunk which is usually the place name
     // ("Tiwari Market", "Patrakar Puram", etc).
+    // Every served city + state name is a useless "area" label no
+    // matter which city the pin is in ("Kanpur" tells a Kanpur user
+    // nothing). Built from the registry so a new city is blocklisted
+    // automatically rather than being forgotten here.
     const GENERIC_BLOCKLIST = new Set([
-      "lucknow",
-      "uttar pradesh",
+      ...ALL_CITIES.map((c) => c.name.toLowerCase()),
+      ...ALL_CITIES.map((c) => c.state.toLowerCase()),
       "india",
       "sadar",
       "north",
@@ -502,7 +517,7 @@ async function nominatimAttemptAtZoom(
         };
       }
       if (!knownArea) {
-        const known = matchesKnownArea(c);
+        const known = matchesKnownArea(c, city);
         if (known) {
           knownArea = {
             label: known.slice(0, 60),
