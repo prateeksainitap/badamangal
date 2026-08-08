@@ -37,6 +37,25 @@ export const dynamic = "force-dynamic";
  * Rate-limited per IP so a scraper can't pollute the audit table by
  * looping the URL.
  */
+/**
+ * Every response from this route carries `X-Robots-Tag: noindex`.
+ *
+ * robots.txt already disallows /d/ (added 2026-08 after Search Console
+ * reported "Blocked due to other 4xx issue", which was this route's
+ * 429 rate-limit response). This header is the belt to that braces:
+ * robots.txt only stops well-behaved crawlers from FETCHING, whereas
+ * this tells anything that does fetch not to index the result. Cheap,
+ * and it covers crawlers that ignore robots.txt as well as the window
+ * before a robots.txt change propagates.
+ */
+const NOINDEX = { "X-Robots-Tag": "noindex, nofollow" } as const;
+
+function redirectNoIndex(to: string): NextResponse {
+  const res = NextResponse.redirect(to, 302);
+  res.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return res;
+}
+
 export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
@@ -55,7 +74,10 @@ export async function GET(
   if (!limit.ok) {
     return new NextResponse("rate_limited", {
       status: 429,
-      headers: { "Retry-After": String(limit.retryAfterSec) },
+      headers: {
+        "Retry-After": String(limit.retryAfterSec),
+        ...NOINDEX,
+      },
     });
   }
 
@@ -75,7 +97,7 @@ export async function GET(
   // confused scanner at a venue lands somewhere useful instead of an
   // error page that looks broken in front of a queue.
   if (!bh || bh.status !== "APPROVED") {
-    return NextResponse.redirect(SITE_URL, 302);
+    return redirectNoIndex(SITE_URL);
   }
 
   // Bhandara found but no UPI configured, send the donor to the
@@ -83,7 +105,7 @@ export async function GET(
   // organiser's phone, and contact directly. Better fallback than a
   // dead 404.
   if (!bh.upiId) {
-    return NextResponse.redirect(`${SITE_URL}/bhandara/${bh.slug}`, 302);
+    return redirectNoIndex(`${SITE_URL}/bhandara/${bh.slug}`);
   }
 
   const userAgent = (req.headers.get("user-agent") ?? "").slice(0, 240);
@@ -135,5 +157,5 @@ export async function GET(
   });
   const upiDeepLink = `upi://pay?${params.toString()}`;
 
-  return NextResponse.redirect(upiDeepLink, 302);
+  return redirectNoIndex(upiDeepLink);
 }
