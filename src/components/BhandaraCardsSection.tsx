@@ -61,7 +61,12 @@ export default function BhandaraCardsSection({
   const isHi = locale === "hi";
   const langSuffix = isHi ? "" : "?lang=en";
   const t = strings[locale];
-  const heading = isPastSeason ? t.cards.sectionHeadingPast : t.cards.sectionHeading;
+  // See MapBoard for why city scoping is client-side rather than in
+  // the page's Prisma query (ISR caching).
+  const activeCity = useCity();
+  const heading = isPastSeason
+    ? t.cards.sectionHeadingPast(isHi ? activeCity.nameHi : activeCity.name)
+    : t.cards.sectionHeading;
   const [area, setArea] = useState<"all" | string>("all");
   const [tuesday, setTuesday] = useState<DateFilter>("all");
   // Current page of the card grid, 1-indexed. Reset to 1 whenever the
@@ -122,9 +127,6 @@ export default function BhandaraCardsSection({
     return Array.from(set).sort();
   }, [listings]);
 
-  // See MapBoard for why city scoping is client-side rather than in
-  // the page's Prisma query (ISR caching).
-  const activeCity = useCity();
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return listings.filter((b) => {
@@ -152,10 +154,24 @@ export default function BhandaraCardsSection({
   // Uses `listings` (not `filtered`) so the headline stays stable as
   // the visitor applies filter chips, matching the design intent
   // documented in the totalListed-prop comment below.
-  const totalCardCount = useMemo(
-    () => expandBhandarasByDate(listings).length,
-    [listings],
+  // Scoped to the active city. `listings` covers every city, so an
+  // unscoped count made the Kanpur heading read "267 Bhandaras Kanpur
+  // served this season" while the grid below correctly showed none.
+  const cityListings = useMemo(
+    () => listings.filter((b) => !b.city || b.city === activeCity.slug),
+    [listings, activeCity.slug],
   );
+  const totalCardCount = useMemo(
+    () => expandBhandarasByDate(cityListings).length,
+    [cityListings],
+  );
+  // Prefer the server's season-cumulative total ONLY while browsing the
+  // city those totals were computed for; otherwise report this city's
+  // own real count.
+  const headlineCount =
+    cityListings.length === listings.length && typeof totalListed === "number"
+      ? totalListed
+      : totalCardCount;
 
   // Expand once, shared by both the page count and the slice below,
   // so pagination always operates on the same per-occurrence instances
@@ -231,7 +247,7 @@ export default function BhandaraCardsSection({
               the moment the user picks an area); the row below shows
               the filtered count separately. */}
           <span className="text-saffron-600 tabular-nums mr-1">
-            {totalListed ?? totalCardCount}
+            {headlineCount}
           </span>
           {heading}
         </h2>

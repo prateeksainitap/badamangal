@@ -58,7 +58,9 @@ type Dict = {
   };
   cards: {
     sectionHeading: string;
-    sectionHeadingPast: string;
+    /** Takes the active city's display name. Hardcoding "Lucknow"
+     *  here made a Kanpur visitor read "Bhandaras Lucknow served". */
+    sectionHeadingPast: (city: string) => string;
     timeAt: string;
     servesPerDay: string;
   };
@@ -280,7 +282,7 @@ const en: Dict = {
   },
   cards: {
     sectionHeading: "Bhandaras listed across the city",
-    sectionHeadingPast: "Bhandaras Lucknow served this season",
+    sectionHeadingPast: (city) => `Bhandaras ${city} served this season`,
     timeAt: "Serving from",
     servesPerDay: "plates / day",
   },
@@ -591,7 +593,7 @@ const hi: Dict = {
   },
   cards: {
     sectionHeading: "शहर भर में सूचीबद्ध भंडारे",
-    sectionHeadingPast: "इस सीज़न लखनऊ ने जो परोसा",
+    sectionHeadingPast: (city) => `इस सीज़न ${city} ने जो परोसा`,
     timeAt: "समय",
     servesPerDay: "थाली प्रतिदिन",
   },

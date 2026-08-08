@@ -131,19 +131,38 @@ export default function MapBoard({
   // community-count + WhatsApp link in the header chip but drop the
   // green LIVE pill so the chrome doesn't lie about being on air.
   const chatLive = isLiveChatOpenToday();
-  // Section-heading count, prefer the season-cumulative totals
-  // (every APPROVED bhandara + every APPROVED spot ever) so the
-  // headline reflects what the project has TRACKED this season, not
-  // just what's pinned on the map right now. The on-map subset
-  // shrinks as past-dated bhandaras drop off `hasUpcomingDate` and
-  // spots roll past their 8h TTL, but those are still real bhandaras
-  // the community fed into the directory, they should count toward
-  // the "All N" headline. Falls back to the on-map array lengths so
-  // older callers / SSR paths without stats still render a number.
-  const totalCount =
-    typeof totalListed === "number" && typeof totalSpotted === "number"
-      ? totalListed + totalSpotted
-      : listings.length + liveSpots.length;
+
+  const cityListings = useMemo(
+    () => listings.filter((b) => !b.city || b.city === activeCity.slug),
+    [listings, activeCity.slug],
+  );
+  const citySpots = useMemo(
+    () => liveSpots.filter((s) => isInCity(s.lat, s.lng, activeCity)),
+    [liveSpots, activeCity],
+  );
+
+  // Section-heading count. We prefer the season-cumulative totals from
+  // the server (every APPROVED bhandara + spot ever) so the headline
+  // reflects what the project TRACKED this season, not just what is
+  // pinned right now, which shrinks as rows drop off the upcoming
+  // filter and spots roll past their TTL.
+  //
+  // But those totals cover EVERY city, so
+  // using them directly made the chips read "Listed 267" while browsing
+  // Kanpur, which has none. Fall back to the server totals only when the
+  // active city is the one those totals were computed for (i.e. nothing
+  // got filtered out), which keeps Lucknow's season-cumulative headline
+  // intact while other cities report their own real numbers.
+  const cityIsWhole = cityListings.length === listings.length;
+  const scopedListed =
+    cityIsWhole && typeof totalListed === "number"
+      ? totalListed
+      : cityListings.length;
+  const scopedSpotted =
+    cityIsWhole && typeof totalSpotted === "number"
+      ? totalSpotted
+      : citySpots.length;
+  const totalCount = scopedListed + scopedSpotted;
   const heading = isPastSeason
     ? t.map.sectionHeadingPast(totalCount)
     : t.map.sectionHeading(totalCount);
@@ -175,15 +194,6 @@ export default function MapBoard({
   // Search-only filter (filter chip NOT applied), drives tab counts so
   // the chips reflect "how many in each bucket match the search". The
   // map + side list further narrow by the filter chip below.
-  const cityListings = useMemo(
-    () => listings.filter((b) => !b.city || b.city === activeCity.slug),
-    [listings, activeCity.slug],
-  );
-  const citySpots = useMemo(
-    () => liveSpots.filter((s) => isInCity(s.lat, s.lng, activeCity)),
-    [liveSpots, activeCity],
-  );
-
   const searchedListings = useMemo(() => {
     if (!normQuery) return cityListings;
     return cityListings.filter((b) => {
@@ -279,18 +289,12 @@ export default function MapBoard({
     {
       key: "listed",
       label: isHi ? "लिस्टेड" : "Listed",
-      count:
-        normQuery || typeof totalListed !== "number"
-          ? searchedListings.length
-          : totalListed,
+      count: normQuery ? searchedListings.length : scopedListed,
     },
     {
       key: "spotted",
       label: isHi ? "स्पॉट" : "Spotted",
-      count:
-        normQuery || typeof totalSpotted !== "number"
-          ? searchedSpots.length
-          : totalSpotted,
+      count: normQuery ? searchedSpots.length : scopedSpotted,
     },
   ];
 
