@@ -279,6 +279,9 @@ function FooterInner() {
             <span aria-hidden className="text-gold-500/50">·</span>
             <span>{t.footer.rights}</span>
           </p>
+          <p className="mt-2">
+            Operated by Shubhkritya Technologies Private Limited · CIN U62099UP2026PTC252432
+          </p>
         </div>
       </div>
     </footer>
