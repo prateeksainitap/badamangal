@@ -10,7 +10,7 @@ export default function OG() {
     kicker: "Resources · Aarti",
     titleHi: "हनुमान आरती",
     titleEn: "Hanuman Aarti",
-    subtitle: "Aarti Kije Hanuman Lala Ki, with verified audio and bilingual text.",
+    subtitle: "Aarti Kije Hanuman Lala Ki, with the full bilingual text.",
     accent: "sindoor",
   });
 }

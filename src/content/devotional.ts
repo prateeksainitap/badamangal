@@ -63,9 +63,9 @@ export const CHALISA: DevotionalText = {
   sourceAttribution:
     "Traditional devotional text",
   audioVideoId: null,
-  audioUrl: "/audio/hanuman-chalisa.mp3",
+  audioUrl: null,
   editorialNotes:
-    "The Hanuman Chalisa is forty quatrains preceded by two introductory dohas, composed by Goswami Tulsidas in the 16th century. Press play above to listen along.",
+    "The Hanuman Chalisa is forty quatrains preceded by two introductory dohas, composed by Goswami Tulsidas in the 16th century.",
   // Canonical Hanuman Chalisa: two opening dohas, 40 chaupais, one
   // closing doha. Devanagari is the standard Gita Press / Wikisource
   // text, public domain (Tulsidas, 16th c.). Roman + English fields
@@ -147,9 +147,9 @@ export const AARTI: DevotionalText = {
   sourceAttribution:
     "Traditional devotional text",
   audioVideoId: null,
-  audioUrl: "/audio/hanuman-aarti.mp3",
+  audioUrl: null,
   editorialNotes:
-    "“Aarti Kije Hanuman Lala Ki”, the aarti sung at most Lucknow Hanuman temples on Tuesday evenings. Press play above to listen along.",
+    "“Aarti Kije Hanuman Lala Ki”, the aarti sung at most Lucknow Hanuman temples on Tuesday evenings.",
   // Canonical "Aarti Kije Hanuman Lala Ki", traditional, public domain.
   verses: [
     {
@@ -235,9 +235,9 @@ export const ASHTAK: DevotionalText = {
   sourceAttribution:
     "Traditional devotional text",
   audioVideoId: null,
-  audioUrl: "/audio/hanuman-ashtak.mp3",
+  audioUrl: null,
   editorialNotes:
-    "Eight stanzas of equal weight, each ending with the refrain to Hanuman Ji as the remover of distress, followed by a closing doha. Press play above to listen along.",
+    "Eight stanzas of equal weight, each ending with the refrain to Hanuman Ji as the remover of distress, followed by a closing doha.",
   // Sankat Mochan Hanuman Ashtak, Tulsidas, 8 ashtakas + closing doha.
   // Each stanza ends with the refrain "को नहिं जानत है जग में कपि,
   // संकटमोचन नाम तिहारो".
@@ -346,9 +346,9 @@ export const BAJRANG_BAAN: DevotionalText = {
   sourceAttribution:
     "Traditional devotional text",
   audioVideoId: null,
-  audioUrl: "/audio/bajrang-baan.mp3",
+  audioUrl: null,
   editorialNotes:
-    "Opens with a doha, moves through a chain of chaupais invoking Hanuman Ji's protection, closes with a doha. Press play above to listen along.",
+    "Opens with a doha, moves through a chain of chaupais invoking Hanuman Ji's protection, closes with a doha.",
   // Bajrang Baan, traditional, public domain. Opening doha + chain of
   // chaupais invoking Hanuman Ji's protection + closing doha.
   verses: [
@@ -419,9 +419,9 @@ export const RAM_STUTI: DevotionalText = {
   era: "16th century CE (Ramcharitmanas, Awadhi)",
   sourceAttribution: "Traditional devotional text",
   audioVideoId: null,
-  audioUrl: "/audio/ram-stuti.mp3",
+  audioUrl: null,
   editorialNotes:
-    "“Shri Ramachandra Kripalu Bhajamana”, five stanzas from the Bal Kand of the Ramcharitmanas, sung at most Lucknow Hanuman temples alongside the Aarti on Tuesdays. Press play above to listen along.",
+    "“Shri Ramachandra Kripalu Bhajamana”, five stanzas from the Bal Kand of the Ramcharitmanas, sung at most Lucknow Hanuman temples alongside the Aarti on Tuesdays.",
   verses: [
     {
       num: "१",

@@ -45,13 +45,15 @@ export default function DevotionalReader({ text }: DevotionalReaderProps) {
 
   return (
     <div className="space-y-10">
-      <DevotionalPlayer
-        audioUrl={text.audioUrl}
-        videoId={text.audioVideoId}
-        title={text.titleEn}
-        titleHi={text.titleHi}
-        sourceCaption={sourceCaption}
-      />
+      {text.audioUrl || text.audioVideoId ? (
+        <DevotionalPlayer
+          audioUrl={text.audioUrl}
+          videoId={text.audioVideoId}
+          title={text.titleEn}
+          titleHi={text.titleHi}
+          sourceCaption={sourceCaption}
+        />
+      ) : null}
 
       {isVerifying ? (
         <VerifyingBlock />

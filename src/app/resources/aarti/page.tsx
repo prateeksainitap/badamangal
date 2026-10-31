@@ -8,9 +8,9 @@ export const revalidate = 300;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
 export const metadata: Metadata = {
-  title: "Hanuman Aarti · हनुमान आरती (with audio) · BadaMangal",
+  title: "Hanuman Aarti · हनुमान आरती · BadaMangal",
   description:
-    "Aarti Kije Hanuman Lala Ki, the aarti sung at every Lucknow Bada Mangal bhandara, with verified audio and bilingual text.",
+    "Aarti Kije Hanuman Lala Ki, the aarti sung at every Lucknow Bada Mangal bhandara, with the full bilingual text.",
   alternates: {
     canonical: "/resources/aarti",
     languages: {
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Hanuman Aarti · हनुमान आरती · BadaMangal",
     description:
-      "Aarti Kije Hanuman Lala Ki, with verified audio and bilingual text.",
+      "Aarti Kije Hanuman Lala Ki, with the full bilingual text.",
     url: `${SITE_URL}/resources/aarti`,
     type: "article",
     siteName: "BadaMangal",
@@ -60,7 +60,7 @@ export default function AartiPage() {
     },
     {
       q: "Can I sing the Hanuman Aarti at home?",
-      a: "Yes, devotees commonly sing it at home on Tuesdays and Saturdays after lighting a diya and offering boondi or laddoo. Many start with the Hanuman Chalisa and end with the Aarti. The audio on this page can guide the tune if you're learning it for the first time.",
+      a: "Yes, devotees commonly sing it at home on Tuesdays and Saturdays after lighting a diya and offering boondi or laddoo. Many start with the Hanuman Chalisa and end with the Aarti.",
     },
   ]);
 

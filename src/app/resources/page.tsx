@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Resources · BadaMangal",
     description:
-      "Read, listen, watch, the canonical companion to Lucknow's Bada Mangal.",
+      "Read, learn, visit: the canonical companion to Lucknow's Bada Mangal.",
     url: `${SITE_URL}/resources`,
     type: "website",
     siteName: "BadaMangal",
