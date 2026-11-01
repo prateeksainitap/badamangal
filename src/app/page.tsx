@@ -59,6 +59,9 @@ import { areaToSlug } from "@/lib/areaSlug";
 import { hasUpcomingDate } from "@/lib/dates";
 import { getHomepageStats } from "@/lib/stats";
 
+/** The "Help keep BadaMangal running" donation band. Off since 1 Nov 2026. */
+const SHOW_PLATFORM_DONATIONS = false;
+
 // True ISR, the page no longer reads cookies() or searchParams, so
 // Next can prerender it once and serve cached HTML from the edge.
 // Revalidates every 60 seconds to surface new bhandaras / spots /
@@ -1039,7 +1042,10 @@ export default async function HomePage() {
           block so the "here's the scale we run at" proof flows into
           "this costs real money to run, chip in". Donates straight to
           the platform UPI (the maintainer's account). */}
-      <SupportBadaMangal />
+      {/* Taken down on the founder's word, 1 Nov 2026 ("take down the
+          donation flow to badamangal (Help us)"). Kept, not deleted:
+          flip SHOW_PLATFORM_DONATIONS to bring the band back. */}
+      {SHOW_PLATFORM_DONATIONS ? <SupportBadaMangal /> : null}
 
       {/* TESTIMONIALS, "Lucknow is liking us", community feedback
           band. Sits right after the stats block so the flow reads as
