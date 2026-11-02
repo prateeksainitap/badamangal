@@ -1,36 +1,45 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
-import { JaliCorner, MarigoldDivider } from "@/components/ornaments";
+import { HOME_ART } from "@/content/home-art";
+import { strings } from "@/content/strings";
+import { areaToSlug } from "@/lib/areaSlug";
 import { trackEvent } from "@/lib/ga";
 import { useLocaleFromContext } from "@/lib/locale-context";
+import { SEASONS } from "@/lib/season";
+import type { BhandaraListItem } from "@/types/bhandara";
+import {
+  Actions,
+  BhandaraRow,
+  Breadcrumb,
+  Button,
+  Chip,
+  ChipList,
+  EmptyState,
+  Heading,
+  Icon,
+  InnerShell,
+  Kicker,
+  KickSep,
+  ListRow,
+  PageHero,
+  Plate,
+  RowList,
+  longDate,
+  dayMonth,
+} from "@/components/v2";
 
 /**
- * /archive, public record of bhandaras whose moment has passed:
- *   • Listed (organiser-submitted) bhandaras whose every Tuesday is over
- *   • Spotted (crowd-sourced) sightings whose 8-hour live window expired
- *
- * Both tabs render in the same brand language as the rest of the site
- * (jali corners, marigold divider, sindoor headline + saffron kicker).
- * Tab state lives entirely on the client so the page itself can stay
- * statically prerendered, clicking either tab is instant.
+ * /archive (v2 inner page kit): the public record of bhandaras whose
+ * moment has passed.
+ *   Listed: organiser listed bhandaras whose every date is over, grouped
+ *           under each day they served (newest day first).
+ *   Spotted: crowd sourced spots whose 8 hour live window expired,
+ *           grouped by the day they were posted.
+ * No phones (the public list shape), no spotter names, no AI vision
+ * captions. Tab and search state live on the client so the page stays
+ * statically prerendered.
  */
-
-type ListedItem = {
-  id: string;
-  slug: string;
-  name: string;
-  nameHi: string | null;
-  area: string;
-  lat: number;
-  lng: number;
-  tuesdayDates: string[];
-  timeStart: string;
-  timeEnd: string | null;
-  organizerName: string;
-  photoUrl: string | null;
-};
 
 type SpottedItem = {
   id: string;
@@ -47,62 +56,30 @@ type SpottedItem = {
 
 type Tab = "listed" | "spotted";
 
-const HINDI_MONTHS = [
-  "जनवरी", "फ़रवरी", "मार्च", "अप्रैल", "मई", "जून",
-  "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर",
-];
-const HINDI_MONTHS_SHORT = [
-  "जन", "फ़र", "मार्च", "अप्रैल", "मई", "जून",
-  "जुल", "अग", "सित", "अक्ट", "नव", "दिस",
-];
-const EN_MONTHS_SHORT = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-];
+const EN_ORD = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"];
+const HI_ORD = ["पहला", "दूसरा", "तीसरा", "चौथा", "पाँचवाँ", "छठा", "सातवाँ", "आठवाँ"];
 
-function shortDate(iso: string, isHi: boolean): string {
-  const [y, m, d] = iso.split("-").map(Number);
-  if (!y || !m || !d) return iso;
-  const month = (isHi ? HINDI_MONTHS_SHORT : EN_MONTHS_SHORT)[m - 1];
-  return `${d} ${month}`;
-}
-
-function format12h(time: string): string {
-  if (!time) return "";
-  const m = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
-  if (!m) return "";
-  const h = Number(m[1]);
-  const min = Number(m[2]);
-  if (Number.isNaN(h) || Number.isNaN(min)) return "";
-  const period = h >= 12 ? "PM" : "AM";
-  const display = ((h + 11) % 12) + 1;
-  return `${display}:${String(min).padStart(2, "0")} ${period}`;
-}
-
-function relativeWhen(iso: string, isHi: boolean): string {
-  const then = new Date(iso).getTime();
-  const now = Date.now();
-  const diff = now - then;
-  const day = 24 * 60 * 60 * 1000;
-  if (diff < day) return isHi ? "आज" : "Today";
-  if (diff < 2 * day) return isHi ? "कल" : "Yesterday";
-  const days = Math.floor(diff / day);
-  if (days < 14) {
-    return isHi ? `${days} दिन पहले` : `${days} days ago`;
+/** "8th Bada Mangal" when the day is a season Tuesday, else null. */
+function badaMangalLabel(iso: string, isHi: boolean): string | null {
+  for (const s of SEASONS) {
+    const i = s.tuesdays.indexOf(iso);
+    if (i >= 0) return isHi ? `${HI_ORD[i] ?? i + 1} बड़ा मंगल` : `${EN_ORD[i] ?? `${i + 1}th`} Bada Mangal`;
   }
-  // For older spots, show the actual short date.
-  const d = new Date(iso);
-  const month = (isHi ? HINDI_MONTHS_SHORT : EN_MONTHS_SHORT)[d.getMonth()];
-  return `${d.getDate()} ${month}`;
+  return null;
 }
 
-function fullDate(iso: string, isHi: boolean): string {
-  const d = new Date(iso);
-  const day = d.getDate();
-  const month = (isHi ? HINDI_MONTHS : EN_MONTHS_SHORT)[d.getMonth()];
-  const year = d.getFullYear();
-  return isHi ? `${day} ${month}, ${year}` : `${day} ${month} ${year}`;
+/** IST calendar day of an ISO timestamp. */
+const istDay = (iso: string) => new Date(Date.parse(iso) + 5.5 * 3600 * 1000).toISOString().slice(0, 10);
+
+/** "11:25 PM" in IST. */
+function istClock(iso: string): string {
+  const d = new Date(Date.parse(iso) + 5.5 * 3600 * 1000);
+  const h = d.getUTCHours();
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(d.getUTCMinutes()).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 }
+
+const timeKey = (t: string | null | undefined) => (!t || t === "00:00" ? "99:99" : t.padStart(5, "0"));
 
 function normalise(s: string | null | undefined): string {
   return (s ?? "").toLocaleLowerCase().trim();
@@ -112,11 +89,13 @@ export default function ArchiveTabs({
   listed,
   spotted,
 }: {
-  listed: ListedItem[];
+  listed: BhandaraListItem[];
   spotted: SpottedItem[];
 }) {
   const locale = useLocaleFromContext();
   const isHi = locale === "hi";
+  const t = strings[locale];
+  const langSuffix = isHi ? "" : "?lang=en";
   const [tab, setTab] = useState<Tab>("listed");
   const [query, setQuery] = useState("");
 
@@ -126,173 +105,200 @@ export default function ArchiveTabs({
     trackEvent("archive_tab_switch", { tab: next });
   };
 
-  // Substring search across the fields a visitor would plausibly type
-  //, bhandara name (both scripts), area, organiser, address, caption.
-  // Pure JS .filter() over the prerendered set; the page itself is
-  // statically cached and we don't want a per-keystroke API hit.
+  // Substring search across the fields a visitor would plausibly type:
+  // bhandara name (both scripts), area, organiser, address, caption.
   const q = normalise(query);
   const filteredListed = useMemo(() => {
     if (!q) return listed;
     return listed.filter((b) =>
-      [b.name, b.nameHi, b.area, b.organizerName]
+      [b.name, b.nameHi, b.area, t.areas[b.area], b.organizerName, b.address]
         .map(normalise)
         .some((field) => field.includes(q)),
     );
-  }, [listed, q]);
+  }, [listed, q, t]);
   const filteredSpotted = useMemo(() => {
     if (!q) return spotted;
     return spotted.filter((s) =>
-      [
-        s.caption,
-        s.area,
-        s.address,
-        s.bhandaraName,
-        s.bhandaraNameHi,
-        s.reporterName,
-      ]
+      [s.caption, s.area, s.address, s.bhandaraName, s.bhandaraNameHi]
         .map(normalise)
         .some((field) => field.includes(q)),
     );
   }, [spotted, q]);
 
-  const counts = useMemo(
-    () => ({ listed: filteredListed.length, spotted: filteredSpotted.length }),
-    [filteredListed.length, filteredSpotted.length],
-  );
+  // Listed: one row per bhandara per Bada Mangal Tuesday it served,
+  // under that Tuesday (newest first). Bhandaras that served only on
+  // other days (a Saturday, a week long langar) sit once, at the end.
+  const listedDays = useMemo(() => {
+    const tuesdays = new Set(SEASONS.flatMap((s) => s.tuesdays));
+    const byDay = new Map<string, BhandaraListItem[]>();
+    const undated: BhandaraListItem[] = [];
+    for (const b of filteredListed) {
+      const tues = [...new Set(b.tuesdayDates ?? [])].filter((d) => tuesdays.has(d));
+      if (tues.length === 0) undated.push(b);
+      for (const d of tues) {
+        const list = byDay.get(d);
+        if (list) list.push(b);
+        else byDay.set(d, [b]);
+      }
+    }
+    const days = [...byDay.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, items]) => ({
+        date,
+        // By start time; rows without a time ("00:00") go last.
+        items: items.sort((x, y) => timeKey(x.timeStart).localeCompare(timeKey(y.timeStart))),
+      }));
+    undated.sort((x, y) => {
+      const lx = [...(x.tuesdayDates ?? [])].sort().pop() ?? "";
+      const ly = [...(y.tuesdayDates ?? [])].sort().pop() ?? "";
+      return ly.localeCompare(lx);
+    });
+    return { days, undated };
+  }, [filteredListed]);
+
+  // Spotted: by the IST day they were posted, newest first.
+  const spottedDays = useMemo(() => {
+    const byDay = new Map<string, SpottedItem[]>();
+    for (const s of filteredSpotted) {
+      const d = istDay(s.createdAt);
+      const list = byDay.get(d);
+      if (list) list.push(s);
+      else byDay.set(d, [s]);
+    }
+    return [...byDay.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([date, items]) => ({ date, items }));
+  }, [filteredSpotted]);
+
+  const counts = { listed: filteredListed.length, spotted: filteredSpotted.length };
 
   const onSearchChange = (next: string) => {
     setQuery(next);
-    // Only emit the GA event on real searches, debounce by length so
-    // we don't spam the funnel with one event per keystroke.
     if (next.trim().length >= 3) {
       trackEvent("archive_search", { length: next.trim().length });
     }
   };
 
+  const tuesdayJumps = tab === "listed" ? listedDays.days : [];
+
+  const dayHead = (date: string, n: number, idPrefix: string) => {
+    const bm = badaMangalLabel(date, isHi);
+    return (
+      <div className="bmi-gday-head">
+        <Heading
+          as="h2"
+          size="sub"
+          id={`${idPrefix}-${date}-h`}
+          words={false}
+          en={longDate(date, "en", true)}
+          hi={longDate(date, "hi", true)}
+        />
+        <span className="bmi-gday-facts">
+          {bm ? <span className="bmi-gday-tag">{bm}</span> : null}
+          <span className="bmi-gday-count">
+            {isHi ? `${n} भंडारे` : `${n} ${n === 1 ? "bhandara" : "bhandaras"}`}
+          </span>
+        </span>
+      </div>
+    );
+  };
+
   return (
-    <article>
-      {/* HERO */}
-      <header className="text-center mb-8 sm:mb-10">
-        <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold inline-flex items-center gap-1.5">
-          <span aria-hidden className="block w-1.5 h-1.5 rounded-full bg-gold-500" />
-          {isHi ? "बीते भंडारे" : "Past Bhandaras"}
-        </p>
-        <h1
-          className={`mt-3 text-3xl sm:text-[2.6rem] leading-tight ${
-            isHi
-              ? "font-tiro text-sindoor-700"
-              : "font-fraunces font-semibold text-sindoor-700"
-          }`}
-        >
-          {isHi
-            ? "बीते मंगलों के भंडारे"
-            : "Bhandaras of past Tuesdays"}
-        </h1>
-        <p className="mt-3 max-w-2xl mx-auto text-ink-600 leading-relaxed">
-          {isHi
-            ? "हर मंगल जिसका वक़्त बीत गया, यहाँ दर्ज है। ऑर्गनाइज़र के सूचीबद्ध भंडारे और राहगीरों के स्पॉट किए हुए, दोनों एक जगह।"
-            : "Every Tuesday whose moment has passed, kept here on the record. Both organiser-listed bhandaras and passer-by spotted sightings, side by side."}
-        </p>
-        <div className="mt-6 flex justify-center">
-          <MarigoldDivider size={220} className="text-gold-500" />
-        </div>
-      </header>
-
-      {/* SEARCH */}
-      <div className="mb-6 sm:mb-8">
-        <label className="relative block max-w-xl mx-auto">
-          <span className="sr-only">
-            {isHi ? "खोजें" : "Search past bhandaras"}
-          </span>
-          <span
-            aria-hidden
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-600/70"
-          >
-            <SearchGlyph />
-          </span>
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder={
-              isHi
-                ? "नाम, क्षेत्र, ऑर्गनाइज़र, संदेश से खोजें…"
-                : "Search by name, area, organiser, or caption…"
-            }
-            className="w-full rounded-full bg-cream-50 border border-gold-500/45 focus:border-saffron-500 focus:outline-none focus:ring-2 focus:ring-saffron-500/30 shadow-warm pl-11 pr-11 py-2.5 text-sm placeholder:text-ink-600/60 transition-colors"
-            aria-label={isHi ? "बीते भंडारे खोजें" : "Search past bhandaras"}
+    <InnerShell>
+      <PageHero
+        crumbs={
+          <Breadcrumb
+            items={[
+              { label: isHi ? "होम" : "Home", href: `/${langSuffix}` },
+              { label: isHi ? "बीते भंडारे" : "Past Bhandaras" },
+            ]}
           />
-          {query.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => onSearchChange("")}
-              aria-label={isHi ? "खोज साफ़ करें" : "Clear search"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-7 h-7 rounded-full text-ink-600 hover:text-sindoor-700 hover:bg-saffron-50 transition-colors"
-            >
-              <ClearGlyph />
-            </button>
+        }
+        kicker={
+          <Kicker>
+            <span>{isHi ? "बीते भंडारे" : "Past Bhandaras"}</span>
+            <KickSep />
+            <span>{isHi ? "बड़ा मंगल लखनऊ" : "Bada Mangal Lucknow"}</span>
+          </Kicker>
+        }
+        title={{ en: "Bhandaras of past Tuesdays", hi: "बीते मंगलों के भंडारे" }}
+        lede={
+          isHi
+            ? "हर मंगल जिसका वक़्त बीत गया, यहाँ दर्ज है। ऑर्गनाइज़र के सूचीबद्ध भंडारे और राहगीरों के स्पॉट किए हुए, दोनों एक जगह।"
+            : "Every Tuesday whose moment has passed, kept here on the record. Both organiser-listed bhandaras and passer-by spotted sightings, side by side."
+        }
+        art={<Plate {...HOME_ART.bhandaraLine} alt="" fade="edges" priority />}
+      />
+
+      {/* Controls: the two records and a search across both. */}
+      <section className="bmi-sec tight" aria-label={isHi ? "बीते भंडारे खोजें" : "Search past bhandaras"}>
+        <div className="bmi-wrap">
+          <div className="bmi-arch-bar">
+            <div role="tablist" aria-label={isHi ? "अभिलेख फ़िल्टर" : "Archive filter"} className="bmi-arch-tabs">
+              {(
+                [
+                  { key: "listed" as const, label: isHi ? "सूचीबद्ध" : "Listed", count: counts.listed },
+                  { key: "spotted" as const, label: isHi ? "स्पॉट किए" : "Spotted", count: counts.spotted },
+                ]
+              ).map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  role="tab"
+                  id={`arch-tab-${item.key}`}
+                  aria-selected={tab === item.key}
+                  aria-controls="arch-panel"
+                  onClick={() => switchTo(item.key)}
+                  className="bmi-choice"
+                >
+                  <span>{item.label}</span>
+                  <span className="n">{item.count}</span>
+                </button>
+              ))}
+            </div>
+            <label className="bmi-field bmi-arch-search">
+              <span className="bmi-sr">{isHi ? "खोजें" : "Search past bhandaras"}</span>
+              <Icon name="search" className="ic" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder={isHi ? "नाम, क्षेत्र, ऑर्गनाइज़र से खोजें" : "Search by name, area or organiser"}
+                aria-label={isHi ? "बीते भंडारे खोजें" : "Search past bhandaras"}
+              />
+              {query.length > 0 ? (
+                <button
+                  type="button"
+                  className="clr"
+                  onClick={() => onSearchChange("")}
+                  aria-label={isHi ? "खोज साफ़ करें" : "Clear search"}
+                >
+                  <Icon name="plus" />
+                </button>
+              ) : null}
+            </label>
+          </div>
+          {q ? (
+            <p className="bmi-fine bmi-arch-n" aria-live="polite">
+              {isHi
+                ? `${counts.listed + counts.spotted} परिणाम`
+                : `${counts.listed + counts.spotted} result${counts.listed + counts.spotted === 1 ? "" : "s"}`}
+            </p>
           ) : null}
-        </label>
-        {q ? (
-          <p className="mt-2 text-center text-[0.7rem] uppercase tracking-[0.22em] text-ink-600">
-            {isHi
-              ? `${counts.listed + counts.spotted} परिणाम`
-              : `${counts.listed + counts.spotted} result${
-                  counts.listed + counts.spotted === 1 ? "" : "s"
-                }`}
-          </p>
-        ) : null}
-      </div>
+          {tuesdayJumps.length > 0 ? (
+            <div className="bmi-arch-jump">
+              <span className="bmi-gal-jump">{isHi ? "सीधे देखें" : "Jump to"}</span>
+              <ChipList label={isHi ? "बड़े मंगल" : "Bada Mangal Tuesdays"}>
+                {tuesdayJumps.map((d) => (
+                  <Chip key={d.date} href={`#tue-${d.date}`} tone="gold">
+                    {dayMonth(d.date, locale)}
+                  </Chip>
+                ))}
+              </ChipList>
+            </div>
+          ) : null}
+        </div>
+      </section>
 
-      {/* TAB STRIP */}
-      <div
-        role="tablist"
-        aria-label={isHi ? "अभिलेख फ़िल्टर" : "Archive filter"}
-        className="mx-auto inline-flex items-center gap-1 p-1 rounded-full bg-cream-50 border border-gold-500/45 shadow-warm"
-      >
-        {(
-          [
-            {
-              key: "listed" as const,
-              label: isHi ? "सूचीबद्ध" : "Listed",
-              count: counts.listed,
-            },
-            {
-              key: "spotted" as const,
-              label: isHi ? "स्पॉट किए" : "Spotted",
-              count: counts.spotted,
-            },
-          ]
-        ).map((item) => {
-          const active = tab === item.key;
-          return (
-            <button
-              key={item.key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => switchTo(item.key)}
-              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                active
-                  ? "bg-saffron-600 text-cream-50 shadow-warm"
-                  : "text-ink-900 hover:bg-saffron-50"
-              }`}
-            >
-              <span>{item.label}</span>
-              <span
-                className={`font-numerals tabular-nums text-xs ${
-                  active ? "text-cream-50/85" : "text-ink-600"
-                }`}
-              >
-                {item.count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* CONTENT */}
-      <div className="mt-8">
+      <div id="arch-panel" role="tabpanel" aria-labelledby={`arch-tab-${tab}`}>
         {tab === "listed" ? (
           filteredListed.length === 0 ? (
             q ? (
@@ -301,7 +307,41 @@ export default function ArchiveTabs({
               <ArchiveEmpty isHi={isHi} variant="listed" />
             )
           ) : (
-            <ListedGrid items={filteredListed} isHi={isHi} />
+            <>
+              {listedDays.days.map(({ date, items }) => (
+                <section key={date} id={`tue-${date}`} className="bmi-gday" aria-labelledby={`tue-${date}-h`}>
+                  <div className="bmi-wrap">
+                    {dayHead(date, items.length, "tue")}
+                    <RowList cols>
+                      {items.map((b) => (
+                        <BhandaraRow key={`${b.id}-${date}`} b={b} date="none" pinned={date} gaEvent="archive_listed_open" />
+                      ))}
+                    </RowList>
+                  </div>
+                </section>
+              ))}
+              {listedDays.undated.length > 0 ? (
+                <section className="bmi-gday" aria-labelledby="tue-undated-h">
+                  <div className="bmi-wrap">
+                    <div className="bmi-gday-head">
+                      <Heading as="h2" size="sub" id="tue-undated-h" words={false} en="On other days" hi="दूसरे दिनों पर" />
+                      <span className="bmi-gday-facts">
+                        <span className="bmi-gday-count">
+                          {isHi
+                            ? `${listedDays.undated.length} भंडारे`
+                            : `${listedDays.undated.length} ${listedDays.undated.length === 1 ? "bhandara" : "bhandaras"}`}
+                        </span>
+                      </span>
+                    </div>
+                    <RowList cols>
+                      {listedDays.undated.map((b) => (
+                        <BhandaraRow key={b.id} b={b} date="past" gaEvent="archive_listed_open" />
+                      ))}
+                    </RowList>
+                  </div>
+                </section>
+              ) : null}
+            </>
           )
         ) : filteredSpotted.length === 0 ? (
           q ? (
@@ -310,328 +350,106 @@ export default function ArchiveTabs({
             <ArchiveEmpty isHi={isHi} variant="spotted" />
           )
         ) : (
-          <SpottedTimeline items={filteredSpotted} isHi={isHi} />
-        )}
-      </div>
-    </article>
-  );
-}
-
-function NoMatches({
-  isHi,
-  onClear,
-}: {
-  isHi: boolean;
-  onClear: () => void;
-}) {
-  return (
-    <div className="relative overflow-hidden rounded-3xl border border-gold-500/45 bg-cream-50 px-6 py-10 text-center shadow-warm">
-      <p
-        className={`text-lg sm:text-xl ${
-          isHi
-            ? "font-tiro text-sindoor-700"
-            : "font-fraunces font-semibold text-sindoor-700"
-        }`}
-      >
-        {isHi ? "कोई मिलान नहीं मिला।" : "No matches."}
-      </p>
-      <p className="mt-2 text-sm text-ink-600">
-        {isHi
-          ? "अलग शब्दों से कोशिश करें, या खोज साफ़ करें।"
-          : "Try a different term, or clear the search to see everything."}
-      </p>
-      <button
-        type="button"
-        onClick={onClear}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-saffron-500/45 text-saffron-600 hover:bg-saffron-50 px-4 py-2 text-sm font-semibold transition-colors"
-      >
-        {isHi ? "खोज साफ़ करें" : "Clear search"}
-      </button>
-    </div>
-  );
-}
-
-function SearchGlyph() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <circle cx="11" cy="11" r="7" />
-      <path d="m21 21-4.3-4.3" />
-    </svg>
-  );
-}
-
-function ClearGlyph() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
-  );
-}
-
-/* ── Listed grid ─────────────────────────────────────────────────────── */
-
-function ListedGrid({ items, isHi }: { items: ListedItem[]; isHi: boolean }) {
-  const langSuffix = isHi ? "" : "?lang=en";
-  return (
-    <ul className="grid gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {items.map((b) => {
-        const displayName = isHi ? (b.nameHi ?? b.name) : b.name;
-        // Show up to 3 most-recent past dates for compactness.
-        const dates = [...b.tuesdayDates].sort().reverse().slice(0, 3);
-        const time =
-          format12h(b.timeStart) +
-          (b.timeEnd ? `–${format12h(b.timeEnd)}` : "");
-        return (
-          <li key={b.id}>
-            <Link
-              href={`/bhandara/${b.slug}${langSuffix}`}
-              data-ga="archive_listed_open"
-              data-ga-slug={b.slug}
-              className="group relative block h-full rounded-3xl bg-white border border-gold-500/40 hover:border-saffron-500 shadow-warm overflow-hidden transition-transform hover:-translate-y-0.5"
-            >
-              {/* Pamphlet / venue photo. Most listed bhandaras come in
-                  via the WhatsApp invite scan, so photoUrl is usually
-                  the original poster, leading with it makes the card
-                  scannable at a glance and matches the spotted-tab
-                  layout. Cards without a photo fall back to a soft
-                  cream banner so the grid stays visually even. */}
-              {b.photoUrl ? (
-                <div className="relative aspect-[4/3] bg-cream-50 overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={b.photoUrl}
-                    alt={displayName}
-                    loading="lazy"
-                    decoding="async"
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+          spottedDays.map(({ date, items }) => (
+            <section key={date} id={`spot-${date}`} className="bmi-gday" aria-labelledby={`spot-${date}-h`}>
+              <div className="bmi-wrap">
+                <div className="bmi-gday-head">
+                  <Heading
+                    as="h2"
+                    size="sub"
+                    id={`spot-${date}-h`}
+                    words={false}
+                    en={longDate(date, "en", true)}
+                    hi={longDate(date, "hi", true)}
                   />
-                  {/* Soft top-left chip with the area, mirrors the
-                      spotted-card relative-time chip placement. */}
-                  <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-cream-50/95 backdrop-blur border border-gold-500/45 px-2 py-0.5 text-[0.6rem] font-mukta uppercase tracking-[0.22em] text-saffron-600 font-semibold">
-                    {b.area}
+                  <span className="bmi-gday-facts">
+                    {badaMangalLabel(date, isHi) ? <span className="bmi-gday-tag">{badaMangalLabel(date, isHi)}</span> : null}
+                    <span className="bmi-gday-count">
+                      {isHi ? `${items.length} स्पॉट` : `${items.length} ${items.length === 1 ? "spot" : "spots"}`}
+                    </span>
                   </span>
                 </div>
-              ) : (
-                <div className="relative aspect-[4/3] bg-gradient-to-br from-saffron-50 via-cream-50 to-cream-50 overflow-hidden">
-                  {/* Same jali ornament accent as the empty-state cards
-                      so a photo-less listing still feels brand-native
-                      instead of starkly empty. */}
-                  <JaliCorner
-                    position="tl"
-                    size={64}
-                    className="absolute top-0 left-0 text-gold-500/55"
-                  />
-                  <JaliCorner
-                    position="br"
-                    size={64}
-                    className="absolute bottom-0 right-0 text-gold-500/40"
-                  />
-                  <div className="relative h-full w-full flex items-center justify-center">
-                    <span className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-[0.65rem] font-semibold">
-                      {b.area}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div className="relative px-5 pt-5 pb-6">
-                <h3
-                  className={`text-lg leading-snug ${
-                    isHi
-                      ? "font-tiro text-sindoor-700"
-                      : "font-fraunces font-semibold text-sindoor-700"
-                  } [text-wrap:balance]`}
-                >
-                  {displayName}
-                </h3>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {dates.map((iso) => (
-                    <span
-                      key={iso}
-                      className="inline-flex items-center gap-1 rounded-full border border-gold-500/40 bg-cream-50 px-2 py-0.5 text-[0.7rem] font-numerals tabular-nums text-ink-700"
-                    >
-                      {shortDate(iso, isHi)}
-                    </span>
-                  ))}
-                  {b.tuesdayDates.length > dates.length ? (
-                    <span className="inline-flex items-center text-[0.7rem] text-ink-600">
-                      +{b.tuesdayDates.length - dates.length}
-                    </span>
-                  ) : null}
-                </div>
-                {time ? (
-                  <p className="mt-3 text-xs text-ink-600">{time}</p>
-                ) : null}
-                <p className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-saffron-600 group-hover:text-saffron-500">
-                  {isHi ? "विवरण देखें" : "View details"}
-                  <span aria-hidden>→</span>
-                </p>
+                <RowList cols>
+                  {items.map((s) => {
+                    const linkedName = isHi ? (s.bhandaraNameHi ?? s.bhandaraName) : s.bhandaraName;
+                    const areaLabel = s.area ? (t.areas[s.area] ?? s.area) : null;
+                    const knownArea = s.area && t.areas[s.area] ? s.area : null;
+                    const title = linkedName || areaLabel || (isHi ? "स्पॉट किया भंडारा" : "Spotted bhandara");
+                    const meta = [linkedName ? areaLabel : null, s.caption].filter(Boolean).join(" · ");
+                    const href = s.bhandaraSlug
+                      ? `/bhandara/${s.bhandaraSlug}${langSuffix}`
+                      : knownArea
+                        ? `/area/${areaToSlug(knownArea)}${langSuffix}`
+                        : (s.photoUrl ?? `/live${langSuffix}`);
+                    return (
+                      <ListRow
+                        key={s.id}
+                        href={href}
+                        external={!s.bhandaraSlug && !knownArea && !!s.photoUrl}
+                        title={title}
+                        kicker={istClock(s.createdAt)}
+                        meta={meta || (isHi ? "लखनऊ" : "Lucknow")}
+                        muted
+                        thumb={s.photoUrl ? { src: s.photoUrl, alt: `${title}, ${dayMonth(date, locale)}` } : "gada"}
+                        linkProps={s.bhandaraSlug ? { "data-ga": "archive_spotted_open_bhandara", "data-ga-slug": s.bhandaraSlug } : undefined}
+                      />
+                    );
+                  })}
+                </RowList>
               </div>
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
+            </section>
+          ))
+        )}
+      </div>
+      <div className="bmi-sec" aria-hidden />
+    </InnerShell>
   );
 }
 
-/* ── Spotted timeline ────────────────────────────────────────────────── */
-
-function SpottedTimeline({
-  items,
-  isHi,
-}: {
-  items: SpottedItem[];
-  isHi: boolean;
-}) {
-  const langSuffix = isHi ? "" : "?lang=en";
+function NoMatches({ isHi, onClear }: { isHi: boolean; onClear: () => void }) {
   return (
-    <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {items.map((s) => {
-        const linkedName = isHi
-          ? s.bhandaraNameHi ?? s.bhandaraName
-          : s.bhandaraName;
-        return (
-          <li
-            key={s.id}
-            className="relative rounded-3xl bg-white border border-gold-500/40 shadow-warm overflow-hidden"
-          >
-            {s.photoUrl ? (
-              <div className="relative aspect-[4/3] bg-cream-50">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={s.photoUrl}
-                  alt={s.caption ?? (isHi ? "स्पॉट" : "Spot")}
-                  loading="lazy"
-                  decoding="async"
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-                <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-cream-50/95 backdrop-blur border border-gold-500/45 px-2 py-0.5 text-[0.6rem] font-mukta uppercase tracking-[0.22em] text-saffron-600 font-semibold">
-                  {relativeWhen(s.createdAt, isHi)}
-                </span>
-              </div>
-            ) : (
-              <div className="aspect-[4/3] bg-gradient-to-br from-saffron-50 to-cream-50 flex items-center justify-center">
-                <p className="font-mukta uppercase tracking-[0.28em] text-gold-500 text-[0.65rem]">
-                  {relativeWhen(s.createdAt, isHi)}
-                </p>
-              </div>
-            )}
-            <div className="px-4 py-4">
-              <p className="text-[0.7rem] font-mukta uppercase tracking-[0.28em] text-gold-500">
-                {s.area ?? (isHi ? "लखनऊ" : "Lucknow")}
-              </p>
-              {s.caption ? (
-                <p className="mt-1.5 text-sm text-ink-900 leading-snug [text-wrap:pretty] line-clamp-3">
-                  {s.caption}
-                </p>
-              ) : (
-                <p className="mt-1.5 text-sm italic text-ink-600">
-                  {isHi
-                    ? "बिना संदेश के स्पॉट"
-                    : "Spotted without a caption"}
-                </p>
-              )}
-              <div className="mt-3 flex items-center justify-between text-[0.7rem] text-ink-600">
-                <span>
-                  {(s.reporterName?.trim() ||
-                    (isHi ? "स्पॉटर" : "Spotter"))}
-                </span>
-                <span title={fullDate(s.createdAt, isHi)}>
-                  {fullDate(s.createdAt, isHi)}
-                </span>
-              </div>
-              {s.bhandaraSlug && linkedName ? (
-                <Link
-                  href={`/bhandara/${s.bhandaraSlug}${langSuffix}`}
-                  data-ga="archive_spotted_open_bhandara"
-                  data-ga-slug={s.bhandaraSlug}
-                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-saffron-600 hover:text-saffron-500"
-                >
-                  {linkedName}
-                  <span aria-hidden>→</span>
-                </Link>
-              ) : null}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
+    <section className="bmi-sec tight">
+      <div className="bmi-wrap">
+        <EmptyState
+          art={null}
+          headingAs="p"
+          title={{ en: "No matches.", hi: "कोई मिलान नहीं मिला।" }}
+          lede={isHi ? "अलग शब्दों से कोशिश करें, या खोज साफ़ करें।" : "Try a different term, or clear the search to see everything."}
+          actions={
+            <Actions>
+              <Button variant="secondary" onClick={onClear}>
+                {isHi ? "खोज साफ़ करें" : "Clear search"}
+              </Button>
+            </Actions>
+          }
+        />
+      </div>
+    </section>
   );
 }
 
-/* ── Empty state ─────────────────────────────────────────────────────── */
-
-function ArchiveEmpty({
-  isHi,
-  variant,
-}: {
-  isHi: boolean;
-  variant: "listed" | "spotted";
-}) {
+function ArchiveEmpty({ isHi, variant }: { isHi: boolean; variant: "listed" | "spotted" }) {
   const copy =
     variant === "listed"
       ? {
-          headline: isHi
-            ? "अभी कोई भंडारा बीता नहीं।"
-            : "No bhandaras have wrapped up yet.",
+          en: "No bhandaras have wrapped up yet.",
+          hi: "अभी कोई भंडारा बीता नहीं।",
           body: isHi
             ? "जैसे ही पहला मंगलवार पूरा होगा, उस दिन के भंडारे यहाँ अपने-आप सहेज लिए जाएँगे।"
             : "As soon as the first Tuesday completes, that day's bhandaras will be quietly archived here.",
         }
       : {
-          headline: isHi
-            ? "अभी कोई स्पॉट एक्सपायर नहीं हुआ।"
-            : "No spots have expired yet.",
+          en: "No spots have expired yet.",
+          hi: "अभी कोई स्पॉट एक्सपायर नहीं हुआ।",
           body: isHi
             ? "हर स्पॉट 8 घंटे तक लाइव फ़ीड में रहता है, फिर यहाँ आ जाता है।"
             : "Every spot stays on the live feed for 8 hours, then settles here for the long-term record.",
         };
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-gold-500/45 bg-gradient-to-br from-saffron-50 via-cream-50 to-cream-50 px-6 sm:px-10 py-10 sm:py-14 text-center shadow-warm">
-      <JaliCorner
-        position="tl"
-        size={56}
-        className="absolute top-0 left-0 text-gold-500/55"
-      />
-      <JaliCorner
-        position="br"
-        size={56}
-        className="absolute bottom-0 right-0 text-gold-500/40"
-      />
-      <h2
-        className={`text-xl sm:text-2xl ${
-          isHi
-            ? "font-tiro text-sindoor-700"
-            : "font-fraunces font-semibold text-sindoor-700"
-        }`}
-      >
-        {copy.headline}
-      </h2>
-      <p className="mt-2 text-sm text-ink-600 max-w-xl mx-auto leading-relaxed">
-        {copy.body}
-      </p>
-    </div>
+    <section className="bmi-sec tight">
+      <div className="bmi-wrap">
+        <EmptyState title={{ en: copy.en, hi: copy.hi }} lede={copy.body} />
+      </div>
+    </section>
   );
 }

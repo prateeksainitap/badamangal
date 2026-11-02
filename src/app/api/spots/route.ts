@@ -4,6 +4,7 @@ import { isInAnyCity, resolveCityFromCoords } from "@/lib/cities";
 import { ipHash, readClientIp } from "@/lib/crypto";
 import { prisma } from "@/lib/db";
 import { stripBotProvenance } from "@/lib/sanitize";
+import { cleanName } from "@/lib/display-name";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -225,11 +226,14 @@ export async function GET(req: NextRequest) {
     // Strip [bot:whatsapp …] from public JSON, see lib/sanitize.ts.
     caption: stripBotProvenance(s.caption) || null,
     language: s.language,
-    reporterName: s.reporterName,
+    // Spotter names never go out on this public API (Founder's
+    // ruling, 1 Nov 2026). Key kept, always null, so older clients
+    // fall back to their neutral label. Admin still sees the name.
+    reporterName: null,
     createdAt: s.createdAt.toISOString(),
     expiresAt: s.expiresAt.toISOString(),
     bhandaraSlug: s.bhandara?.slug ?? null,
-    bhandaraName: s.bhandara?.name ?? null,
+    bhandaraName: cleanName(s.bhandara?.name),
     bhandaraNameHi: s.bhandara?.nameHi ?? null,
     };
   });

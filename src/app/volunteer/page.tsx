@@ -33,7 +33,7 @@
  */
 import type { Metadata } from "next";
 import VolunteerLandingView from "@/components/VolunteerLandingView";
-import { SITE_URL } from "@/lib/seo";
+import { SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -43,6 +43,7 @@ export const metadata: Metadata = {
     "Help us list every Bada Mangal bhandara in Lucknow. Delivery riders, cab drivers, students, anyone with a phone. Pure seva, no fee. 30-second signup.",
   alternates: { canonical: `${SITE_URL}/volunteer` },
   openGraph: {
+    images: [DEFAULT_OG_IMAGE],
     title: "Volunteer with BadaMangal",
     description:
       "Document a bhandara during the Bada Mangal season. Pure seva, help fellow devotees find every bhandara in Lucknow. 30-second signup.",

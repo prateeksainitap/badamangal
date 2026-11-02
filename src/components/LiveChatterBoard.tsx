@@ -272,7 +272,10 @@ function avatarInitial(name: string | null | undefined): string {
 
 function displayName(name: string | null | undefined, isHi: boolean): string {
   const trimmed = (name ?? "").trim();
-  if (!trimmed) return isHi ? "अज्ञात" : "Anonymous";
+  // The public feed never carries a sender's name any more (Founder's
+  // ruling, 1 Nov 2026), so this neutral label is what every bubble
+  // shows.
+  if (!trimmed) return isHi ? "स्पॉटर" : "Spotter";
   // Privacy: only the first name lands on the public chat panel.
   // WhatsApp push-names commonly arrive as `~ First Last`, `~First Last`,
   // or even with emoji prefixes / suffixes, so we strip any leading
@@ -281,7 +284,7 @@ function displayName(name: string | null | undefined, isHi: boolean): string {
   // row keeps the full name for admin moderation.
   const cleaned = trimmed.replace(/^[^\p{L}\p{N}]+/u, "");
   const firstWord = cleaned.split(/\s+/)[0] ?? "";
-  if (!firstWord) return isHi ? "अज्ञात" : "Anonymous";
+  if (!firstWord) return isHi ? "स्पॉटर" : "Spotter";
   return firstWord.length > 22 ? firstWord.slice(0, 21) + "…" : firstWord;
 }
 
@@ -1700,8 +1703,10 @@ function ChatBubble({
 }) {
   const intent = intentLabel(mention.intent, isHi);
   const avatar = avatarSlot(mention.senderName ?? mention.id);
-  const initial = avatarInitial(mention.senderName);
   const name = displayName(mention.senderName, isHi);
+  // Initial comes from the label shown, so a nameless bubble reads
+  // "S" / "स" instead of a bare "?".
+  const initial = avatarInitial(name);
   const hasCoords = mention.lat !== null && mention.lng !== null;
   // Carousel state: which photo of the bubble is currently visible.
   // Resets to 0 whenever the bubble's mention.id changes (parent

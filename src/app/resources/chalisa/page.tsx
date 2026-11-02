@@ -8,9 +8,9 @@ export const revalidate = 300;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
 export const metadata: Metadata = {
-  title: "Hanuman Chalisa · हनुमान चालीसा (with audio) · BadaMangal",
+  title: { absolute: "Hanuman Chalisa · हनुमान चालीसा · BadaMangal" },
   description:
-    "Tulsidas's Hanuman Chalisa, forty verses with audio, in Devanagari and Roman. The song every Lucknow Bada Mangal bhandara plays.",
+    "Tulsidas's Hanuman Chalisa, forty verses in Devanagari and Roman. The song every Lucknow Bada Mangal bhandara plays.",
   alternates: {
     canonical: "/resources/chalisa",
     languages: {
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Hanuman Chalisa · हनुमान चालीसा · BadaMangal",
-    description: "Forty verses, two dohas, with verified audio.",
+    description: "Forty verses, two dohas, in full.",
     url: `${SITE_URL}/resources/chalisa`,
     type: "article",
     siteName: "BadaMangal",

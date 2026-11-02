@@ -1,8 +1,13 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { TEMPLES, TEMPLE_BY_SLUG, type Temple } from "@/content/temples";
-import { prisma, toBhandara } from "@/lib/db";
+import {
+  PUBLIC_BHANDARA_LIST_SELECT,
+  prisma,
+  toPublicBhandaraListItem,
+} from "@/lib/db";
 import TempleDetailView from "@/components/TempleDetailView";
+import { templeImageOnDisk } from "@/lib/temple-images";
 
 // ISR, static prerender per temple (see generateStaticParams below)
 // plus an hourly revalidate for nearby-bhandara freshness.
@@ -23,7 +28,7 @@ export async function generateMetadata({
   const temple = TEMPLE_BY_SLUG[slug];
   if (!temple) return {};
   return {
-    title: `${temple.name.en} · Hanuman temple, Lucknow · BadaMangal`,
+    title: { absolute: `${temple.name.en} · Hanuman temple, Lucknow · BadaMangal` },
     description: temple.history.en.slice(0, 155),
     alternates: {
       canonical: `/resources/temples/${slug}`,
@@ -54,8 +59,10 @@ export default async function TemplePage({ params }: { params: Params }) {
     where: { status: "APPROVED", area: temple.area },
     orderBy: [{ isSponsored: "desc" }, { createdAt: "desc" }],
     take: 4,
+    // Public list: no organiser phone, WhatsApp or UPI columns.
+    select: PUBLIC_BHANDARA_LIST_SELECT,
   });
-  const nearby = nearbyRecords.map(toBhandara);
+  const nearby = nearbyRecords.map(toPublicBhandaraListItem);
 
   // PlaceOfWorship JSON-LD here in the server wrapper, locale-agnostic
   // structured data for search engines. All visible labels live in
@@ -90,7 +97,10 @@ export default async function TemplePage({ params }: { params: Params }) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(placeSchema) }}
       />
-      <TempleDetailView temple={temple} nearby={nearby} />
+      <TempleDetailView
+        temple={templeImageOnDisk(temple.imagePath) ? temple : { ...temple, imagePath: undefined }}
+        nearby={nearby}
+      />
     </>
   );
 }

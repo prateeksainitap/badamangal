@@ -21,7 +21,7 @@
 import type { Metadata } from "next";
 import VolunteerSubmitForm from "@/components/volunteer/VolunteerSubmitForm";
 import VolunteerSubmitHeader from "@/components/volunteer/VolunteerSubmitHeader";
-import { JaliCorner } from "@/components/ornaments";
+import { InnerShell, FormPanel } from "@/components/v2";
 import { SITE_URL } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -41,16 +41,17 @@ export default async function VolunteerSubmitPage({ searchParams }: PageProps) {
   const initialCode = typeof code === "string" ? code.trim().toUpperCase() : "";
 
   return (
-    <main className="mx-auto max-w-2xl px-4 sm:px-6 pb-24">
+    <InnerShell>
       <VolunteerSubmitHeader />
-
-      <section className="relative mt-6 rounded-3xl border border-gold-500/40 bg-cream-50 p-5 sm:p-7 shadow-sm overflow-hidden">
-        <JaliCorner position="tl" className="absolute top-3 left-3 w-9 h-9 text-gold-500/60" />
-        <JaliCorner position="tr" className="absolute top-3 right-3 w-9 h-9 text-gold-500/60" />
-        <JaliCorner position="bl" className="absolute bottom-3 left-3 w-9 h-9 text-gold-500/60" />
-        <JaliCorner position="br" className="absolute bottom-3 right-3 w-9 h-9 text-gold-500/60" />
-        <VolunteerSubmitForm initialCode={initialCode} />
+      <section className="bmi-sec tight" style={{ paddingTop: 0 }}>
+        <div className="bmi-wrap bmi-formgrid">
+          <div>
+            <FormPanel>
+              <VolunteerSubmitForm initialCode={initialCode} />
+            </FormPanel>
+          </div>
+        </div>
       </section>
-    </main>
+    </InnerShell>
   );
 }

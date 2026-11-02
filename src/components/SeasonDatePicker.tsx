@@ -3,7 +3,7 @@
 /**
  * Brand-themed calendar picker wrapping react-day-picker. Used in the
  * BhandaraForm Step 3 "Pick any other date" slot, and reusable wherever
- * we need a one-off date pick inside the 2026 Bada Mangal season.
+ * we need a one-off date pick inside a Bada Mangal season window.
  *
  * The trigger is a saffron pill; clicking it opens a popover panel that
  * sits beneath the trigger. The DayPicker grid is restyled via the
@@ -97,7 +97,7 @@ export default function SeasonDatePicker({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={panelId}
-        className="inline-flex items-center gap-2 rounded-full border border-saffron-500/55 bg-cream-50 px-4 py-2 text-sm font-medium text-sindoor-700 shadow-warm hover:border-saffron-600 hover:bg-saffron-50 transition-colors"
+        className="bm-ctl-date inline-flex items-center gap-2 rounded-full border border-saffron-500/55 bg-cream-50 px-4 py-2 text-sm font-medium text-sindoor-700 shadow-warm hover:border-saffron-600 hover:bg-saffron-50 transition-colors"
       >
         <CalendarIcon />
         <span>{triggerLabel}</span>
@@ -195,10 +195,10 @@ const CLASS_NAMES: NonNullable<
 };
 
 /**
- * Custom month-caption row: `‹  May 2026  ›`. The two nav buttons sit on
+ * Custom month-caption row: `‹  May 2027  ›`. The two nav buttons sit on
  * either side of the month label, all on a single row with a hairline
  * gold rule underneath. The arrows are disabled at season bounds so the
- * user can't navigate past May or June 2026.
+ * user can't navigate outside the season's months.
  */
 function BrandMonthCaption({ calendarMonth }: MonthCaptionProps) {
   const { previousMonth, nextMonth, goToMonth } = useDayPicker();

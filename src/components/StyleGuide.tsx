@@ -145,8 +145,8 @@ export default function StyleGuide() {
         <EmptyState
           illustration="/illustrations/empty-state-plate.webp"
           kicker="Waiting for the first spot"
-          headlineEn="The pandals are quiet right now."
-          headlineHi="अभी पंडाल शांत हैं।"
+          headlineEn="The bhandaras are quiet right now."
+          headlineHi="अभी भंडारे शांत हैं।"
           bodyEn="The moment a passer-by reports a bhandara from anywhere in Lucknow, their photo will land here within 8 seconds."
           bodyHi="जैसे ही कोई पासर्बाई कोई भंडारा रिपोर्ट करेगा, उसकी तस्वीर यहाँ हर 8 सेकंड में अपने-आप आ जाएगी।"
           primaryCta={{ href: "/spot", label: "Spot a bhandara now", ga: "design_system_demo" }}

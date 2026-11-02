@@ -9,7 +9,7 @@ export default function OG() {
   return renderResourceOG({
     kicker: "Resources · Temples",
     titleEn: "Hanuman temples of Lucknow",
-    subtitle: "Aliganj, Hanuman Setu, Sankat Mochan, addresses, timings, history.",
+    subtitle: "Aliganj, Hanuman Setu, Hazratganj, addresses, timings, history.",
     accent: "gold",
   });
 }

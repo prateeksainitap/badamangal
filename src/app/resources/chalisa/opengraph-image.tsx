@@ -10,7 +10,7 @@ export default function OG() {
     kicker: "Resources · Chalisa",
     titleHi: "हनुमान चालीसा",
     titleEn: "Hanuman Chalisa",
-    subtitle: "Forty verses, two dohas, with verified audio.",
+    subtitle: "Forty verses, two dohas, in full.",
     accent: "saffron",
   });
 }

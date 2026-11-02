@@ -50,13 +50,13 @@ import { useLocaleFromContext } from "@/lib/locale-context";
 const COPY = {
   hi: {
     header: {
-      eyebrow: "🚩 भण्डारा भेजें",
+      eyebrow: "भण्डारा भेजें",
       h1: "भण्डारा भेजें",
       sub1: "10 तस्वीरें + 2 video + 1 live spot।",
       sub2: "पूरी गाइड देखें",
     },
     code: {
-      submittingAs: "✓ भेज रहे हैं",
+      submittingAs: "भेज रहे हैं",
       notYou: "आप नहीं?",
       pastePrompt: "अपना volunteer code पेस्ट करें (जैसे: BM-LKO-X7K2M9)",
       useCode: "Code लगाएँ",
@@ -65,11 +65,11 @@ const COPY = {
     },
     gps: {
       pending: "आपकी location ली जा रही है…",
-      capturedPrefix: "📍 Location मिल गई · accuracy",
+      capturedPrefix: "Location मिल गई · accuracy",
       recapture: "फिर से लें",
       denied:
-        "⚠️ Location permission बंद है। Browser settings में चालू करें + reload करें। बिना GPS की submissions अस्वीकृत हो सकती हैं।",
-      errorPrefix: "⚠️ GPS error:",
+        "Location permission बंद है। Browser settings में चालू करें + reload करें। बिना GPS की submissions अस्वीकृत हो सकती हैं।",
+      errorPrefix: "GPS error:",
       retry: "फिर कोशिश करें",
     },
     section1: {
@@ -78,13 +78,13 @@ const COPY = {
       bhandaraNamePh: "जैसे: द्वितीय विशाल भण्डारा",
       area: "क्षेत्र / मोहल्ला",
       areaPh: "जैसे: हजरतगंज, अलीगंज",
-      autoFilledArea: "📍 GPS से अपने आप भर गया। ज़रूरत हो तो बदलें।",
+      autoFilledArea: "GPS से अपने आप भर गया। ज़रूरत हो तो बदलें।",
       startTime: "समय",
       startTimePh: "जैसे: सुबह 9:00",
       fullAddress: "पूरा पता",
       fullAddressPh:
         "गली + पास का landmark + क्षेत्र, जैसे: Swati-Krutika Apartment Gate, CG City, Ansal API",
-      autoFilledAddress: "📍 GPS से अपने आप भर गया। श्रद्धालुओं को पहुँचने में मदद हो तो landmark जोड़ें।",
+      autoFilledAddress: "GPS से अपने आप भर गया। श्रद्धालुओं को पहुँचने में मदद हो तो landmark जोड़ें।",
       organizerName: "आयोजक का नाम",
       organizerNamePh: "जैसे banner पर लिखा है",
       organizerPhone: "आयोजक का फ़ोन",
@@ -97,7 +97,7 @@ const COPY = {
     },
     section2: {
       legend: (n: number, ok: boolean) =>
-        ok ? "2. 10 तस्वीरें ✅" : `2. 10 तस्वीरें (${n}/10)`,
+        ok ? "2. 10 तस्वीरें " : `2. 10 तस्वीरें (${n}/10)`,
       help: (
         <>
           2-3 हर category की: <strong>स्थान</strong> (pandal, decoration) ·{" "}
@@ -107,30 +107,30 @@ const COPY = {
         </>
       ),
       uploading: "Uploading…",
-      addPhotos: (remaining: number) => `📸 तस्वीरें जोड़ें (${remaining} और)`,
-      openCamera: "📷 कैमरा खोलें",
+      addPhotos: (remaining: number) => `तस्वीरें जोड़ें (${remaining} और)`,
+      openCamera: "कैमरा खोलें",
     },
     section3: {
-      legendOk: "3. 2 videos ✅",
+      legendOk: "3. 2 videos ",
       legendPending: "3. 2 videos (Google Drive से)",
       help:
         "हर video 10-30 second की हो। एक pandal का pan, एक प्रसाद serve करने का moment। हमारे shared Google Drive folder में upload करें (videos यहाँ direct upload करने के लिए बहुत बड़ी हैं)।",
       step1: "1. Drive folder खोलिए",
-      openDriveBtn: "📂 Google Drive folder खोलें ↗",
+      openDriveBtn: "Google Drive folder खोलें ↗",
       step2: "2. File का नाम इस तरह रखें",
       filenameHint1: (code: string) =>
         `अपना volunteer code "${code}" file के नाम के शुरू में लगाएँ ताकि हम आपकी video को submission से match कर सकें।`,
-      checkboxStrong: "✅ मैंने अपनी 2 videos Drive folder में upload कर दी हैं",
+      checkboxStrong: "मैंने अपनी 2 videos Drive folder में upload कर दी हैं",
       checkboxSub: "filename के शुरू में volunteer code लगा हुआ है।",
     },
     section4: {
-      legendOk: "4. Live spot photo ✅",
+      legendOk: "4. Live spot photo ",
       legendPending: "4. Live spot photo (0/1)",
       help:
         "एक photo जो आप अभी जहाँ खड़े हैं वहीं ले रहे हैं। 8 घंटे तक live शहर के नक्शे पर दिखेगी।",
       uploading: "Uploading…",
-      replace: "📸 spot photo बदलें",
-      take: "📸 spot photo लें",
+      replace: "spot photo बदलें",
+      take: "spot photo लें",
     },
     section5: {
       legend: "5. और कुछ? (ज़रूरी नहीं)",
@@ -139,23 +139,23 @@ const COPY = {
         "कुछ बताना चाहते हैं? भण्डारा जल्दी ख़त्म हुआ? बैनर ख़राब था? Duplicate listing?",
     },
     submit: {
-      incompleteStrong: "⚠️ Bundle अधूरा है।",
+      incompleteStrong: "Bundle अधूरा है।",
       incompleteText:
         "पूरा bundle = 10 तस्वीरें + 2 videos + 1 spot photo। अधूरे submissions admin की मर्ज़ी पर accept होंगे।",
-      ready: "✅ पूरा bundle तैयार है। 🙏",
+      ready: "पूरा bundle तैयार है। ",
       submitting: "भेज रहे हैं…",
-      submit: "🙏 भण्डारा भेजें",
+      submit: "भण्डारा भेजें",
       confirm:
         "Submit करने पर आप पुष्टि करते हैं कि सभी photos + videos आज इसी भण्डारे पर लिए गए हैं।",
       uploadErrorPrefix: "Upload error:",
     },
     success: {
-      heading: "हो गया! 🙏",
+      heading: "हो गया! ",
       body:
-        "हम 24 घंटे के अंदर review करेंगे। Approve होते ही आपका भण्डारा public directory + शहर के नक्शे पर live हो जाएगा। आपकी सेवा के लिए धन्यवाद 🙏",
+        "हम 24 घंटे के अंदर review करेंगे। Approve होते ही आपका भण्डारा public directory + शहर के नक्शे पर live हो जाएगा। आपकी सेवा के लिए धन्यवाद ",
       idPrefix: "ID:",
-      submitAnother: "📸 एक और भण्डारा भेजें",
-      backHome: "🏠 BadaMangal home",
+      submitAnother: "एक और भण्डारा भेजें",
+      backHome: "BadaMangal home",
     },
     errors: {
       networkFail: "Network में दिक्कत। फिर कोशिश करें।",
@@ -166,13 +166,13 @@ const COPY = {
   },
   en: {
     header: {
-      eyebrow: "🚩 Submit a bhandara",
+      eyebrow: "Submit a bhandara",
       h1: "Submit a bhandara",
       sub1: "Take 10 photos + 2 videos + 1 live spot.",
       sub2: "See full guide",
     },
     code: {
-      submittingAs: "✓ Submitting as",
+      submittingAs: "Submitting as",
       notYou: "Not you?",
       pastePrompt: "Paste your volunteer code (e.g. BM-LKO-X7K2M9)",
       useCode: "Use code",
@@ -181,11 +181,11 @@ const COPY = {
     },
     gps: {
       pending: "Getting your location…",
-      capturedPrefix: "📍 Location captured · accuracy",
+      capturedPrefix: "Location captured · accuracy",
       recapture: "Re-capture",
       denied:
-        "⚠️ Location permission denied. Please enable location in your browser settings + reload. Submissions without GPS may be rejected.",
-      errorPrefix: "⚠️ GPS error:",
+        "Location permission denied. Please enable location in your browser settings + reload. Submissions without GPS may be rejected.",
+      errorPrefix: "GPS error:",
       retry: "Retry",
     },
     section1: {
@@ -194,14 +194,14 @@ const COPY = {
       bhandaraNamePh: "e.g. Dwitiya Vishal Bhandara",
       area: "Area / mohalla",
       areaPh: "e.g. Hazratganj, Aliganj",
-      autoFilledArea: "📍 Auto-filled from GPS. Edit if needed.",
+      autoFilledArea: "Auto-filled from GPS. Edit if needed.",
       startTime: "Start time",
       startTimePh: "e.g. 9:00 AM",
       fullAddress: "Full address",
       fullAddressPh:
         "Street + landmark + area, e.g. Swati-Krutika Apartment Gate, CG City, Ansal API",
       autoFilledAddress:
-        "📍 Auto-filled from GPS. Edit / add landmark if it helps devotees find the spot.",
+        "Auto-filled from GPS. Edit / add landmark if it helps devotees find the spot.",
       organizerName: "Organizer name",
       organizerNamePh: "As written on banner",
       organizerPhone: "Organizer phone",
@@ -214,7 +214,7 @@ const COPY = {
     },
     section2: {
       legend: (n: number, ok: boolean) =>
-        ok ? "2. 10 photos ✅" : `2. 10 photos (${n}/10)`,
+        ok ? "2. 10 photos " : `2. 10 photos (${n}/10)`,
       help: (
         <>
           2-3 each: <strong>VENUE</strong> (pandal, decoration) ·{" "}
@@ -224,31 +224,31 @@ const COPY = {
         </>
       ),
       uploading: "Uploading…",
-      addPhotos: (remaining: number) => `📸 Add photos (${remaining} more)`,
-      openCamera: "📷 Open camera",
+      addPhotos: (remaining: number) => `Add photos (${remaining} more)`,
+      openCamera: "Open camera",
     },
     section3: {
-      legendOk: "3. 2 videos ✅",
+      legendOk: "3. 2 videos ",
       legendPending: "3. 2 videos (via Google Drive)",
       help:
         "10-30 sec each. One pandal pan, one prasad-serving moment. Upload them to our shared Google Drive folder (phone videos are too large to upload here directly).",
       step1: "1. Open the Drive folder",
-      openDriveBtn: "📂 Open Google Drive folder ↗",
+      openDriveBtn: "Open Google Drive folder ↗",
       step2: "2. Name your files like",
       filenameHint1: (code: string) =>
         `Prefix every video file with your code "${code}" so we can match your Drive uploads to this submission.`,
       checkboxStrong:
-        "✅ I've uploaded my 2 videos to the Google Drive folder",
+        "I've uploaded my 2 videos to the Google Drive folder",
       checkboxSub: "with my volunteer code as the filename prefix.",
     },
     section4: {
-      legendOk: "4. Live spot photo ✅",
+      legendOk: "4. Live spot photo ",
       legendPending: "4. Live spot photo (0/1)",
       help:
         "ONE photo taken right now where you're standing. Goes on the live city map for 8 hours.",
       uploading: "Uploading…",
-      replace: "📸 Replace spot photo",
-      take: "📸 Take spot photo",
+      replace: "Replace spot photo",
+      take: "Take spot photo",
     },
     section5: {
       legend: "5. Anything else? (optional)",
@@ -257,23 +257,23 @@ const COPY = {
         "Anything we should know? Bhandara closed early? Banner damaged? Duplicate listing?",
     },
     submit: {
-      incompleteStrong: "⚠️ Bundle incomplete.",
+      incompleteStrong: "Bundle incomplete.",
       incompleteText:
         "Full bundle is 10 photos + 2 videos + 1 spot photo. Partial submissions may or may not be accepted at admin's discretion.",
-      ready: "✅ Full bundle ready to submit. 🙏",
+      ready: "Full bundle ready to submit. ",
       submitting: "Submitting…",
-      submit: "🙏 Submit bhandara",
+      submit: "Submit bhandara",
       confirm:
         "By submitting you confirm all photos + videos were taken at this bhandara today.",
       uploadErrorPrefix: "Upload error:",
     },
     success: {
-      heading: "Submitted! 🙏",
+      heading: "Submitted! ",
       body:
-        "We'll review within 24 hours. Once approved, your bhandara goes live on the public directory + city map. Thank you for your seva 🙏",
+        "We'll review within 24 hours. Once approved, your bhandara goes live on the public directory + city map. Thank you for your seva ",
       idPrefix: "ID:",
-      submitAnother: "📸 Submit another bhandara",
-      backHome: "🏠 BadaMangal home",
+      submitAnother: "Submit another bhandara",
+      backHome: "BadaMangal home",
     },
     errors: {
       networkFail: "Network error. Please try again.",
@@ -618,7 +618,7 @@ export default function VolunteerSubmitForm({
   const fullBundle = photoBundleOk && videoBundleOk && spotOk;
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-6">
+    <form onSubmit={onSubmit} className="bmi-form" style={{ gap: 32 }}>
       {/* Code lock-in. Shows a paste field only if we don't have one. */}
       <CodeBanner
         code={code}
@@ -645,19 +645,19 @@ export default function VolunteerSubmitForm({
 
       {/* Errors */}
       {phase.kind === "error" ? (
-        <div className="rounded-xl border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-sm text-alert-500">
+        <div className="bmi-alert" role="alert">
           {phase.message}
         </div>
       ) : null}
       {uploadError ? (
-        <div className="rounded-xl border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-sm text-alert-500">
+        <div className="bmi-alert" role="alert">
           {t.submit.uploadErrorPrefix} {uploadError}
         </div>
       ) : null}
 
       {/* ─── Section 1: Bhandara details ─── */}
-      <fieldset className="grid gap-4">
-        <legend className="font-fraunces text-lg text-sindoor-700">
+      <fieldset className="bmi-fieldset grid gap-5 bmi-vsec">
+        <legend className="bmi-fh" style={{ marginBottom: 12 }}>
           {t.section1.legend}
         </legend>
 
@@ -669,13 +669,13 @@ export default function VolunteerSubmitForm({
           error={fieldErrors.bhandaraName}
         />
 
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="bmi-grid2">
           {/* Area + address are controlled so the reverse-geocoder
               can pre-fill them from the captured GPS coords. */}
-          <label className="grid gap-1.5">
-            <span className="text-sm text-ink-600">
+          <label className="bmi-field">
+            <span className="bmi-field-label">
               {t.section1.area}
-              <span className="text-sindoor-700"> *</span>
+              
             </span>
             <input
               name="area"
@@ -689,15 +689,15 @@ export default function VolunteerSubmitForm({
               }}
               placeholder={t.section1.areaPh}
               list="vol-area-suggestions"
-              className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+              
             />
             {autoFilled.area ? (
-              <span className="text-xs text-leaf-600">
+              <span className="bmi-field-hint" style={{ color: "#2c5a2c" }}>
                 {t.section1.autoFilledArea}
               </span>
             ) : null}
             {fieldErrors.area ? (
-              <span className="text-xs text-alert-500">{fieldErrors.area}</span>
+              <span className="bmi-field-err" role="alert">{fieldErrors.area}</span>
             ) : null}
           </label>
           <datalist id="vol-area-suggestions">
@@ -713,10 +713,10 @@ export default function VolunteerSubmitForm({
           />
         </div>
 
-        <label className="grid gap-1.5">
-          <span className="text-sm text-ink-600">
+        <label className="bmi-field">
+          <span className="bmi-field-label">
             {t.section1.fullAddress}
-            <span className="text-sindoor-700"> *</span>
+            
           </span>
           <textarea
             name="address"
@@ -729,33 +729,33 @@ export default function VolunteerSubmitForm({
               setAddressValue(e.target.value);
             }}
             placeholder={t.section1.fullAddressPh}
-            className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+            
           />
           {autoFilled.address ? (
-            <span className="text-xs text-leaf-600">
+            <span className="bmi-field-hint" style={{ color: "#2c5a2c" }}>
               {t.section1.autoFilledAddress}
             </span>
           ) : null}
           {fieldErrors.address ? (
-            <span className="text-xs text-alert-500">{fieldErrors.address}</span>
+            <span className="bmi-field-err" role="alert">{fieldErrors.address}</span>
           ) : null}
         </label>
 
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="bmi-grid2">
           <Field
             label={t.section1.organizerName}
             name="organizerName"
             placeholder={t.section1.organizerNamePh}
             error={fieldErrors.organizerName}
           />
-          <label className="grid gap-1.5">
-            <span className="text-sm text-ink-600">
-              {t.section1.organizerPhone}{" "}
-              <span className="text-xs">{t.section1.optional}</span>
+          <label className="bmi-field">
+            <span className="bmi-field-label">
+              {t.section1.organizerPhone}
+              <span className="opt">{t.section1.optional}</span>
             </span>
             <PhoneInput name="organizerPhone" />
             {fieldErrors.organizerPhone ? (
-              <span className="text-xs text-alert-500">{fieldErrors.organizerPhone}</span>
+              <span className="bmi-field-err" role="alert">{fieldErrors.organizerPhone}</span>
             ) : null}
           </label>
         </div>
@@ -775,11 +775,11 @@ export default function VolunteerSubmitForm({
       </fieldset>
 
       {/* ─── Section 2: Photos ─── */}
-      <fieldset className="grid gap-3">
-        <legend className="font-fraunces text-lg text-sindoor-700">
+      <fieldset className="bmi-fieldset grid gap-3 bmi-vsec">
+        <legend className="bmi-fh" style={{ marginBottom: 12 }}>
           {t.section2.legend(photos.length, photoBundleOk)}
         </legend>
-        <p className="text-xs text-ink-600">{t.section2.help}</p>
+        <p className="bmi-field-hint" style={{ marginTop: -6 }}>{t.section2.help}</p>
 
         <input
           ref={photoInputRef}
@@ -809,7 +809,7 @@ export default function VolunteerSubmitForm({
             type="button"
             onClick={() => photoInputRef.current?.click()}
             disabled={photos.length >= 10 || photoUploading > 0}
-            className="inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bmi-b bmi-b-s sm"
           >
             {photoUploading > 0 ? (
               <>
@@ -821,7 +821,7 @@ export default function VolunteerSubmitForm({
           </button>
           <label
             htmlFor="vol-photo-camera"
-            className={`inline-flex items-center gap-1.5 rounded-full border border-gold-500/50 bg-white hover:bg-saffron-50 text-ink-900 font-medium px-4 py-2 text-sm transition-colors cursor-pointer ${photos.length >= 10 || photoUploading > 0 ? "opacity-50 pointer-events-none" : ""}`}
+            className={`bmi-b bmi-b-s sm ${photos.length >= 10 || photoUploading > 0 ? "opacity-50 pointer-events-none" : ""}`}
           >
             {t.section2.openCamera}
           </label>
@@ -832,7 +832,7 @@ export default function VolunteerSubmitForm({
             {photos.map((p, i) => (
               <li
                 key={p.url}
-                className="relative aspect-square rounded-lg border border-gold-500/40 overflow-hidden bg-cream-50"
+                className="relative aspect-square rounded-xl overflow-hidden bg-[#f5efe3]"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -845,7 +845,7 @@ export default function VolunteerSubmitForm({
                   type="button"
                   onClick={() => removePhoto(i)}
                   aria-label={`Remove photo ${i + 1}`}
-                  className="absolute top-1 right-1 w-6 h-6 rounded-full bg-ink-900/70 text-cream-50 text-xs flex items-center justify-center hover:bg-alert-500"
+                  className="absolute top-1 right-1 w-7 h-7 rounded-full bg-ink-900/70 text-cream-50 text-sm flex items-center justify-center"
                 >
                   ×
                 </button>
@@ -862,22 +862,22 @@ export default function VolunteerSubmitForm({
           folder instead. Volunteer prefixes their code on each
           filename so admin can match Drive uploads to submissions
           during moderation. */}
-      <fieldset className="grid gap-3">
-        <legend className="font-fraunces text-lg text-sindoor-700">
+      <fieldset className="bmi-fieldset grid gap-3 bmi-vsec">
+        <legend className="bmi-fh" style={{ marginBottom: 12 }}>
           {videoBundleOk ? t.section3.legendOk : t.section3.legendPending}
         </legend>
-        <p className="text-xs text-ink-600">{t.section3.help}</p>
+        <p className="bmi-field-hint" style={{ marginTop: -6 }}>{t.section3.help}</p>
 
-        <div className="mt-1 rounded-2xl border border-gold-500/45 bg-cream-50 p-4 space-y-3">
+        <div className="grid gap-5" style={{ paddingLeft: 2 }}>
           {/* Step A: open the Drive folder in a new tab */}
           <div>
-            <p className="text-sm font-medium text-ink-900">{t.section3.step1}</p>
+            <p className="bmi-field-label">{t.section3.step1}</p>
             <a
               href={VOLUNTEER_VIDEO_DRIVE_URL}
               target="_blank"
               rel="noopener noreferrer"
               data-ga="volunteer_open_drive_folder"
-              className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors"
+              className="bmi-b bmi-b-s sm mt-2"
             >
               {t.section3.openDriveBtn}
             </a>
@@ -885,17 +885,17 @@ export default function VolunteerSubmitForm({
 
           {/* Step B: naming convention with the volunteer's code */}
           <div>
-            <p className="text-sm font-medium text-ink-900">{t.section3.step2}</p>
-            <p className="mt-1.5 text-sm font-mono text-sindoor-700 bg-saffron-50 inline-block px-2.5 py-1 rounded border border-saffron-600/35">
+            <p className="bmi-field-label">{t.section3.step2}</p>
+            <p className="bmi-tag" style={{ marginTop: 8, padding: "0 14px", borderRadius: 10, overflowWrap: "anywhere" }}>
               {code || "BM-LKO-XXXXXX"}_bhandara-name.mp4
             </p>
-            <p className="mt-1.5 text-xs text-ink-600">
+            <p className="bmi-field-hint" style={{ marginTop: 6 }}>
               {t.section3.filenameHint1(code || "BM-LKO-XXXXXX")}
             </p>
           </div>
 
           {/* Step C: confirmation checkbox, gates the bundle */}
-          <label className="flex items-start gap-2.5 mt-2 cursor-pointer select-none">
+          <label className="bmi-check">
             <input
               type="checkbox"
               checked={videosUploadedToDrive}
@@ -905,7 +905,7 @@ export default function VolunteerSubmitForm({
                   trackEvent("volunteer_videos_drive_confirmed", {});
                 }
               }}
-              className="mt-1 h-4 w-4 accent-saffron-600 shrink-0"
+              
             />
             <span className="text-sm text-ink-900">
               <strong>{t.section3.checkboxStrong}</strong>
@@ -919,11 +919,11 @@ export default function VolunteerSubmitForm({
       </fieldset>
 
       {/* ─── Section 4: Live spot photo ─── */}
-      <fieldset className="grid gap-3">
-        <legend className="font-fraunces text-lg text-sindoor-700">
+      <fieldset className="bmi-fieldset grid gap-3 bmi-vsec">
+        <legend className="bmi-fh" style={{ marginBottom: 12 }}>
           {spotOk ? t.section4.legendOk : t.section4.legendPending}
         </legend>
-        <p className="text-xs text-ink-600">{t.section4.help}</p>
+        <p className="bmi-field-hint" style={{ marginTop: -6 }}>{t.section4.help}</p>
 
         <input
           ref={spotInputRef}
@@ -941,7 +941,7 @@ export default function VolunteerSubmitForm({
           type="button"
           onClick={() => spotInputRef.current?.click()}
           disabled={spotUploading}
-          className="inline-flex items-center gap-1.5 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed self-start"
+          className="bmi-b bmi-b-s sm self-start"
         >
           {spotUploading ? (
             <>
@@ -955,7 +955,7 @@ export default function VolunteerSubmitForm({
         </button>
 
         {spotPhoto ? (
-          <div className="rounded-lg border border-gold-500/40 overflow-hidden bg-cream-50">
+          <div className="bmi-drop-img overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={spotPhoto.url}
@@ -967,8 +967,8 @@ export default function VolunteerSubmitForm({
       </fieldset>
 
       {/* ─── Section 5: Notes (optional) ─── */}
-      <fieldset className="grid gap-3">
-        <legend className="font-fraunces text-lg text-sindoor-700">
+      <fieldset className="bmi-fieldset grid gap-3 bmi-vsec">
+        <legend className="bmi-fh" style={{ marginBottom: 12 }}>
           {t.section5.legend}
         </legend>
         <FieldArea
@@ -979,13 +979,15 @@ export default function VolunteerSubmitForm({
       </fieldset>
 
       {/* ─── Submit ─── */}
-      <div className="mt-2 grid gap-3">
+      <div className="grid gap-3 bmi-vsec">
         {!fullBundle ? (
-          <div className="rounded-xl border border-saffron-600/40 bg-saffron-50 px-3 py-2 text-sm text-ink-900">
+          <div className="bmi-alert">
+            <span>
             <strong>{t.submit.incompleteStrong}</strong> {t.submit.incompleteText}
+            </span>
           </div>
         ) : (
-          <div className="rounded-xl border border-leaf-600/40 bg-leaf-600/5 px-3 py-2 text-sm text-ink-900">
+          <div className="bmi-alert ok">
             {t.submit.ready}
           </div>
         )}
@@ -996,7 +998,7 @@ export default function VolunteerSubmitForm({
             photoUploading > 0 ||
             spotUploading
           }
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-6 py-3 text-base shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="bmi-b bmi-b-p block"
         >
           {submitting ? (
             <>
@@ -1006,7 +1008,7 @@ export default function VolunteerSubmitForm({
             <>{t.submit.submit}</>
           )}
         </button>
-        <p className="text-center text-xs text-ink-600">{t.submit.confirm}</p>
+        <p className="bmi-field-hint text-center">{t.submit.confirm}</p>
       </div>
     </form>
   );
@@ -1029,14 +1031,14 @@ function CodeBanner({
 }) {
   if (locked && isValidVolunteerCodeShape(code)) {
     return (
-      <div className="rounded-xl border border-leaf-600/40 bg-leaf-600/5 px-3 py-2 flex items-center justify-between gap-2">
-        <span className="text-sm text-ink-900">
+      <div className="bmi-alert ok" style={{ alignItems: "center", justifyContent: "space-between" }}>
+        <span>
           {t.submittingAs}{" "}
-          <strong className="font-fraunces">{code}</strong>
+          <strong>{code}</strong>
         </span>
         <Link
           href="/volunteer/signup"
-          className="text-xs text-ink-600 underline hover:text-saffron-600"
+          className="bmi-tl"
         >
           {t.notYou}
         </Link>
@@ -1044,9 +1046,9 @@ function CodeBanner({
     );
   }
   return (
-    <div className="rounded-xl border border-saffron-600/40 bg-saffron-50/60 p-3">
-      <label className="grid gap-1.5">
-        <span className="text-sm text-ink-900">{t.pastePrompt}</span>
+    <div>
+      <label className="bmi-field">
+        <span className="bmi-field-label">{t.pastePrompt}</span>
         <div className="flex gap-2">
           <input
             type="text"
@@ -1055,20 +1057,20 @@ function CodeBanner({
             placeholder="BM-LKO-XXXXXX"
             autoCapitalize="characters"
             spellCheck={false}
-            className="flex-1 rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 font-fraunces tracking-wider focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+            className="flex-1 tracking-wider"
           />
           <button
             type="button"
             onClick={onLock}
             disabled={!isValidVolunteerCodeShape(code)}
-            className="shrink-0 inline-flex items-center justify-center rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bmi-b bmi-b-s shrink-0"
           >
             {t.useCode}
           </button>
         </div>
-        <span className="text-xs text-ink-600">
+        <span className="bmi-field-hint">
           {t.dontHave}{" "}
-          <Link href="/volunteer/signup" className="underline hover:text-saffron-600">
+          <Link href="/volunteer/signup" className="bmi-tl inline">
             {t.signupHere}
           </Link>
         </span>
@@ -1088,21 +1090,21 @@ function GpsBanner({
 }) {
   if (gps.kind === "pending") {
     return (
-      <div className="rounded-xl border border-gold-500/40 bg-cream-50 px-3 py-2 text-sm text-ink-600 flex items-center gap-2">
+      <div className="bmi-fnote" style={{ alignItems: "center" }}>
         <Spinner /> {t.pending}
       </div>
     );
   }
   if (gps.kind === "captured") {
     return (
-      <div className="rounded-xl border border-leaf-600/40 bg-leaf-600/5 px-3 py-2 flex items-center justify-between gap-2">
-        <span className="text-sm text-ink-900">
+      <div className="bmi-alert ok" style={{ alignItems: "center", justifyContent: "space-between" }}>
+        <span>
           {t.capturedPrefix} {Math.round(gps.accuracy)}m
         </span>
         <button
           type="button"
           onClick={onRecapture}
-          className="text-xs text-ink-600 underline hover:text-saffron-600"
+          className="bmi-tl"
         >
           {t.recapture}
         </button>
@@ -1111,20 +1113,20 @@ function GpsBanner({
   }
   if (gps.kind === "denied") {
     return (
-      <div className="rounded-xl border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-sm text-alert-500">
+      <div className="bmi-alert" role="alert">
         {t.denied}
       </div>
     );
   }
   return (
-    <div className="rounded-xl border border-alert-500/40 bg-alert-500/10 px-3 py-2 flex items-center justify-between gap-2">
-      <span className="text-sm text-alert-500">
+    <div className="bmi-alert" style={{ alignItems: "center", justifyContent: "space-between" }}>
+      <span>
         {t.errorPrefix} {gps.message}
       </span>
       <button
         type="button"
         onClick={onRecapture}
-        className="text-xs text-alert-500 underline hover:text-alert-500/80"
+        className="bmi-tl"
       >
         {t.retry}
       </button>
@@ -1156,10 +1158,9 @@ function Field({
   list?: string;
 }) {
   return (
-    <label className="grid gap-1.5">
-      <span className="text-sm text-ink-600">
+    <label className="bmi-field">
+      <span className="bmi-field-label">
         {label}
-        {required ? <span className="text-sindoor-700"> *</span> : null}
       </span>
       <input
         name={name}
@@ -1167,10 +1168,10 @@ function Field({
         required={required}
         placeholder={placeholder}
         list={list}
-        className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+        
       />
-      {hint ? <span className="text-xs text-ink-600">{hint}</span> : null}
-      {error ? <span className="text-xs text-alert-500">{error}</span> : null}
+      {hint ? <span className="bmi-field-hint">{hint}</span> : null}
+      {error ? <span className="bmi-field-err" role="alert">{error}</span> : null}
     </label>
   );
 }
@@ -1189,19 +1190,18 @@ function FieldArea({
   error?: string;
 }) {
   return (
-    <label className="grid gap-1.5">
-      <span className="text-sm text-ink-600">
+    <label className="bmi-field">
+      <span className="bmi-field-label">
         {label}
-        {required ? <span className="text-sindoor-700"> *</span> : null}
       </span>
       <textarea
         name={name}
         rows={3}
         required={required}
         placeholder={placeholder}
-        className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+        
       />
-      {error ? <span className="text-xs text-alert-500">{error}</span> : null}
+      {error ? <span className="bmi-field-err" role="alert">{error}</span> : null}
     </label>
   );
 }
@@ -1216,28 +1216,30 @@ function SuccessCard({
   t: (typeof COPY)["en"]["success"];
 }) {
   return (
-    <div className="grid gap-5 text-center">
-      <p className="text-4xl">✅</p>
+    <div className="bmi-done grid gap-5">
+      <div className="bmi-done-tick" aria-hidden style={{ marginBottom: 0 }}>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+      </div>
       <div>
-        <h2 className="font-fraunces text-2xl sm:text-3xl text-sindoor-700">
+        <h2 className="bmi-h3" style={{ color: "var(--sindoor)" }}>
           {t.heading}
         </h2>
-        <p className="mt-2 text-sm text-ink-600">{t.body}</p>
-        <p className="mt-1 text-xs text-ink-600 font-mono">
+        <p className="bmi-lede">{t.body}</p>
+        <p className="bmi-fine" style={{ marginTop: 6 }}>
           {t.idPrefix} {submissionId.slice(0, 12)}…
         </p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+      <div className="bmi-actions" style={{ justifyContent: "center" }}>
         <Link
           href={`/volunteer/submit?code=${code}`}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-6 py-3 text-base shadow-sm transition-colors"
+          className="bmi-b bmi-b-p"
         >
           {t.submitAnother}
         </Link>
         <Link
           href="/"
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-gold-500/60 bg-white hover:bg-cream-50 text-ink-900 font-medium px-6 py-3 text-base transition-colors"
+          className="bmi-b bmi-b-s"
         >
           {t.backHome}
         </Link>
@@ -1250,7 +1252,7 @@ function Spinner() {
   return (
     <span
       aria-hidden
-      className="inline-block h-4 w-4 motion-safe:animate-spin rounded-full border-2 border-cream-50/40 border-t-cream-50"
+      className="inline-block h-4 w-4 motion-safe:animate-spin rounded-full border-2 border-[#a3520b]/30 border-t-[#a3520b]"
     />
   );
 }

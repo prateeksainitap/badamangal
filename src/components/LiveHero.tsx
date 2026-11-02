@@ -50,8 +50,8 @@ export default function LiveHero({ liveCount }: Props) {
       </h1>
       <p className="mt-3 text-ink-600 max-w-2xl mx-auto leading-relaxed">
         {isHi
-          ? "लखनऊ के पंडालों से तस्वीरें, संदेश, और सेवा की झलक, हर कुछ सेकंड में नई।"
-          : "Photos, blessings, and live updates from Lucknow's pandals, refreshed every few seconds."}
+          ? "लखनऊ के भंडारों से तस्वीरें, संदेश, और सेवा की झलक, हर कुछ सेकंड में नई।"
+          : "Photos, blessings, and live updates from Lucknow's bhandaras, refreshed every few seconds."}
       </p>
     </section>
   );

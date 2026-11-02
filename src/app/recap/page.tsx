@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 import RecapView from "@/components/RecapView";
 import { getHomepageStats } from "@/lib/stats";
+import { getSeason2026, type SeasonDay } from "@/lib/home-season";
 
 // ISR, same cache window as the homepage's stats panel. The headline
 // numbers are the one genuinely live thing on this page; everything
@@ -22,6 +24,7 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
+    images: [DEFAULT_OG_IMAGE],
     title: "2026 Season Recap · BadaMangal",
     description:
       "Bada Mangal 2026, the full recap. Eight Tuesdays, one city, one map that Lucknow built together.",
@@ -31,6 +34,7 @@ export const metadata: Metadata = {
     locale: "en_IN",
   },
   twitter: {
+    images: [DEFAULT_OG_IMAGE],
     card: "summary_large_image",
     title: "2026 Season Recap · BadaMangal",
     description: "Bada Mangal 2026, the full recap, in numbers.",
@@ -38,6 +42,14 @@ export const metadata: Metadata = {
 };
 
 export default async function RecapPage() {
-  const stats = await getHomepageStats();
-  return <RecapView stats={stats} />;
+  // The Tuesday by Tuesday picker reuses the homepage's season data
+  // (read only). A failed load hides the picker, never the page.
+  const [stats, days] = await Promise.all([
+    getHomepageStats(),
+    getSeason2026().catch((err): SeasonDay[] => {
+      console.error("[recap] season 2026 load failed", err);
+      return [];
+    }),
+  ]);
+  return <RecapView stats={stats} days={days} />;
 }

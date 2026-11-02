@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
+import { DEFAULT_OG_IMAGE } from "@/lib/seo";
 import { prisma } from "@/lib/db";
 import { stripBotProvenance } from "@/lib/sanitize";
 import GalleryFullView from "@/components/GalleryFullView";
 import type { GalleryItem } from "@/components/GalleryLightbox";
+// Founder's rule: never show political party names or politician
+// pamphlets in a curated selection. Photos whose caption mentions a
+// party or an office holder stay out of the public gallery.
+import { isHiddenPublicPhoto, isPoliticalText as isPolitical } from "@/lib/public-caption";
 
 // 5-min ISR keeps the page cheap (one big read per refresh window)
 // while still feeling reasonably fresh during a live Tuesday. The
@@ -23,6 +28,7 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
+    images: [DEFAULT_OG_IMAGE],
     title: "Gallery · BadaMangal Lucknow",
     description:
       "Every Bada Mangal photo on BadaMangal.com, grouped by day.",
@@ -46,7 +52,6 @@ export default async function GalleryPage() {
         imageUrl: true,
         caption: true,
         captionHi: true,
-        uploadedBy: true,
         createdAt: true,
       },
     }),
@@ -59,7 +64,6 @@ export default async function GalleryPage() {
         photoUrl: true,
         extraPhotoUrls: true,
         caption: true,
-        reporterName: true,
         createdAt: true,
       },
     }),
@@ -70,17 +74,25 @@ export default async function GalleryPage() {
   // shape). Spot rows can emit multiple items (primary + each extra
   // photo) so a 5-photo spot upload shows as 5 tiles, all sharing
   // the spot's createdAt for grouping/freshness.
+  //
+  // No uploader or spotter names reach this page (uploadedBy is not
+  // read). Captions travel only as image alt text: many are AI vision
+  // descriptions, which are never shown as visible text on a public
+  // photo (Founder's rule).
   const items: GalleryItem[] = [
-    ...galleryAdmin.map((g) => ({
-      id: `admin:${g.id}`,
-      url: g.imageUrl,
-      source: "admin" as const,
-      caption: g.caption ?? undefined,
-      captionHi: g.captionHi ?? undefined,
-      credit: g.uploadedBy ?? undefined,
-      createdAt: g.createdAt.toISOString(),
-    })),
-    ...gallerySpotPhotos.flatMap((s) => {
+    ...galleryAdmin
+      .filter((g) => !isPolitical(g.caption) && !isPolitical(g.captionHi))
+      .map((g) => ({
+        id: `admin:${g.id}`,
+        url: g.imageUrl,
+        source: "admin" as const,
+        caption: g.caption ?? undefined,
+        captionHi: g.captionHi ?? undefined,
+        createdAt: g.createdAt.toISOString(),
+      })),
+    ...gallerySpotPhotos
+      .filter((s) => !isPolitical(s.caption) && !isHiddenPublicPhoto(s.id))
+      .flatMap((s) => {
       let extras: string[] = [];
       try {
         const parsed = JSON.parse(s.extraPhotoUrls || "[]");
@@ -93,7 +105,7 @@ export default async function GalleryPage() {
         /* keep extras = [] */
       }
       const urls = [s.photoUrl, ...extras].filter(
-        (u): u is string => Boolean(u),
+        (u): u is string => Boolean(u) && !isHiddenPublicPhoto(null, u),
       );
       const cleanCaption = stripBotProvenance(s.caption) || undefined;
       const createdAtIso = s.createdAt.toISOString();

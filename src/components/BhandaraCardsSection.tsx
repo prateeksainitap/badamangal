@@ -6,7 +6,7 @@ import BhandaraCard from "@/components/BhandaraCard";
 import FancySelect from "@/components/FancySelect";
 import CtaPendingDot from "@/components/CtaPendingDot";
 import { trackEvent } from "@/lib/ga";
-import type { Bhandara } from "@/types/bhandara";
+import type { BhandaraListItem } from "@/types/bhandara";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { AREAS } from "@/lib/lucknow";
@@ -23,7 +23,7 @@ import { useCity } from "@/lib/city-context";
  * legacy caller still compiles; values are ignored at runtime.
  */
 type Props = {
-  listings: Bhandara[];
+  listings: BhandaraListItem[];
   locale?: Locale;
   heading?: string;
   isHi?: boolean;

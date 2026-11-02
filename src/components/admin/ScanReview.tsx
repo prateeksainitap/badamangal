@@ -23,6 +23,7 @@ import PhoneInput from "@/components/PhoneInput";
 import UpiQrUpload from "@/components/UpiQrUpload";
 import AdminListbox from "@/components/admin/AdminListbox";
 import { trackEvent } from "@/lib/ga";
+import { SEASONS } from "@/lib/season";
 import { IconCheck } from "@/components/admin/AdminIcons";
 
 // ── Client-side image compression ────────────────────────────────────
@@ -1027,7 +1028,7 @@ function BhandaraReviewForm({
 
         {/* Dates, preset Bada Mangal Tuesdays + Bada Shanivar
             Saturdays as quick-pick chips. Below them, a custom-date
-            picker (any 2026 date) for off-season events or one-off
+            picker (any date from 2026 to the latest season's year) for off-season events or one-off
             community dinners the calendar doesn't preset. */}
         <div className="mt-5">
           <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300/70 font-mono">
@@ -1085,10 +1086,11 @@ function BhandaraReviewForm({
 
           <div className="mt-2">
             <SeasonDatePicker
-              // Allow any 2026 date for admin overrides. Public form
-              // sticks to the season window; admin gets full freedom.
-              minIso="2026-01-01"
-              maxIso="2026-12-31"
+              // Any date from 2026 to the latest configured season's
+              // year, matching /api/admin/publish. Public form sticks
+              // to the season window; admin gets full freedom.
+              minIso={`${SEASONS[0].year}-01-01`}
+              maxIso={`${SEASONS[SEASONS.length - 1].year}-12-31`}
               selectedIsos={dates}
               onPick={addCustomDate}
               locale="en"

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import BhandaraForm from "@/components/BhandaraForm";
-import { JaliCorner } from "@/components/ornaments";
+import { FormPanel, Button } from "@/components/v2";
 import { trackEvent } from "@/lib/ga";
 import { useLocaleFromContext } from "@/lib/locale-context";
 
@@ -219,13 +219,15 @@ export default function BhandaraScanner() {
   // user what just happened so they know to verify the fields.
   if (phase === "form") {
     return (
-      <div className="grid gap-4">
-        <div className="rounded-2xl border border-saffron-500/45 bg-saffron-50/70 px-4 py-3 text-sm text-ink-900 flex items-start gap-2">
-          <span aria-hidden className="text-saffron-600 text-lg leading-none">
-            ✦
-          </span>
-          <div className="flex-1">
-            <p className="font-semibold text-sindoor-700">
+      <div className="grid gap-6">
+        <div className={errorMessage ? "bmi-alert" : "bmi-fnote"} style={{ alignItems: "center" }}>
+          {errorMessage ? null : (
+            <span className="ic" aria-hidden>
+              <IconSparkle />
+            </span>
+          )}
+          <span className="flex-1">
+            <b>
               {errorMessage
                 ? isHi
                   ? "AI से पढ़ा नहीं जा सका, फॉर्म स्वयं भरें।"
@@ -233,18 +235,12 @@ export default function BhandaraScanner() {
                 : isHi
                   ? "AI ने जो पढ़ा वह नीचे भर दिया है।"
                   : "We've pre-filled what we could read."}
-            </p>
-            <p className="mt-0.5 text-ink-600 text-xs">
-              {isHi
-                ? "हर फ़ील्ड एक बार ज़रूर देख लें और कोई कमी हो तो ठीक कर दें।"
-                : "Please review each step and fix anything Gemini missed."}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={reset}
-            className="shrink-0 text-xs underline decoration-dotted underline-offset-4 text-ink-600 hover:text-sindoor-700"
-          >
+            </b>{" "}
+            {isHi
+              ? "हर फ़ील्ड एक बार ज़रूर देख लें।"
+              : "Please review each step and fix anything it missed."}
+          </span>
+          <button type="button" onClick={reset} className="bmi-tl shrink-0">
             {isHi ? "अलग पैम्फलेट" : "Different pamphlet"}
           </button>
         </div>
@@ -263,31 +259,29 @@ export default function BhandaraScanner() {
   // ── Phase: scanning ────────────────────────────────────────────────
   if (phase === "scanning") {
     return (
-      <div className="rounded-3xl border border-saffron-500/45 bg-cream-50 p-8 sm:p-12 text-center shadow-warm">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-saffron-100 text-saffron-600 motion-safe:animate-pulse">
-          <SpinnerLarge />
+      <FormPanel>
+        <div className="bmi-done" aria-live="polite">
+          <div className="bmi-drop-ic" style={{ margin: "0 auto 16px" }} aria-hidden>
+            <SpinnerLarge />
+          </div>
+          <h2 className={`bmi-h3 ${isHi ? "" : "lat"}`}>
+            {isHi ? "पैम्फलेट पढ़ा जा रहा है…" : "Reading your pamphlet…"}
+          </h2>
+          <p className="bmi-lede" style={{ marginTop: 8 }}>
+            {isHi
+              ? "इसमें 5 से 12 सेकंड लगते हैं। कृपया प्रतीक्षा करें।"
+              : "Takes about 5 to 12 seconds. Hang tight."}
+          </p>
+          {previewUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={previewUrl}
+              alt=""
+              className="bmi-drop-img mt-6 mx-auto max-h-64 object-contain"
+            />
+          ) : null}
         </div>
-        <h2
-          className={`mt-4 text-xl sm:text-2xl text-sindoor-700 ${
-            isHi ? "font-tiro" : "font-fraunces font-semibold"
-          }`}
-        >
-          {isHi ? "पैम्फलेट पढ़ा जा रहा है…" : "Reading your pamphlet…"}
-        </h2>
-        <p className="mt-2 text-sm text-ink-600">
-          {isHi
-            ? "इसमें 5–12 सेकंड लगते हैं। कृपया प्रतीक्षा करें।"
-            : "Takes about 5–12 seconds. Hang tight."}
-        </p>
-        {previewUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={previewUrl}
-            alt=""
-            className="mt-6 mx-auto max-h-64 rounded-2xl border border-gold-500/40 object-contain"
-          />
-        ) : null}
-      </div>
+      </FormPanel>
     );
   }
 
@@ -300,41 +294,11 @@ export default function BhandaraScanner() {
   //     with AI" appears below as the obvious next action, sized +
   //     styled to match the chooser-page CTAs via btn btn-gold
   return (
-    <div className="relative rounded-3xl border border-saffron-500/45 bg-cream-50 p-6 sm:p-8 shadow-warm">
-      <JaliCorner
-        position="tl"
-        className="absolute top-3 left-3 w-7 h-7 text-gold-500/55"
-      />
-      <JaliCorner
-        position="tr"
-        className="absolute top-3 right-3 w-7 h-7 text-gold-500/55"
-      />
-
-      <div className="text-center max-w-xl mx-auto">
-        <p className="font-mukta uppercase tracking-[0.28em] text-saffron-600 text-[0.65rem] sm:text-xs font-semibold">
-          {isHi ? "पैम्फलेट से जोड़ें" : "Add from pamphlet"}
-        </p>
-        <h2
-          className={`mt-2 text-2xl sm:text-3xl text-sindoor-700 leading-tight ${
-            isHi ? "font-tiro" : "font-fraunces font-semibold"
-          }`}
-        >
-          {isHi
-            ? "अपना भंडारा पोस्टर अपलोड करें"
-            : "Upload your bhandara pamphlet"}
-        </h2>
-        <p className="mt-3 text-sm sm:text-base text-ink-600 leading-relaxed">
-          {isHi
-            ? "हम AI से सारी जानकारी पढ़कर फ़ॉर्म स्वयं भर देंगे। आप एक बार देख लें और सबमिट कर दें।"
-            : "Our AI reads the poster and fills the form for you. Review the details once and submit."}
-        </p>
-      </div>
-
+    <FormPanel>
       {/* The single native file input is referenced by both pick
           buttons; toggling the `capture` attr decides whether the
           OS opens the camera (Take photo) or the file library
-          (Choose file). Kept here at the parent scope so the
-          handler is shared. */}
+          (Choose file). */}
       <input
         ref={inputRef}
         type="file"
@@ -344,25 +308,18 @@ export default function BhandaraScanner() {
         aria-label={isHi ? "पैम्फलेट चुनें" : "Pick a pamphlet image"}
       />
 
-      <div className="mt-6 grid gap-4 max-w-xl mx-auto">
+      <div className="grid gap-5">
         {!file ? (
-          // No-file state: a dotted-border drop-zone groups both
-          // pick CTAs and makes it visually obvious this is the
-          // "upload here" affordance. The dotted border also
-          // signals "drag and drop is welcome" even though we
-          // don't wire the drop handlers (mobile users don't get
-          // drag anyway, and most desktop pamphlet uploads still
-          // come via Choose file).
-          <div className="rounded-2xl border-2 border-dashed border-gold-500/55 bg-cream-50/60 px-4 py-8 sm:py-10 text-center">
-            <div className="mx-auto inline-flex items-center justify-center w-12 h-12 rounded-full bg-saffron-100 text-saffron-600">
+          <div className="bmi-drop">
+            <span className="bmi-drop-ic" aria-hidden>
               <IconUpload />
-            </div>
-            <p className="mt-3 text-sm text-ink-600">
+            </span>
+            <p className="bmi-drop-t" lang={isHi ? "hi" : "en"}>
               {isHi
                 ? "पैम्फलेट की फ़ोटो चुनें या खींचें"
                 : "Choose a pamphlet image or take a photo"}
             </p>
-            <div className="mt-4 flex flex-wrap gap-3 justify-center">
+            <div className="bmi-drop-acts">
               <button
                 type="button"
                 onClick={() => {
@@ -371,10 +328,10 @@ export default function BhandaraScanner() {
                     inputRef.current.click();
                   }
                 }}
-                className="inline-flex items-center gap-2 rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 font-semibold px-5 py-2 text-sm transition-colors"
+                className="bmi-b bmi-b-s sm"
               >
                 <IconUpload />
-                {isHi ? "फ़ाइल चुनें" : "Choose file"}
+                <span>{isHi ? "फ़ाइल चुनें" : "Choose file"}</span>
               </button>
               <button
                 type="button"
@@ -384,78 +341,64 @@ export default function BhandaraScanner() {
                     inputRef.current.click();
                   }
                 }}
-                className="inline-flex items-center gap-2 rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 font-semibold px-5 py-2 text-sm transition-colors"
+                className="bmi-b bmi-b-s sm"
               >
                 <IconCamera />
-                {isHi ? "फ़ोटो खींचें" : "Take photo"}
+                <span>{isHi ? "फ़ोटो खींचें" : "Take photo"}</span>
               </button>
             </div>
           </div>
         ) : (
-          // File picked: preview replaces the drop-zone so the user
-          // sees what they're about to scan. Remove link is inline
-          // (not a button) so it doesn't compete with the primary
-          // "Scan with AI" CTA below.
-          <div className="rounded-2xl border border-gold-500/40 bg-white p-3">
-            <div className="flex items-start gap-3">
-              {previewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewUrl}
-                  alt=""
-                  className="w-20 h-20 rounded-lg object-cover border border-gold-500/40"
-                />
-              ) : null}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-ink-900 truncate">
-                  {file.name}
-                </p>
-                <p className="text-xs text-ink-600 mt-0.5">
-                  {(file.size / 1024).toFixed(0)} KB
-                </p>
-                <button
-                  type="button"
-                  onClick={() => pickFile(null)}
-                  className="mt-1 text-xs underline decoration-dotted underline-offset-4 text-ink-600 hover:text-sindoor-700"
-                >
-                  {isHi ? "हटाएँ" : "Remove"}
-                </button>
-              </div>
+          // File picked: preview replaces the drop zone so the user
+          // sees what they're about to scan.
+          <div className="flex items-center gap-4">
+            {previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={previewUrl}
+                alt=""
+                className="bmi-drop-img w-24 h-24 object-cover"
+              />
+            ) : null}
+            <div className="flex-1 min-w-0">
+              <p className="text-[16px] font-semibold text-ink-900 truncate">
+                {file.name}
+              </p>
+              <p className="bmi-field-hint">
+                {(file.size / 1024).toFixed(0)} KB
+              </p>
+              <button
+                type="button"
+                onClick={() => pickFile(null)}
+                className="bmi-tl"
+              >
+                {isHi ? "हटाएँ" : "Remove"}
+              </button>
             </div>
           </div>
         )}
 
         {errorMessage ? (
-          <div className="rounded-xl border border-alert-500/45 bg-cream-50 p-3 text-sm text-alert-500">
+          <div className="bmi-alert" role="alert">
             {errorMessage}
           </div>
         ) : null}
 
         {file ? (
-          // btn btn-gold matches the chooser-page CTAs (List my
-          // bhandara, Spot it now) in size, padding, gradient, and
-          // shadow, so the user reads "Scan with AI" as a peer of
-          // those, not a one-off mini button. Only rendered when a
-          // file is picked, hiding it before that avoids the
-          // greyed-out "is it broken?" confusion we had before.
-          <button
-            type="button"
-            onClick={() => void startScan()}
-            className="btn btn-gold mt-2"
-          >
-            <IconSparkle />
+          // The one saffron action, only once a file is picked (a
+          // greyed out button before that reads as broken).
+          <Button onClick={() => void startScan()} block iconEnd="chevron">
             {isHi ? "AI से स्कैन करें" : "Scan with AI"}
-            <span aria-hidden>→</span>
-          </button>
+          </Button>
         ) : null}
 
-        <p className="text-xs text-ink-600 text-center">
+        <p className="bmi-field-hint text-center">
           {isHi
-            ? "JPG / PNG / WebP, अधिकतम 5 MB। पते से GPS पिन भी अपने आप लग जाता है।"
-            : "JPG / PNG / WebP, max 5 MB. We auto-place the GPS pin from the address."}
+            ? "JPG, PNG या WebP, अधिकतम 5 MB। पते से GPS पिन भी अपने आप लग जाता है।"
+            : "JPG, PNG or WebP, max 5 MB. We auto-place the GPS pin from the address."}
         </p>
       </div>
-    </div>
+    </FormPanel>
   );
 }
 

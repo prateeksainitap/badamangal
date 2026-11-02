@@ -5,13 +5,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CtaPendingDot from "@/components/CtaPendingDot";
 import { type NearMeState } from "@/components/NearMeButton";
 import { haversineKm } from "@/lib/geo";
-import type { Bhandara } from "@/types/bhandara";
+import type { BhandaraListItem } from "@/types/bhandara";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { trackEvent } from "@/lib/ga";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import { useToast } from "@/components/Toast";
 import { hasMapPin } from "@/lib/share";
+import { joinTimeRange } from "@/lib/time";
 import {
   bhandaraShareText,
   spotShareText,
@@ -35,7 +36,7 @@ export type SideListSpot = {
 export type SideListFilter = "all" | "listed" | "spotted";
 
 type Props = {
-  listings: Bhandara[];
+  listings: BhandaraListItem[];
   liveSpots?: SideListSpot[];
   /** Optional, ignored at runtime, kept on the type so any caller
    *  still passing them compiles. The component reads the real locale
@@ -155,12 +156,11 @@ export default function MapSideList({
         name,
         area: t.areas[b.area] ?? b.area,
         dateLabel: serveOn ? shortDate(serveOn, isHi) : null,
-        meta: [
+        meta: joinTimeRange(
           format12h(b.timeStart),
-          b.timeEnd ? `– ${format12h(b.timeEnd)}` : "",
-        ]
-          .filter(Boolean)
-          .join(" "),
+          b.timeEnd ? format12h(b.timeEnd) : "",
+          isHi ? "hi" : "en",
+        ),
         href: `/bhandara/${b.slug}${langSuffix}`,
         lat: b.lat,
         lng: b.lng,

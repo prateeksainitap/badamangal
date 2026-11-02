@@ -23,6 +23,18 @@ import { z } from "zod";
 import { AREAS } from "@/lib/lucknow";
 import { MENU_KEYS } from "@/lib/menu";
 import { slugify } from "@/lib/slugify";
+import { listingSeason } from "@/lib/season";
+
+/** The season's dates for the extraction prompts, from lib/season.ts,
+ *  so a 2027 banner that says "25 मई" resolves to 2027-05-25. */
+function seasonDatesForPrompt(): string {
+  const s = listingSeason();
+  const sats = s.saturdays.length
+    ? ` The ${s.year} Bada Shanivar Saturdays are ${s.saturdays.join(", ")}.`
+    : "";
+  const shaniJayanti = s.year === 2026 ? " Shani Jayanti is 2026-05-16 (Saturday) and is occasionally added too." : "";
+  return `The ${s.year} Bada Mangal Tuesdays are ${s.tuesdays.join(", ")}.${sats}${shaniJayanti} When a banner gives a day and month with no year, use ${s.year}.`;
+}
 
 const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
 
@@ -193,7 +205,7 @@ Fields (all optional, emit "" or omit if unsure, never invent):
   "address":      Full English address as written, including landmark + locality + Lucknow.
   "addressHi":    Same address in Hindi (Devanagari), translate proper nouns only when the banner shows them in Hindi.
   "landmark":     One landmark phrase if explicitly mentioned (e.g. "Near Civil Hospital"). Otherwise "".
-  "dateIsoList":  Array of YYYY-MM-DD strings, one entry per serving date the banner shows. MOST Lucknow Bada Mangal posters list ALL 8 Tuesdays of the Jyeshtha season on a single banner, list every date you see, do not just pick the first. The 2026 Bada Mangal Tuesdays are 2026-05-05, 2026-05-12, 2026-05-19, 2026-05-26, 2026-06-02, 2026-06-09, 2026-06-16, 2026-06-23. Shani Jayanti is 2026-05-16 (Saturday) and is occasionally added too. Resolve Hindi/English date numerals to ISO. If only "मंगलवार" / "Tuesday" appears with no date numbers, return [].
+  "dateIsoList":  Array of YYYY-MM-DD strings, one entry per serving date the banner shows. MOST Lucknow Bada Mangal posters list ALL the Tuesdays of the Jyeshtha season on a single banner, list every date you see, do not just pick the first. ${seasonDatesForPrompt()} Resolve Hindi/English date numerals to ISO. If only "मंगलवार" / "Tuesday" appears with no date numbers, return [].
   "timeStart":    24h HH:MM (e.g. "09:00", "12:00", "18:30"). Convert "11 बजे से" → "11:00", "दोपहर 2 बजे" → "14:00".
   "timeEnd":      24h HH:MM if a clear end time is given. "प्रभु इच्छा तक" / "until Prabhu Iccha" → leave empty.
   "menu":         An array picked from EXACTLY these keys: ${MENU_LIST}. Use "prasad" as a generic catch-all if the banner only says "भंडारा" without specifying items. Keep array length ≤ 6.
@@ -638,7 +650,7 @@ export type InvitationCopyInput = {
   bhandaraNameHi?: string;
   /** Human-readable date string ("Tuesday, 19 May 2026"). */
   date?: string;
-  /** Pre-computed Mangal ordinal in the 2026 season, 1-8. Lets
+  /** Pre-computed Mangal ordinal inside its season (1-8 in 2026). Lets
    *  Gemini write "द्वितीय" instead of guessing from the date. */
   mangalOrdinal?: number | null;
   /** 24h start time ("11:00"), Gemini converts to "प्रातः 11 बजे". */
@@ -702,7 +714,7 @@ Bhandara details:
 - Host (Hindi):   ${input.organizerNameHi || "(not provided)"}
 - Bhandara name:  ${input.bhandaraNameHi || input.bhandaraName || "(not provided)"}
 - Date:           ${input.date || "(not provided)"}${
-    ordinalHi ? ` (this is the ${ordinalHi} / #${input.mangalOrdinal} Bada Mangal of 2026)` : ""
+    ordinalHi ? ` (this is the ${ordinalHi} / #${input.mangalOrdinal} Bada Mangal of the season)` : ""
   }
 - Start time:     ${input.timeStart || "(not provided)"}
 - Address:        ${input.address || "(not provided)"}
@@ -762,7 +774,7 @@ Fields (all optional, emit "" or omit if unsure, never invent):
   "address":      Full English address as the user wrote, including landmark + locality + Lucknow.
   "addressHi":    Same address in Hindi (Devanagari).
   "landmark":     One landmark phrase if explicitly mentioned (e.g. "Near Civil Hospital"). Otherwise "".
-  "dateIsoList":  Array of YYYY-MM-DD strings, one entry per serving date the user mentions. If they say "all 8 Tuesdays" / "हर मंगलवार" / "every Tuesday this Bada Mangal", expand to the full list. Resolve relative phrases like "this Tuesday" / "अगले मंगल" against today (${new Date().toISOString().slice(0, 10)} IST). The 2026 Bada Mangal Tuesdays are 2026-05-05, 2026-05-12, 2026-05-19, 2026-05-26, 2026-06-02, 2026-06-09, 2026-06-16, 2026-06-23. Shani Jayanti is 2026-05-16 (Saturday). If only a weekday name is given with no date hint, return [].
+  "dateIsoList":  Array of YYYY-MM-DD strings, one entry per serving date the user mentions. If they say "all Tuesdays" / "हर मंगलवार" / "every Tuesday this Bada Mangal", expand to the full list. Resolve relative phrases like "this Tuesday" / "अगले मंगल" against today (${new Date().toISOString().slice(0, 10)} IST). ${seasonDatesForPrompt()} If only a weekday name is given with no date hint, return [].
   "timeStart":    24h HH:MM. Convert "11 बजे से" / "11 AM" → "11:00", "दोपहर 2 बजे" / "2 PM" → "14:00".
   "timeEnd":      24h HH:MM if a clear end time is given. Phrases like "प्रभु इच्छा तक" leave empty.
   "menu":         An array picked from EXACTLY these keys: ${MENU_LIST}. Use "prasad" as a catch-all if user just says "भंडारा". ≤ 6 items.
@@ -1204,7 +1216,7 @@ For each event, return:
   "area":           Lucknow neighbourhood (Aliganj, Hazratganj, Indira Nagar, Gomti Nagar, etc.)
   "address":        Full street address if printed on the source
   "landmark":       One landmark phrase if mentioned ("Near Civil Hospital")
-  "tuesdayDates":   Array of YYYY-MM-DD strings for the Tuesdays this bhandara serves. The 2026 Bada Mangal Tuesdays are 2026-05-05, 2026-05-12, 2026-05-19, 2026-05-26, 2026-06-02, 2026-06-09, 2026-06-16, 2026-06-23.
+  "tuesdayDates":   Array of YYYY-MM-DD strings for the Tuesdays this bhandara serves. ${seasonDatesForPrompt()}
   "timeStart":      24h HH:MM start time if mentioned ("11:00")
   "timeEnd":        24h HH:MM end time if mentioned
   "organizerName":  Host name if mentioned

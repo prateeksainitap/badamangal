@@ -2,7 +2,7 @@
 
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
-import { ALL_TUESDAY_ISO } from "@/lib/dates";
+import { featuredSeason, seasonForYear } from "@/lib/season";
 import { useLocaleFromContext } from "@/lib/locale-context";
 
 /**
@@ -14,6 +14,20 @@ import { useLocaleFromContext } from "@/lib/locale-context";
  */
 type Props = {
   locale?: Locale;
+  /** Pin a season (the 2026 recap passes 2026). Default: the featured
+   *  season, the running one, else the last completed one. */
+  year?: number;
+};
+
+// Literal class names so Tailwind keeps them. Columns = Tuesdays in the
+// season; the connector thread starts and ends at the first and last
+// disc centres.
+const GRID_COLS: Record<number, string> = {
+  4: "grid-cols-4", 5: "grid-cols-5", 6: "grid-cols-6", 7: "grid-cols-7", 8: "grid-cols-8",
+};
+const THREAD_INSET: Record<number, string> = {
+  4: "left-[12%] right-[12%]", 5: "left-[10%] right-[10%]", 6: "left-[8%] right-[8%]",
+  7: "left-[7%] right-[7%]", 8: "left-[6%] right-[6%]",
 };
 
 const HI_MONTHS_SHORT = [
@@ -27,7 +41,7 @@ const EN_MONTHS_SHORT = [
 
 type NodeStatus = "past" | "live" | "next" | "future";
 
-export default function SeasonTimeline(_props: Props) {
+export default function SeasonTimeline({ year }: Props) {
   // Cookie-aware locale from context. The `locale` prop is ignored on
   // purpose, keeping it on the type so existing call-sites compile.
   const locale = useLocaleFromContext();
@@ -39,9 +53,17 @@ export default function SeasonTimeline(_props: Props) {
   // the list; "next" is the first strictly-future Tuesday after today.
   const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
   const todayIso = ist.toISOString().slice(0, 10);
-  const nextIso = ALL_TUESDAY_ISO.find((iso) => iso > todayIso);
+  const season = (year ? seasonForYear(year) : null) ?? featuredSeason();
+  const is2026 = season.year === 2026;
+  const tuesdays = season.tuesdays;
+  const nextIso = tuesdays.find((iso) => iso > todayIso);
+  const kicker = is2026
+    ? t.countdown.timelineKicker
+    : isHi
+      ? `${season.year} के ${tuesdays.length} बड़े मंगल`
+      : `The ${tuesdays.length} Bada Mangals of ${season.year}`;
 
-  const items = ALL_TUESDAY_ISO.map((iso) => {
+  const items = tuesdays.map((iso) => {
     const d = new Date(`${iso}T04:30:00Z`);
     const day = d.getUTCDate();
     const month = isHi
@@ -64,7 +86,7 @@ export default function SeasonTimeline(_props: Props) {
 
   return (
     <section
-      aria-label={t.countdown.timelineKicker}
+      aria-label={kicker}
       className="mt-10 sm:mt-12"
     >
       {/* Header for the timeline: small uppercase kicker on top, then
@@ -76,13 +98,15 @@ export default function SeasonTimeline(_props: Props) {
           eight dots, without making it a focal point of its own. */}
       <div className="text-center mb-6">
         <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
-          {t.countdown.timelineKicker}
+          {kicker}
         </p>
-        <p className="mt-2 text-xs sm:text-sm text-ink-600 max-w-2xl mx-auto leading-relaxed">
-          {isHi
-            ? "अधिक मास के कारण इस ज्येष्ठ में 8 बड़े मंगल, पिछली बार 2007, अगली बार 2045।"
-            : "Adhik Maas brings 8 Bada Mangals this season. Last seen in 2007, next in 2045."}
-        </p>
+        {is2026 ? (
+          <p className="mt-2 text-xs sm:text-sm text-ink-600 max-w-2xl mx-auto leading-relaxed">
+            {isHi
+              ? "अधिक मास के कारण इस ज्येष्ठ में 8 बड़े मंगल, पिछली बार 2007, अगली बार 2045।"
+              : "Adhik Maas brings 8 Bada Mangals this season. Last seen in 2007, next in 2045."}
+          </p>
+        ) : null}
       </div>
 
       {/* Single fluid 8-column grid at every breakpoint. The previous
@@ -94,9 +118,9 @@ export default function SeasonTimeline(_props: Props) {
       <div className="relative px-1 sm:px-2">
         <div
           aria-hidden
-          className="absolute left-[6%] right-[6%] h-px bg-gold-500/45 top-[18px] sm:top-[24px] md:top-[28px]"
+          className={`absolute ${THREAD_INSET[tuesdays.length] ?? "left-[6%] right-[6%]"} h-px bg-gold-500/45 top-[18px] sm:top-[24px] md:top-[28px]`}
         />
-        <ol className="grid grid-cols-8 gap-1 sm:gap-2 relative">
+        <ol className={`grid ${GRID_COLS[tuesdays.length] ?? "grid-cols-8"} gap-1 sm:gap-2 relative`}>
           {items.map((it) => (
             <li
               key={it.iso}

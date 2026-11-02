@@ -7,7 +7,7 @@ export const revalidate = 300;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
 export const metadata: Metadata = {
-  title: "Tuesday vrat guide · Bada Mangal puja vidhi · BadaMangal",
+  title: { absolute: "Tuesday vrat guide · Bada Mangal puja vidhi · BadaMangal" },
   description:
     "What to do on a Bada Mangal, vrat, mantra, prasad, etiquette, and notes for organizers. A practical, faith-respecting guide.",
   alternates: {

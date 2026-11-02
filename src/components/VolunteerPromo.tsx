@@ -92,8 +92,8 @@ export default function VolunteerPromo() {
 
               <p className="mt-3 text-sm sm:text-base text-ink-600 leading-relaxed max-w-prose">
                 {isHi
-                  ? "डिलीवरी राइडर, कैब ड्राइवर, छात्र, या कोई भी जो योगदान देना चाहता है। अपने इलाके के भंडारों की जानकारी, फोटो और स्थान दर्ज करने में मदद करें। पूरे आठ मंगलवार के सीज़न के लिए हमारे WhatsApp समूह में जुड़ें।"
-                  : "Delivery riders, cab drivers, students, anyone who wants to contribute. Help log bhandaras in your area with photos, time, and location. You get added to our volunteer WhatsApp group for the full 8-Tuesday season."}
+                  ? "डिलीवरी राइडर, कैब ड्राइवर, छात्र, या कोई भी जो योगदान देना चाहता है। अपने इलाके के भंडारों की जानकारी, फोटो और स्थान दर्ज करने में मदद करें। पूरे सीज़न के लिए हमारे WhatsApp समूह में जुड़ें।"
+                  : "Delivery riders, cab drivers, students, anyone who wants to contribute. Help log bhandaras in your area with photos, time, and location. You get added to our volunteer WhatsApp group for the whole season."}
               </p>
 
               {/* Persona chips, make the "anyone can do this" idea

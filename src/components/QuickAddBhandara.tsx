@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ALL_TUESDAY_ISO, formatHindiDate, formatEnglishDate } from "@/lib/dates";
+import { formatHindiDate, formatEnglishDate } from "@/lib/dates";
+import { istIso, listingSeason } from "@/lib/season";
 import { AREAS, DEFAULT_CENTER } from "@/lib/lucknow";
 import { strings, type Locale } from "@/content/strings";
 import { JaliCorner, SunburstSpark } from "@/components/ornaments";
@@ -25,10 +26,9 @@ export default function QuickAddBhandara({ locale }: Props) {
 
   const [address, setAddress] = useState("");
   const [area, setArea] = useState<string>("");
+  const seasonTuesdays = listingSeason().tuesdays;
   const [tuesday, setTuesday] = useState<string>(
-    ALL_TUESDAY_ISO.find(
-      (d) => d >= new Date().toISOString().slice(0, 10),
-    ) ?? ALL_TUESDAY_ISO[0],
+    seasonTuesdays.find((d) => d >= istIso()) ?? seasonTuesdays[0],
   );
   const [timeStart, setTimeStart] = useState("11:00");
   const [timeEnd, setTimeEnd] = useState("15:00");
@@ -129,7 +129,7 @@ export default function QuickAddBhandara({ locale }: Props) {
 
   if (success) return <SuccessCard result={success} locale={locale} />;
 
-  const tuesdayOptions = ALL_TUESDAY_ISO.map((iso) => {
+  const tuesdayOptions = seasonTuesdays.map((iso) => {
     const d = new Date(`${iso}T04:30:00Z`);
     return {
       iso,

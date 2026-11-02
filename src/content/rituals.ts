@@ -37,7 +37,7 @@ export const RITUALS: RitualSection[] = [
     body: {
       en: [
         "Wake before sunrise and bathe. Wear clean clothes; many devotees prefer red or saffron.",
-        "Visit a Hanuman temple, Aliganj, Hanuman Setu, Sankat Mochan, or your local one. Touch the threshold, ring the bell once gently, and offer your namaskar.",
+        "Visit a Hanuman temple, Aliganj, Hanuman Setu, Hazratganj's Dakshinmukhi Hanuman, or your local one. Touch the threshold, ring the bell once gently, and offer your namaskar.",
         "Recite the Hanuman Chalisa, even softly. Reading along from text is fine. There is no penalty for mispronunciation, sincerity is what matters.",
         "Make a small offering: red flowers (gudhal / hibiscus), a piece of sindoor, boondi laddoo or besan laddoo, a few tulsi leaves. Do not insist on elaborate offerings; simple is traditional.",
         "Eat at, or organize, a bhandara. Both giving and receiving are forms of seva.",
@@ -45,7 +45,7 @@ export const RITUALS: RitualSection[] = [
       ],
       hi: [
         "सूर्योदय से पहले उठें और स्नान करें। साफ़ कपड़े पहनें, लाल या केसरी रंग शुभ माना जाता है।",
-        "किसी हनुमान मंदिर जाएँ, अलीगंज, हनुमान सेतु, संकट मोचन, या अपने मोहल्ले का मंदिर। दहलीज को छुएँ, घंटी एक बार धीमे से बजाएँ, और प्रणाम करें।",
+        "किसी हनुमान मंदिर जाएँ, अलीगंज, हनुमान सेतु, हज़रतगंज के दक्षिणमुखी हनुमान, या अपने मोहल्ले का मंदिर। दहलीज को छुएँ, घंटी एक बार धीमे से बजाएँ, और प्रणाम करें।",
         "हनुमान चालीसा का पाठ करें, धीमे स्वर में भी हो सकता है। पाठ-पुस्तिका से पढ़ना उचित है। उच्चारण की त्रुटि का कोई दोष नहीं, श्रद्धा प्रधान है।",
         "एक छोटा सा अर्पण करें: लाल फूल (गुड़हल / जपा), थोड़ा सिंदूर, बूँदी या बेसन का लड्डू, तुलसी की कुछ पत्तियाँ। भव्य अर्पण की आवश्यकता नहीं, सादगी ही परंपरा है।",
         "किसी भंडारे में भोजन करें या स्वयं भंडारा आयोजित करें। देना और लेना, दोनों सेवा हैं।",

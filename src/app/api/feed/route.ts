@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { stripBotProvenance } from "@/lib/sanitize";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ipHash, readClientIp } from "@/lib/crypto";
+import { cleanName } from "@/lib/display-name";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -102,12 +103,15 @@ export async function GET(req: NextRequest) {
     id: `spot:${s.id}`,
     bhandaraId: s.bhandaraId,
     bhandaraSlug: s.bhandara?.slug ?? null,
-    bhandaraName: s.bhandara?.name ?? null,
+    bhandaraName: cleanName(s.bhandara?.name),
     // Spots always have their own coords, fall back to those when there's
     // no linked bhandara so the "Get directions" CTA still works.
     bhandaraLat: s.bhandara?.lat ?? s.lat,
     bhandaraLng: s.bhandara?.lng ?? s.lng,
-    authorName: s.reporterName?.trim() || "Spotter",
+    // Neutral label only: spotters' names never go out on a public
+    // API (Founder's ruling, 1 Nov 2026). The DB keeps reporterName
+    // for admin.
+    authorName: "Spotter",
     // Public feed, strip the [bot:whatsapp …] provenance tag so it
     // never surfaces in the activity ticker, RSS, or third-party API
     // consumers. See lib/sanitize.ts.

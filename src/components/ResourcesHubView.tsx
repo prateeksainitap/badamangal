@@ -1,27 +1,41 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { strings } from "@/content/strings";
-import {
-  MarigoldDivider,
-  GadaBullet,
-  SunburstSpark,
-} from "@/components/ornaments";
-import AnimatedHeading from "@/components/AnimatedHeading";
 import { FAQ_ITEMS } from "@/content/faq";
 import { NEWS, type NewsEntry } from "@/content/news";
+import { TEMPLES } from "@/content/temples";
+import { HOME_ART } from "@/content/home-art";
 import { useLocaleFromContext } from "@/lib/locale-context";
+import { templeTallArt } from "@/components/TemplesView";
+import {
+  Actions,
+  Breadcrumb,
+  Button,
+  FaqList,
+  InnerShell,
+  Kicker,
+  ListRow,
+  PageHero,
+  Plate,
+  Prose,
+  RowList,
+  Section,
+} from "@/components/v2";
 
 /**
- * /resources hub body, extracted out of the server-rendered page so
- * every label (hub kicker / heading / body, six resource cards' titles
- * + bodies + CTAs + "Read · Listen" pills, news section heading +
- * "Editor's pick" + "View all news" CTA, temples promo, "About this hub"
- * + verified-sources bullets) swaps on the Hindi toggle.
+ * /resources hub body (v2 inner page kit). Client component so every
+ * label swaps on the Hindi toggle; still server rendered, so the h1,
+ * the h2s and every link are in the static HTML. The CollectionPage
+ * JSON-LD stays in the server wrapper.
  *
- * Page-level JSON-LD stays in the server wrapper because it doesn't
- * need to swap with locale.
+ * The texts are hairline rows (their titles stay the page's h2s), the
+ * news keeps its featured story and three more, the FAQ teaser is the
+ * kit's disclosure list, and the temples show in the homepage's arches.
+ *
+ * No audio: the label-owned recordings came down on 31 Oct 2026, so no
+ * row says "listen" any more.
  */
 export default function ResourcesHubView() {
   const locale = useLocaleFromContext();
@@ -29,468 +43,210 @@ export default function ResourcesHubView() {
   const isHi = locale === "hi";
   const langSuffix = locale === "en" ? "?lang=en" : "";
 
-  const cards: Array<{
+  const texts: Array<{
     href: string;
     title: string;
+    kicker: string;
     body: string;
-    cta: string;
-    accent: "saffron" | "sindoor" | "gold";
-    /** Whether the destination page ships an audio recording. Drives
-     *  the kicker label ("Read · Listen" vs "Read") and the corner
-     *  play-icon chip. */
-    hasAudio: boolean;
   }> = [
-    {
-      href: `/resources/chalisa${langSuffix}`,
-      title: t.resources.cards.chalisa.title,
-      body: t.resources.cards.chalisa.body,
-      cta: t.resources.cards.chalisa.cta,
-      accent: "saffron",
-      hasAudio: true,
-    },
-    {
-      href: `/resources/aarti${langSuffix}`,
-      title: t.resources.cards.aarti.title,
-      body: t.resources.cards.aarti.body,
-      cta: t.resources.cards.aarti.cta,
-      accent: "sindoor",
-      hasAudio: true,
-    },
-    {
-      href: `/resources/ashtak${langSuffix}`,
-      title: t.resources.cards.ashtak.title,
-      body: t.resources.cards.ashtak.body,
-      cta: t.resources.cards.ashtak.cta,
-      accent: "saffron",
-      hasAudio: true,
-    },
-    {
-      href: `/resources/bajrang-baan${langSuffix}`,
-      title: t.resources.cards.bajrangBaan.title,
-      body: t.resources.cards.bajrangBaan.body,
-      cta: t.resources.cards.bajrangBaan.cta,
-      accent: "sindoor",
-      hasAudio: true,
-    },
-    {
-      href: `/resources/ram-stuti${langSuffix}`,
-      title: t.resources.cards.ramStuti.title,
-      body: t.resources.cards.ramStuti.body,
-      cta: t.resources.cards.ramStuti.cta,
-      accent: "saffron",
-      hasAudio: true,
-    },
-    // News intentionally omitted from the canonical-text card grid;
-    // the dedicated news section that used to live further down was
-    // removed (sources unreliable enough to keep on a primary nav).
-    // The /resources/news page still exists for direct-URL access
-    // but is no longer linked from the hub or the footer.
-    {
-      href: `/resources/rituals${langSuffix}`,
-      title: t.resources.cards.rituals.title,
-      body: t.resources.cards.rituals.body,
-      cta: t.resources.cards.rituals.cta,
-      accent: "gold",
-      hasAudio: false,
-    },
+    { href: `/resources/chalisa${langSuffix}`, title: t.resources.cards.chalisa.title, kicker: t.resources.chalisa.kicker, body: t.resources.cards.chalisa.body },
+    { href: `/resources/aarti${langSuffix}`, title: t.resources.cards.aarti.title, kicker: t.resources.aarti.kicker, body: t.resources.cards.aarti.body },
+    { href: `/resources/ashtak${langSuffix}`, title: t.resources.cards.ashtak.title, kicker: t.resources.ashtak.kicker, body: t.resources.cards.ashtak.body },
+    { href: `/resources/bajrang-baan${langSuffix}`, title: t.resources.cards.bajrangBaan.title, kicker: t.resources.bajrangBaan.kicker, body: t.resources.cards.bajrangBaan.body },
+    { href: `/resources/ram-stuti${langSuffix}`, title: t.resources.cards.ramStuti.title, kicker: t.resources.ramStuti.kicker, body: t.resources.cards.ramStuti.body },
+    // News stays out of the texts list; it has its own band below.
+    { href: `/resources/rituals${langSuffix}`, title: t.resources.cards.rituals.title, kicker: t.resources.rituals.kicker, body: t.resources.cards.rituals.body },
   ];
 
-  // Top 3 FAQ items used as a teaser band that links out to the
-  // full /faq page. Read from the shared bilingual source so the
-  // hub teaser and the dedicated FAQ surface stay in sync.
+  // Top 3 FAQ items as a teaser that links out to the full /faq page.
   const teaserFaqs = FAQ_ITEMS.slice(0, 3);
 
-  // Pick the featured story (or fall back to the most recent) plus the
-  // next three for the "This week in Lucknow" preview band.
-  const sortedNews = [...NEWS].sort((a, b) =>
-    a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
-  );
-  const featuredNews: NewsEntry =
-    sortedNews.find((n) => n.featured) ?? sortedNews[0];
-  const secondaryNews = sortedNews
-    .filter((n) => n.id !== featuredNews?.id)
-    .slice(0, 3);
+  // The featured story (or the most recent) plus the next three.
+  const sortedNews = [...NEWS].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  const featuredNews: NewsEntry | undefined = sortedNews.find((n) => n.featured) ?? sortedNews[0];
+  const secondaryNews = sortedNews.filter((n) => n.id !== featuredNews?.id).slice(0, 3);
 
   return (
-    <article className="pb-24">
-      {/* HERO */}
-      <header className="mx-auto max-w-3xl px-4 sm:px-6 pt-14 sm:pt-20 pb-10 text-center">
-        <p className="font-mukta uppercase tracking-[0.32em] text-gold-500 text-xs">
-          {t.resources.hubKicker}
-        </p>
-        <AnimatedHeading
-          as="h1"
-          text={t.resources.hubHeading}
-          className={`mt-5 ${
-            isHi ? "font-deva text-sindoor-700" : "font-fraunces text-sindoor-700"
-          } font-medium text-[2rem] sm:text-[2.75rem] leading-[1.2]`}
-        />
-        <p className="mt-5 font-fraunces optical-display italic text-xl sm:text-2xl text-ink-900 max-w-2xl mx-auto leading-snug">
-          {t.resources.hubBody}
-        </p>
-        <div className="mt-7 flex justify-center">
-          <SunburstSpark size={48} className="text-gold-500" />
-        </div>
-      </header>
+    <InnerShell>
+      <PageHero
+        crumbs={
+          <Breadcrumb
+            items={[
+              { label: isHi ? "होम" : "Home", href: `/${langSuffix}` },
+              { label: isHi ? "संसाधन" : "Resources" },
+            ]}
+          />
+        }
+        kicker={<Kicker>{t.resources.hubKicker}</Kicker>}
+        title={{ en: strings.en.resources.hubHeading, hi: strings.hi.resources.hubHeading }}
+        lede={t.resources.hubBody}
+        actions={
+          <Actions>
+            <Button href={`/resources/chalisa${langSuffix}`} iconEnd="chevron">
+              {t.resources.cards.chalisa.cta}
+            </Button>
+          </Actions>
+        }
+        art={
+          <div className="bmi-res-hero-art">
+            <Plate {...HOME_ART.hanumanSitting} alt="" fade="none" priority />
+          </div>
+        }
+      />
 
-      {/* FEATURED 4 CARDS */}
-      <section className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {cards.map((card) => (
-            <Link
-              key={card.href}
-              href={card.href}
-              data-ga="resource_card_open"
-              data-ga-href={card.href}
-              data-ga-title={card.title}
-              data-ga-has-audio={card.hasAudio ? "1" : "0"}
-              className={[
-                "group relative block rounded-3xl bg-white border shadow-warm overflow-hidden",
-                "transition-transform duration-200 hover:-translate-y-1",
-                card.accent === "saffron"
-                  ? "border-saffron-500/40 hover:border-saffron-500"
-                  : card.accent === "sindoor"
-                    ? "border-sindoor-700/30 hover:border-sindoor-700"
-                    : "border-gold-500/40 hover:border-gold-500",
-              ].join(" ")}
-            >
-              {/* Audio chip, only on cards whose page ships an
-                  `<audio>` recording. Pinned top-right so a quick
-                  scan of the grid tells you which resources you can
-                  listen to vs read-only. */}
-              {card.hasAudio ? (
-                <span
-                  aria-hidden
-                  className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full border border-saffron-500/45 bg-saffron-50 text-saffron-600 px-2 py-0.5 text-[0.55rem] font-mukta uppercase tracking-[0.22em] font-semibold"
-                >
-                  <IconAudio /> {isHi ? "ऑडियो" : "Audio"}
-                </span>
-              ) : null}
-
-              <div className="px-6 pt-7 pb-6">
-                <p className="font-mukta uppercase tracking-[0.28em] text-gold-500 text-[0.65rem] inline-flex items-center gap-1.5">
-                  {card.hasAudio
-                    ? isHi
-                      ? "पढ़ें · सुनें"
-                      : "Read · Listen"
-                    : isHi
-                      ? "पढ़ें"
-                      : "Read"}
-                </p>
-                <h2
-                  className={`mt-3 font-fraunces font-semibold text-xl leading-tight ${
-                    card.accent === "sindoor" ? "text-sindoor-700" : "text-ink-900"
-                  }`}
-                >
-                  {card.title}
-                </h2>
-                <p className="mt-2 text-sm text-ink-600 leading-relaxed">
-                  {card.body}
-                </p>
-                <p
-                  className={[
-                    "mt-5 inline-flex items-center gap-1.5 font-medium text-sm",
-                    card.accent === "saffron"
-                      ? "text-saffron-600 group-hover:text-saffron-500"
-                      : card.accent === "sindoor"
-                        ? "text-sindoor-700"
-                        : "text-gold-500",
-                  ].join(" ")}
-                >
-                  {card.hasAudio ? (
-                    <span
-                      aria-hidden
-                      className="inline-flex items-center justify-center w-4 h-4"
-                    >
-                      <IconPlay />
-                    </span>
-                  ) : null}
-                  {card.cta} <span aria-hidden>→</span>
-                </p>
-              </div>
-            </Link>
+      {/* The texts. Each title stays an h2 (SEO), set as a row. */}
+      <Section tight id="texts" kicker={<Kicker>{isHi ? "पाठ और विधि" : "Texts and guides"}</Kicker>}>
+        <RowList cols>
+          {texts.map((x) => (
+            <ListRow
+              key={x.href}
+              href={x.href}
+              title={x.title}
+              titleAs="h2"
+              kicker={x.kicker}
+              meta={x.body}
+              linkProps={{ "data-ga": "resource_card_open", "data-ga-href": x.href, "data-ga-title": x.title }}
+            />
           ))}
-        </div>
-      </section>
+        </RowList>
+      </Section>
 
-      {/* MARIGOLD DIVIDER */}
-      <div className="flex justify-center my-12">
-        <MarigoldDivider size={300} className="text-gold-500" />
-      </div>
-
-      {/* THIS WEEK IN LUCKNOW, dedicated news band with article
-          previews. The featured story sits as a wide hero card on
-          the left, the next three secondary stories stack on the
-          right (or below on narrow viewports). Each card links out
-          to its source publication. */}
+      {/* This week in Lucknow: the featured story and three more. */}
       {featuredNews ? (
-        <section className="mx-auto max-w-6xl px-4 sm:px-6">
-          <header className="flex items-end justify-between gap-3 flex-wrap mb-6">
-            <div>
-              {/* Kicker reframed so it doesn't echo the headline ("This
-                  week / This week in Lucknow"). "Editor's pick" reads
-                  as the source of the curation, not a redundant date. */}
-              <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
-                {isHi ? "संपादक चयन" : "Editor's pick"}
-              </p>
-              <h2
-                className={`mt-2 ${
-                  isHi ? "font-tiro text-sindoor-700" : "font-fraunces text-sindoor-700"
-                } text-2xl sm:text-3xl`}
-              >
-                {t.resources.cards.news.title}
-              </h2>
-            </div>
-            <Link
-              href={`/resources/news${langSuffix}`}
-              data-ga="resource_news_view_all"
-              className="inline-flex items-center gap-1.5 text-sm text-saffron-600 hover:underline font-semibold"
-            >
+        <Section
+          id="news"
+          kicker={<Kicker>{isHi ? "संपादक चयन" : "Editor's pick"}</Kicker>}
+          title={{ en: strings.en.resources.cards.news.title, hi: strings.hi.resources.cards.news.title }}
+          action={
+            <Button variant="text" href={`/resources/news${langSuffix}`} data-ga="resource_news_view_all">
               {isHi ? "सभी ख़बरें देखें" : "View all news"}
-              <span aria-hidden>→</span>
-            </Link>
-          </header>
-
-          {/* `items-stretch` (grid default) + `h-full` on each child
-              makes the featured column grow to match the total
-              height of the secondary stack on the right. */}
-          <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr] items-stretch">
-            {/* Featured story, hero card with image + headline + excerpt */}
+            </Button>
+          }
+        >
+          <div className="bmi-split bmi-res-news">
             <a
               href={featuredNews.url}
               target="_blank"
               rel="noopener noreferrer"
+              className="bmi-res-feat"
               data-ga="resource_news_open"
               data-ga-id={featuredNews.id}
               data-ga-source={featuredNews.source}
               data-ga-featured="1"
-              className="group flex h-full flex-col rounded-3xl bg-white border border-saffron-500/40 hover:border-saffron-500 shadow-warm overflow-hidden transition-colors"
+              data-rv
             >
-              {/* Image grows to fill the gap between the bottom of
-                  the secondary stack and the natural height of the
-                  headline + excerpt block. min-h-0 keeps the flex
-                  item shrinkable on narrow viewports. */}
-              <NewsThumb
-                src={featuredNews.image}
-                alt={featuredNews.imageAlt ?? featuredNews.headline}
-                source={featuredNews.source}
-                width={1200}
-                initialSize="large"
-                className="w-full flex-1 min-h-[200px]"
-              />
-              <div className="px-6 py-5">
-                <p className="font-mukta uppercase tracking-[0.22em] text-[0.62rem] text-saffron-600 font-semibold inline-flex items-center gap-2">
-                  <span className="block w-1.5 h-1.5 rounded-full bg-saffron-600 motion-safe:animate-pulse" />
-                  {isHi ? "प्रमुख ख़बर" : "Featured"}
-                  <span aria-hidden className="text-gold-500/55">·</span>
-                  <span className="text-ink-600 font-medium normal-case tracking-normal">
-                    {featuredNews.source}
-                  </span>
-                </p>
-                <h3 className="mt-2 font-fraunces font-semibold text-xl sm:text-2xl text-sindoor-700 leading-tight [text-wrap:balance]">
-                  {isHi
-                    ? (featuredNews.headlineHi ?? featuredNews.headline)
-                    : featuredNews.headline}
-                </h3>
-                <p className="mt-2 text-sm text-ink-600 leading-relaxed line-clamp-3">
-                  {isHi
-                    ? (featuredNews.excerptHi ?? featuredNews.excerpt)
-                    : featuredNews.excerpt}
-                </p>
-                <p className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-saffron-600 group-hover:gap-2 transition-all">
-                  {isHi ? "स्रोत पर पढ़ें" : "Read on source"}
-                  <span aria-hidden>→</span>
-                </p>
-              </div>
+              <NewsImage src={featuredNews.image} source={featuredNews.source} width={1200} />
+              <span className="bmi-row-kick">
+                {isHi ? "प्रमुख ख़बर" : "Featured"} · {featuredNews.source}
+              </span>
+              <h3 className="bmi-res-feat-t" lang={isHi && featuredNews.headlineHi ? "hi" : undefined}>
+                {isHi ? (featuredNews.headlineHi ?? featuredNews.headline) : featuredNews.headline}
+              </h3>
+              <p className="bmi-res-feat-x">
+                {isHi ? (featuredNews.excerptHi ?? featuredNews.excerpt) : featuredNews.excerpt}
+              </p>
+              <span className="bmi-tl inline">
+                {isHi ? "स्रोत पर पढ़ें" : "Read on source"}
+              </span>
             </a>
-
-            {/* Three secondary stories, vertical stack. `h-full`
-                lets the column stretch alongside the featured card
-                in the grid; the equal `1fr` row split keeps each
-                thumbnail card the same height. */}
-            <ol className="grid gap-3 h-full grid-rows-3">
+            <RowList>
               {secondaryNews.map((n) => (
-                <li key={n.id} className="min-h-0">
-                  <a
-                    href={n.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-ga="resource_news_open"
-                    data-ga-id={n.id}
-                    data-ga-source={n.source}
-                    className="group flex h-full gap-3 rounded-2xl bg-white border border-gold-500/40 hover:border-saffron-500 shadow-warm overflow-hidden transition-colors"
-                  >
-                    <NewsThumb
-                      src={n.image}
-                      alt={n.imageAlt ?? n.headline}
-                      source={n.source}
-                      width={320}
-                      className="shrink-0 w-24 sm:w-28 h-full min-h-[96px]"
-                    />
-                    <div className="min-w-0 flex-1 py-3 pr-3">
-                      <p className="font-mukta uppercase tracking-[0.18em] text-[0.55rem] text-gold-500 font-semibold truncate">
-                        {n.source}
-                      </p>
-                      <h3 className="mt-1 font-fraunces font-semibold text-sm sm:text-[15px] text-sindoor-700 leading-snug line-clamp-3 group-hover:underline decoration-saffron-500/70 underline-offset-2">
-                        {isHi ? (n.headlineHi ?? n.headline) : n.headline}
-                      </h3>
-                    </div>
-                  </a>
-                </li>
+                <ListRow
+                  key={n.id}
+                  href={n.url}
+                  external
+                  kicker={n.source}
+                  title={isHi ? (n.headlineHi ?? n.headline) : n.headline}
+                  thumb={n.image ? { src: proxiedNewsImage(n.image, 240), alt: "" } : "gada"}
+                  linkProps={{ "data-ga": "resource_news_open", "data-ga-id": n.id, "data-ga-source": n.source }}
+                />
               ))}
-            </ol>
+            </RowList>
           </div>
-        </section>
+        </Section>
       ) : null}
 
-      {/* MARIGOLD DIVIDER */}
-      <div className="flex justify-center my-12">
-        <MarigoldDivider size={300} className="text-gold-500" />
-      </div>
-
-      {/* FAQ TEASER, 3-question preview of the FAQ page (full
-          bilingual accordion + JSON-LD live at /faq). Sits below
-          the news band so visitors who came for stories also see
-          the most-asked questions before they leave. */}
-      <section className="mx-auto max-w-4xl px-4 sm:px-6">
-        <header className="flex items-end justify-between gap-3 flex-wrap mb-6">
-          <div>
-            <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
-              {isHi ? "पूछे जाने वाले प्रश्न" : "Frequently asked"}
-            </p>
-            <h2
-              className={`mt-2 ${
-                isHi ? "font-tiro text-sindoor-700" : "font-fraunces text-sindoor-700"
-              } text-2xl sm:text-3xl`}
-            >
-              {isHi
-                ? "बड़े मंगल के बारे में आम सवाल"
-                : "Common questions about Bada Mangal"}
-            </h2>
-          </div>
-          <Link
-            href={langSuffix === "" ? "/faq" : `/faq${langSuffix}`}
-            className="inline-flex items-center gap-1.5 text-sm text-saffron-600 hover:underline font-semibold"
-          >
+      {/* FAQ teaser: three questions, the rest on /faq. */}
+      <Section
+        id="faq"
+        className="bmi-res-faq-sec"
+        kicker={<Kicker>{isHi ? "पूछे जाने वाले प्रश्न" : "Frequently asked"}</Kicker>}
+        title={{ en: "Common questions about Bada Mangal", hi: "बड़े मंगल के बारे में आम सवाल" }}
+        action={
+          <Button variant="text" href={langSuffix === "" ? "/faq" : `/faq${langSuffix}`}>
             {isHi ? "सभी FAQ देखें" : "View all FAQs"}
-            <span aria-hidden>→</span>
-          </Link>
-        </header>
+          </Button>
+        }
+      >
+        <div className="bmi-res-faq">
+        <FaqList
+          lang={isHi ? "hi" : "en"}
+          items={teaserFaqs.map((f) => ({ id: f.id, q: isHi ? f.questionHi : f.questionEn, a: isHi ? f.answerHi : f.answerEn }))}
+        />
+        </div>
+      </Section>
 
-        <ul className="grid gap-3">
-          {teaserFaqs.map((item, i) => (
-            <li key={item.id}>
-              <details
-                className="group rounded-2xl border border-gold-500/40 bg-white hover:border-saffron-500/60 overflow-hidden transition-colors"
-                {...(i === 0 ? { open: true } : {})}
-              >
-                <summary className="cursor-pointer list-none flex items-start justify-between gap-3 px-5 py-4 text-left">
-                  <span
-                    className={`flex-1 ${
-                      isHi
-                        ? "font-deva font-semibold text-base sm:text-lg"
-                        : "font-fraunces font-semibold text-base sm:text-lg"
-                    } text-sindoor-700 leading-snug`}
-                  >
-                    {isHi ? item.questionHi : item.questionEn}
+      {/* The temples, in the homepage's arches. */}
+      <Section
+        id="temples"
+        kicker={<Kicker>{isHi ? "मंदिर निर्देशिका" : "Temples directory"}</Kicker>}
+        title={{ en: strings.en.resources.cards.temples.title, hi: strings.hi.resources.cards.temples.title }}
+        lede={t.resources.cards.temples.body}
+        action={
+          <Button variant="text" href={`/resources/temples${langSuffix}`}>
+            {t.resources.cards.temples.cta}
+          </Button>
+        }
+      >
+        <ul className="bmi-arches" data-rv>
+          {TEMPLES.map((temple) => {
+            const art = templeTallArt(temple);
+            const area = t.areas[temple.area as keyof typeof t.areas] ?? temple.area;
+            return (
+              <li key={temple.slug}>
+                <Link href={`/resources/temples/${temple.slug}${langSuffix}`} prefetch={false} className="bmi-arches-a">
+                  <span className="bmi-arch">
+                    {art ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={art} alt="" width={1200} height={1800} loading="lazy" decoding="async" />
+                    ) : null}
                   </span>
-                  <span
-                    aria-hidden
-                    className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-saffron-50 border border-saffron-500/45 text-saffron-600 text-sm font-bold mt-0.5 group-open:rotate-45 transition-transform"
-                  >
-                    +
-                  </span>
-                </summary>
-                <div className="px-5 pb-5 pt-1 text-ink-900/85 text-sm sm:text-base leading-relaxed [text-wrap:pretty]">
-                  {isHi ? item.answerHi : item.answerEn}
-                </div>
-              </details>
-            </li>
-          ))}
+                  <b lang={isHi ? "hi" : undefined}>{isHi ? temple.name.hi : temple.name.en}</b>
+                  <small>{area}</small>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
-      </section>
+      </Section>
 
-      {/* MARIGOLD DIVIDER */}
-      <div className="flex justify-center my-12">
-        <MarigoldDivider size={300} className="text-gold-500" />
-      </div>
-
-      {/* TEMPLES PROMO */}
-      <section className="mx-auto max-w-5xl px-4 sm:px-6">
-        <Link
-          href={`/resources/temples${langSuffix}`}
-          className="block rounded-3xl bg-saffron-50 border border-gold-500/40 px-6 py-10 sm:px-10 sm:py-12 text-center hover:border-saffron-500 transition-colors"
-        >
-          {/* Temple icon, small saffron-tinted dome above the kicker
-              so the section reads as "temples" before the text even
-              resolves at a glance. */}
-          <span
-            aria-hidden
-            className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-cream-50 border border-saffron-500/45 text-saffron-600 mb-3"
-          >
-            <IconTemple />
-          </span>
-          <p className="font-mukta uppercase tracking-[0.32em] text-gold-500 text-xs">
-            {isHi ? "मंदिर निर्देशिका" : "Temples directory"}
+      {/* Why this hub exists. */}
+      <Section
+        id="about"
+        narrow
+        center
+        kicker={
+          <Kicker>
+            <span>{isHi ? "इस संग्रह के बारे में" : "About this hub"}</span>
+          </Kicker>
+        }
+        title={{ en: "Reverent text. Verified sources.", hi: "श्रद्धेय पाठ; सत्यापित स्रोत।" }}
+      >
+        <Prose lang={isHi ? "hi" : "en"} className="bmi-res-about">
+          <p>
+            {isHi
+              ? "जो जानकारी अभी सत्यापन में है, उसे हम स्पष्ट रूप से ‘सत्यापन प्रतीक्षाधीन’ कहकर दिखाते हैं।"
+              : "Anything still being verified is clearly marked “Text being verified”. We won't paraphrase devotional text."}
           </p>
-          <h2
-            className={`mt-3 ${
-              isHi ? "font-tiro text-sindoor-700" : "font-fraunces text-sindoor-700"
-            } text-2xl sm:text-3xl`}
-          >
-            {t.resources.cards.temples.title}
-          </h2>
-          <p className="mt-3 text-ink-600 max-w-2xl mx-auto">
-            {t.resources.cards.temples.body}
-          </p>
-          <span className="mt-6 inline-flex items-center rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 font-medium px-5 py-2 transition-colors">
-            {t.resources.cards.temples.cta} →
-          </span>
-        </Link>
-      </section>
-
-      {/* WHY THIS HUB EXISTS */}
-      <section className="mx-auto max-w-3xl px-4 sm:px-6 mt-16">
-        <p className="font-mukta uppercase tracking-[0.32em] text-gold-500 text-xs">
-          {isHi ? "इस संग्रह के बारे में" : "About this hub"}
-        </p>
-        <h2
-          className={`mt-3 ${
-            isHi ? "font-tiro text-sindoor-700" : "font-fraunces text-sindoor-700"
-          } text-2xl sm:text-3xl`}
-        >
-          {isHi
-            ? "श्रद्धेय पाठ; सत्यापित स्रोत।"
-            : "Reverent text. Verified sources."}
-        </h2>
-        <ul className="mt-5 space-y-3 text-ink-900/90">
-          <li className="flex items-start gap-3">
-            <GadaBullet className="text-gold-500 mt-1 shrink-0" size={18} />
-            <span>
-              {isHi
-                ? "ऑडियो/वीडियो सत्यापित कलाकारों के आधिकारिक चैनलों से ही embed किए जाते हैं, हम कुछ भी पुनः-होस्ट नहीं करते।"
-                : "Audio and video are embedded from verified artists' official channels, we never re-host."}
-            </span>
-          </li>
-          <li className="flex items-start gap-3">
-            <GadaBullet className="text-gold-500 mt-1 shrink-0" size={18} />
-            <span>
-              {isHi
-                ? "जो जानकारी अभी सत्यापन में है, उसे हम स्पष्ट रूप से ‘सत्यापन प्रतीक्षाधीन’ कहकर दिखाते हैं।"
-                : "Anything still being verified is clearly marked “Text being verified”. We won't paraphrase devotional text."}
-            </span>
-          </li>
-        </ul>
-      </section>
-    </article>
+        </Prose>
+      </Section>
+    </InnerShell>
   );
 }
 
 /**
- * Route every news thumbnail through the weserv.nl image proxy. Avoids
- * publisher hot-link blocks + Referer-policy CORS errors that would
- * otherwise leave broken-image icons on the hub. `weserv` expects the
- * URL without protocol, and `&we&output=webp` re-encodes for size.
+ * Route news thumbnails through the weserv.nl image proxy: it strips
+ * the Referer (publisher hot-link blocks) and re-encodes to webp.
  */
 function proxiedNewsImage(src: string, width: number): string {
   if (!src) return "";
@@ -498,128 +254,34 @@ function proxiedNewsImage(src: string, width: number): string {
   return `https://images.weserv.nl/?url=${encodeURIComponent(target)}&w=${width}&we&output=webp`;
 }
 
-/**
- * Resilient news thumbnail. A branded placeholder (source initial +
- * name) sits BEHIND the image, and the <img> hides itself on error
- * (`onError`) so a failed proxy / hot-linked / 404 source image never
- * leaves a broken box or stray alt text, it falls back to the warm
- * placeholder. `referrerPolicy="no-referrer"` strips the Referer so
- * publisher hot-link rules don't block the load in the first place.
- */
-function NewsThumb({
-  src,
-  alt,
-  source,
-  width,
-  className,
-  initialSize = "small",
-}: {
-  src: string;
-  alt: string;
-  source: string;
-  width: number;
-  className?: string;
-  initialSize?: "small" | "large";
-}) {
-  const [failed, setFailed] = useState(false);
-  const initial = source.trim().charAt(0).toUpperCase() || "★";
-  const showImg = Boolean(src) && !failed;
+/** The featured story's photo. If the publisher's image is gone (it
+ *  happens), a painted old Lucknow street stands in, never a broken
+ *  box. The check also runs after hydration, because an image that
+ *  failed before React attached would never fire onError. */
+function NewsImage({ src, width }: { src: string; source: string; width: number }) {
+  const [failed, setFailed] = useState(!src);
+  const ref = useRef<HTMLImageElement>(null);
+  useEffect(() => {
+    const img = ref.current;
+    if (img && img.complete && img.naturalWidth === 0) setFailed(true);
+  }, []);
   return (
-    <div
-      className={`relative overflow-hidden bg-gradient-to-br from-saffron-50 to-cream-50 ${className ?? ""}`}
-    >
-      <div className="absolute inset-0 flex items-center justify-center text-center px-2 pointer-events-none">
-        <div>
-          <p
-            className={`font-numerals font-extrabold text-saffron-600/40 leading-none ${
-              initialSize === "large" ? "text-4xl sm:text-6xl" : "text-2xl"
-            }`}
-          >
-            {initial}
-          </p>
-          <p className="mt-1 font-mukta uppercase tracking-[0.24em] text-ink-600/55 text-[0.55rem]">
-            {source}
-          </p>
-        </div>
-      </div>
-      {showImg ? (
+    <span className="bmi-res-feat-img">
+      {failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={HOME_ART.oldLucknowBand.src} alt="" loading="lazy" decoding="async" className="fallback" />
+      ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
+          ref={ref}
           src={proxiedNewsImage(src, width)}
-          alt={alt}
+          alt=""
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
-          className="absolute inset-0 w-full h-full object-cover"
         />
-      ) : null}
-    </div>
-  );
-}
-
-/* ── Card icons (audio chip + inline play glyph) ───────────────────── */
-
-function IconAudio() {
-  return (
-    <svg
-      width="9"
-      height="9"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M11 5L6 9H2v6h4l5 4V5z" />
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-    </svg>
-  );
-}
-function IconPlay() {
-  return (
-    <svg
-      width="11"
-      height="11"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden
-    >
-      <path d="M7 5v14l12-7z" />
-    </svg>
-  );
-}
-
-/** Temple, domed shrine with a flag on top, base steps below. Used
- *  on the Temples-directory promo card. */
-function IconTemple() {
-  return (
-    <svg
-      width="26"
-      height="26"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      {/* Flag spire */}
-      <path d="M12 2v3" />
-      <path d="M12 2l2 1.5L12 5l-2-1.5L12 2z" fill="currentColor" />
-      {/* Dome */}
-      <path d="M5 12a7 7 0 0 1 14 0" />
-      {/* Base + columns */}
-      <path d="M3 12h18" />
-      <path d="M5 12v8" />
-      <path d="M19 12v8" />
-      <path d="M3 20h18" />
-      {/* Doorway */}
-      <path d="M10 20v-4a2 2 0 1 1 4 0v4" />
-    </svg>
+      )}
+    </span>
   );
 }

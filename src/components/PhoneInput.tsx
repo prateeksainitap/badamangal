@@ -138,7 +138,7 @@ export default function PhoneInput({
   return (
     <div className="grid gap-1.5">
       <div
-        className={`flex items-stretch rounded-xl border border-gold-500/50 bg-white overflow-hidden transition-colors ${focusRing} ${
+        className={`bm-phone flex items-stretch rounded-xl border border-gold-500/50 bg-white overflow-hidden transition-colors ${focusRing} ${
           disabled ? "opacity-60" : ""
         }`}
       >

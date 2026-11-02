@@ -78,7 +78,6 @@ export async function GET() {
       select: {
         id: true,
         area: true,
-        reporterName: true,
         createdAt: true,
       },
     }),
@@ -101,7 +100,10 @@ export async function GET() {
     events.push({
       kind: "spot",
       id: `spot:${s.id}`,
-      who: firstName(s.reporterName ?? ""),
+      // Spotters stay anonymous on every public surface (Founder's
+      // ruling, 1 Nov 2026). Empty `who` makes the ticker say
+      // "Someone" / "किसी". Organiser names on listings stay.
+      who: "",
       where: s.area || null,
       at: s.createdAt.toISOString(),
     });

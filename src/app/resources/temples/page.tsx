@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { TEMPLES } from "@/content/temples";
 import TemplesView from "@/components/TemplesView";
+import { templeImageOnDisk } from "@/lib/temple-images";
 
 export const revalidate = 300;
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
 export const metadata: Metadata = {
-  title: "Hanuman temples of Lucknow · BadaMangal",
+  title: { absolute: "Hanuman temples of Lucknow · BadaMangal" },
   description:
-    "Aliganj Naya, Aliganj Purana, Hanuman Setu, Sankat Mochan, and Bada Hanuman, the temples that anchor Lucknow's Bada Mangal.",
+    "Aliganj Naya, Aliganj Purana, Hanuman Setu (Sankat Mochan), Dakshinmukhi Hanuman of Hazratganj, and Hanuman Garhi in Aminabad, the temples that anchor Lucknow's Bada Mangal.",
   alternates: {
     canonical: "/resources/temples",
     languages: {
@@ -49,7 +50,9 @@ export default function TemplesDirectoryPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListSchema) }}
       />
-      <TemplesView />
+      <TemplesView
+        missingImages={TEMPLES.filter((t) => !templeImageOnDisk(t.imagePath)).map((t) => t.slug)}
+      />
     </>
   );
 }

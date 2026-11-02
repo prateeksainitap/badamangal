@@ -2,20 +2,29 @@
 
 import DevotionalPlayer from "@/components/DevotionalPlayer";
 import { useT } from "@/lib/useT";
+import { useLocaleFromContext } from "@/lib/locale-context";
 import type { DevotionalText, DevotionalVerse } from "@/content/devotional";
+import { Prose } from "@/components/v2";
 
 export type DevotionalReaderProps = {
   text: DevotionalText;
 };
 
 /**
- * Renders the player surface plus the verse stack. The Roman + English
- * language toggle has been removed, verses always render in Devanagari,
- * which keeps the page focused on the original text and matches the
- * audio recordings.
+ * The verse stack, set in the kit's verse style (v2 inner page kit):
+ * Devanagari first and largest, centred, generous leading so matras
+ * never clip, a comfortable reading width. Each line of a verse is its
+ * own line; a long line breaks at its comma first, so a half line
+ * never strands one word. An English meaning, where one exists, sits
+ * under its verse in a quieter style on the English page only.
+ *
+ * The player only renders when a text has its own audio. The
+ * label-owned recordings were taken down on 31 Oct 2026 (main
+ * 4aa37f0), so today no text shows a player.
  */
 export default function DevotionalReader({ text }: DevotionalReaderProps) {
   const { t } = useT();
+  const isHi = useLocaleFromContext() === "hi";
 
   // Map the slug to the right strings block. Each devotional text has
   // its own copy block in `t.resources`, bajrang-baan uses a camelCase
@@ -44,23 +53,25 @@ export default function DevotionalReader({ text }: DevotionalReaderProps) {
   );
 
   return (
-    <div className="space-y-10">
-      <DevotionalPlayer
-        audioUrl={text.audioUrl}
-        videoId={text.audioVideoId}
-        title={text.titleEn}
-        titleHi={text.titleHi}
-        sourceCaption={sourceCaption}
-      />
+    <div className="bmi-reader">
+      {text.audioUrl || text.audioVideoId ? (
+        <DevotionalPlayer
+          audioUrl={text.audioUrl}
+          videoId={text.audioVideoId}
+          title={text.titleEn}
+          titleHi={text.titleHi}
+          sourceCaption={sourceCaption}
+        />
+      ) : null}
 
       {isVerifying ? (
         <VerifyingBlock />
       ) : (
-        <ol className="space-y-3">
+        <Prose variant="verse" lang="hi" className="bmi-verses">
           {text.verses.map((v, i) => (
-            <VerseRow key={i} verse={v} />
+            <VerseRow key={i} verse={v} showMeaning={!isHi} />
           ))}
-        </ol>
+        </Prose>
       )}
     </div>
   );
@@ -69,40 +80,39 @@ export default function DevotionalReader({ text }: DevotionalReaderProps) {
 function VerifyingBlock() {
   const { t } = useT();
   return (
-    <section
-      role="note"
-      className="rounded-3xl border-2 border-dashed border-gold-500/60 bg-saffron-50 px-6 py-8 sm:px-10 sm:py-10"
-    >
-      <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-[0.65rem]">
-        {t.resources.common.verifyingText}
-      </p>
-      <p className="mt-3 font-fraunces italic text-ink-900/85 leading-relaxed text-lg max-w-3xl">
-        {t.resources.common.verifyingNote}
-      </p>
-    </section>
+    <div role="note" className="bmi-empty">
+      <p className="bmi-kick">{t.resources.common.verifyingText}</p>
+      <p className="bmi-lede">{t.resources.common.verifyingNote}</p>
+    </div>
   );
 }
 
-function VerseRow({ verse }: { verse: DevotionalVerse }) {
+/** One line of a verse. A line with a comma splits there into two
+ *  halves that wrap as units on a narrow screen. */
+function VerseLine({ line }: { line: string }) {
+  const at = line.indexOf(", ");
+  if (at < 0 || at > line.length - 6) return <span className="vl">{line}</span>;
   return (
-    <li className="grid gap-4 sm:grid-cols-[auto_1fr] items-start rounded-2xl border border-gold-500/30 bg-white px-5 py-4">
-      {/* Verse number, uses font-deva because verse numbers are now in
-          Devanagari numerals (१, २, ३ …). `font-numerals` is for Latin
-          digits in countdown / stats UIs. */}
-      <p className="font-deva font-bold text-saffron-600 text-lg sm:w-20 leading-snug">
-        {verse.num}
-      </p>
-      {/* `whitespace-pre-line` preserves \n line breaks in the verse
-          string so chaupais render as two lines, dohas as two lines,
-          ashtakas as four lines, etc., without us having to split on
-          \n in JSX. `lang="hi"` triggers the right font fallback for
-          Devanagari conjuncts. */}
-      <p
-        lang="hi"
-        className="font-deva text-lg leading-relaxed text-ink-900 whitespace-pre-line"
-      >
-        {verse.deva}
-      </p>
-    </li>
+    <span className="vl">
+      <span className="vh">{line.slice(0, at + 1)}</span>{" "}
+      <span className="vh">{line.slice(at + 2)}</span>
+    </span>
+  );
+}
+
+function VerseRow({ verse, showMeaning }: { verse: DevotionalVerse; showMeaning: boolean }) {
+  const isDoha = /दोहा|सोरठा/.test(verse.num);
+  return (
+    <p className={isDoha ? "doha" : undefined}>
+      <span className="num">{verse.num}</span>
+      {verse.deva.split("\n").map((line, j) => (
+        <VerseLine key={j} line={line} />
+      ))}
+      {showMeaning && verse.en ? (
+        <span className="tr" lang="en">
+          {verse.en}
+        </span>
+      ) : null}
+    </p>
   );
 }

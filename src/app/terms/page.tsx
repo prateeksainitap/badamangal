@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions · BadaMangal",
+  title: { absolute: "Terms & Conditions · BadaMangal" },
   description:
     "The terms that govern your use of BadaMangal.com, listing, spotting, browsing, and contributing to Lucknow's Bada Mangal directory.",
   alternates: { canonical: "/terms" },

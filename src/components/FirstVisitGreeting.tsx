@@ -13,6 +13,9 @@ export default function FirstVisitGreeting() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // The homepage greets with its own splash, so the toast never runs
+    // there.
+    if (window.location.pathname === "/") return;
     try {
       if (window.sessionStorage.getItem(SESSION_KEY)) return;
       window.sessionStorage.setItem(SESSION_KEY, "1");

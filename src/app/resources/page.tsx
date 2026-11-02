@@ -7,7 +7,7 @@ export const revalidate = 300;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
 export const metadata: Metadata = {
-  title: "Resources · Hanuman Chalisa, Aarti, FAQ, temples · BadaMangal",
+  title: { absolute: "Resources · Hanuman Chalisa, Aarti, FAQ, temples · BadaMangal" },
   description:
     "The Hanuman Chalisa, Hanuman Aarti, Tuesday vrat guide, the city's biggest temples, and frequently-asked questions about Bada Mangal, one place to keep coming back to.",
   alternates: {
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Resources · BadaMangal",
     description:
-      "Read, listen, watch, the canonical companion to Lucknow's Bada Mangal.",
+      "Read, learn, visit: the canonical companion to Lucknow's Bada Mangal.",
     url: `${SITE_URL}/resources`,
     type: "website",
     siteName: "BadaMangal",

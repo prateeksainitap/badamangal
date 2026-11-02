@@ -26,9 +26,18 @@ import type { Metadata } from "next";
 import AreaPageView from "@/components/AreaPageView";
 import { ALL_AREA_SLUGS, slugToAreaCity } from "@/lib/areaSlug";
 import { getCity, areasFor } from "@/lib/cities";
-import { getAllApprovedBhandaras, toBhandara } from "@/lib/db";
-import { hasUpcomingDate } from "@/lib/dates";
 import {
+  getAllApprovedBhandarasPublic,
+  toPublicBhandaraListItem,
+} from "@/lib/db";
+import {
+  hasUpcomingDate,
+  isBadaMangalSeasonOver,
+  istTodayIso,
+} from "@/lib/dates";
+import type { BhandaraListItem } from "@/types/bhandara";
+import {
+  DEFAULT_OG_IMAGE,
   breadcrumbSchema,
   faqPageSchema,
   localised,
@@ -36,11 +45,74 @@ import {
   SITE_URL,
 } from "@/lib/seo";
 import { AREAS } from "@/lib/lucknow";
+import { placeOnPaintedMap } from "@/lib/home-map";
 
 export const revalidate = 300;
 export const dynamicParams = false; // only the canonical 36 slugs render
 
 type RouteParams = Promise<{ slug: string }>;
+
+/**
+ * This area's bhandaras, split into what is still to come and what
+ * already served. Shared by the metadata and the page so the title
+ * count and the list on the page always agree (30 Oct 2026 test: the
+ * title said "10 bhandaras" while the list said none, because the list
+ * kept only upcoming rows and the title counted everything).
+ *
+ *   upcoming : at least one service day today or later (IST), shown
+ *              first as before, one card per date.
+ *   past     : every service day is over, limited to the latest season
+ *              on record (e.g. 2026), one card per bhandara with its
+ *              dates shown as served. Off season this is what fills the
+ *              page, so it is never empty while the title has a count.
+ *   pastYear : that season's year, for the "From the 2026 season" label.
+ */
+function splitAreaBhandaras(
+  all: Awaited<ReturnType<typeof getAllApprovedBhandarasPublic>>,
+  area: string,
+  citySlug: string,
+): { upcoming: BhandaraListItem[]; past: BhandaraListItem[]; pastYear: string | null } {
+  // Filter on city AND area. Area alone is ambiguous now: Kalyanpur
+  // exists in Lucknow and Kanpur, Civil Lines in three cities, so
+  // matching on area only would blend two cities' bhandaras onto one
+  // page. Legacy rows have city "lucknow" from the backfill.
+  const rows = all.filter(
+    (b) => b.area === area && (b.city ?? "lucknow") === citySlug,
+  );
+  // Public list projection: no organiser phone, WhatsApp or UPI
+  // (Founder's ruling, 1 Nov 2026). Calls happen on the bhandara's
+  // own page.
+  const mapped = rows.map(toPublicBhandaraListItem);
+  const upcoming = mapped.filter((b) => hasUpcomingDate(b));
+  const served = mapped.filter(
+    (b) => !hasUpcomingDate(b) && b.tuesdayDates.length > 0,
+  );
+  // A few listings never had a date entered. They belong to the season
+  // they were listed in (by createdAt) and show with no date chip.
+  const listedYear = new Map(
+    rows.map((r) => [r.id, new Date(r.createdAt).toISOString().slice(0, 4)]),
+  );
+  const undated = mapped.filter((b) => b.tuesdayDates.length === 0);
+  const lastDate = (b: BhandaraListItem) => [...b.tuesdayDates].sort().at(-1) ?? "";
+  const firstDate = (b: BhandaraListItem) => [...b.tuesdayDates].sort()[0] ?? "";
+  const pastYear =
+    served.map(lastDate).sort().at(-1)?.slice(0, 4) ??
+    undated.map((b) => listedYear.get(b.id) ?? "").sort().at(-1) ??
+    null;
+  const past = pastYear
+    ? [
+        ...served
+          .filter((b) => lastDate(b).startsWith(pastYear))
+          .sort(
+            (a, z) =>
+              firstDate(a).localeCompare(firstDate(z)) ||
+              lastDate(a).localeCompare(lastDate(z)),
+          ),
+        ...undated.filter((b) => listedYear.get(b.id) === pastYear),
+      ]
+    : [];
+  return { upcoming, past, pastYear };
+}
 
 export function generateStaticParams(): { slug: string }[] {
   return ALL_AREA_SLUGS.map((slug) => ({ slug }));
@@ -64,12 +136,15 @@ export async function generateMetadata({
   // beat abstract ones for CTR.
   //
   // Build-time note: every area page hits this function during
-  // `next build`. We MUST use the deduped getAllApprovedBhandaras()
+  // `next build`. We MUST use the deduped getAllApprovedBhandarasPublic()
   // (one query shared across all 36 pages) instead of per-page
   // prisma.count() calls, otherwise we exhaust Supabase's
   // connection_limit=1 pooler and the build crashes with P2024.
-  const all = await getAllApprovedBhandaras();
-  const count = all.filter((b) => b.area === area).length;
+  const all = await getAllApprovedBhandarasPublic();
+  const split = splitAreaBhandaras(all, area, citySlug);
+  // Upcoming plus the latest season's served bhandaras: exactly the
+  // cards the page shows.
+  const count = split.upcoming.length + split.past.length;
 
   // SEO-tuned title: "Bada Mangal in <Area>, Lucknow 2026, N bhandaras".
   // Area is position 3, "Bada Mangal" position 1 (the brand + intent
@@ -103,11 +178,15 @@ export async function generateMetadata({
       url: `${SITE_URL}/area/${slug}`,
       siteName: "BadaMangal",
       type: "website",
+      // A page-level openGraph replaces the root one, so the site card
+      // has to be named here or area shares go out with no picture.
+      images: [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
+      images: [DEFAULT_OG_IMAGE],
     },
   };
 }
@@ -124,18 +203,19 @@ export default async function AreaPage({ params }: { params: RouteParams }) {
   // cache, then filter in memory for this area's slice. The upstream
   // query already orders by isSponsored / isVerified / createdAt so
   // the filtered slice keeps that ordering for free.
-  const all = await getAllApprovedBhandaras();
-  // Filter on city AND area. Area alone is ambiguous now: Kalyanpur
-  // exists in Lucknow and Kanpur, Civil Lines in three cities, so
-  // matching on area only would blend two cities' bhandaras onto one
-  // page. Legacy rows have city "lucknow" from the backfill.
-  const records = all.filter(
-    (b) => b.area === area && (b.city ?? "lucknow") === citySlug,
+  const all = await getAllApprovedBhandarasPublic();
+  // Upcoming bhandaras lead the page (what you can still visit). The
+  // latest season's served bhandaras follow, clearly labelled as past,
+  // so off season the page keeps real content that matches its title.
+  const { upcoming: bhandaras, past, pastYear } = splitAreaBhandaras(
+    all,
+    area,
+    citySlug,
   );
-  // Upcoming-only contract, match the homepage main list. Past-only
-  // bhandaras live exclusively on /archive; if you land here from an
-  // area chip the page shows only what you can actually visit.
-  const bhandaras = records.map(toBhandara).filter((b) => hasUpcomingDate(b));
+  // "Earlier this season" while that season is still running, "From the
+  // 2026 season" once it is over.
+  const pastIsThisSeason =
+    pastYear === istTodayIso().slice(0, 4) && !isBadaMangalSeasonOver();
 
   // Pick 2-3 adjacent areas for cross-linking. Trivial heuristic:
   // the 2 areas immediately before and after this one in the
@@ -159,7 +239,9 @@ export default async function AreaPage({ params }: { params: RouteParams }) {
       q: `How many Bada Mangal bhandaras are in ${area}, ${city.name}?`,
       a: bhandaras.length
         ? `${bhandaras.length} ${bhandaras.length === 1 ? "bhandara is" : "bhandaras are"} currently listed in ${area} for the 2026 Bada Mangal season. The list is community-sourced and grows as the season progresses.`
-        : `No bhandaras are listed in ${area} for the 2026 season yet, be the first to add one (free).`,
+        : past.length
+          ? `${past.length} ${past.length === 1 ? "bhandara was" : "bhandaras were"} listed in ${area} for the ${pastYear} Bada Mangal season. The list is community-sourced; bhandaras for the next season appear here as organisers add them.`
+          : `No bhandaras are listed in ${area} for the 2026 season yet, be the first to add one (free).`,
     },
     {
       q: `When does Bada Mangal happen in ${area}?`,
@@ -179,13 +261,20 @@ export default async function AreaPage({ params }: { params: RouteParams }) {
     "@context": "https://schema.org",
     "@type": "ItemList",
     name: `Bada Mangal Bhandaras in ${area}, ${city.name} 2026`,
-    itemListElement: bhandaras.map((b, i) => ({
+    itemListElement: [...bhandaras, ...past].map((b, i) => ({
       "@type": "ListItem",
       position: i + 1,
       url: `${SITE_URL}/bhandara/${b.slug}`,
       name: b.name,
     })),
   };
+
+  // This area's bhandaras on the painted Lucknow plate (same projection
+  // as the homepage map), for the hero art. Server side, static HTML.
+  const painted = placeOnPaintedMap(
+    [...bhandaras, ...past].map((b) => ({ id: b.id, lat: b.lat, lng: b.lng })),
+    all,
+  );
 
   const jsonLdBlocks: object[] = [
     organizationSchema(),
@@ -207,7 +296,12 @@ export default async function AreaPage({ params }: { params: RouteParams }) {
         area={area}
         slug={slug}
         bhandaras={bhandaras}
+        past={past}
+        pastYear={pastYear}
+        pastIsThisSeason={pastIsThisSeason}
         adjacent={adjacent}
+        mapPins={painted.pins}
+        mapLabels={painted.labels}
       />
     </>
   );

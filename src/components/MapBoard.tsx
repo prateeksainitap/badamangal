@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 
 // BhandaraMap wraps Ola Maps / MapLibre GL, ~200 KB of compressed JS
 // that's only needed once the visitor scrolls to the map. Lazy-import
@@ -25,7 +25,7 @@ import MapSideList, {
 } from "@/components/MapSideList";
 import NearMeButton, { type NearMeState } from "@/components/NearMeButton";
 import { trackEvent } from "@/lib/ga";
-import type { Bhandara } from "@/types/bhandara";
+import type { BhandaraListItem } from "@/types/bhandara";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { useLocaleFromContext } from "@/lib/locale-context";
@@ -64,7 +64,7 @@ type Props = {
   heading?: string;
   body?: string;
   listBhandaraLabel?: string;
-  listings: Bhandara[];
+  listings: BhandaraListItem[];
   liveSpots: LiveSpotInput[];
   /** WhatsApp-community total, mirrored from the same counter the
    *  LiveChatterBoard reads. Drives the "X,XXX in our WhatsApp
@@ -88,6 +88,24 @@ type Props = {
    *  copy and the "spotted" legend label to past tense so the board
    *  never implies these pins are live right now. */
   isPastSeason?: boolean;
+  /** Element id for the board. Defaults to "map" (the classic homepage
+   *  anchor). The v2 homepage embeds the board inside its own #map
+   *  section, so it passes a different id to avoid a duplicate. */
+  sectionId?: string;
+  /** Embedded in the v2 homepage: no outer section padding, heading set
+   *  in the homepage display face instead of the serif. */
+  embedded?: boolean;
+  /** Prefills the search box, e.g. from the homepage's ?q= URL that the
+   *  Google sitelinks search box sends visitors to. */
+  initialQuery?: string;
+  /** The listings and spots are still on their way (the v2 homepage
+   *  fetches them on demand). The chips keep showing the season totals
+   *  and the map and list show a quiet placeholder instead of an empty
+   *  state. */
+  loading?: boolean;
+  /** The on-demand fetch failed; show a retry in place of the map. */
+  loadFailed?: boolean;
+  onRetry?: () => void;
 };
 
 /**
@@ -105,6 +123,12 @@ export default function MapBoard({
   totalListed,
   totalSpotted,
   isPastSeason = false,
+  sectionId = "map",
+  embedded = false,
+  initialQuery = "",
+  loading = false,
+  loadFailed = false,
+  onRetry,
 }: Props) {
   // Locale + every locale-derived string comes from the client-side
   // context so SSR can render English and we still respect the
@@ -173,7 +197,7 @@ export default function MapBoard({
   // landmark / organizerName for listings, and caption / area /
   // bhandaraName for spots. Lower-cased on use so the comparison is
   // case-insensitive. Empty string means "no search filter".
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   // Near-me state lives at the board level so the trigger button can sit
   // in the top toolbar (next to the filter pills) while still controlling
   // the side list's distance filter.
@@ -190,6 +214,10 @@ export default function MapBoard({
   const { ref: mapSlotRef, inView: mapInView } = useInViewOnce<HTMLDivElement>();
 
   const normQuery = query.trim().toLowerCase();
+  // While the data is on its way the search has nothing to count yet,
+  // so the chips keep the season totals instead of dropping to 0.
+  const waiting = loading || loadFailed;
+  const countSearch = normQuery.length > 0 && !waiting;
 
   // Search-only filter (filter chip NOT applied), drives tab counts so
   // the chips reflect "how many in each bucket match the search". The
@@ -282,36 +310,42 @@ export default function MapBoard({
     {
       key: "all",
       label: isHi ? "सब" : "All",
-      count: normQuery
+      count: countSearch
         ? searchedListings.length + searchedSpots.length
         : totalCount,
     },
     {
       key: "listed",
       label: isHi ? "लिस्टेड" : "Listed",
-      count: normQuery ? searchedListings.length : scopedListed,
+      count: countSearch ? searchedListings.length : scopedListed,
     },
     {
       key: "spotted",
       label: isHi ? "स्पॉट" : "Spotted",
-      count: normQuery ? searchedSpots.length : scopedSpotted,
+      count: countSearch ? searchedSpots.length : scopedSpotted,
     },
   ];
 
   return (
     <section
-      id="map"
-      className="mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-10"
+      id={sectionId}
+      className={
+        embedded ? "bmh-mapboard" : "mx-auto max-w-6xl px-4 sm:px-6 py-6 sm:py-10"
+      }
     >
       {/* Heading row: title + filter pills + Add-a-bhandara CTA */}
       <div className="mb-3 flex items-end justify-between gap-4 flex-wrap">
         <div>
           <h2
-            className={`text-3xl sm:text-4xl ${
-              isHi
-                ? "font-tiro text-sindoor-700"
-                : "font-fraunces font-bold text-sindoor-700"
-            }`}
+            className={
+              embedded
+                ? "bmh-mapboard-h"
+                : `text-3xl sm:text-4xl ${
+                    isHi
+                      ? "font-tiro text-sindoor-700"
+                      : "font-fraunces font-bold text-sindoor-700"
+                  }`
+            }
           >
             {heading}
           </h2>
@@ -573,7 +607,9 @@ export default function MapBoard({
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div ref={mapSlotRef} className="min-h-[560px] sm:min-h-[640px]">
-          {mapInView ? (
+          {waiting ? (
+            <MapPending isHi={isHi} failed={loadFailed} onRetry={onRetry} />
+          ) : mapInView ? (
             <BhandaraMap
               listings={filteredListings}
               liveSpots={mappedLiveSpots}
@@ -588,16 +624,92 @@ export default function MapBoard({
             />
           )}
         </div>
-        <MapSideList
-          listings={filteredListings}
-          liveSpots={filteredSpots as SideListSpot[]}
-          locale={locale}
-          isHi={isHi}
-          filter={filter as SideListFilter}
-          near={near}
-        />
+        {waiting ? (
+          <ListPending />
+        ) : (
+          <MapSideList
+            listings={filteredListings}
+            liveSpots={filteredSpots as SideListSpot[]}
+            locale={locale}
+            isHi={isHi}
+            filter={filter as SideListFilter}
+            near={near}
+          />
+        )}
       </div>
     </section>
+  );
+}
+
+/** Faint street grid, so the waiting frame reads as a map, not a box. */
+const PENDING_GRID: CSSProperties = {
+  backgroundImage:
+    "repeating-linear-gradient(0deg, rgba(201,162,74,0.10) 0 1px, transparent 1px 56px), repeating-linear-gradient(90deg, rgba(201,162,74,0.10) 0 1px, transparent 1px 56px), radial-gradient(ellipse at 50% 45%, rgba(255,255,255,0.65), transparent 70%)",
+};
+
+/** Map slot while the on-demand data loads, or after it failed. */
+function MapPending({
+  isHi,
+  failed,
+  onRetry,
+}: {
+  isHi: boolean;
+  failed: boolean;
+  onRetry?: () => void;
+}) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy={!failed}
+      className="relative h-[420px] sm:h-[520px] w-full rounded-2xl border border-gold-500/40 bg-cream-50/70 overflow-hidden flex flex-col items-center justify-center gap-3 px-6 text-center"
+      style={PENDING_GRID}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/brand/map-pin-gada.svg"
+        alt=""
+        width={44}
+        height={44}
+        className={failed ? "opacity-50" : "motion-safe:animate-pulse"}
+      />
+      <p className="text-sm text-ink-600 max-w-[30ch]">
+        {failed
+          ? isHi
+            ? "लाइव नक़्शा अभी नहीं खुल पाया।"
+            : "The live map could not load just now."
+          : isHi
+            ? "हर भंडारा नक़्शे पर लगाया जा रहा है"
+            : "Placing every bhandara on the map"}
+      </p>
+      {failed && onRetry ? (
+        <button type="button" onClick={onRetry} className="btn btn-primary btn-sm">
+          {isHi ? "फिर कोशिश करें" : "Try again"}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** Side list frame while the data loads: the list's own shape, quiet. */
+function ListPending() {
+  return (
+    <aside
+      aria-hidden
+      className="relative rounded-2xl border border-gold-500/40 bg-cream-50 overflow-hidden flex flex-col h-[420px] sm:h-[520px]"
+    >
+      <div className="px-4 py-3 border-b border-gold-500/30 bg-saffron-50/60">
+        <span className="block h-3.5 w-32 rounded-full bg-gold-500/20" />
+      </div>
+      <ul className="flex-1 divide-y divide-gold-500/20 motion-safe:animate-pulse">
+        {[78, 62, 70, 54, 66, 58].map((w, i) => (
+          <li key={i} className="px-4 py-3.5">
+            <span className="block h-3 rounded-full bg-gold-500/20" style={{ width: `${w}%` }} />
+            <span className="mt-2 block h-2.5 w-1/3 rounded-full bg-gold-500/10" />
+          </li>
+        ))}
+      </ul>
+    </aside>
   );
 }
 

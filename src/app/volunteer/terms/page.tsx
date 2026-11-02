@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_URL } from "@/lib/seo";
+import { InnerShell, PageHero, Kicker, Breadcrumb, ProseDoc, Actions, Button } from "@/components/v2";
 
 /**
  * /volunteer/terms: public Terms & Conditions for the volunteer
@@ -32,6 +33,23 @@ import { SITE_URL } from "@/lib/seo";
 
 const TERMS_VERSION = "2026-05-27";
 
+const TOC = [
+  { id: "terms-1", label: "1. About the programme" },
+  { id: "terms-2", label: "2. Eligibility" },
+  { id: "terms-3", label: "3. Data we collect and how we use it" },
+  { id: "terms-4", label: "4. Communication consent" },
+  { id: "terms-5", label: "5. Photos and content you capture" },
+  { id: "terms-6", label: "6. Conduct expectations" },
+  { id: "terms-7", label: "7. Suspension and termination" },
+  { id: "terms-8", label: "8. Safety and limitation of liability" },
+  { id: "terms-9", label: "9. Indemnification" },
+  { id: "terms-10", label: "10. Children's safety" },
+  { id: "terms-11", label: "11. Changes to these terms" },
+  { id: "terms-12", label: "12. Grievance officer and contact" },
+  { id: "terms-13", label: "13. General provisions" },
+  { id: "terms-14", label: "14. Governing law and dispute resolution" },
+];
+
 export const metadata: Metadata = {
   title: "Volunteer terms & conditions · BadaMangal Lucknow",
   description:
@@ -42,30 +60,36 @@ export const metadata: Metadata = {
 
 export default function VolunteerTermsPage() {
   return (
-    <main className="mx-auto max-w-3xl px-4 sm:px-6 pb-24">
-      <header className="pt-8 sm:pt-12">
-        <p className="text-xs uppercase tracking-[0.2em] text-saffron-600 font-medium">
-          🚩 Volunteer programme
-        </p>
-        <h1 className="font-fraunces text-3xl sm:text-4xl text-sindoor-700 mt-2">
-          Terms &amp; conditions
-        </h1>
-        <p className="mt-2 text-sm text-ink-600 font-mukta">
-          Last updated: <strong>27 May 2026</strong>. By signing up
-          you confirm you have read and agreed to these terms.
-        </p>
-        <p className="mt-1 text-sm">
-          <Link
-            href="/volunteer/signup"
-            className="text-saffron-600 hover:text-saffron-700 underline decoration-dotted underline-offset-4"
-          >
-            ← Back to signup
-          </Link>
-        </p>
-      </header>
-
+    <InnerShell>
+      <PageHero
+        crumbs={
+          <Breadcrumb
+            items={[
+              { label: "Volunteer", href: "/volunteer" },
+              { label: "Terms" },
+            ]}
+          />
+        }
+        kicker={<Kicker>Volunteer programme</Kicker>}
+        title={{ en: "Terms & conditions", hi: "Terms & conditions" }}
+        lede={
+          <>
+            Last updated: <strong>27 May 2026</strong>. By signing up you
+            confirm you have read and agreed to these terms.
+          </>
+        }
+        actions={
+          <Actions>
+            <Button href="/volunteer/signup" variant="text" icon="back" iconEnd={null}>
+              Back to signup
+            </Button>
+          </Actions>
+        }
+      />
+      <section className="bmi-sec tight" style={{ paddingTop: 0 }}>
+        <div className="bmi-wrap">
+          <ProseDoc toc={TOC} tocTitle="On this page" lang="en">
       {/* Full English text */}
-      <article className="mt-8 prose-quiet font-mukta text-ink-800 leading-relaxed">
         <Section number={1} title="About the programme">
           <p>
             BadaMangal is a community initiative documenting Bada
@@ -399,29 +423,23 @@ export default function VolunteerTermsPage() {
           </p>
         </Section>
 
-        <p className="text-xs text-ink-500 italic mt-12">
-          BadaMangal · Lucknow · India ·{" "}
-          <span>
-            Version <strong>{TERMS_VERSION}</strong>
-          </span>
+        <p className="bmi-fine" style={{ marginTop: 40 }}>
+          BadaMangal, Lucknow, India. Version <strong>{TERMS_VERSION}</strong>
         </p>
-      </article>
-
-      <footer className="mt-12 flex items-center justify-between gap-3 flex-wrap text-sm">
-        <Link
-          href="/volunteer/signup"
-          className="inline-flex items-center gap-1.5 rounded-full bg-saffron-500 hover:bg-saffron-600 text-cream-50 font-semibold px-5 py-2.5 shadow-sm transition-colors"
-        >
-          ← Back to signup
-        </Link>
-        <Link
-          href="/volunteer"
-          className="text-ink-600 hover:text-saffron-600 underline decoration-dotted underline-offset-4"
-        >
-          About the volunteer programme
-        </Link>
-      </footer>
-    </main>
+          </ProseDoc>
+          <div className="bmi-sub">
+            <Actions>
+              <Button href="/volunteer/signup" icon="back" iconEnd={null}>
+                Back to signup
+              </Button>
+              <Button href="/volunteer" variant="text">
+                About the volunteer programme
+              </Button>
+            </Actions>
+          </div>
+        </div>
+      </section>
+    </InnerShell>
   );
 }
 
@@ -438,16 +456,14 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-7 first:mt-0">
-      <h2 className="font-fraunces text-lg sm:text-xl text-sindoor-700 mb-2">
-        <span className="text-saffron-600 mr-1.5 tabular-nums">
+    <section>
+      <h2 id={`terms-${number}`}>
+        <span className="tabular-nums" style={{ color: "var(--saffron-ink)", marginRight: 6 }}>
           {number}.
         </span>
         {title}
       </h2>
-      <div className="space-y-3 text-sm sm:text-[15px] [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1 [&_a]:text-saffron-600 [&_a]:underline [&_strong]:text-ink-900">
-        {children}
-      </div>
+      {children}
     </section>
   );
 }

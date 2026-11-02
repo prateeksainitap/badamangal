@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import SpotHero from "@/components/SpotHero";
 import SpotQuickForm from "@/components/SpotQuickForm";
-import { localised } from "@/lib/seo";
-import { getAllApprovedBhandaras } from "@/lib/db";
+import { InnerShell, Plate } from "@/components/v2";
+import { HOME_ART } from "@/content/home-art";
+import { localised, DEFAULT_OG_IMAGE } from "@/lib/seo";
+import { getAllApprovedBhandarasPublic } from "@/lib/db";
 
 // ISR. Was force-dynamic for cookies()-based locale. The hero + form
 // are both client components reading locale from <LocaleProvider />,
@@ -18,11 +20,12 @@ import { getAllApprovedBhandaras } from "@/lib/db";
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-  title: "Spot a bhandara, share a Bada Mangal sighting · BadaMangal",
+  title: { absolute: "Spot a bhandara, share a Bada Mangal sighting · BadaMangal" },
   description:
     "Walked past a Bada Mangal bhandara in Lucknow? Add a photo and your location in 30 seconds, no login. Goes live on the city map for 8 hours.",
   alternates: localised("/spot"),
   openGraph: {
+    images: [DEFAULT_OG_IMAGE],
     title: "Spot a Bada Mangal bhandara · BadaMangal Lucknow",
     description:
       "One photo and your location is enough, share the bhandara you just walked past with the rest of Lucknow.",
@@ -37,7 +40,7 @@ export default async function SpotPage() {
   // area from GPS coords (used internally; no list-pick UI in V2).
   // Now read from the shared module-scoped cache (see `revalidate`
   // comment). Sort and slice match the previous standalone findMany.
-  const allApproved = await getAllApprovedBhandaras();
+  const allApproved = await getAllApprovedBhandarasPublic();
   const listings = [...allApproved]
     .sort((a, b) => {
       const areaCmp = a.area.localeCompare(b.area);
@@ -46,8 +49,11 @@ export default async function SpotPage() {
     .slice(0, 200);
 
   return (
-    <div className="mx-auto max-w-md sm:max-w-xl lg:max-w-2xl px-4 sm:px-6 py-8 sm:py-12">
+    <InnerShell>
       <SpotHero />
+      <section className="bmi-sec tight" style={{ paddingTop: 0 }}>
+        <div className="bmi-wrap bmi-formgrid">
+          <div>
       <SpotQuickForm
         bhandaras={listings.map((b) => ({
           id: b.id,
@@ -59,6 +65,17 @@ export default async function SpotPage() {
           lng: b.lng,
         }))}
       />
-    </div>
+          </div>
+          <div className="bmi-formart" aria-hidden>
+            <Plate
+              src={HOME_ART.bhandaraLine.src}
+              width={HOME_ART.bhandaraLine.width}
+              height={HOME_ART.bhandaraLine.height}
+              alt=""
+            />
+          </div>
+        </div>
+      </section>
+    </InnerShell>
   );
 }

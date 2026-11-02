@@ -1,8 +1,13 @@
-import { PrismaClient, type Bhandara as DbBhandara } from "@prisma/client";
+import {
+  PrismaClient,
+  type Bhandara as DbBhandara,
+  type Prisma,
+} from "@prisma/client";
 import type { Area } from "@/lib/lucknow";
-import type { Bhandara } from "@/types/bhandara";
+import type { Bhandara, BhandaraListItem } from "@/types/bhandara";
 import { stripBotProvenance } from "@/lib/sanitize";
 import type { CitySlug } from "@/lib/cities";
+import { cleanName } from "@/lib/display-name";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
@@ -263,6 +268,7 @@ export async function getAllApprovedBhandarasMapped(opts?: {
  */
 export function invalidateBhandaraQueryCache(): void {
   allApprovedBhandarasPromise = null;
+  allApprovedPublicPromise = null;
   // Earlier in the day this also called revalidateTag(
   // "public-bhandaras") to bust an edge-shared unstable_cache layer
   // wrapping the homepage's bhandara query. That cache turned out
@@ -271,19 +277,133 @@ export function invalidateBhandaraQueryCache(): void {
   // in the same commit batch; this tag-bust call went with it.
 }
 
-export function toBhandara(record: DbBhandara): Bhandara {
+/** Columns a public LIST of bhandaras may read. Deliberately leaves out
+ *  organizerPhone, organizerWhatsapp, upiId and upiQrUrl (and the
+ *  bot's senderLid), so contact details never even leave the database
+ *  for list surfaces. Use with `prisma.bhandara.findMany({ select })`. */
+export const PUBLIC_BHANDARA_LIST_SELECT = {
+  id: true,
+  slug: true,
+  status: true,
+  name: true,
+  nameHi: true,
+  description: true,
+  descriptionHi: true,
+  city: true,
+  area: true,
+  address: true,
+  addressHi: true,
+  landmark: true,
+  lat: true,
+  lng: true,
+  tuesdayDates: true,
+  timeStart: true,
+  timeEnd: true,
+  menu: true,
+  menuHi: true,
+  organizerName: true,
+  photoUrl: true,
+  isSponsored: true,
+  isVerified: true,
+  isFeatured: true,
+  geoNeighborhood: true,
+  geoDistrict: true,
+  geoState: true,
+  googlePlaceId: true,
+  googleMapsUrl: true,
+  createdAt: true,
+} as const satisfies Prisma.BhandaraSelect;
+
+export type PublicBhandaraRecord = Prisma.BhandaraGetPayload<{
+  select: typeof PUBLIC_BHANDARA_LIST_SELECT;
+}>;
+
+let allApprovedPublicPromise: Promise<PublicBhandaraRecord[]> | null = null;
+
+/** Same rows and order as `getAllApprovedBhandaras`, but read through
+ *  PUBLIC_BHANDARA_LIST_SELECT, so no phone, WhatsApp or UPI column is
+ *  fetched. Every list surface (area pages, spot and list-bhandara
+ *  pickers) reads this one. Cached at module level for the same build
+ *  reasons as the full query above, and cleared by
+ *  `invalidateBhandaraQueryCache()` too. */
+export function getAllApprovedBhandarasPublic(opts?: {
+  fresh?: boolean;
+}): Promise<PublicBhandaraRecord[]> {
+  if (opts?.fresh || !allApprovedPublicPromise) {
+    allApprovedPublicPromise = prisma.bhandara.findMany({
+      where: { status: "APPROVED" },
+      orderBy: [
+        { isSponsored: "desc" },
+        { isVerified: "desc" },
+        { createdAt: "asc" },
+      ],
+      select: PUBLIC_BHANDARA_LIST_SELECT,
+    });
+  }
+  return allApprovedPublicPromise;
+}
+
+/** Public list projection. An explicit allowlist, so even when it is
+ *  handed a full DB row it never copies organizerPhone,
+ *  organizerWhatsapp, upiId or upiQrUrl. Every list that reaches the
+ *  browser or a public API (homepage map and cards, /api/bhandaras,
+ *  area pages, archive, nearby and "others in this area" lists) must
+ *  go through this. Only a single bhandara's own page uses the full
+ *  `toBhandara` below, so its call and WhatsApp buttons keep working. */
+export function toPublicBhandaraListItem(
+  record: PublicBhandaraRecord | DbBhandara,
+): BhandaraListItem {
+  const base = baseBhandaraFields(record);
+  // Some organisers type their number into free text too ("reach me
+  // on 98xxxxxxxx" in the description, a number as a menu item). Lists
+  // drop those as well; the bhandara's own page keeps the text whole.
+  return {
+    ...base,
+    name: redactPhoneNumbers(base.name),
+    nameHi: redactPhoneNumbers(base.nameHi),
+    description: redactOptional(base.description),
+    descriptionHi: redactOptional(base.descriptionHi),
+    address: redactPhoneNumbers(base.address),
+    addressHi: redactOptional(base.addressHi),
+    landmark: redactOptional(base.landmark),
+    organizerName: redactPhoneNumbers(base.organizerName),
+    menu: base.menu.map(redactPhoneNumbers).filter(Boolean),
+    menuHi: base.menuHi.map(redactPhoneNumbers).filter(Boolean),
+  };
+}
+
+/** Indian mobile numbers as people type them: optional +91 / 91 / 0
+ *  prefix, then 10 digits starting 6 to 9, with optional spaces or
+ *  hyphens between digits. */
+const PHONE_IN_TEXT =
+  /(?<![\w+])(?:\+?91[\s-]?|0)?[6-9](?:[\s-]?\d){9}(?!\d)/g;
+
+function redactPhoneNumbers(text: string): string {
+  if (!text) return text;
+  const out = text.replace(PHONE_IN_TEXT, "");
+  return out === text ? text : out.replace(/[ \t]{2,}/g, " ").trim();
+}
+
+function redactOptional(text: string | undefined): string | undefined {
+  if (text === undefined) return undefined;
+  return redactPhoneNumbers(text) || undefined;
+}
+
+function baseBhandaraFields(
+  record: PublicBhandaraRecord | DbBhandara,
+): BhandaraListItem {
   return {
     id: record.id,
     slug: record.slug,
-    name: record.name,
-    nameHi: record.nameHi ?? record.name,
+    name: cleanName(record.name),
+    nameHi: cleanName(record.nameHi ?? record.name),
     // Strip the WhatsApp-bot provenance tag (e.g.
     //   "[bot:whatsapp · from:… · msg:… · 2026-…Z]")
     // that /api/bot/ingest embeds into description for the admin
-    // moderation view. The admin view bypasses toBhandara and reads
+    // moderation view. The admin view bypasses these mappers and reads
     // the raw Prisma record so it still sees the tag (and parses it
-    // via parseBotTag); every public surface goes through this
-    // mapper and therefore gets the cleaned prose only.
+    // via parseBotTag); every public surface goes through here and
+    // therefore gets the cleaned prose only.
     description: stripBotProvenance(record.description),
     descriptionHi: stripBotProvenance(record.descriptionHi),
     city: (record.city ?? "lucknow") as CitySlug,
@@ -299,10 +419,6 @@ export function toBhandara(record: DbBhandara): Bhandara {
     menu: safeJsonArray(record.menu),
     menuHi: safeJsonArray(record.menuHi),
     organizerName: record.organizerName,
-    organizerPhone: record.organizerPhone,
-    organizerWhatsapp: record.organizerWhatsapp ?? undefined,
-    upiId: record.upiId ?? undefined,
-    upiQrUrl: record.upiQrUrl ?? undefined,
     photoUrl: record.photoUrl ?? undefined,
     isSponsored: record.isSponsored,
     isVerified: record.isVerified,
@@ -312,5 +428,18 @@ export function toBhandara(record: DbBhandara): Bhandara {
     geoState: record.geoState ?? undefined,
     googlePlaceId: record.googlePlaceId ?? undefined,
     googleMapsUrl: record.googleMapsUrl ?? undefined,
+  };
+}
+
+/** Full shape, contact fields included. Only for ONE bhandara's own
+ *  detail page (its call, WhatsApp and UPI blocks). Never map a list
+ *  through this for the browser; use `toPublicBhandaraListItem`. */
+export function toBhandara(record: DbBhandara): Bhandara {
+  return {
+    ...baseBhandaraFields(record),
+    organizerPhone: record.organizerPhone,
+    organizerWhatsapp: record.organizerWhatsapp ?? undefined,
+    upiId: record.upiId ?? undefined,
+    upiQrUrl: record.upiQrUrl ?? undefined,
   };
 }

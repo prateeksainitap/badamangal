@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { loadGoogleFont } from "@/lib/og-fonts";
+import { loadOgFonts, ogHindiWordmark, OG_BODY_FONT, OG_HEADING_FONT } from "@/lib/og-hindi";
 
 export const runtime = "nodejs";
 export const alt = "BadaMangal · Jahan Bhakti, Vahan Bhandara";
@@ -94,18 +94,13 @@ async function publicAssetDataUrl(
 }
 
 export default async function OG() {
-  // English-only OG card. We previously rendered the Hindi headline
-  // "जहाँ भक्ति, वहाँ भंडारा" using Noto Serif Devanagari, but Satori
-  // (the renderer behind next/og) doesn't fully shape the `क्ति`
-  // conjunct, the `ि` matra rendered AFTER the cluster instead of
-  // fused into it, producing visibly broken text. Rather than ship a
-  // visibly-wrong Hindi headline on the most-shared surface on the
-  // site, we render the OG card entirely in English. The rest of the
-  // site stays bilingual; this is a renderer-limitation workaround,
-  // not a brand-language decision.
-  const [fraunces500, fraunces700, hanumanPng] = await Promise.all([
-    loadGoogleFont("Fraunces", 500),
-    loadGoogleFont("Fraunces", 700),
+  // Hindi tagline "जहाँ भक्ति, वहाँ भंडारा" is a pre-shaped wordmark image,
+  // because next/og cannot shape Devanagari (it misdraws the क्ति
+  // conjunct). All live text on this card is English, see src/lib/og-hindi.ts.
+  // If the wordmark is ever missing, the romanised couplet is shown instead.
+  const tagline = ogHindiWordmark("जहाँ भक्ति,\nवहाँ भंडारा");
+  const [fonts, hanumanPng] = await Promise.all([
+    loadOgFonts(),
     // PNG (converted from the original WebP via sharp at build time,
     // see public/illustrations/hanuman-standing-og.png). Satori parses
     // PNG reliably; the WebP route crashed with [TypeError: u2 is not
@@ -115,27 +110,6 @@ export default async function OG() {
       "image/png",
     ),
   ]);
-
-  const fonts: {
-    name: string;
-    data: ArrayBuffer;
-    weight?: 500 | 700;
-    style?: "normal";
-  }[] = [];
-  if (fraunces500)
-    fonts.push({
-      name: "Fraunces",
-      data: fraunces500,
-      weight: 500,
-      style: "normal",
-    });
-  if (fraunces700)
-    fonts.push({
-      name: "Fraunces",
-      data: fraunces700,
-      weight: 700,
-      style: "normal",
-    });
 
   return new ImageResponse(
     (
@@ -147,7 +121,7 @@ export default async function OG() {
           flexDirection: "column",
           padding: 64,
           background: `linear-gradient(180deg, ${SAFFRON_50} 0%, ${CREAM_50} 100%)`,
-          fontFamily: "Fraunces, serif",
+          fontFamily: `${OG_BODY_FONT}, sans-serif`,
           position: "relative",
         }}
       >
@@ -296,9 +270,11 @@ export default async function OG() {
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div
                 style={{
-                  fontSize: 28,
+                  fontFamily: OG_HEADING_FONT,
+                  fontSize: 30,
                   fontWeight: 700,
                   color: INK_900,
+                  lineHeight: 1.1,
                   display: "flex",
                 }}
               >
@@ -307,6 +283,7 @@ export default async function OG() {
               <div
                 style={{
                   fontSize: 16,
+                  fontWeight: 500,
                   color: INK_600,
                   letterSpacing: 3,
                   textTransform: "uppercase",
@@ -322,7 +299,8 @@ export default async function OG() {
               background: GOLD_100,
               border: `1px solid ${GOLD_500}`,
               borderRadius: 999,
-              padding: "8px 18px",
+              padding: "8px 18px 6px",
+              fontFamily: OG_HEADING_FONT,
               fontSize: 16,
               color: SINDOOR_700,
               letterSpacing: 2,
@@ -343,47 +321,45 @@ export default async function OG() {
             display: "flex",
             flexDirection: "column",
             marginTop: "auto",
-            maxWidth: 740,
+            maxWidth: 660,
           }}
         >
-          {/* Two-line couplet, matching the rhythm of the original
-              Devanagari "जहाँ भक्ति, वहाँ भंडारा". Romanised here so
-              Satori (which can't shape the क्ति conjunct) doesn't
-              produce visibly broken text on the share card, see
-              file-header notes for the renderer-limitation context. */}
-          <div
-            style={{
-              fontFamily: "Fraunces, serif",
-              fontWeight: 700,
-              fontSize: 92,
-              color: SINDOOR_700,
-              lineHeight: 1.05,
-              letterSpacing: -2,
-              display: "flex",
-            }}
-          >
-            Jahan Bhakti,
-          </div>
-          <div
-            style={{
-              fontFamily: "Fraunces, serif",
-              fontWeight: 700,
-              fontSize: 92,
-              color: SINDOOR_700,
-              lineHeight: 1.05,
-              letterSpacing: -2,
-              display: "flex",
-            }}
-          >
-            Vahan Bhandara
-          </div>
+          {/* Two-line couplet "जहाँ भक्ति, वहाँ भंडारा", drawn from a
+              pre-shaped wordmark (Satori cannot shape the क्ति conjunct).
+              Romanised couplet only if the wordmark is missing. */}
+          {tagline ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={tagline.src}
+              alt=""
+              width={tagline.width}
+              height={tagline.height}
+              style={{ width: tagline.width, height: tagline.height }}
+            />
+          ) : (
+            <div
+              style={{
+                fontFamily: OG_HEADING_FONT,
+                fontWeight: 700,
+                fontSize: 84,
+                color: SINDOOR_700,
+                lineHeight: 1.0,
+                letterSpacing: -1.5,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              <span>Jahan Bhakti,</span>
+              <span>Vahan Bhandara</span>
+            </div>
+          )}
           <div
             style={{
               fontSize: 28,
               fontWeight: 500,
               color: INK_900,
-              marginTop: 18,
-              letterSpacing: -0.2,
+              marginTop: 14,
+              lineHeight: 1.3,
               display: "flex",
             }}
           >
@@ -400,8 +376,10 @@ export default async function OG() {
             justifyContent: "space-between",
             gap: 24,
             marginTop: 32,
+            maxWidth: 680,
             color: INK_600,
-            fontSize: 20,
+            fontSize: 19,
+            fontWeight: 500,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -414,14 +392,14 @@ export default async function OG() {
               }}
             />
             <span style={{ display: "flex" }}>
-              Find · Host · Sponsor a Bada Mangal Bhandara
+              Find · Host · Sponsor a Bhandara
             </span>
           </div>
           <div
             style={{
-              fontFamily: "Fraunces, serif",
+              fontFamily: OG_HEADING_FONT,
               fontWeight: 700,
-              fontSize: 20,
+              fontSize: 19,
               color: SINDOOR_700,
               letterSpacing: 0.5,
               display: "flex",
@@ -432,6 +410,6 @@ export default async function OG() {
         </div>
       </div>
     ),
-    { ...size, fonts: fonts.length ? fonts : undefined },
+    { ...size, fonts },
   );
 }

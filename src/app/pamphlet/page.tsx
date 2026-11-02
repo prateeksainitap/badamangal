@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import PamphletGenerator from "@/components/PamphletGenerator";
-import { localised } from "@/lib/seo";
+import { localised, DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title:
-    "Free Bada Mangal Pamphlet Generator · BadaMangal.com",
+  // The root template adds " · BadaMangal".
+  title: "Free Bada Mangal Pamphlet Generator",
   description:
     "Make a free printable Bada Mangal bhandara pamphlet in 30 seconds. Devotional design, Hindi + English, QR code, ready for any print shop in Lucknow.",
   keywords: [
@@ -26,6 +26,7 @@ export const metadata: Metadata = {
   // promo + footer link so the only way in is a direct URL share.
   robots: { index: false, follow: false },
   openGraph: {
+    images: [DEFAULT_OG_IMAGE],
     title: "Free Bada Mangal Pamphlet Generator",
     description:
       "Make a printable Bada Mangal bhandara pamphlet free, ready in 30 seconds. Devotional design + QR code.",

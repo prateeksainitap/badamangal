@@ -7,7 +7,7 @@ import StyleGuide from "@/components/StyleGuide";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Design system · BadaMangal",
+  title: { absolute: "Design system · BadaMangal" },
   description:
     "Internal style guide for the BadaMangal design system, colour, type, ornaments, primitives.",
   robots: { index: false, follow: false },

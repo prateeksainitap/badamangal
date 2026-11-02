@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy · BadaMangal",
+  title: { absolute: "Privacy Policy · BadaMangal" },
   description:
     "What BadaMangal.com collects, why we collect it, where it lives, and the rights you have over your data.",
   alternates: { canonical: "/privacy" },

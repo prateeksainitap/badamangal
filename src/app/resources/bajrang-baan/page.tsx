@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RESOURCES_OG_IMAGE } from "@/lib/seo";
 import { BAJRANG_BAAN } from "@/content/devotional";
 import DevotionalPageView from "@/components/DevotionalPageView";
 
@@ -7,9 +8,9 @@ export const revalidate = 300;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
 export const metadata: Metadata = {
-  title: "Bajrang Baan · बजरंग बाण (with audio) · BadaMangal",
+  title: { absolute: "Bajrang Baan · बजरंग बाण · BadaMangal" },
   description:
-    "Bajrang Baan, a fierce protective recitation invoking Hanuman Ji's force. Verified audio and full canonical text.",
+    "Bajrang Baan, a fierce protective recitation invoking Hanuman Ji's force. The full canonical text.",
   alternates: {
     canonical: "/resources/bajrang-baan",
     languages: {
@@ -18,9 +19,10 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
+    images: [RESOURCES_OG_IMAGE],
     title: "Bajrang Baan · BadaMangal",
     description:
-      "A protective recitation to Hanuman Ji, with verified audio and canonical text.",
+      "A protective recitation to Hanuman Ji, with the full canonical text.",
     url: `${SITE_URL}/resources/bajrang-baan`,
     type: "article",
     siteName: "BadaMangal",

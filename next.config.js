@@ -77,8 +77,38 @@ const longCacheHeaders = [
   { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
 ];
 
+// Crawlers that must get <title>, canonical and the other metadata tags
+// inside <head> instead of streamed after the page body. Next.js 15.2+
+// streams metadata to every user agent not matched here, and its default
+// list leaves out Googlebot (it assumes Googlebot runs JavaScript), so on
+// production Googlebot saw the title and canonical after the footer.
+// Setting this option REPLACES the Next.js default list, so the default
+// list (next/dist/shared/lib/router/utils/html-bots.js, Next 15.5) is
+// repeated in full below, followed by Googlebot and the other search and
+// answer engine crawlers. Matched case insensitively. Regular visitors
+// still get streamed metadata, so page speed for people is unchanged.
+const htmlLimitedBots = new RegExp(
+  [
+    // Next.js 15.5 default list
+    "[\\w-]+-Google", "Google-[\\w-]+", "Chrome-Lighthouse", "Slurp", "DuckDuckBot",
+    "baiduspider", "yandex", "sogou", "bitlybot", "tumblr", "vkShare",
+    "quora link preview", "redditbot", "ia_archiver", "Bingbot", "BingPreview",
+    "applebot", "facebookexternalhit", "facebookcatalog", "Twitterbot",
+    "LinkedInBot", "Slackbot", "Discordbot", "WhatsApp", "SkypeUriPreview",
+    "Yeti", "googleweblight",
+    // Added for BadaMangal
+    "Googlebot", "Storebot-Google", "msnbot", "adidxbot", "Applebot-Extended",
+    "OAI-SearchBot", "ChatGPT-User", "GPTBot", "ClaudeBot", "Claude-SearchBot",
+    "Claude-User", "PerplexityBot", "Perplexity-User", "Amazonbot", "CCBot",
+    "Bytespider", "PetalBot", "SeznamBot", "Qwantify", "Ecosia", "MojeekBot",
+    "TelegramBot", "Pinterestbot", "SemrushBot", "AhrefsBot", "MJ12bot",
+  ].join("|"),
+  "i",
+);
+
 const nextConfig = {
   reactStrictMode: true,
+  htmlLimitedBots,
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },
@@ -95,7 +125,22 @@ const nextConfig = {
   async redirects() {
     // BadaMangalBhandara.com -> BadaMangal.com is handled at the DNS/Netlify
     // layer; this hook is reserved for any in-app redirects we may add later.
-    return [];
+    return [
+      // The Hazratganj temple page was renamed to the temple's real name
+      // (29 Oct 2026). Keep the old URL and its search rank working.
+      {
+        source: "/resources/temples/sankat-mochan-hazratganj",
+        destination: "/resources/temples/dakshinmukhi-hanuman-hazratganj",
+        permanent: true,
+      },
+      // "Bada Hanuman Mandir, Khun Khun Ji Road" could not be verified and
+      // was replaced by Hanuman Garhi, Aminabad (30 Oct 2026).
+      {
+        source: "/resources/temples/bada-hanuman-khun-khun-ji",
+        destination: "/resources/temples/hanuman-garhi-aminabad",
+        permanent: true,
+      },
+    ];
   },
 };
 

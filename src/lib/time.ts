@@ -18,13 +18,33 @@ export function format12h(time: string | null | undefined): string {
 }
 
 /**
- * Format an inclusive time range with the same safety: omits the dash if
- * end-time is missing, returns the start alone if end is empty.
+ * Join two already formatted times into a range. The site never shows a
+ * dash (founder, 29 Oct 2026), so English reads "6:00 AM to 2:00 PM" and
+ * Hindi reads "6:00 AM से 2:00 PM तक". Returns whichever side exists when
+ * one is empty. Every public time range goes through this.
  */
-export function formatTimeRange(start: string, end?: string | null): string {
-  const s = format12h(start);
-  const e = format12h(end ?? "");
-  if (!s) return "";
+export function joinTimeRange(
+  start: string,
+  end?: string | null,
+  locale: "en" | "hi" = "en",
+): string {
+  const s = (start ?? "").trim();
+  const e = (end ?? "").trim();
+  if (!s) return e;
   if (!e) return s;
-  return `${s} – ${e}`;
+  return locale === "hi" ? `${s} से ${e} तक` : `${s} to ${e}`;
+}
+
+/**
+ * Format an inclusive "HH:MM" range: returns the start alone if the end
+ * time is missing or invalid, and "" if the start is invalid.
+ */
+export function formatTimeRange(
+  start: string | null | undefined,
+  end?: string | null,
+  locale: "en" | "hi" = "en",
+): string {
+  const s = format12h(start);
+  if (!s) return "";
+  return joinTimeRange(s, format12h(end), locale);
 }

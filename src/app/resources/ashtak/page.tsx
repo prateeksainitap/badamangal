@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RESOURCES_OG_IMAGE } from "@/lib/seo";
 import { ASHTAK } from "@/content/devotional";
 import DevotionalPageView from "@/components/DevotionalPageView";
 
@@ -7,10 +8,12 @@ export const revalidate = 300;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
 export const metadata: Metadata = {
-  title:
-    "Sankat Mochan Hanuman Ashtak · संकट मोचन हनुमान अष्टक (with audio) · BadaMangal",
+  title: {
+    absolute:
+      "Sankat Mochan Hanuman Ashtak · संकट मोचन हनुमान अष्टक · BadaMangal",
+  },
   description:
-    "The eight-stanza Sankat Mochan Hanuman Ashtak by Tulsidas, recited when an obstacle feels immovable. Verified audio and full canonical text.",
+    "The eight-stanza Sankat Mochan Hanuman Ashtak by Tulsidas, recited when an obstacle feels immovable. The full canonical text.",
   alternates: {
     canonical: "/resources/ashtak",
     languages: {
@@ -19,9 +22,10 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
+    images: [RESOURCES_OG_IMAGE],
     title: "Sankat Mochan Hanuman Ashtak · BadaMangal",
     description:
-      "The eight-stanza stotra by Tulsidas, with verified audio and canonical text.",
+      "The eight-stanza stotra by Tulsidas, with the full canonical text.",
     url: `${SITE_URL}/resources/ashtak`,
     type: "article",
     siteName: "BadaMangal",

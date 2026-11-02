@@ -23,7 +23,8 @@
 
 import { useLocaleFromContext } from "@/lib/locale-context";
 import VolunteerSignupForm from "@/components/volunteer/VolunteerSignupForm";
-import { JaliCorner, MarigoldDivider } from "@/components/ornaments";
+import { InnerShell, PageHero, Kicker, KickSep, Chip, FormPanel, Section, Heading, FaqList } from "@/components/v2";
+import { listingSeason } from "@/lib/season";
 
 type Locale = "hi" | "en";
 
@@ -59,12 +60,12 @@ type StringsBlock = {
 
 const COPY: Record<Locale, StringsBlock> = {
   hi: {
-    eyebrow: "🚩 स्वयंसेवक · बड़ा मंगल 2026",
+    eyebrow: "स्वयंसेवक",
     h1Part1: "लखनऊ के हर भण्डारे को",
     h1Part2: "सबके लिए सुलभ बनाएँ",
-    pill: "🙏 केवल सेवा · कोई शुल्क नहीं",
+    pill: "केवल सेवा, कोई शुल्क नहीं",
     bodyParagraph:
-      "डिलीवरी राइडर, कैब ड्राइवर, छात्र, या कोई भी जो योगदान देना चाहता है, अपने इलाके के भण्डारों की जानकारी, तस्वीरें और स्थान दर्ज करने में मदद करें। पूरे आठ मंगलवार के सीज़न के लिए हमारे WhatsApp समूह में जुड़ें।",
+      "डिलीवरी राइडर, कैब ड्राइवर, छात्र, या कोई भी जो योगदान देना चाहता है, अपने इलाके के भण्डारों की जानकारी, तस्वीरें और स्थान दर्ज करने में मदद करें। पूरे सीज़न के लिए हमारे volunteer WhatsApp समूह में जुड़ें।",
     personas: [
       { emoji: "🛵", label: "डिलीवरी राइडर" },
       { emoji: "🚖", label: "कैब ड्राइवर" },
@@ -89,13 +90,13 @@ const COPY: Record<Locale, StringsBlock> = {
         num: "2",
         emoji: "📸",
         title: "भण्डारे पर जाएँ",
-        body: "ज्येष्ठ माह के मंगलवार + शनिवार। तस्वीरें, समय, स्थान, प्रसाद, हर भण्डारे में करीब 10 मिनट।",
+        body: "ज्येष्ठ माह के मंगलवार और शनिवार। तस्वीरें, समय, स्थान, प्रसाद, हर भण्डारे में करीब 10 मिनट।",
       },
       {
         num: "3",
         emoji: "🗺️",
         title: "लाइव हो जाता है",
-        body: "हम review करके public directory + लाइव शहरी नक्शे पर publish करते हैं। हज़ारों श्रद्धालु अब इसे ढूँढ सकते हैं।",
+        body: "हम review करके public directory और लाइव शहरी नक्शे पर publish करते हैं। हज़ारों श्रद्धालु अब इसे ढूँढ सकते हैं।",
       },
     ],
     contributionsHeading: "और तरीक़े जिनसे सेवा दे सकते हैं",
@@ -104,7 +105,7 @@ const COPY: Record<Locale, StringsBlock> = {
       {
         emoji: "📸",
         title: "Field volunteer",
-        body: "अपने इलाक़े के भंडारे की photo + location WhatsApp group में share करना।",
+        body: "अपने इलाक़े के भंडारे की photo और location WhatsApp group में share करना।",
       },
       {
         emoji: "📞",
@@ -157,16 +158,16 @@ const COPY: Record<Locale, StringsBlock> = {
         a: "WhatsApp पर हमें अपना मोबाइल नंबर भेज दीजिए, हम code दोबारा भेज देंगे।",
       },
     ],
-    benediction: "🙏 जय श्री राम · जय हनुमान",
+    benediction: "जय श्री राम, जय हनुमान",
     benedictionSub: "सवाल हो तो WhatsApp करें।",
   },
   en: {
-    eyebrow: "🚩 Volunteer · Bada Mangal 2026",
+    eyebrow: "Volunteer",
     h1Part1: "Make every bhandara in Lucknow",
     h1Part2: "easy to find for everyone",
-    pill: "🙏 Pure seva · No fee",
+    pill: "Pure seva, no fee",
     bodyParagraph:
-      "Delivery riders, cab drivers, students, anyone with a phone who wants to contribute. Help us log bhandaras in your area with photos, time, and location. You get added to our volunteer WhatsApp group for the full 8-Tuesday Adhik Mas season.",
+      "Delivery riders, cab drivers, students, anyone with a phone who wants to contribute. Help us log bhandaras in your area with photos, time, and location. You get added to our volunteer WhatsApp group for the full season.",
     personas: [
       { emoji: "🛵", label: "Delivery riders" },
       { emoji: "🚖", label: "Cab drivers" },
@@ -191,13 +192,13 @@ const COPY: Record<Locale, StringsBlock> = {
         num: "2",
         emoji: "📸",
         title: "Visit & document",
-        body: "Tuesdays + Saturdays in Jyeshtha. Photos, time, location, prasad. About 10 minutes per bhandara.",
+        body: "Tuesdays and Saturdays in Jyeshtha. Photos, time, location, prasad. About 10 minutes per bhandara.",
       },
       {
         num: "3",
         emoji: "🗺️",
         title: "Goes live",
-        body: "We review and publish on the public directory + the live city map. Thousands of devotees can now find it.",
+        body: "We review and publish on the public directory and the live city map. Thousands of devotees can now find it.",
       },
     ],
     contributionsHeading: "Other ways to contribute",
@@ -207,7 +208,7 @@ const COPY: Record<Locale, StringsBlock> = {
       {
         emoji: "📸",
         title: "Field volunteer",
-        body: "Share photos + locations of bhandaras in your area to our WhatsApp group.",
+        body: "Share photos and locations of bhandaras in your area to our WhatsApp group.",
       },
       {
         emoji: "📞",
@@ -245,7 +246,7 @@ const COPY: Record<Locale, StringsBlock> = {
       },
       {
         q: "Do I have to volunteer every day?",
-        a: "No. Only on Bada Mangal Tuesdays + Bade Shanivar days. About 10 days across the whole season.",
+        a: "No. Only on Bada Mangal Tuesdays and Bade Shanivar days. About 10 days across the whole season.",
       },
       {
         q: "Can I document more than one bhandara per Tuesday?",
@@ -260,7 +261,7 @@ const COPY: Record<Locale, StringsBlock> = {
         a: "WhatsApp us your mobile number, we'll resend the code.",
       },
     ],
-    benediction: "🙏 Jai Shri Ram · Jai Hanuman",
+    benediction: "Jai Shri Ram, Jai Hanuman",
     benedictionSub: "Questions? WhatsApp the BadaMangal team.",
   },
 };
@@ -269,282 +270,106 @@ export default function VolunteerLandingView() {
   const locale = useLocaleFromContext();
   const isHi = locale === "hi";
   const t = COPY[isHi ? "hi" : "en"];
+  const season = listingSeason();
+  const lang = isHi ? "hi" : "en";
+  // The Tuesday count follows the season people list for (lib/season.ts).
+  const stats = t.stats.map((st, i) => (i === 0 ? { ...st, value: String(season.tuesdays.length) } : st));
 
   return (
-    <main className="mx-auto max-w-6xl px-4 sm:px-6 pb-24">
-      {/* ─── Hero (left) + Form (right), 2-col on lg ─────────── */}
-      <section className="mt-8 sm:mt-14 grid gap-8 lg:grid-cols-12 lg:gap-12 items-start">
-        {/* LEFT 7/12 */}
-        <div className="lg:col-span-7">
-          <p
-            className={`text-xs uppercase tracking-[0.22em] text-saffron-600 font-mono font-semibold ${
-              isHi ? "tracking-[0.16em]" : ""
-            }`}
-          >
+    <InnerShell>
+      <PageHero
+        kicker={
+          <Kicker>
             {t.eyebrow}
-          </p>
+            <KickSep />
+            {isHi ? `बड़ा मंगल ${season.year}` : `Bada Mangal ${season.year}`}
+          </Kicker>
+        }
+        title={{
+          en: "Make every bhandara in Lucknow easy to find for everyone",
+          hi: "लखनऊ के हर भण्डारे को सबके लिए सुलभ बनाएँ",
+        }}
+        lede={t.bodyParagraph}
+        meta={<Chip tone="gold" icon="check">{t.pill}</Chip>}
+      />
 
-          <h1
-            className={`mt-4 text-3xl sm:text-4xl lg:text-5xl text-sindoor-700 leading-tight ${
-              isHi ? "font-mukta font-extrabold" : "font-fraunces font-semibold"
-            }`}
-          >
-            {t.h1Part1}{" "}
-            <br className="hidden sm:block" />
-            <span className="text-saffron-600">{t.h1Part2}</span>
-          </h1>
-
-          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-saffron-500/55 bg-saffron-50 text-sindoor-700 text-xs sm:text-sm font-mono font-semibold uppercase tracking-[0.16em] px-4 py-1.5">
-            {t.pill}
-          </div>
-
-          <p className="mt-6 text-base sm:text-lg text-ink-900 leading-relaxed max-w-xl">
-            {t.bodyParagraph}
-          </p>
-
-          {/* Persona chips */}
-          <ul className="mt-6 flex flex-wrap gap-2">
-            {t.personas.map((p) => (
-              <li
-                key={p.label}
-                className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-sindoor-700 bg-cream-50 border border-saffron-500/40 rounded-full px-3 py-1.5"
-              >
-                <span aria-hidden>{p.emoji}</span>
-                {p.label}
-              </li>
-            ))}
-          </ul>
-
-          {/* Stats, bigger + bolder, homepage register */}
-          <div className="mt-8 grid grid-cols-3 gap-3 max-w-md">
-            {t.stats.map((s) => (
-              <div
-                key={s.label}
-                className="rounded-2xl border border-gold-500/40 bg-cream-50 px-3 py-4 text-center"
-              >
-                <p
-                  className={`font-fraunces font-extrabold text-3xl sm:text-4xl text-sindoor-700 leading-none tracking-tight ${
-                    isHi ? "font-mukta" : ""
-                  }`}
-                >
-                  {s.value}
-                </p>
-                <p className="mt-2 text-[10px] sm:text-xs uppercase tracking-[0.14em] text-ink-600 font-mono font-semibold leading-tight">
-                  {s.label}
-                </p>
+      <section className="bmi-sec tight" style={{ paddingTop: 0 }}>
+        <div className="bmi-wrap bmi-vol">
+          {/* The form: first on phones (it is the action), the sticky
+              right column on desktop. */}
+          <div className="bmi-vol-form">
+            <FormPanel>
+              <div id="signup" className="scroll-mt-24">
+                <Kicker>{t.formEyebrow}</Kicker>
+                <h2 className={`bmi-h3 ${isHi ? "" : "lat"}`} lang={lang} style={{ color: "var(--sindoor)" }}>
+                  {t.formHeading}
+                </h2>
+                <p className="bmi-field-hint" style={{ margin: "8px 0 24px" }}>{t.formHelper}</p>
+                <VolunteerSignupForm />
               </div>
-            ))}
+            </FormPanel>
           </div>
 
-          {/* "How your seva flows", moved up from below the form so
-              visitors see the flow without scrolling past the FAQ.
-              Sits inside the hero left column, right under the
-              stats. Vertical layout on mobile is automatic because
-              the parent column is full-width below the lg
-              breakpoint. */}
-          <div className="mt-10 sm:mt-12">
-            <div className="flex items-center gap-3">
-              <span aria-hidden className="h-px flex-1 bg-gold-500/40" />
-              <span className="text-[11px] uppercase tracking-[0.18em] text-gold-500 font-mono font-semibold whitespace-nowrap">
-                {t.stepsHeading}
-              </span>
-              <span aria-hidden className="h-px flex-1 bg-gold-500/40" />
-            </div>
-            <p className="mt-2 text-center text-xs sm:text-sm text-ink-600">
-              {t.stepsSub}
-            </p>
-
-            <ol className="mt-6 grid gap-4 sm:grid-cols-3 text-left">
-              {t.steps.map((step) => (
-                <li
-                  key={step.num}
-                  className="rounded-2xl border border-gold-500/40 bg-cream-50 p-5 shadow-sm"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-saffron-600 text-cream-50 font-fraunces font-bold text-xl">
-                      {step.num}
-                    </div>
-                    <span aria-hidden className="text-2xl">
-                      {step.emoji}
-                    </span>
-                  </div>
-                  <h3
-                    className={`mt-3 text-lg text-sindoor-700 ${
-                      isHi ? "font-mukta font-bold" : "font-fraunces font-semibold"
-                    }`}
-                  >
-                    {step.title}
-                  </h3>
-                  <p className="mt-2 text-sm text-ink-600 leading-relaxed">
-                    {step.body}
-                  </p>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          {/* "Other ways to contribute", opens up the contribution
-              surface beyond field volunteering. Field path is the
-              hero; this section answers "what if I can't go to a
-              bhandara but still want to help?" with 5 specific roles
-              (phone, moderation, content, tech, plus field as #1
-              for the visitor scanning quickly). Footer line reads
-              as the warm catch-all that closes the door on
-              "I don't think I have anything to offer" objections. */}
-          <div className="mt-10 sm:mt-12">
-            <div className="flex items-center gap-3">
-              <span aria-hidden className="h-px flex-1 bg-gold-500/40" />
-              <span className="text-[11px] uppercase tracking-[0.18em] text-gold-500 font-mono font-semibold whitespace-nowrap">
-                {t.contributionsHeading}
-              </span>
-              <span aria-hidden className="h-px flex-1 bg-gold-500/40" />
-            </div>
-            <p className="mt-2 text-center text-xs sm:text-sm text-ink-600">
-              {t.contributionsSub}
-            </p>
-
-            <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-2 text-left">
-              {t.contributions.map((c) => (
-                <li
-                  key={c.title}
-                  className="rounded-2xl border border-gold-500/40 bg-cream-50 p-4 sm:p-5 shadow-sm"
-                >
-                  <div className="flex items-start gap-3">
-                    <span
-                      aria-hidden
-                      className="inline-flex items-center justify-center shrink-0 w-10 h-10 rounded-full bg-saffron-500/10 text-2xl"
-                    >
-                      {c.emoji}
-                    </span>
-                    <div className="min-w-0">
-                      <h3
-                        className={`text-base text-sindoor-700 ${
-                          isHi
-                            ? "font-mukta font-bold"
-                            : "font-fraunces font-semibold"
-                        }`}
-                      >
-                        {c.title}
-                      </h3>
-                      <p className="mt-1 text-sm text-ink-600 leading-relaxed">
-                        {c.body}
-                      </p>
-                    </div>
-                  </div>
+          <div className="bmi-vol-body">
+            <ul className="bmi-stats" data-rv>
+              {stats.map((st) => (
+                <li key={st.label}>
+                  <b>{st.value}</b>
+                  <span lang={lang}>{st.label}</span>
                 </li>
               ))}
             </ul>
 
-            <p className="mt-5 text-center text-sm text-ink-900/85 leading-relaxed italic">
-              {t.contributionsFooter}
-            </p>
-          </div>
-        </div>
+            <div className="bmi-vol-block">
+              <p className="bmi-ilabel" lang={lang}>{t.stepsHeading}</p>
+              <p className="bmi-field-hint">{t.stepsSub}</p>
+              <ol className="bmi-steplist" data-rv>
+                {t.steps.map((step) => (
+                  <li key={step.num}>
+                    <span className="n" aria-hidden>{step.num}</span>
+                    <span>
+                      <h3 lang={lang}>{step.title}</h3>
+                      <p lang={lang}>{step.body}</p>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
 
-        {/* RIGHT 5/12, the form, sticky on desktop */}
-        <div className="lg:col-span-5 lg:sticky lg:top-8">
-          <div
-            id="signup"
-            className="relative scroll-mt-24 overflow-hidden rounded-3xl border-2 border-saffron-500/55 bg-cream-50 p-6 sm:p-8 shadow-[0_24px_60px_-30px_rgba(156,42,42,0.32)]"
-          >
-            <div
-              aria-hidden
-              className="absolute inset-0 -z-0"
-              style={{
-                background:
-                  "radial-gradient(600px 360px at 100% 0%, rgba(242,148,76,0.16), transparent 65%), radial-gradient(600px 360px at 0% 100%, rgba(214,73,73,0.06), transparent 65%)",
-              }}
-            />
-            <JaliCorner
-              position="tl"
-              className="absolute top-3 left-3 w-9 h-9 text-gold-500/55"
-            />
-            <JaliCorner
-              position="tr"
-              className="absolute top-3 right-3 w-9 h-9 text-gold-500/55"
-            />
-            <JaliCorner
-              position="bl"
-              className="absolute bottom-3 left-3 w-9 h-9 text-gold-500/55"
-            />
-            <JaliCorner
-              position="br"
-              className="absolute bottom-3 right-3 w-9 h-9 text-gold-500/55"
-            />
-
-            <div className="relative">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-saffron-600 font-mono font-semibold">
-                {t.formEyebrow}
-              </p>
-              <h2
-                className={`mt-1 text-2xl text-sindoor-700 ${
-                  isHi ? "font-mukta font-bold" : "font-fraunces font-semibold"
-                }`}
-              >
-                {t.formHeading}
-              </h2>
-              <p className="mt-1.5 text-xs text-ink-600 leading-relaxed">
-                {t.formHelper}
-              </p>
-
-              <div className="mt-5">
-                <VolunteerSignupForm />
-              </div>
+            <div className="bmi-vol-block">
+              <p className="bmi-ilabel" lang={lang}>{t.contributionsHeading}</p>
+              <p className="bmi-field-hint">{t.contributionsSub}</p>
+              <ul className="bmi-steplist plain two" data-rv>
+                {t.contributions.map((c) => (
+                  <li key={c.title}>
+                    <span>
+                      <h3 lang={lang}>{c.title}</h3>
+                      <p lang={lang}>{c.body}</p>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="bmi-field-hint" style={{ marginTop: 16 }}>{t.contributionsFooter}</p>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="my-14 sm:my-20 flex justify-center">
-        <MarigoldDivider size={280} className="text-gold-500/70" />
-      </div>
-
-      {/* ─── FAQ ───────────────────────────────────────────────── */}
-      <section className="mx-auto max-w-3xl">
-        <h2
-          className={`text-2xl sm:text-3xl text-sindoor-700 text-center ${
-            isHi ? "font-mukta font-bold" : "font-fraunces font-semibold"
-          }`}
-        >
-          {t.faqHeading}
-        </h2>
-        <p className="mt-2 text-center text-sm text-ink-600">{t.faqSub}</p>
-
-        <div className="mt-6 grid gap-3">
-          {t.faq.map((entry) => (
-            <details
-              key={entry.q}
-              className="group rounded-2xl border border-gold-500/40 bg-cream-50 p-4 shadow-sm"
-            >
-              <summary className="cursor-pointer list-none flex justify-between items-start gap-3 font-medium text-ink-900">
-                <span>{entry.q}</span>
-                <span className="text-saffron-600 group-open:rotate-45 transition-transform text-xl leading-none shrink-0">
-                  +
-                </span>
-              </summary>
-              <p className="mt-3 text-sm text-ink-900 leading-relaxed">
-                {entry.a}
-              </p>
-            </details>
-          ))}
-        </div>
-      </section>
-
-      <div className="my-14 sm:my-20 flex justify-center">
-        <MarigoldDivider size={220} className="text-gold-500/65" />
-      </div>
-
-      {/* ─── Benediction ───────────────────────────────────── */}
-      <p
-        className={`text-center text-lg sm:text-xl text-sindoor-700 ${
-          isHi ? "font-tiro" : "font-fraunces italic"
-        }`}
+      <Section
+        id="faq"
+        narrow
+        heading={<Heading as="h2" en="FAQ" hi={t.faqHeading} />}
       >
-        {t.benediction}
-      </p>
-      <p className="mt-2 text-center text-xs text-ink-600">
-        {t.benedictionSub}
-      </p>
-    </main>
+        <FaqList
+          lang={lang}
+          items={t.faq.map((f, i) => ({ id: `vol-faq-${i + 1}`, q: f.q, a: f.a }))}
+        />
+        <p className="bmi-fine" style={{ marginTop: 28, textAlign: "center" }}>
+          <b style={{ color: "var(--sindoor)" }}>{t.benediction}</b>
+          <br />
+          {t.benedictionSub}
+        </p>
+      </Section>
+    </InnerShell>
   );
 }

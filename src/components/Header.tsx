@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import LangToggle from "@/components/LangToggle";
 import CitySwitcher from "@/components/CitySwitcher";
+import { LIVE_CITIES } from "@/lib/cities";
 import { JaliCorner } from "@/components/ornaments";
 import { useT } from "@/lib/useT";
 import { isLiveChatOpenToday } from "@/lib/live-chat-schedule";
@@ -36,9 +37,15 @@ function HeaderInner() {
   // bhandara" is renamed "Map" so it reads as a destination, not an
   // action. Home links explicitly so users on internal pages have a
   // visible way back without relying on the brand mark.
-  const navLinks: { href: string; label: string }[] = [
+  const navLinks: { href: string; label: string; short?: string }[] = [
     { href: "/", label: locale === "hi" ? "होम" : "Home" },
-    { href: "/#map", label: locale === "hi" ? "नक़्शे पर भंडारे" : "Bhandaras on Map" },
+    {
+      href: "/#map",
+      label: locale === "hi" ? "नक़्शे पर भंडारे" : "Bhandaras on Map",
+      // Shorter label below 1280px so the bar never squeezes the
+      // language toggle (same link, same target).
+      short: locale === "hi" ? "नक़्शा" : "Map",
+    },
     { href: "/live", label: locale === "hi" ? "लाइव" : "Live" },
     { href: "/history", label: locale === "hi" ? "इतिहास" : "History" },
     { href: "/resources", label: t.nav.resources },
@@ -186,7 +193,7 @@ function HeaderInner() {
         {/* Desktop nav */}
         <nav
           aria-label="Primary"
-          className="hidden md:flex items-center gap-1 lg:gap-2"
+          className="hidden md:flex items-center gap-0.5 lg:gap-1"
         >
           {navLinks.map((l) => (
             <Link
@@ -195,21 +202,32 @@ function HeaderInner() {
               data-ga="nav_link"
               data-ga-href={l.href}
               data-ga-label={l.label}
-              className="inline-flex items-center min-h-[44px] text-sm text-ink-900 hover:text-saffron-600 font-medium px-3 py-2 transition-colors"
+              className="inline-flex items-center min-h-[44px] whitespace-nowrap text-sm text-ink-900 hover:text-saffron-600 font-medium px-2 lg:px-2.5 py-2 transition-colors"
             >
-              {l.label}
+              {l.short ? (
+                <>
+                  <span className="xl:hidden">{l.short}</span>
+                  <span className="hidden xl:inline">{l.label}</span>
+                </>
+              ) : (
+                l.label
+              )}
             </Link>
           ))}
         </nav>
 
         {/* Right cluster */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {/* City before language: you pick WHERE you are, then how you
               want to read it. Hidden on the smallest screens for the
               same reason LangToggle is, the mobile drawer carries both. */}
-          <div className="hidden sm:block">
-            <CitySwitcher />
-          </div>
+          {/* Only once a second city goes live (new cities stay off
+              until 2027, Founder). With Lucknow alone it is noise. */}
+          {LIVE_CITIES.length > 1 ? (
+            <div className="hidden sm:block">
+              <CitySwitcher />
+            </div>
+          ) : null}
           <div className="hidden sm:block">
             <LangToggle />
           </div>
@@ -334,7 +352,7 @@ function HeaderInner() {
                     </span>
                     {locale === "hi" ? "अभी" : "Right now"}
                   </p>
-                  <p className="mt-1 font-fraunces font-semibold text-base text-sindoor-700 leading-tight">
+                  <p className="mt-1 font-mukta font-bold text-base text-sindoor-700 leading-tight">
                     {locale === "hi"
                       ? "क्या आपने भंडारा देखा है?"
                       : "Spotted a bhandara?"}

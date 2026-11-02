@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { prisma, toBhandara } from "@/lib/db";
+import {
+  PUBLIC_BHANDARA_LIST_SELECT,
+  prisma,
+  toPublicBhandaraListItem,
+} from "@/lib/db";
 import { hasUpcomingDate } from "@/lib/dates";
 import { menuHiFor } from "@/lib/menu";
 import { createBhandaraWithSlugRetry, slugify } from "@/lib/slugify";
@@ -16,11 +20,19 @@ export async function GET() {
   // calendar advances. Past rows stay in the DB for /admin +
   // historical permalinks; on the public side they only show up via
   // /archive, which filters with the inverse predicate.
+  //
+  // PRIVACY (Founder's ruling, 1 Nov 2026): this list is public and
+  // CORS-open, so it carries NO organiser phone, WhatsApp or UPI
+  // details. The columns are not even selected. A visitor who wants
+  // to call an organiser opens that one bhandara's own page.
   const records = await prisma.bhandara.findMany({
     where: { status: "APPROVED" },
     orderBy: [{ isSponsored: "desc" }, { createdAt: "asc" }],
+    select: PUBLIC_BHANDARA_LIST_SELECT,
   });
-  const bhandaras = records.map(toBhandara).filter((b) => hasUpcomingDate(b));
+  const bhandaras = records
+    .map(toPublicBhandaraListItem)
+    .filter((b) => hasUpcomingDate(b));
   return NextResponse.json(
     { count: bhandaras.length, bhandaras },
     {

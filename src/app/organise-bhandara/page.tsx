@@ -19,7 +19,7 @@
  */
 import type { Metadata } from "next";
 import OrganiseBhandaraView from "@/components/OrganiseBhandaraView";
-import { localised, SITE_URL } from "@/lib/seo";
+import { localised, SITE_URL, DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 export const revalidate = 300;
 
@@ -30,6 +30,7 @@ export const metadata: Metadata = {
     "Want to host a Bada Mangal bhandara but don't have the bandwidth to arrange tent, catering, prasad and crowd flow yourself? The BadaMangal team handles every piece end-to-end, you pick a package or build a custom one and we do the rest. Free quote, callback within a day.",
   alternates: localised("/organise-bhandara"),
   openGraph: {
+    images: [DEFAULT_OG_IMAGE],
     title: "Organise a Bada Mangal bhandara · BadaMangal Lucknow",
     description:
       "Tent, catering, plates, transport, prasad. Pick a package or build your own, we handle the logistics end-to-end. Free quote.",

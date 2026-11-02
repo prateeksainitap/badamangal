@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Disclaimers · BadaMangal",
+  title: { absolute: "Disclaimers · BadaMangal" },
   description:
     "What BadaMangal.com is, what it isn't, and what you should verify on the ground before relying on the information here.",
   alternates: { canonical: "/disclaimers" },

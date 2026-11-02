@@ -36,7 +36,7 @@ import QRCode from "qrcode";
 import { loadGoogleFont } from "@/lib/og-fonts";
 import type { PamphletArtTheme } from "@/lib/pamphlet-themes";
 import { generateInvitationCopy } from "@/lib/vision";
-import { BADA_MANGAL_DATES_2026 } from "@/lib/dates";
+import { SEASONS } from "@/lib/season";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -192,9 +192,10 @@ export async function POST(req: Request) {
       style: "normal",
     });
 
+  // No dash on any public surface: "6 AM to 2 PM".
   const timeRange = body.timeStart
     ? body.timeEnd
-      ? `${body.timeStart} – ${body.timeEnd}`
+      ? `${body.timeStart} to ${body.timeEnd}`
       : `${body.timeStart}`
     : "";
 
@@ -1142,8 +1143,8 @@ type ComposeArgs = {
 };
 
 /** Map a date string (either "YYYY-MM-DD" or "Tuesday, 19 May 2026")
- *  to the 1..8 ordinal of the 2026 Bada Mangal season, or null if
- *  the date doesn't fall on one. Gemini uses this to write the
+ *  to its 1-based ordinal inside its Bada Mangal season (any year in
+ *  lib/season.ts), or null if the date doesn't fall on one. Gemini uses this to write the
  *  correct Devanagari ordinal ("द्वितीय", "तृतीय", etc.). */
 function mangalOrdinalFromDate(date: string | undefined): number | null {
   if (!date) return null;
@@ -1159,10 +1160,11 @@ function mangalOrdinalFromDate(date: string | undefined): number | null {
     }
   }
   if (!iso) return null;
-  const idx = BADA_MANGAL_DATES_2026.findIndex(
-    (d) => d.toISOString().slice(0, 10) === iso,
-  );
-  return idx >= 0 ? idx + 1 : null;
+  for (const s of SEASONS) {
+    const idx = s.tuesdays.indexOf(iso);
+    if (idx >= 0) return idx + 1;
+  }
+  return null;
 }
 
 /** Split a "Tuesday, 19 May 2026" string into "19 May" + "2026" for

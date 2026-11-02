@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { RESOURCES_OG_IMAGE } from "@/lib/seo";
 import { RAM_STUTI } from "@/content/devotional";
 import DevotionalPageView from "@/components/DevotionalPageView";
 
@@ -7,9 +8,9 @@ export const revalidate = 300;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
 export const metadata: Metadata = {
-  title: "Shri Ram Stuti · श्री राम स्तुति (with audio) · BadaMangal",
+  title: { absolute: "Shri Ram Stuti · श्री राम स्तुति · BadaMangal" },
   description:
-    "Tulsidas's Shri Ram Stuti from the Ramcharitmanas, with audio. Sung at every Lucknow Hanuman temple alongside the Aarti.",
+    "Tulsidas's Shri Ram Stuti from the Ramcharitmanas. Sung at every Lucknow Hanuman temple alongside the Aarti.",
   alternates: {
     canonical: "/resources/ram-stuti",
     languages: {
@@ -18,9 +19,10 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
+    images: [RESOURCES_OG_IMAGE],
     title: "Shri Ram Stuti · BadaMangal",
     description:
-      "Tulsidas's five-stanza praise of Shri Ram, with audio.",
+      "Tulsidas's five-stanza praise of Shri Ram, in full.",
     url: `${SITE_URL}/resources/ram-stuti`,
     type: "article",
     siteName: "BadaMangal",

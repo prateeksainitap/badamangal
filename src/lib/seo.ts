@@ -5,6 +5,27 @@ export const SITE_URL =
   "https://badamangal.com";
 
 /**
+ * Share images for pages whose metadata sets its own `openGraph` block.
+ * Next.js replaces the whole parent `openGraph` object when a page sets
+ * one, so a page without `images` loses the site card and shares with no
+ * picture. These point at the file based cards (src/app/opengraph-image.tsx
+ * and src/app/resources/opengraph-image.tsx); metadataBase makes them
+ * absolute. Pass as `openGraph.images` (and `twitter.images`).
+ */
+export const DEFAULT_OG_IMAGE = {
+  url: "/opengraph-image",
+  width: 1200,
+  height: 630,
+  alt: "BadaMangal · Jahan Bhakti, Vahan Bhandara",
+};
+export const RESOURCES_OG_IMAGE = {
+  url: "/resources/opengraph-image",
+  width: 1200,
+  height: 630,
+  alt: "Resources · BadaMangal",
+};
+
+/**
  * Build a `Metadata.alternates` block with canonical + bilingual
  * hreflang + x-default. Pass the path with no query string and no
  * leading site URL, e.g. `localised("/spot")` produces:
@@ -440,7 +461,7 @@ export function faqSchema() {
         name: "When is the next Bada Mangal in Lucknow?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "The 2026 Bada Mangal Tuesdays are 5 May, 12 May, 19 May, 26 May, 2 June, 9 June, 16 June, and 23 June. The countdown on BadaMangal.com always shows the next upcoming one in real time.",
+          text: "The 2027 Bada Mangal Tuesdays are 25 May, 1 June, 8 June, and 15 June. The countdown on BadaMangal.com always shows the next upcoming one in real time.",
         },
       },
       {

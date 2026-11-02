@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useLocaleFromContext } from "@/lib/locale-context";
+import { InnerShell, PageHero, Kicker, FormPanel, Field, Button, Icon, Heading, Plate } from "@/components/v2";
+import { HOME_ART } from "@/content/home-art";
 
 /**
  * SundarKaandForm
@@ -126,111 +128,102 @@ export default function SundarKaandForm() {
     }
   }
 
+  const lang = isHi ? "hi" : "en";
+  const opt = isHi ? "वैकल्पिक" : "optional";
+
   if (stage === "ok") {
     return (
-      <div className="mx-auto max-w-2xl px-4 sm:px-6 py-16 sm:py-24 text-center">
-        <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
-          {isHi ? "धन्यवाद" : "Thank you"}
-        </p>
-        <h1
-          className={`mt-3 text-3xl sm:text-4xl ${
-            isHi
-              ? "font-tiro text-sindoor-700"
-              : "font-fraunces font-bold text-sindoor-700"
-          }`}
-        >
-          {isHi
-            ? "आपका अनुरोध मिल गया।"
-            : "We've received your request."}
-        </h1>
-        <p className="mt-4 text-ink-600 leading-relaxed">
-          {isHi
-            ? "हमारी टीम 1-2 कार्य दिवसों में आपको कॉल करेगी और सब कुछ व्यवस्थित करने में मदद करेगी।"
-            : "Our team will call you within 1-2 working days to help arrange pandit, mandali, tent, prasad, whatever you need."}
-        </p>
-        <p className="mt-8 text-2xl font-tiro text-sindoor-700">
-          जय श्री राम। जय हनुमान।
-        </p>
-      </div>
+      <InnerShell>
+        <section className="bmi-sec">
+          <div className="bmi-wrap narrow">
+            <FormPanel>
+              <div className="bmi-done" aria-live="polite">
+                <div className="bmi-done-tick" aria-hidden>
+                  <Icon name="check" />
+                </div>
+                <p className="bmi-kick" style={{ justifyContent: "center" }}>
+                  {isHi ? "धन्यवाद" : "Thank you"}
+                </p>
+                <Heading as="h1" size="section" en="We've received your request." hi="आपका अनुरोध मिल गया।" />
+                <p className="bmi-lede">
+                  {isHi
+                    ? "हमारी टीम 1 से 2 कार्य दिवसों में आपको कॉल करेगी और सब कुछ व्यवस्थित करने में मदद करेगी।"
+                    : "Our team will call you within 1 to 2 working days to help arrange pandit, mandali, tent, prasad, whatever you need."}
+                </p>
+                <p className="bmi-fine" style={{ marginTop: 18, color: "var(--sindoor)", fontWeight: 700 }} lang="hi">
+                  जय श्री राम। जय हनुमान।
+                </p>
+              </div>
+            </FormPanel>
+          </div>
+        </section>
+      </InnerShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 sm:px-6 pt-10 pb-24 sm:pt-14">
-      <header className="text-center">
-        <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
-          {isHi ? "अपने यहाँ आयोजन" : "Host at your place"}
-        </p>
-        <h1
-          className={`mt-3 text-3xl sm:text-4xl ${
-            isHi
-              ? "font-tiro text-sindoor-700"
-              : "font-fraunces font-bold text-sindoor-700"
-          }`}
-        >
-          {isHi
-            ? "सुंदर काण्ड / हनुमान पूजा अपने यहाँ कराइए"
-            : "Organise a Sundar Kaand or Hanuman puja"}
-        </h1>
-        <p className="mt-3 text-sm sm:text-base text-ink-600 leading-relaxed max-w-xl mx-auto">
-          {isHi
+    <InnerShell>
+      <PageHero
+        kicker={<Kicker>{isHi ? "अपने यहाँ आयोजन" : "Host at your place"}</Kicker>}
+        title={{
+          en: "Organise a Sundar Kaand or Hanuman puja",
+          hi: "सुंदर काण्ड / हनुमान पूजा अपने यहाँ कराइए",
+        }}
+        lede={
+          isHi
             ? "घर, सोसाइटी या स्थानीय मंदिर में आयोजन कराइए। पंडित जी, भजन मंडली, टेंट, प्रसाद, सब हम मिलकर व्यवस्थित कर देंगे।"
-            : "At your home, your society, or your local mandir in Lucknow. Pandit Ji, bhajan mandali, tent, prasad, we'll help arrange the rest. Share a few details and we'll call you within 1-2 working days."}
-        </p>
-      </header>
-
+            : "At your home, your society, or your local mandir in Lucknow. Pandit Ji, bhajan mandali, tent, prasad, we'll help arrange the rest."
+        }
+      />
+      <section className="bmi-sec tight" style={{ paddingTop: 0 }}>
+        <div className="bmi-wrap bmi-formgrid">
+          <FormPanel>
       <form
         onSubmit={(e) => {
           e.preventDefault();
           void submit();
         }}
-        className="mt-8 grid gap-5"
+        className="bmi-form"
+        style={{ gap: 26 }}
       >
         {/* What kind of event */}
-        <fieldset className="grid gap-2 rounded-2xl border border-gold-500/40 bg-cream-50 p-4">
-          <legend className="px-1 text-sm font-medium text-ink-900">
+        <fieldset className="bmi-fieldset grid gap-3">
+          <legend className="bmi-field-label" lang={lang} style={{ marginBottom: 10 }}>
             {isHi ? "क्या आयोजन है?" : "What are you hosting?"}
           </legend>
-          {([
-            { v: "SUNDAR_KAAND", en: "Sundar Kaand path", hi: "सुंदर काण्ड पाठ" },
-            { v: "HANUMAN_PUJA", en: "Hanuman puja", hi: "हनुमान पूजा" },
-            { v: "BOTH", en: "Both, a combined evening", hi: "दोनों, एक ही शाम में" },
-          ] as const).map((opt) => (
-            <label key={opt.v} className="flex items-start gap-2 text-sm">
-              <input
-                type="radio"
-                name="eventType"
-                value={opt.v}
-                checked={eventType === opt.v}
-                onChange={() => setEventType(opt.v)}
-                className="mt-1 accent-saffron-600"
-              />
-              <span>{isHi ? opt.hi : opt.en}</span>
-            </label>
-          ))}
+          <div className="bmi-choices">
+            {([
+              { v: "SUNDAR_KAAND", en: "Sundar Kaand path", hi: "सुंदर काण्ड पाठ" },
+              { v: "HANUMAN_PUJA", en: "Hanuman puja", hi: "हनुमान पूजा" },
+              { v: "BOTH", en: "Both, a combined evening", hi: "दोनों, एक ही शाम में" },
+            ] as const).map((o) => (
+              <label key={o.v} className="bmi-choice" lang={lang}>
+                <input
+                  type="radio"
+                  name="eventType"
+                  value={o.v}
+                  checked={eventType === o.v}
+                  onChange={() => setEventType(o.v)}
+                />
+                {eventType === o.v ? <Icon name="check" /> : null}
+                <span>{isHi ? o.hi : o.en}</span>
+              </label>
+            ))}
+          </div>
         </fieldset>
 
         {/* Contact */}
-        <div className="grid gap-4">
-          <label className="grid gap-1.5">
-            <span className="text-sm text-ink-600">
-              {isHi ? "आपका नाम" : "Your name"}{" "}
-              <span className="text-sindoor-700">*</span>
-            </span>
+        <div className="bmi-grid2">
+          <Field asLabel lang={lang} label={isHi ? "आपका नाम" : "Your name"}>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={80}
-              className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600"
             />
-          </label>
-          <label className="grid gap-1.5">
-            <span className="text-sm text-ink-600">
-              {isHi ? "मोबाइल नंबर (10 अंक)" : "Mobile number (10 digits)"}{" "}
-              <span className="text-sindoor-700">*</span>
-            </span>
+          </Field>
+          <Field asLabel lang={lang} label={isHi ? "मोबाइल नंबर (10 अंक)" : "Mobile number (10 digits)"}>
             <input
               type="tel"
               required
@@ -239,74 +232,60 @@ export default function SundarKaandForm() {
               onChange={(e) => setPhone(e.target.value)}
               maxLength={15}
               placeholder="9876543210"
-              className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600"
             />
-          </label>
-          <label className="grid gap-1.5">
-            <span className="text-sm text-ink-600">
-              {isHi ? "ईमेल (वैकल्पिक)" : "Email (optional)"}
-            </span>
+          </Field>
+          <Field asLabel lang={lang} label={isHi ? "ईमेल" : "Email"} optional={opt}>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               maxLength={120}
-              className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600"
             />
-          </label>
+          </Field>
         </div>
 
         {/* Where */}
-        <div className="grid gap-4 rounded-2xl border border-gold-500/40 bg-cream-50 p-4">
-          <h3 className="font-fraunces font-semibold text-sindoor-700">
+        <div className="grid gap-5 bmi-vsec">
+          <h3 className="bmi-fh" lang={lang}>
             {isHi ? "कहाँ आयोजन?" : "Where?"}
           </h3>
-          <label className="grid gap-1.5">
-            <span className="text-sm text-ink-600">
-              {isHi ? "इलाक़ा (वैकल्पिक)" : "Area / neighbourhood (optional)"}
-            </span>
+          <Field asLabel lang={lang} label={isHi ? "इलाक़ा" : "Area / neighbourhood"} optional={opt}>
             <input
               type="text"
               value={area}
               onChange={(e) => setArea(e.target.value)}
               maxLength={60}
               placeholder={isHi ? "जैसे, अलीगंज" : "e.g. Aliganj"}
-              className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600"
             />
-          </label>
-          <label className="grid gap-1.5">
-            <span className="text-sm text-ink-600">
-              {isHi
-                ? "पता / सोसाइटी / मंदिर (वैकल्पिक)"
-                : "Address / society / mandir (optional)"}
-            </span>
+          </Field>
+          <Field asLabel lang={lang} label={isHi ? "पता / सोसाइटी / मंदिर" : "Address / society / mandir"} optional={opt}>
             <textarea
               value={addressNotes}
               onChange={(e) => setAddressNotes(e.target.value)}
               maxLength={400}
               rows={2}
-              className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600"
+              style={{ minHeight: 88 }}
             />
-          </label>
+          </Field>
         </div>
 
         {/* When */}
-        <div className="grid gap-4 rounded-2xl border border-gold-500/40 bg-cream-50 p-4">
-          <h3 className="font-fraunces font-semibold text-sindoor-700">
+        <div className="grid gap-5 bmi-vsec">
+          <h3 className="bmi-fh" lang={lang}>
             {isHi ? "कब?" : "When?"}
           </h3>
-          <div className="grid gap-1.5">
-            <span className="text-sm text-ink-600">
-              {isHi
-                ? "पसंदीदा तिथियाँ (अधिकतम 5)"
-                : "Preferred dates (up to 5)"}
+          <div className="bmi-field">
+            <span className="bmi-field-label" lang={lang}>
+              {isHi ? "पसंदीदा तिथियाँ" : "Preferred dates"}
+              <span className="opt">{isHi ? "अधिकतम 5" : "up to 5"}</span>
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <input
                 type="date"
                 value={datePickerValue}
                 onChange={(e) => setDatePickerValue(e.target.value)}
-                className="flex-1 rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600"
+                aria-label={isHi ? "तिथि चुनें" : "Pick a date"}
+                className="flex-1"
               />
               <button
                 type="button"
@@ -316,19 +295,19 @@ export default function SundarKaandForm() {
                   preferredDates.length >= 5 ||
                   preferredDates.includes(datePickerValue)
                 }
-                className="shrink-0 inline-flex items-center justify-center px-4 py-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bmi-b bmi-b-s shrink-0"
               >
-                {isHi ? "जोड़ें" : "Add"}
+                <Icon name="plus" />
+                <span>{isHi ? "जोड़ें" : "Add"}</span>
               </button>
             </div>
             {preferredDates.length > 0 ? (
               <ul className="mt-2 flex flex-wrap gap-2">
                 {preferredDates.map((d) => (
-                  <li
-                    key={d}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white border border-gold-500/40 px-3 py-1 text-xs"
-                  >
-                    {d}
+                  <li key={d} className="bmi-tag">
+                    <span className="tabular-nums">
+                      {new Date(`${d}T04:30:00Z`).toLocaleDateString(isHi ? "hi-IN" : "en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" })}
+                    </span>
                     <button
                       type="button"
                       onClick={() =>
@@ -337,79 +316,61 @@ export default function SundarKaandForm() {
                         )
                       }
                       aria-label="Remove"
-                      className="text-sindoor-700 hover:text-sindoor-700/80 font-bold"
                     >
-                      ×
+                      <Icon name="plus" className="rotate-45" />
                     </button>
                   </li>
                 ))}
               </ul>
             ) : null}
           </div>
-          <label className="grid gap-1.5">
-            <span className="text-sm text-ink-600">
-              {isHi
-                ? "पसंदीदा समय (वैकल्पिक)"
-                : "Preferred time of day (optional)"}
-            </span>
-            <input
-              type="text"
-              value={preferredTime}
-              onChange={(e) => setPreferredTime(e.target.value)}
-              maxLength={60}
-              placeholder={
-                isHi ? "जैसे, शाम 6 बजे के बाद" : "e.g. evening, after 6 pm"
-              }
-              className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600"
-            />
-          </label>
-          <label className="grid gap-1.5">
-            <span className="text-sm text-ink-600">
-              {isHi
-                ? "अनुमानित लोगों की संख्या (वैकल्पिक)"
-                : "Approximate attendance (optional)"}
-            </span>
-            <input
-              type="number"
-              min={1}
-              max={10000}
-              value={audienceSize}
-              onChange={(e) => setAudienceSize(e.target.value)}
-              placeholder="50"
-              className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600"
-            />
-          </label>
+          <div className="bmi-grid2">
+            <Field asLabel lang={lang} label={isHi ? "पसंदीदा समय" : "Preferred time of day"} optional={opt}>
+              <input
+                type="text"
+                value={preferredTime}
+                onChange={(e) => setPreferredTime(e.target.value)}
+                maxLength={60}
+                placeholder={
+                  isHi ? "जैसे, शाम 6 बजे के बाद" : "e.g. evening, after 6 pm"
+                }
+              />
+            </Field>
+            <Field asLabel lang={lang} label={isHi ? "अनुमानित लोग" : "Approximate attendance"} optional={opt}>
+              <input
+                type="number"
+                min={1}
+                max={10000}
+                value={audienceSize}
+                onChange={(e) => setAudienceSize(e.target.value)}
+                placeholder="50"
+              />
+            </Field>
+          </div>
         </div>
 
         {/* What's needed */}
-        <fieldset className="grid gap-2 rounded-2xl border border-gold-500/40 bg-cream-50 p-4">
-          <legend className="px-1 text-sm font-medium text-ink-900">
+        <fieldset className="bmi-fieldset grid gap-3 bmi-vsec">
+          <legend className="bmi-fh" lang={lang} style={{ float: "left", width: "100%", marginBottom: 4 }}>
             {isHi ? "क्या-क्या चाहिए?" : "What do you need help with?"}
           </legend>
-          <p className="text-xs text-ink-600 mb-1">
+          <p className="bmi-field-hint" style={{ clear: "both" }}>
             {isHi
               ? "जो लागू हो उसे चुनिए, फ़ोन पर बात करते वक़्त बाकी तय कर लेंगे।"
               : "Pick whatever applies, we'll fill in the rest on the call."}
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {ALL_SERVICES.map((s) => {
-              const checked = services.has(s);
+          <div className="bmi-choices">
+            {ALL_SERVICES.map((sv) => {
+              const checked = services.has(sv);
               return (
-                <label
-                  key={s}
-                  className={`flex items-center gap-2 text-sm rounded-xl border px-3 py-2 cursor-pointer transition-colors ${
-                    checked
-                      ? "border-saffron-500 bg-saffron-50 text-sindoor-700 font-medium"
-                      : "border-gold-500/40 bg-white text-ink-900 hover:border-saffron-500/60"
-                  }`}
-                >
+                <label key={sv} className="bmi-choice" lang={lang}>
                   <input
                     type="checkbox"
                     checked={checked}
-                    onChange={() => toggleService(s)}
-                    className="accent-saffron-600"
+                    onChange={() => toggleService(sv)}
                   />
-                  <span>{isHi ? SERVICE_LABELS[s].hi : SERVICE_LABELS[s].en}</span>
+                  {checked ? <Icon name="check" /> : null}
+                  <span>{isHi ? SERVICE_LABELS[sv].hi : SERVICE_LABELS[sv].en}</span>
                 </label>
               );
             })}
@@ -417,12 +378,7 @@ export default function SundarKaandForm() {
         </fieldset>
 
         {/* Notes */}
-        <label className="grid gap-1.5">
-          <span className="text-sm text-ink-600">
-            {isHi
-              ? "अन्य कोई बात (वैकल्पिक)"
-              : "Anything else we should know (optional)"}
-          </span>
+        <Field asLabel lang={lang} label={isHi ? "अन्य कोई बात" : "Anything else we should know"} optional={opt}>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -433,21 +389,20 @@ export default function SundarKaandForm() {
                 ? "बजट, विशेष अनुरोध, या किसी से रेफरल की जानकारी।"
                 : "Budget, special requests, who referred you, anything."
             }
-            className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600"
           />
-        </label>
+        </Field>
 
         {/* Submit */}
-        <div className="mt-2 flex flex-col items-stretch gap-2">
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className={`inline-flex items-center justify-center px-6 py-3 rounded-full font-semibold transition-colors ${
-              canSubmit
-                ? "bg-saffron-600 text-cream-50 hover:bg-saffron-500 shadow-warm"
-                : "bg-cream-50 text-ink-600 border border-gold-500/40 cursor-not-allowed opacity-60"
-            }`}
-          >
+        <div className="grid gap-3">
+          {stage === "error" ? (
+            <p className="bmi-alert" role="alert">
+              {isHi
+                ? "अभी कुछ गड़बड़ है, दोबारा कोशिश करें।"
+                : "Something went wrong. Try again."}
+              {errorMsg ? ` (${errorMsg})` : null}
+            </p>
+          ) : null}
+          <Button type="submit" disabled={!canSubmit} block iconEnd={stage === "submitting" ? null : "chevron"}>
             {stage === "submitting"
               ? isHi
                 ? "भेजा जा रहा है…"
@@ -455,22 +410,26 @@ export default function SundarKaandForm() {
               : isHi
                 ? "अनुरोध भेजें"
                 : "Submit request"}
-          </button>
-          {stage === "error" ? (
-            <p className="text-xs text-alert-500 text-center">
-              {isHi
-                ? "अभी कुछ गड़बड़ है, दोबारा कोशिश करें।"
-                : "Something went wrong. Try again."}
-              {errorMsg ? ` (${errorMsg})` : null}
-            </p>
-          ) : null}
-          <p className="text-[11px] text-ink-600 text-center italic">
+          </Button>
+          <p className="bmi-fine text-center">
             {isHi
-              ? "हम 1-2 कार्य दिवसों में कॉल करेंगे। जय श्री राम। जय हनुमान।"
-              : "We'll call you within 1-2 working days. Jai Shri Ram. Jai Hanuman."}
+              ? "हम 1 से 2 कार्य दिवसों में कॉल करेंगे। जय श्री राम। जय हनुमान।"
+              : "We'll call you within 1 to 2 working days. Jai Shri Ram. Jai Hanuman."}
           </p>
         </div>
       </form>
-    </div>
+          </FormPanel>
+          <div className="bmi-formart" aria-hidden>
+            <Plate
+              src={HOME_ART.hanumanSitting.src}
+              width={HOME_ART.hanumanSitting.width}
+              height={HOME_ART.hanumanSitting.height}
+              alt=""
+              fade="bottom"
+            />
+          </div>
+        </div>
+      </section>
+    </InnerShell>
   );
 }

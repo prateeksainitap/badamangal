@@ -45,3 +45,19 @@ export type Bhandara = {
   googlePlaceId?: string;
   googleMapsUrl?: string;
 };
+
+/** Contact and payment fields that belong to a single bhandara's own
+ *  page only. They must never travel in a LIST (API list endpoints,
+ *  homepage map and cards, area pages, archive, side lists, nearby
+ *  lists), so nobody can scrape every organiser's number in bulk.
+ *  Founder's ruling, 1 Nov 2026. */
+export type BhandaraContactField =
+  | "organizerPhone"
+  | "organizerWhatsapp"
+  | "upiId"
+  | "upiQrUrl";
+
+/** The public shape for any list of bhandaras: everything except the
+ *  organiser's phone, WhatsApp and UPI details. Build it with
+ *  `toPublicBhandaraListItem` from lib/db. */
+export type BhandaraListItem = Omit<Bhandara, BhandaraContactField>;

@@ -1,15 +1,15 @@
 "use client";
 
-import Link from "next/link";
-import type { ReactNode } from "react";
+import { Children, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { useLocaleFromContext } from "@/lib/locale-context";
+import { Breadcrumb, Chip, ChipList, InnerShell, Kicker, PageHero, ProseDoc } from "@/components/v2";
 
 type Bi<T> = { en: T; hi: T };
 
 type Props = {
-  /** Saffron eyebrow text above the title. */
+  /** Tracked line above the title. */
   kicker: Bi<string>;
-  /** Large sindoor headline. */
+  /** The h1. */
   title: Bi<string>;
   /** One-sentence intro that sits under the title. */
   intro: Bi<string>;
@@ -25,59 +25,97 @@ type Props = {
   hi: ReactNode;
 };
 
+type El = ReactElement<{ children?: ReactNode; id?: string }>;
+
+/** Plain text of a heading, for the contents list. */
+function textOf(node: ReactNode): string {
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textOf).join("");
+  if (isValidElement(node)) return textOf((node as El).props.children);
+  return "";
+}
+
 /**
- * Shared layout for /terms, /privacy, /disclaimers.
- *
- * Used to be a server component with a single English children prop;
- * that meant the Hindi toggle never swapped any of the legal text.
- * Now this is a client component that reads locale from the
- * LocaleProvider context and renders the matching variant.
- *
- * Trade-off: per-page bundle is slightly larger (both English and
- * Hindi bodies ship in HTML). For static legal pages this is fine,
- * each page is well under 30 KB even with both languages inline,
- * and we keep edge-cached static rendering with instant locale swap.
+ * Gives every top level <h2> in a legal body a stable anchor id
+ * ("section-1", "section-2", ...) and returns the contents list. The
+ * ids follow the section order, so the English and Hindi bodies share
+ * them and a link to #section-4 works in either language. The words
+ * of the legal text are never touched.
  */
-export default function LegalPage({
-  kicker,
-  title,
-  intro,
-  lastUpdated,
-  en,
-  hi,
-}: Props) {
+function withAnchors(body: ReactNode): { body: ReactNode; toc: { id: string; label: string }[] } {
+  const toc: { id: string; label: string }[] = [];
+  const nodes = isValidElement(body) && (body as El).props.children !== undefined && typeof body.type !== "string"
+    ? (body as El).props.children
+    : body;
+  const out = Children.map(nodes, (child) => {
+    if (isValidElement(child) && child.type === "h2") {
+      const id = `section-${toc.length + 1}`;
+      toc.push({ id, label: textOf((child as El).props.children) });
+      return cloneElement(child as El, { id });
+    }
+    return child;
+  });
+  return { body: out, toc };
+}
+
+/**
+ * Shared layout for /terms, /privacy, /disclaimers, on the v2 inner
+ * page kit: the hero (crumb back home, kicker, h1, the one line intro,
+ * the last updated date) and the text with a contents list (sticky on
+ * desktop, folded on phones).
+ *
+ * Client component so the Hindi toggle swaps the whole body; still
+ * server rendered, so every word, h1 and h2 is in the static HTML.
+ * The legal wording lives in each page file and is rendered as is.
+ */
+export default function LegalPage({ kicker, title, intro, lastUpdated, en, hi }: Props) {
   const locale = useLocaleFromContext();
   const isHi = locale === "hi";
+  const q = isHi ? "" : "?lang=en";
+  const { body, toc } = withAnchors(isHi ? hi : en);
+  const k = isHi ? kicker.hi : kicker.en;
+  const t = isHi ? title.hi : title.en;
 
   return (
-    <article className="pb-24">
-      <header className="mx-auto max-w-3xl px-4 sm:px-6 pt-12 sm:pt-16 pb-8 text-center">
-        <Link
-          href={`/${isHi ? "" : "?lang=en"}`}
-          data-ga="cta_legal_back_home"
-          data-ga-source="legal_page"
-          className="inline-block text-sm text-ink-600 hover:text-saffron-600 transition-colors"
-        >
-          {isHi ? "← BadaMangal पर वापस" : "← Back to BadaMangal"}
-        </Link>
-        <p className="mt-4 font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
-          {isHi ? kicker.hi : kicker.en}
-        </p>
-        <h1 className="mt-3 font-fraunces font-semibold text-[2rem] sm:text-[2.6rem] leading-[1.15] text-sindoor-700">
-          {isHi ? title.hi : title.en}
-        </h1>
-        <p className="mt-5 max-w-xl mx-auto text-ink-600 leading-relaxed">
-          {isHi ? intro.hi : intro.en}
-        </p>
-        <p className="mt-3 text-xs text-ink-600">
-          {isHi ? "अंतिम अपडेट: " : "Last updated: "}
-          <span className="font-numerals tabular-nums">{lastUpdated}</span>
-        </p>
-      </header>
-
-      <section className="mx-auto max-w-3xl px-4 sm:px-6 legal-prose">
-        {isHi ? hi : en}
+    <InnerShell as="article">
+      <PageHero
+        crumbs={
+          <Breadcrumb
+            items={[
+              {
+                label: isHi ? "होम" : "Home",
+                node: (
+                  <a href={`/${q}`} data-ga="cta_legal_back_home" data-ga-source="legal_page">
+                    {isHi ? "होम" : "Home"}
+                  </a>
+                ),
+              },
+              { label: t },
+            ]}
+          />
+        }
+        kicker={<Kicker>{k === t ? (isHi ? "नियम और नीतियाँ" : "Legal") : k}</Kicker>}
+        title={title}
+        lede={isHi ? intro.hi : intro.en}
+        meta={
+          <ChipList>
+            {[
+              <Chip key="u" tone="gold" icon="calendar">
+                {isHi ? "अंतिम अपडेट: " : "Last updated: "}
+                {lastUpdated}
+              </Chip>,
+            ]}
+          </ChipList>
+        }
+      />
+      <section className="bmi-sec tight bmi-legal" aria-label={t}>
+        <div className="bmi-wrap">
+          <ProseDoc toc={toc} tocTitle={isHi ? "इस पेज पर" : "On this page"} lang={isHi ? "hi" : "en"}>
+            {body}
+          </ProseDoc>
+        </div>
       </section>
-    </article>
+    </InnerShell>
   );
 }

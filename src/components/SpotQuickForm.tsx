@@ -12,13 +12,14 @@ import { strings } from "@/content/strings";
 import { olaAutocomplete, olaReverseGeocode } from "@/lib/geocode";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import { isInAnyCity } from "@/lib/cities";
+import { FormPanel, FormSkin, Field, Heading, Icon } from "@/components/v2";
 
 // Leaflet pin-drop map is client-only; lazy-load so it never ships in
 // the SSR bundle and only loads when the user opens the Edit panel.
 const PinDropMap = dynamic(() => import("@/components/PinDropMap"), {
   ssr: false,
   loading: () => (
-    <div className="h-[260px] w-full rounded-2xl border border-gold-500/40 bg-saffron-50/60 motion-safe:animate-pulse" />
+    <div className="h-[260px] w-full rounded-[20px] bg-[#f5efe3] motion-safe:animate-pulse" />
   ),
 });
 
@@ -373,68 +374,40 @@ export default function SpotQuickForm({
   /* ── Success state ───────────────────────────────────────────────────── */
   if (stage === "done") {
     return (
-      <div
-        ref={successRef}
-        className="relative overflow-hidden rounded-3xl border border-saffron-500/40 bg-cream-50 px-6 py-10 sm:py-12 text-center shadow-warm"
-      >
-        <div
-          aria-hidden
-          className="absolute inset-0 -z-10"
-          style={{
-            background:
-              "radial-gradient(420px 260px at 50% 18%, rgba(242,148,76,0.22), transparent 65%)",
-          }}
-        />
-        <div className="flex justify-center">
-          <span className="relative inline-flex items-center justify-center w-12 h-12 rounded-full bg-leaf-600 text-cream-50 shadow-warm">
-            <span
-              aria-hidden
-              className="absolute inset-0 rounded-full ring-2 ring-leaf-600/25 motion-safe:animate-ping"
-            />
-            <svg
-              viewBox="0 0 52 52"
-              className="relative w-7 h-7"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path
-                d="M14 27 L23 36 L38 18"
-                className="motion-safe:[stroke-dasharray:50] motion-safe:[stroke-dashoffset:50] motion-safe:[animation:bm-tick_500ms_ease-out_180ms_forwards]"
-              />
-            </svg>
-          </span>
+      <FormPanel>
+        <div ref={successRef} className="bmi-done" aria-live="polite">
+          <div className="bmi-done-tick" aria-hidden>
+            <Icon name="check" />
+          </div>
+          <p className="bmi-kick" style={{ justifyContent: "center" }} lang={isHi ? "hi" : "en"}>
+            {isHi ? "जय हनुमान" : "Jai Hanuman"}
+          </p>
+          <Heading
+            as="h2"
+            en="Thank you, your spot is live!"
+            hi="धन्यवाद! भंडारा रिपोर्ट हो गया।"
+          />
+          <p className="bmi-lede">
+            {isHi ? "लाइव फ़ीड पर ले जा रहे हैं…" : "Taking you to the live feed…"}
+          </p>
         </div>
-        <p className="mt-6 font-mukta uppercase tracking-[0.3em] text-saffron-600 text-xs font-semibold">
-          जय हनुमान · Pranam
-        </p>
-        <h2 className="mt-3 font-tiro text-2xl sm:text-3xl text-sindoor-700">
-          {isHi ? "धन्यवाद! भंडारा रिपोर्ट हो गया।" : "Thank you, your spot is live!"}
-        </h2>
-        <p className="mt-2 text-ink-600">
-          {isHi ? "लाइव फ़ीड पर ले जा रहे हैं…" : "Taking you to the live feed…"}
-        </p>
-      </div>
+      </FormPanel>
     );
   }
 
   /* ── Compose state ───────────────────────────────────────────────────── */
   return (
     <>
-      {/* Whole form lives inside a single white card so the visitor
-          reads the page as one continuous, focused task instead of
-          loose stacked sections on the cream background. */}
-      <div className="rounded-3xl border border-gold-500/40 bg-white shadow-warm p-5 sm:p-7 lg:p-9 space-y-6 lg:space-y-8 pb-6 mb-28 sm:mb-0">
+      {/* The whole form is one panel, read as one continuous task. */}
+      <FormPanel className="mb-28 sm:mb-0">
+        <FormSkin>
         {/* PHOTO, primary delight, big tap target */}
-        <section>
-          <h2 className="font-fraunces font-semibold text-lg text-sindoor-700 mb-2 inline-flex items-center gap-2">
-            <IconCamera className="text-saffron-600" />
+        <section className="bmi-fsec">
+          <h2 className="bmi-fh" lang={isHi ? "hi" : "en"}>
+            <span className="ic" aria-hidden><IconCamera /></span>
             {isHi ? "एक फ़ोटो जोड़ें" : "Add a photo"}
           </h2>
-          <p className="text-xs text-ink-600 mb-3">
+          <p className="bmi-field-hint">
             {isHi
               ? "बैनर, पंडाल, या थाली। बिना फ़ोटो के भी आगे बढ़ सकते हैं।"
               : "The pandal, the kadhai, the line. You can still post without one."}
@@ -445,12 +418,7 @@ export default function SpotQuickForm({
             locale={locale}
             layout="stacked"
           />
-          {/* Extra photos uploader. Appears only after the primary
-              photo is set (no point in offering "more" before "one"
-              exists). Multi-select, up to 5 extras, with thumbnails
-              and per-item remove. Uploads each file in parallel to
-              /api/uploads, same endpoint PhotoPicker uses, so the
-              5 MB cap + WebP re-encoding apply uniformly. */}
+          {/* Extra photos, only once the first is set. */}
           {photoUrl ? (
             <ExtraPhotosUploader
               urls={extraPhotoUrls}
@@ -461,10 +429,10 @@ export default function SpotQuickForm({
           ) : null}
         </section>
 
-        {/* LOCATION, auto-fetched, friendly chip */}
-        <section>
-          <h2 className="font-fraunces font-semibold text-lg text-sindoor-700 mb-2 inline-flex items-center gap-2">
-            <IconPin className="text-saffron-600" />
+        {/* LOCATION, auto-fetched */}
+        <section className="bmi-fsec">
+          <h2 className="bmi-fh" lang={isHi ? "hi" : "en"}>
+            <span className="ic" aria-hidden><IconPin /></span>
             {isHi ? "आप कहाँ हैं?" : "Where are you right now?"}
           </h2>
 
@@ -481,13 +449,11 @@ export default function SpotQuickForm({
             }}
           />
 
-          {/* Manual edit panel, appears when the user taps "Edit" on
-              the location chip. Search-by-address + tap-to-drop on a
-              small Leaflet map. Closes via the inline Done button. */}
+          {/* Manual edit: address search + tap-to-drop map. */}
           {editingLocation ? (
-            <div className="mt-3 rounded-2xl border border-gold-500/45 bg-saffron-50/60 p-3 sm:p-4 space-y-3">
+            <div className="grid gap-4" style={{ marginTop: 6 }}>
               <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-mukta uppercase tracking-[0.22em] text-saffron-600 font-semibold">
+                <p className="bmi-ilabel">
                   {isHi ? "लोकेशन सही करें" : "Correct your location"}
                 </p>
                 <button
@@ -497,7 +463,7 @@ export default function SpotQuickForm({
                     setSearchQuery("");
                     setSearchResults([]);
                   }}
-                  className="text-[11px] text-saffron-600 hover:underline font-semibold"
+                  className="bmi-tl"
                 >
                   {isHi ? "हो गया" : "Done"}
                 </button>
@@ -509,23 +475,25 @@ export default function SpotQuickForm({
                   type="search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label={isHi ? "पता या निशानी खोजें" : "Search address or landmark"}
                   placeholder={
                     isHi
                       ? "पता या निशानी खोजें"
                       : "Search address or landmark"
                   }
-                  className="w-full rounded-xl border border-gold-500/55 bg-white px-3 py-2.5 text-sm text-ink-900 placeholder:text-ink-600/55 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+                  className="w-full"
                   autoComplete="off"
                 />
                 {searching ? (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-ink-600">
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] text-ink-600">
                     …
                   </span>
                 ) : null}
                 {searchResults.length > 0 ? (
                   <ul
                     role="listbox"
-                    className="absolute z-[1100] mt-1 w-full max-h-60 overflow-auto rounded-xl border border-gold-500/40 bg-white shadow-warm"
+                    className="absolute z-[1100] mt-2 w-full max-h-60 overflow-auto rounded-2xl bg-white"
+                    style={{ boxShadow: "inset 0 0 0 1px rgba(201,162,74,0.45), 0 18px 36px -18px rgba(60,40,10,0.45)" }}
                   >
                     {searchResults.map((r) => (
                       <li key={r.id}>
@@ -540,13 +508,13 @@ export default function SpotQuickForm({
                             setSearchResults([]);
                             trackEvent("spot_address_pick");
                           }}
-                          className="block w-full text-left px-3 py-2 hover:bg-saffron-50"
+                          className="block w-full text-left px-4 py-3 hover:bg-[#f5eac9]/60"
                         >
-                          <span className="block text-sm text-ink-900 line-clamp-1">
+                          <span className="block text-[15px] text-ink-900 line-clamp-1">
                             {r.label}
                           </span>
                           {r.secondary ? (
-                            <span className="block text-[11px] text-ink-600 mt-0.5 line-clamp-1">
+                            <span className="block text-[13px] text-ink-600 mt-0.5 line-clamp-1">
                               {r.secondary}
                             </span>
                           ) : null}
@@ -557,13 +525,7 @@ export default function SpotQuickForm({
                 ) : null}
               </div>
 
-              {/* Quick CTA, re-runs the browser geolocation request so a
-                  user who initially denied (or moved) can grab their
-                  current coords without leaving the panel. The button
-                  reuses the existing `askLocation()` flow so error states
-                  (denied / unsupported / out-of-bounds) surface via the
-                  same LocationStatus chip above. */}
-              <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-x-4 gap-y-2 flex-wrap">
                 <button
                   type="button"
                   onClick={() => {
@@ -571,25 +533,27 @@ export default function SpotQuickForm({
                     trackEvent("spot_locate_use_current");
                   }}
                   disabled={locStatus === "asking"}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-saffron-500/55 bg-cream-50 hover:bg-saffron-50 hover:border-saffron-500 text-saffron-600 hover:text-sindoor-700 text-xs font-semibold px-3 py-1.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="bmi-b bmi-b-s sm"
                 >
                   <IconCrosshair
                     className={
                       locStatus === "asking" ? "motion-safe:animate-spin" : ""
                     }
                   />
-                  {locStatus === "asking"
-                    ? isHi
-                      ? "लोकेट कर रहे हैं…"
-                      : "Locating…"
-                    : isHi
-                      ? "मेरी मौजूदा लोकेशन"
-                      : "Use current location"}
+                  <span>
+                    {locStatus === "asking"
+                      ? isHi
+                        ? "लोकेट कर रहे हैं…"
+                        : "Locating…"
+                      : isHi
+                        ? "मेरी मौजूदा लोकेशन"
+                        : "Use current location"}
+                  </span>
                 </button>
-                <p className="text-[11px] text-ink-600">
+                <p className="bmi-field-hint">
                   {isHi
                     ? "या नक़्शे पर सही जगह टैप करें।"
-                    : "Or tap the map below to drop the pin manually."}
+                    : "Or tap the map below to drop the pin."}
                 </p>
               </div>
 
@@ -600,50 +564,38 @@ export default function SpotQuickForm({
                   setManualCoords(lat, lng);
                   trackEvent("spot_pin_drop");
                 }}
-                className="h-[260px] w-full rounded-2xl overflow-hidden border border-gold-500/40 bg-saffron-50"
+                className="h-[260px] w-full rounded-[20px] overflow-hidden bg-[#f5efe3]"
               />
             </div>
           ) : null}
         </section>
 
         {/* OPTIONAL: one-line caption */}
-        <section>
-          {/* Label + a small "Optional" pill on the right so the
-              primary phrase always reads on one line, even on narrow
-              mobile widths. */}
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <label
-              htmlFor="spot-v2-caption"
-              className="font-fraunces font-semibold text-lg text-sindoor-700 inline-flex items-center gap-2"
-            >
-              <IconPencil className="text-saffron-600" />
-              {isHi ? "भंडारे के बारे में लिखें" : "Write about the bhandara"}
-            </label>
-            <span className="shrink-0 inline-flex items-center rounded-full bg-saffron-50 border border-saffron-500/35 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-saffron-600 font-semibold font-mukta">
-              {isHi ? "वैकल्पिक" : "Optional"}
-            </span>
-          </div>
+        <Field
+          label={isHi ? "भंडारे के बारे में लिखें" : "Write about the bhandara"}
+          htmlFor="spot-v2-caption"
+          optional={isHi ? "वैकल्पिक" : "optional"}
+          lang={isHi ? "hi" : "en"}
+        >
           <input
             id="spot-v2-caption"
             type="text"
             value={caption}
             onChange={(e) => setCaption(e.target.value.slice(0, 200))}
             placeholder={
-              isHi ? "जैसे: पूड़ी-सब्ज़ी, बहुत भीड़ है" : "e.g. Puri-sabzi, big crowd"
+              isHi ? "जैसे: पूड़ी सब्ज़ी, बहुत भीड़ है" : "e.g. Puri sabzi, big crowd"
             }
             maxLength={200}
-            className="w-full rounded-xl border border-gold-500/55 bg-white px-3 py-3 text-base text-ink-900 placeholder:text-ink-600/55 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
           />
-        </section>
+        </Field>
 
         {/* OPTIONAL: name */}
-        <section>
-          <label
-            htmlFor="spot-v2-name"
-            className="block font-mukta uppercase tracking-[0.18em] text-[0.7rem] text-ink-600 font-semibold mb-1.5"
-          >
-            {isHi ? "आपका नाम (वैकल्पिक)" : "Your name (optional)"}
-          </label>
+        <Field
+          label={isHi ? "आपका नाम" : "Your name"}
+          htmlFor="spot-v2-name"
+          optional={isHi ? "वैकल्पिक" : "optional"}
+          lang={isHi ? "hi" : "en"}
+        >
           <input
             id="spot-v2-name"
             type="text"
@@ -651,19 +603,18 @@ export default function SpotQuickForm({
             onChange={(e) => setReporterName(e.target.value)}
             placeholder={isHi ? "जैसे: प्रिया" : "e.g. Priya"}
             maxLength={60}
-            className="w-full rounded-xl border border-gold-500/55 bg-white px-3 py-3 text-base text-ink-900 placeholder:text-ink-600/55 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
           />
-        </section>
+        </Field>
 
         {/* In-page error banner */}
         {submitError ? (
-          <div className="rounded-xl border border-alert-500 bg-alert-500/10 text-alert-500 px-4 py-3 text-sm">
+          <div className="bmi-alert" role="alert">
             {submitError}
           </div>
         ) : null}
 
-        {/* Inline submit (visible on desktop / when sticky bar isn't sufficient) */}
-        <div className="hidden sm:flex justify-center">
+        {/* Inline submit (tablet and desktop; phones use the bar) */}
+        <div className="hidden sm:flex pt-1.5">
           <SubmitButton
             isHi={isHi}
             stage={stage}
@@ -671,12 +622,11 @@ export default function SpotQuickForm({
             onClick={submit}
           />
         </div>
-      </div>
+        </FormSkin>
+      </FormPanel>
 
       {/* STICKY MOBILE BAR, keeps the primary action always reachable */}
-      <div
-        className="sm:hidden fixed inset-x-0 bottom-0 z-[800] border-t border-gold-500/35 bg-cream-50/95 backdrop-blur px-4 pt-3 [padding-bottom:max(env(safe-area-inset-bottom),0.85rem)]"
-      >
+      <div className="bmi-sbar sm:hidden">
         <SubmitButton
           isHi={isHi}
           stage={stage}
@@ -709,16 +659,18 @@ function SubmitButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`btn btn-primary btn-lg justify-center ${fullWidth ? "w-full" : ""} min-h-[52px]`}
+      className={`bmi-b bmi-b-p ${fullWidth ? "block" : ""}`}
     >
       <IconBroadcast />
-      {stage === "submitting"
-        ? isHi
-          ? "भेजा जा रहा है…"
-          : "Submitting…"
-        : isHi
-          ? "सबमिट करें"
-          : "Submit"}
+      <span>
+        {stage === "submitting"
+          ? isHi
+            ? "भेजा जा रहा है…"
+            : "Submitting…"
+          : isHi
+            ? "सबमिट करें"
+            : "Submit"}
+      </span>
     </button>
   );
 }
@@ -745,126 +697,92 @@ function LocationStatus({
 }) {
   if (status === "asking") {
     return (
-      <div className="rounded-2xl border border-gold-500/45 bg-saffron-50/60 px-4 py-3 flex items-center gap-3">
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-saffron-50 border border-saffron-500/40 text-saffron-600">
+      <p className="bmi-fnote" aria-live="polite">
+        <span className="ic" aria-hidden>
           <IconCrosshair className="motion-safe:animate-spin" />
         </span>
-        <p className="text-sm text-ink-900">
+        <span>
           {isHi
             ? "लोकेशन का अनुमति माँग रहे हैं…"
             : "Asking your phone for location…"}
-        </p>
-      </div>
+        </span>
+      </p>
     );
   }
   if (status === "ok") {
-    // 3-column flex row: check icon · text stack · Edit pill, all
-    // vertically centred. The old layout floated the Edit button to the
-    // top of a 2-line text block which left an awkward empty gap below
-    // it, `items-center` on the outer flex resolves that by aligning
-    // every column to the same optical midline.
+    // Icon, text stack and the Edit button share one optical midline.
     return (
-      <div className="rounded-2xl border border-leaf-600/45 bg-leaf-600/8 px-4 py-3 flex items-center gap-3">
-        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-leaf-600 text-cream-50 shadow-warm">
+      <div className="bmi-fnote" style={{ alignItems: "center" }}>
+        <span className="ic" aria-hidden style={{ background: "var(--leaf)", color: "#fff", marginTop: 0 }}>
           <IconCheck />
         </span>
-        <div className="min-w-0 flex-1 leading-tight">
-          <p className="text-sm font-semibold text-leaf-600">
+        <span className="min-w-0 flex-1">
+          <b className="block">
             {isHi ? "लोकेशन मिल गई" : "Got your location"}
-          </p>
-          {areaLabel ? (
-            <p className="mt-0.5 text-[13px] text-ink-900 truncate">
-              {isHi ? `${areaLabel} के पास` : `near ${areaLabel}`}
-            </p>
-          ) : (
-            <p className="mt-0.5 text-[12px] text-ink-600">
-              {isHi
-                ? "नक़्शे पर पिन सही जगह दिख रहा है।"
-                : "Pin is set on the map."}
-            </p>
-          )}
-          {/* Full street address from reverse-geocode, gives the user
-              a chance to verify the exact spot before they submit. Shown
-              in a small, muted font so it reads as a confirmation line
-              rather than competing with the curated area name above. */}
+            {areaLabel ? (isHi ? `, ${areaLabel} के पास` : `, near ${areaLabel}`) : ""}
+          </b>
           {formattedAddress ? (
-            <p
-              className="mt-1 text-[11px] text-ink-600 leading-snug line-clamp-2"
-              title={formattedAddress}
-            >
+            <span className="block text-[13.5px] leading-snug line-clamp-2" title={formattedAddress}>
               {formattedAddress}
-            </p>
+            </span>
+          ) : !areaLabel ? (
+            <span className="block text-[13.5px]">
+              {isHi ? "नक़्शे पर पिन सही जगह दिख रहा है।" : "Pin is set on the map."}
+            </span>
           ) : null}
-        </div>
+        </span>
         <button
           type="button"
           onClick={onEdit}
           aria-label={isHi ? "लोकेशन बदलें" : "Edit location"}
-          className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-saffron-500/55 bg-cream-50 hover:bg-saffron-50 hover:border-saffron-500 text-saffron-600 hover:text-sindoor-700 text-xs font-semibold px-3 py-1.5 transition-colors"
+          className="bmi-tl shrink-0"
         >
           <IconPencil />
-          {isHi ? "बदलें" : "Edit"}
+          <span>{isHi ? "बदलें" : "Edit"}</span>
         </button>
       </div>
     );
   }
   if (status === "outOfBounds") {
     return (
-      <div className="rounded-2xl border border-alert-500/55 bg-alert-500/10 px-4 py-3">
-        <p className="text-sm text-alert-500 font-semibold">
+      <div className="bmi-alert" role="alert">
+        <span className="flex-1">
           {isHi
-            ? "हम अभी सिर्फ़ लखनऊ में स्पॉट लेते हैं।"
-            : "We only cover Lucknow right now."}
-        </p>
-        <p className="mt-1 text-xs text-ink-600">
-          {isHi
-            ? "लखनऊ शहर के अंदर से रिपोर्ट करें।"
-            : "Please post your spot from inside the city."}
-        </p>
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-2 inline-flex items-center gap-1 text-[12px] text-saffron-600 font-semibold hover:underline"
-        >
-          <IconCrosshair /> {isHi ? "फिर से लें" : "Retry"}
-        </button>
+            ? "हम अभी सिर्फ़ लखनऊ में स्पॉट लेते हैं। लखनऊ शहर के अंदर से रिपोर्ट करें।"
+            : "We only cover Lucknow right now. Please post your spot from inside the city."}
+          <button type="button" onClick={onRetry} className="bmi-tl" style={{ display: "flex" }}>
+            <IconCrosshair /> <span>{isHi ? "फिर से लें" : "Retry"}</span>
+          </button>
+        </span>
       </div>
     );
   }
   if (status === "denied" || status === "unsupported") {
     return (
-      <div className="rounded-2xl border border-gold-500/55 bg-saffron-50/70 px-4 py-3">
-        <p className="text-sm text-ink-900 font-semibold">
-          {isHi
-            ? "लोकेशन की अनुमति नहीं मिली।"
-            : "Location permission was blocked."}
+      <div className="grid gap-3">
+        <p className="bmi-fnote warn">
+          <span>
+            <b className="block">
+              {isHi ? "लोकेशन की अनुमति नहीं मिली।" : "Location permission was blocked."}
+            </b>
+            {isHi
+              ? "ब्राउज़र की सेटिंग्स में लोकेशन ऑन करें, फिर नीचे का बटन दबाएँ।"
+              : "Turn on location in your browser settings, then tap below."}
+          </span>
         </p>
-        <p className="mt-1 text-xs text-ink-600">
-          {isHi
-            ? "ब्राउज़र की सेटिंग्स में लोकेशन ऑन करें, फिर नीचे का बटन दबाएँ।"
-            : "Turn on location in your browser settings, then tap below."}
-          {errorMessage ? (
-            <span className="block mt-1 italic opacity-75">{errorMessage}</span>
-          ) : null}
-        </p>
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-3 btn btn-ghost btn-sm"
-        >
-          <IconCrosshair /> {isHi ? "फिर से कोशिश करें" : "Try again"}
-        </button>
+        <div>
+          <button type="button" onClick={onRetry} className="bmi-b bmi-b-s sm">
+            <IconCrosshair /> <span>{isHi ? "फिर से कोशिश करें" : "Try again"}</span>
+          </button>
+          {errorMessage ? <span className="bmi-sr">{errorMessage}</span> : null}
+        </div>
       </div>
     );
   }
   // "idle", shouldn't show in practice since we auto-ask on mount
   return (
-    <button
-      type="button"
-      onClick={onRetry}
-      className="btn btn-ghost btn-sm w-full justify-center"
-    >
-      <IconCrosshair /> {isHi ? "मेरी लोकेशन इस्तेमाल करें" : "Use my current location"}
+    <button type="button" onClick={onRetry} className="bmi-b bmi-b-s sm">
+      <IconCrosshair /> <span>{isHi ? "मेरी लोकेशन इस्तेमाल करें" : "Use my current location"}</span>
     </button>
   );
 }
@@ -1071,59 +989,49 @@ function ExtraPhotosUploader({
   }
 
   return (
-    <div className="mt-3 rounded-2xl border border-gold-500/35 bg-cream-50 p-3">
-      <p className="text-xs font-medium text-ink-900">
-        {isHi ? "और फ़ोटो जोड़ें (वैकल्पिक)" : "Add more photos (optional)"}
-      </p>
-      <p className="text-[0.7rem] text-ink-600 mt-0.5">
+    <div className="grid gap-3" style={{ marginTop: 16 }}>
+      <p className="bmi-field-hint">
+        <b className="text-ink-900">{isHi ? "और फ़ोटो जोड़ें" : "Add more photos"}</b>{" "}
         {atCap
           ? isHi
-            ? `अधिकतम ${max} फ़ोटो, बस इतनी।`
-            : `Max ${max} photos, you're at the cap.`
+            ? `(अधिकतम ${max} फ़ोटो, बस इतनी।)`
+            : `(max ${max}, you're at the cap.)`
           : isHi
-            ? `${remaining} और जोड़ सकते हैं।`
-            : `You can add ${remaining} more.`}
+            ? `(${remaining} और जोड़ सकते हैं।)`
+            : `(you can add ${remaining} more.)`}
       </p>
       {urls.length > 0 ? (
-        <ul className="mt-2 flex flex-wrap gap-2">
+        <ul className="flex flex-wrap gap-2">
           {urls.map((u, i) => (
-            <li
-              key={u + i}
-              className="relative w-16 h-16 rounded-lg overflow-hidden border border-gold-500/40 bg-saffron-50"
-            >
+            <li key={u + i} className="relative w-[72px] h-[72px] rounded-xl overflow-hidden bg-[#f5efe3]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={u}
-                alt=""
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
+              <img src={u} alt="" className="w-full h-full object-cover" loading="lazy" />
               <button
                 type="button"
                 onClick={() => onChange(urls.filter((_, j) => j !== i))}
                 aria-label={isHi ? "हटाएँ" : "Remove"}
-                className="absolute top-0.5 right-0.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-sindoor-700 text-cream-50 text-[10px] font-bold leading-none shadow-sm hover:bg-sindoor-700/90"
+                className="absolute top-1 right-1 inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#1a1410]/70 text-white"
               >
-                ×
+                <Icon name="plus" className="rotate-45" size={14} />
               </button>
             </li>
           ))}
         </ul>
       ) : null}
       <label
-        className={`mt-2 inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-colors cursor-pointer ${
-          atCap || uploading
-            ? "bg-cream-50 text-ink-600 border border-gold-500/40 cursor-not-allowed opacity-60"
-            : "bg-saffron-600 text-cream-50 hover:bg-saffron-500 shadow-warm"
-        }`}
+        className={`bmi-b bmi-b-s sm ${atCap || uploading ? "opacity-50 cursor-not-allowed" : ""}`}
+        style={{ justifySelf: "start" }}
       >
-        {uploading
-          ? isHi
-            ? "अपलोड हो रहा है…"
-            : "Uploading…"
-          : isHi
-            ? "+ फ़ोटो चुनें"
-            : "+ Pick photos"}
+        <Icon name="plus" />
+        <span>
+          {uploading
+            ? isHi
+              ? "अपलोड हो रहा है…"
+              : "Uploading…"
+            : isHi
+              ? "फ़ोटो चुनें"
+              : "Pick photos"}
+        </span>
         <input
           type="file"
           accept="image/*"
@@ -1133,9 +1041,7 @@ function ExtraPhotosUploader({
           className="sr-only"
         />
       </label>
-      {error ? (
-        <p className="mt-2 text-xs text-alert-500">{error}</p>
-      ) : null}
+      {error ? <p className="bmi-field-err" role="alert">{error}</p> : null}
     </div>
   );
 }

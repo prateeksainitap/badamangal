@@ -30,6 +30,7 @@ import { prisma } from "@/lib/db";
 import { stripBotProvenance } from "@/lib/sanitize";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ipHash, readClientIp } from "@/lib/crypto";
+import { cleanName } from "@/lib/display-name";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -73,20 +74,19 @@ type PublicMention = {
    *  read as an unrelated stray word. Either field may be null;
    *  both null = not a reply. */
   quotedText: string | null;
-  quotedSender: string | null;
+  /** Always null: the quoted message's sender is a user name too. */
+  quotedSender: null;
   /** Slug + display name of the companion Bhandara when the feed
    *  handler stitches a mention to its image-ingest companion. Lets
    *  the chat bubble tap-through to the full bhandara detail page.
    *  Null when there's no companion. */
   bhandaraSlug: string | null;
   bhandaraName: string | null;
-  /** WhatsApp pushName of the sender. EXPOSED on the public feed by
-   *  design, the homepage chat panel shows usernames + avatars for
-   *  live-chat feel. These are the same names the sender uses
-   *  publicly in their WhatsApp groups (no profile photo, no phone
-   *  number, only the display string they themselves chose to be
-   *  visible). May be null when the bot couldn't read it. */
-  senderName: string | null;
+  /** Always null on this public feed. WhatsApp senders' names are
+   *  never shown publicly (Founder's ruling, 1 Nov 2026); the chat
+   *  panel shows a neutral "Spotter" label instead. The key stays so
+   *  older clients keep parsing. The DB keeps the name for admin. */
+  senderName: null;
   createdAt: string;
 };
 
@@ -120,10 +120,9 @@ type PublicSpot = {
    *  slug surfaces here so the chat bubble can link to the detail page. */
   bhandaraSlug: string | null;
   bhandaraName: string | null;
-  /** Spot.reporterName, the WhatsApp pushName of whoever forwarded
-   *  the image. Same privacy posture as PublicMention.senderName:
-   *  exposed on the public feed for live-chat feel. */
-  senderName: string | null;
+  /** Always null, same rule as PublicMention.senderName: the name of
+   *  whoever forwarded the image is never public. */
+  senderName: null;
   /** Spots never carry quoted context. Always null. */
   quotedText: null;
   quotedSender: null;
@@ -234,12 +233,12 @@ export async function GET(req: NextRequest) {
         lat: true,
         lng: true,
         locationSource: true,
-        senderName: true,
+        // senderName / quotedSender deliberately not selected: names
+        // never reach this public feed.
         groupName: true,
         createdAt: true,
         approvedAt: true,
         quotedText: true,
-        quotedSender: true,
       },
     }),
     prisma.spot.findMany({
@@ -282,7 +281,6 @@ export async function GET(req: NextRequest) {
         lng: true,
         photoUrl: true,
         extraPhotoUrls: true,
-        reporterName: true,
         createdAt: true,
         bhandara: { select: { slug: true, name: true } },
       },
@@ -448,12 +446,12 @@ export async function GET(req: NextRequest) {
     photoUrl: companion?.photoUrl ?? null,
     photoUrls: [],
     quotedText: m.quotedText,
-    quotedSender: m.quotedSender,
+    quotedSender: null,
     // Same source as photoUrl, let visitors tap through to the full
     // bhandara detail page when the mention is matched.
     bhandaraSlug: companion?.slug ?? null,
-    bhandaraName: companion?.name ?? null,
-    senderName: m.senderName,
+    bhandaraName: cleanName(companion?.name),
+    senderName: null,
     // Use approvedAt as the "appears on feed at" timestamp so the
     // chat-bubble's relative time matches what the polling logic uses.
     createdAt: (m.approvedAt ?? m.createdAt).toISOString(),
@@ -493,8 +491,8 @@ export async function GET(req: NextRequest) {
       quotedText: null,
       quotedSender: null,
       bhandaraSlug: s.bhandara?.slug ?? null,
-      bhandaraName: s.bhandara?.name ?? null,
-      senderName: s.reporterName,
+      bhandaraName: cleanName(s.bhandara?.name),
+      senderName: null,
       createdAt: s.createdAt.toISOString(),
     };
   });

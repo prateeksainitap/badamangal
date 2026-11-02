@@ -31,7 +31,7 @@ type Dict = {
      *  the ordinal phrase from `liveOrdinals`. e.g. "Today is the 2nd Bada Mangal". */
     liveToday: string;
     /** Ordinal phrases for "1st Bada Mangal" → "8th Bada Mangal".
-     *  Length must equal BADA_MANGAL_DATES_2026.length (= 8). */
+     *  Length must cover the longest season in lib/season.ts (8, 2026). */
     liveOrdinals: readonly string[];
     timelineKicker: string;
     timelineLabelPast: string;
@@ -360,7 +360,7 @@ const en: Dict = {
   },
   resources: {
     navLabel: "Resources",
-    hubKicker: "Read · listen · watch",
+    hubKicker: "Read · learn · visit",
     hubHeading: "The Bada Mangal companion",
     hubBody:
       "The text, the aarti, the rituals, the temples, and what's happening in Lucknow this week. One place to keep coming back to.",
@@ -372,7 +372,7 @@ const en: Dict = {
       },
       chalisa: {
         title: "Hanuman Chalisa",
-        body: "All forty verses with audio, in Devanagari and Roman.",
+        body: "All forty verses, in Devanagari and Roman.",
         cta: "Read the Chalisa",
       },
       aarti: {
@@ -402,15 +402,15 @@ const en: Dict = {
       },
       temples: {
         title: "Hanuman temples of Lucknow",
-        body: "Aliganj, Hanuman Setu, Sankat Mochan and more, addresses, timings, history.",
+        body: "Aliganj, Hanuman Setu, Hazratganj and more, addresses, timings, history.",
         cta: "Browse the temples",
       },
     },
     common: {
       sourceLabel: "Source",
-      verifyingText: "Listen along",
+      verifyingText: "Text coming shortly",
       verifyingNote:
-        "Press play above and listen along; the verse-by-verse text will be published here shortly so you can read together with the audio.",
+        "The verse-by-verse text will be published here shortly.",
       readMore: "Read more",
       listenLabel: "Listen",
       watchLabel: "Watch",
@@ -430,36 +430,36 @@ const en: Dict = {
       heading: "Hanuman Chalisa",
       kicker: "Forty verses, two dohas",
       body:
-        "Tulsidas's Hanuman Chalisa, the song every Lucknow bhandara plays. Press play to listen along; verse-by-verse text will appear here shortly.",
-      sourceCaption: "Audio recording, with text",
+        "Tulsidas's Hanuman Chalisa, the song every Lucknow bhandara plays, verse by verse.",
+      sourceCaption: "Full text",
     },
     aarti: {
       heading: "Hanuman Aarti",
       kicker: "Aarti Kije Hanuman Lala Ki",
       body:
-        "The aarti you'll hear at every Bada Mangal bhandara, sung at sunset across the city. Press play to listen along.",
-      sourceCaption: "Audio recording, with text",
+        "The aarti you'll hear at every Bada Mangal bhandara, sung at sunset across the city.",
+      sourceCaption: "Full text",
     },
     ashtak: {
       heading: "Sankat Mochan Hanuman Ashtak",
       kicker: "Eight stanzas, one closing doha",
       body:
-        "Tulsidas's eight-verse stotra to Hanuman Ji, recited when grief or obstacle feels immovable. Press play to listen along.",
-      sourceCaption: "Audio recording, with text",
+        "Tulsidas's eight-verse stotra to Hanuman Ji, recited when grief or obstacle feels immovable.",
+      sourceCaption: "Full text",
     },
     bajrangBaan: {
       heading: "Bajrang Baan",
       kicker: "An arrow of protection",
       body:
-        "A vigorous recitation invoking Hanuman Ji's force in moments of fear or threat. Press play to listen along.",
-      sourceCaption: "Audio recording, with text",
+        "A vigorous recitation invoking Hanuman Ji's force in moments of fear or threat.",
+      sourceCaption: "Full text",
     },
     ramStuti: {
       heading: "Shri Ram Stuti",
       kicker: "Shri Ramachandra Kripalu Bhajamana",
       body:
-        "Tulsidas's five-stanza praise of Shri Ram from the Ramcharitmanas, sung at every Hanuman temple alongside the Aarti. Press play to listen along.",
-      sourceCaption: "Audio recording, with text",
+        "Tulsidas's five-stanza praise of Shri Ram from the Ramcharitmanas, sung at every Hanuman temple alongside the Aarti.",
+      sourceCaption: "Full text",
     },
     rituals: {
       heading: "Tuesday vrat guide",
@@ -671,7 +671,7 @@ const hi: Dict = {
   },
   resources: {
     navLabel: "संसाधन",
-    hubKicker: "पढ़ें · सुनें · देखें",
+    hubKicker: "पढ़ें · जानें · दर्शन करें",
     hubHeading: "बड़ा मंगल का साथी",
     hubBody:
       "चालीसा, आरती, पूजा-विधि, मंदिर और इस सप्ताह लखनऊ में हो रही गतिविधियाँ, सब कुछ एक ही जगह।",
@@ -683,12 +683,12 @@ const hi: Dict = {
       },
       chalisa: {
         title: "हनुमान चालीसा",
-        body: "चालीस दोहे और दो दोहावली, ऑडियो के साथ।",
+        body: "चालीस चौपाइयाँ और दोहे, देवनागरी और रोमन में।",
         cta: "चालीसा पढ़ें",
       },
       aarti: {
         title: "हनुमान आरती",
-        body: "हर भंडारे में जो आरती गूँजती है, पाठ, ऑडियो, वीडियो।",
+        body: "हर भंडारे में जो आरती गूँजती है, पूरा पाठ।",
         cta: "आरती पढ़ें",
       },
       ashtak: {
@@ -713,15 +713,15 @@ const hi: Dict = {
       },
       temples: {
         title: "लखनऊ के हनुमान मंदिर",
-        body: "अलीगंज, हनुमान सेतु, संकट मोचन, पते, समय और इतिहास।",
+        body: "अलीगंज, हनुमान सेतु, हज़रतगंज, पते, समय और इतिहास।",
         cta: "मंदिर देखें",
       },
     },
     common: {
       sourceLabel: "स्रोत",
-      verifyingText: "साथ में सुनें",
+      verifyingText: "पाठ शीघ्र",
       verifyingNote:
-        "ऊपर प्ले बटन दबाइए और साथ में सुनिए; पाठ की पंक्ति-दर-पंक्ति प्रति शीघ्र ही यहाँ प्रकाशित होगी, ताकि आप ऑडियो के साथ पढ़ सकें।",
+        "पाठ की पंक्ति-दर-पंक्ति प्रति शीघ्र ही यहाँ प्रकाशित होगी।",
       readMore: "और पढ़ें",
       listenLabel: "सुनें",
       watchLabel: "देखें",
@@ -741,36 +741,36 @@ const hi: Dict = {
       heading: "हनुमान चालीसा",
       kicker: "चालीस दोहे, दो दोहावली",
       body:
-        "तुलसीदास रचित हनुमान चालीसा, लखनऊ के हर भंडारे में गूँजती है। प्ले बटन दबाइए और साथ में सुनिए; पाठ शीघ्र ही यहाँ प्रकाशित होगा।",
-      sourceCaption: "ऑडियो रिकॉर्डिंग, पाठ सहित",
+        "तुलसीदास रचित हनुमान चालीसा, लखनऊ के हर भंडारे में गूँजती है, पूरा पाठ।",
+      sourceCaption: "पूरा पाठ",
     },
     aarti: {
       heading: "हनुमान आरती",
       kicker: "आरती कीजै हनुमान लला की",
       body:
-        "हर बड़े मंगल भंडारे में, सूर्यास्त के समय गूँजने वाली आरती। मानक पाठ और सत्यापित ऑडियो शीघ्र।",
-      sourceCaption: "ऑडियो रिकॉर्डिंग, पाठ सहित",
+        "हर बड़े मंगल भंडारे में, सूर्यास्त के समय गूँजने वाली आरती।",
+      sourceCaption: "पूरा पाठ",
     },
     ashtak: {
       heading: "संकट मोचन हनुमान अष्टक",
       kicker: "आठ अष्टक, एक समापन दोहा",
       body:
-        "तुलसीदास रचित अष्टक, संकट या बाधा की घड़ी में पाठ किया जाता है। प्ले बटन दबाइए और साथ में सुनिए।",
-      sourceCaption: "ऑडियो रिकॉर्डिंग, पाठ सहित",
+        "तुलसीदास रचित अष्टक, संकट या बाधा की घड़ी में पाठ किया जाता है।",
+      sourceCaption: "पूरा पाठ",
     },
     bajrangBaan: {
       heading: "बजरंग बाण",
       kicker: "रक्षा का बाण",
       body:
-        "भय या संकट के क्षण में हनुमान जी की शक्ति का आह्वान। मानक पाठ और सत्यापित ऑडियो शीघ्र।",
-      sourceCaption: "ऑडियो रिकॉर्डिंग, पाठ सहित",
+        "भय या संकट के क्षण में हनुमान जी की शक्ति का आह्वान।",
+      sourceCaption: "पूरा पाठ",
     },
     ramStuti: {
       heading: "श्री राम स्तुति",
       kicker: "श्रीरामचन्द्र कृपालु भजुमन",
       body:
         "तुलसीदास रचित श्रीराम की पाँच-पद स्तुति, रामचरितमानस से। हर हनुमान मंदिर में आरती के साथ गाई जाती है।",
-      sourceCaption: "ऑडियो रिकॉर्डिंग, पाठ सहित",
+      sourceCaption: "पूरा पाठ",
     },
     rituals: {
       heading: "मंगलवार व्रत-विधि",

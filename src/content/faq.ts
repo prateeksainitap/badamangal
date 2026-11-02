@@ -68,9 +68,9 @@ export const FAQ_ITEMS: ReadonlyArray<FaqItem> = [
     questionEn: "When is the next Bada Mangal in Lucknow?",
     questionHi: "लखनऊ में अगला बड़ा मंगल कब है?",
     answerEn:
-      "The 2026 Bada Mangal Tuesdays are 5 May, 12 May, 19 May, 26 May, 2 June, 9 June, 16 June, and 23 June. The countdown on BadaMangal.com always shows the next upcoming one in real time.",
+      "The 2027 Bada Mangal Tuesdays are 25 May, 1 June, 8 June, and 15 June. The countdown on BadaMangal.com always shows the next upcoming one in real time.",
     answerHi:
-      "2026 के बड़े मंगल मंगलवार हैं: 5 मई, 12 मई, 19 मई, 26 मई, 2 जून, 9 जून, 16 जून, और 23 जून। BadaMangal.com पर लगा countdown हमेशा अगला आने वाला बड़ा मंगल real-time में दिखाता है।",
+      "2027 के बड़े मंगल मंगलवार हैं: 25 मई, 1 जून, 8 जून, और 15 जून। BadaMangal.com पर लगा countdown हमेशा अगला आने वाला बड़ा मंगल real-time में दिखाता है।",
     relatedLinks: [
       {
         href: "/",

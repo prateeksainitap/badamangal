@@ -1,5 +1,8 @@
 "use client";
 
+import { useLocaleFromContext } from "@/lib/locale-context";
+import { Actions, Button, Heading, InnerShell, Kicker } from "@/components/v2";
+
 /**
  * Segment-level error boundary for every public route under /.
  *
@@ -64,47 +67,54 @@ export default function PublicSegmentError({
   // NO auto-reset. A previous build of this file fired reset() once
   // on mount expecting transient errors to self-heal, but a
   // persistent SSR error produces an infinite re-render storm
-  // (each reset re-renders the page → SSR throws → boundary
-  // remounts → auto-reset fires again → loop). Real prod incident
+  // (each reset re-renders the page, SSR throws, the boundary
+  // remounts, auto-reset fires again, a loop). Real prod incident
   // saw ~1000 retries in seconds with the GA error counter climbing.
   // Manual retry only.
+  const isHi = useLocaleFromContext() === "hi";
   return (
-    <main
-      className="mx-auto flex min-h-[60dvh] max-w-md flex-col items-center justify-center px-6 py-16 text-center"
-      aria-live="polite"
-    >
-      <p className="font-mono text-[11px] uppercase tracking-[0.32em] text-saffron-600">
-        🪔 One moment
-      </p>
-      <h1 className="mt-3 font-fraunces text-2xl text-sindoor-700 sm:text-3xl">
-        Something hiccuped on our end.
-      </h1>
-      <p className="mt-3 text-sm leading-relaxed text-ink-600">
-        We couldn't load the latest data. Tap Try again, or head back to
-        the home page.
-      </p>
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={() => reset()}
-          className="btn btn-sindoor btn-sm"
-          data-ga="public_error_try_again"
-        >
-          Try again
-        </button>
-        <a
-          href="/"
-          className="btn btn-ghost btn-sm"
-          data-ga="public_error_back_home"
-        >
-          ← Back home
-        </a>
-      </div>
-      {error?.digest ? (
-        <p className="mt-6 font-mono text-[10px] tracking-wide text-ink-600/60">
-          Reference: {error.digest}
-        </p>
-      ) : null}
-    </main>
+    <InnerShell>
+      <section className="bmi-sec bmi-lost err" aria-live="polite">
+        <div className="bmi-wrap narrow">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="bmi-lost-art"
+            src="/illustrations/error-diya.webp"
+            alt=""
+            width={1200}
+            height={1200}
+            loading="eager"
+            decoding="async"
+          />
+          <Kicker>{isHi ? "एक पल" : "One moment"}</Kicker>
+          <Heading
+            as="h1"
+            size="section"
+            words={false}
+            en="Something hiccuped on our end."
+            hi="हमारी तरफ़ कुछ अटक गया।"
+          />
+          <p className="bmi-lede">
+            {isHi
+              ? "ताज़ा जानकारी लोड नहीं हो पाई। फिर से कोशिश करें, या होम पेज पर लौटें।"
+              : "We couldn't load the latest data. Tap Try again, or head back to the home page."}
+          </p>
+          <Actions split>
+            <Button onClick={() => reset()} data-ga="public_error_try_again">
+              {isHi ? "फिर से कोशिश करें" : "Try again"}
+            </Button>
+            <Button variant="secondary" href={isHi ? "/" : "/?lang=en"} data-ga="public_error_back_home">
+              {isHi ? "होम पर लौटें" : "Back home"}
+            </Button>
+          </Actions>
+          {error?.digest ? (
+            <p className="bmi-ref">
+              {isHi ? "संदर्भ: " : "Reference: "}
+              {error.digest}
+            </p>
+          ) : null}
+        </div>
+      </section>
+    </InnerShell>
   );
 }

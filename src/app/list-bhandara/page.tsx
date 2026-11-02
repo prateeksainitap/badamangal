@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import AddBhandaraSwitcher from "@/components/AddBhandaraSwitcher";
-import { getAllApprovedBhandaras } from "@/lib/db";
-import { localised } from "@/lib/seo";
+import { getAllApprovedBhandarasPublic } from "@/lib/db";
+import { localised, DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 // ISR. The page is heavy enough at first paint (multi-step form, GPS
 // permissions, locale-aware copy) that the TTFB matters for the
@@ -22,9 +22,10 @@ export const revalidate = 300;
 export const metadata: Metadata = {
   title: "List your Bada Mangal bhandara, free listing for Lucknow organisers",
   description:
-    "Free public listing for Bada Mangal bhandara organisers in Lucknow. Add your venue, schedule, menu, and capacity to the city map. Reaches every devotee searching for bhandaras during the 2026 season.",
+    "Free public listing for Bada Mangal bhandara organisers in Lucknow. Add your venue, schedule, menu, and capacity to the city map. Reaches every devotee searching for bhandaras during the 2027 season.",
   alternates: localised("/list-bhandara"),
   openGraph: {
+    images: [DEFAULT_OG_IMAGE],
     title: "List your Bada Mangal bhandara · BadaMangal Lucknow",
     description:
       "Add your bhandara to the city map. Free, takes a few minutes, reaches every devotee in Lucknow.",
@@ -45,7 +46,7 @@ export default async function ListBhandaraPage() {
   // sorted area-then-name here so the dropdown ordering matches what
   // the earlier standalone findMany returned. Slicing to 200 matches
   // the previous behavior and bounds the payload sent to the client.
-  const allApproved = await getAllApprovedBhandaras();
+  const allApproved = await getAllApprovedBhandarasPublic();
   const listings = [...allApproved]
     .sort((a, b) => {
       const areaCmp = a.area.localeCompare(b.area);

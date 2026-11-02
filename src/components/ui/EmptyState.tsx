@@ -9,7 +9,7 @@ import { useLocaleFromContext } from "@/lib/locale-context";
 /**
  * Canonical empty-state surface, the visual pattern shared by:
  *   • homepage "no bhandaras yet"
- *   • /live "the pandals are quiet right now"
+ *   • /live "the bhandaras are quiet right now"
  *   • /archive "no bhandaras have wrapped up yet"
  *
  * Two-column on desktop (illustration + content), stacked on mobile.
@@ -23,8 +23,8 @@ import { useLocaleFromContext } from "@/lib/locale-context";
  *   <EmptyState
  *     illustration="/illustrations/empty-state-plate.webp"
  *     kicker="Waiting for the first spot"
- *     headlineEn="The pandals are quiet right now."
- *     headlineHi="अभी पंडाल शांत हैं।"
+ *     headlineEn="The bhandaras are quiet right now."
+ *     headlineHi="अभी भंडारे शांत हैं।"
  *     bodyEn="Be the first to share a bhandara from your street."
  *     bodyHi="अपनी गली से पहला भंडारा साझा करें।"
  *     primaryCta={{ href: "/spot", label: "Spot a bhandara now" }}

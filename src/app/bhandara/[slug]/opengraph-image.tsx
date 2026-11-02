@@ -1,6 +1,8 @@
 import { ImageResponse } from "next/og";
 import { prisma } from "@/lib/db";
-import { loadGoogleFont } from "@/lib/og-fonts";
+import { getCity } from "@/lib/cities";
+import { cleanName } from "@/lib/display-name";
+import { hasDevanagari, loadOgFonts, OG_BODY_FONT, OG_HEADING_FONT } from "@/lib/og-hindi";
 
 export const runtime = "nodejs";
 export const alt = "Bada Mangal Bhandara";
@@ -28,36 +30,68 @@ function format12h(time: string): string {
   return `${display}:${String(min).padStart(2, "0")} ${period}`;
 }
 
+/** "Tuesday 12 May 2026", or "Tue 12 May · Tue 19 May + 3 more, 2026". */
+function formatDates(json: string | null | undefined): string {
+  let iso: string[] = [];
+  try {
+    const parsed: unknown = JSON.parse(json || "[]");
+    if (Array.isArray(parsed)) iso = parsed.filter((d): d is string => typeof d === "string");
+  } catch {
+    return "";
+  }
+  const dates = iso
+    .map((d) => new Date(`${d.slice(0, 10)}T12:00:00+05:30`))
+    .filter((d) => !Number.isNaN(d.getTime()))
+    .sort((a, b) => a.getTime() - b.getTime());
+  if (!dates.length) return "";
+  if (dates.length === 1) {
+    return new Intl.DateTimeFormat("en-IN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+      timeZone: "Asia/Kolkata",
+    })
+      .format(dates[0])
+      .replace(",", "");
+  }
+  const fmt = new Intl.DateTimeFormat("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "Asia/Kolkata",
+  });
+  const shown = dates.slice(0, 3).map((d) => fmt.format(d).replace(",", ""));
+  const more = dates.length - shown.length;
+  const year = dates[0].getUTCFullYear();
+  return `${shown.join(" · ")}${more > 0 ? ` + ${more} more` : ""}, ${year}`;
+}
+
 export default async function OG({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const record = await prisma.bhandara.findUnique({ where: { slug } });
 
-  const [tiro, fraunces500, fraunces700] = await Promise.all([
-    loadGoogleFont("Tiro Devanagari Hindi"),
-    loadGoogleFont("Fraunces", 500),
-    loadGoogleFont("Fraunces", 700),
-  ]);
+  const fonts = await loadOgFonts();
 
-  const fonts: {
-    name: string;
-    data: ArrayBuffer;
-    weight?: 500 | 700;
-    style?: "normal";
-  }[] = [];
-  if (tiro) fonts.push({ name: "Tiro", data: tiro, weight: 500, style: "normal" });
-  if (fraunces500) fonts.push({ name: "Fraunces", data: fraunces500, weight: 500, style: "normal" });
-  if (fraunces700) fonts.push({ name: "Fraunces", data: fraunces700, weight: 700, style: "normal" });
-
-  const heading = record?.nameHi ?? record?.name ?? "Bada Mangal Bhandara";
-  const subhead = record?.name ?? "BadaMangal.com";
-  const meta =
-    record
-      ? `${record.area} · ${
-          record.timeEnd
-            ? `${format12h(record.timeStart)} – ${format12h(record.timeEnd)}`
-            : format12h(record.timeStart)
-        }`
-      : "Lucknow";
+  // English only: next/og cannot shape Devanagari (it prints "मंदरि" for
+  // "मंदिर"), and bhandara names are organiser data, so they cannot be
+  // pre-shaped like the fixed wordmarks in src/lib/og-hindi.ts. The few
+  // organisers who typed the name only in Hindi get a clean English title.
+  const city = getCity(record?.city);
+  const name = record && !hasDevanagari(record.name) ? cleanName(record.name) : "";
+  const area = record && !hasDevanagari(record.area) ? record.area : "";
+  const heading = name || "Bada Mangal Bhandara";
+  const headingSize = heading.length <= 26 ? 88 : heading.length <= 42 ? 72 : 60;
+  // "00:00" with no end time is how unknown times were stored; skip it
+  // rather than print a midnight start.
+  const timeKnown = !!record && !(record.timeStart.trim() === "00:00" && !record.timeEnd);
+  const time = record && timeKnown
+    ? record.timeEnd
+      ? `${format12h(record.timeStart)} to ${format12h(record.timeEnd)}`
+      : format12h(record.timeStart)
+    : "";
+  const meta = [[area, city.name].filter(Boolean).join(", "), time].filter(Boolean).join(" · ");
+  const subhead = formatDates(record?.tuesdayDates);
 
   return new ImageResponse(
     (
@@ -69,7 +103,7 @@ export default async function OG({ params }: { params: Promise<{ slug: string }>
           flexDirection: "column",
           padding: 72,
           background: `linear-gradient(180deg, ${SAFFRON_50} 0%, ${CREAM_50} 100%)`,
-          fontFamily: "Fraunces, serif",
+          fontFamily: `${OG_BODY_FONT}, sans-serif`,
         }}
       >
         {/* Top brand row */}
@@ -82,11 +116,27 @@ export default async function OG({ params }: { params: Promise<{ slug: string }>
               <ellipse cx="32" cy="50" rx="6.5" ry="2.2" fill={CREAM_50} />
             </svg>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: INK_900 }}>
+              <div
+                style={{
+                  fontFamily: OG_HEADING_FONT,
+                  fontSize: 28,
+                  fontWeight: 700,
+                  color: INK_900,
+                  lineHeight: 1.1,
+                }}
+              >
                 BadaMangal.com
               </div>
-              <div style={{ fontSize: 16, color: INK_600, letterSpacing: 3, textTransform: "uppercase" }}>
-                Lucknow Bhandara
+              <div
+                style={{
+                  fontSize: 16,
+                  fontWeight: 500,
+                  color: INK_600,
+                  letterSpacing: 3,
+                  textTransform: "uppercase",
+                }}
+              >
+                {`${city.name} Bhandara`}
               </div>
             </div>
           </div>
@@ -96,7 +146,9 @@ export default async function OG({ params }: { params: Promise<{ slug: string }>
                 background: GOLD_100,
                 border: `1px solid ${GOLD_500}`,
                 borderRadius: 999,
-                padding: "8px 18px",
+                display: "flex",
+                padding: "8px 18px 6px",
+                fontFamily: OG_HEADING_FONT,
                 fontSize: 16,
                 color: INK_900,
                 letterSpacing: 2,
@@ -113,59 +165,59 @@ export default async function OG({ params }: { params: Promise<{ slug: string }>
         <div style={{ display: "flex", flexDirection: "column", marginTop: "auto", maxWidth: 1056 }}>
           <div
             style={{
+              fontFamily: OG_HEADING_FONT,
               fontSize: 18,
+              fontWeight: 600,
               color: GOLD_500,
               letterSpacing: 6,
               textTransform: "uppercase",
-              marginBottom: 12,
+              marginBottom: 10,
             }}
           >
             {meta}
           </div>
-          {tiro ? (
+          <div
+            style={{
+              fontFamily: OG_HEADING_FONT,
+              fontSize: headingSize,
+              fontWeight: 700,
+              color: SINDOOR_700,
+              lineHeight: 1.04,
+              letterSpacing: -1.5,
+            }}
+          >
+            {heading}
+          </div>
+          {subhead ? (
             <div
               style={{
-                fontFamily: "Tiro, Fraunces, serif",
-                fontSize: 96,
-                color: SINDOOR_700,
-                lineHeight: 1.1,
-                letterSpacing: -1.5,
-              }}
-            >
-              {heading}
-            </div>
-          ) : (
-            <div
-              style={{
-                fontSize: 84,
-                fontWeight: 700,
-                color: SINDOOR_700,
-                lineHeight: 1.1,
-                letterSpacing: -2,
+                fontSize: 32,
+                fontWeight: 500,
+                color: INK_900,
+                marginTop: 16,
               }}
             >
               {subhead}
             </div>
-          )}
-          <div
-            style={{
-              fontSize: 36,
-              fontWeight: 500,
-              color: INK_900,
-              marginTop: 16,
-              letterSpacing: -0.5,
-            }}
-          >
-            {subhead}
-          </div>
+          ) : null}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 36, color: INK_600, fontSize: 20 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginTop: 36,
+            color: INK_600,
+            fontSize: 20,
+            fontWeight: 500,
+          }}
+        >
           <div style={{ height: 1, width: 60, background: SAFFRON_600 }} />
           <span>Bada Mangal · 2026 · Eight Tuesdays</span>
         </div>
       </div>
     ),
-    { ...size, fonts: fonts.length ? fonts : undefined },
+    { ...size, fonts },
   );
 }

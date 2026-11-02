@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { InnerShell, PageHero, Kicker, Section, FormPanel, Field as KitField, Button, Band, Actions, Plate } from "@/components/v2";
+import { HOME_ART } from "@/content/home-art";
 import { trackEvent } from "@/lib/ga";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import { PAMPHLET_THEMES, type PamphletArtTheme } from "@/lib/pamphlet-themes";
@@ -333,179 +335,146 @@ export default function PamphletGenerator() {
   if (state.menu) listParams.set("menu", state.menu);
   const listHref = `/list-bhandara${listParams.toString() ? `?${listParams.toString()}` : ""}`;
 
+  const lang = isHi ? "hi" : "en";
   return (
-    <div className="mx-auto max-w-3xl px-4 sm:px-6 pt-10 sm:pt-14 pb-24">
-      {/* HEADER */}
-      <header className="text-center">
-        <p className="font-mukta uppercase tracking-[0.3em] text-saffron-600 text-xs font-semibold">
-          {isHi ? "मुफ़्त · बिना साइन-अप" : "Free · No Sign-up"}
-        </p>
-        <h1
-          className={`mt-3 font-bold text-3xl sm:text-[2.4rem] text-sindoor-700 leading-tight ${
-            isHi ? "font-tiro" : "font-fraunces"
-          }`}
-        >
-          {isHi
-            ? "बड़ा मंगल भंडारा पैम्फलेट जनरेटर"
-            : "Bada Mangal Bhandara Pamphlet Generator"}
-        </h1>
-        <p className="mt-3 text-ink-600 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-          {isHi
+    <InnerShell>
+      <PageHero
+        kicker={<Kicker>{isHi ? "मुफ़्त, बिना साइन-अप" : "Free, no sign-up"}</Kicker>}
+        title={{
+          en: "Bada Mangal Bhandara Pamphlet Generator",
+          hi: "बड़ा मंगल भंडारा पैम्फलेट जनरेटर",
+        }}
+        lede={
+          isHi
             ? "AI को बताइए, अपना पुराना पर्चा अपलोड कीजिए, या ख़ुद टाइप कीजिए। 30 सेकंड में A4 प्रिंट-तैयार भक्ति डिज़ाइन वाला पैम्फलेट तैयार।"
-            : "Tell AI in one line, upload an old pamphlet, or type the details. Get an A4 print-ready devotional pamphlet in 30 seconds."}
-        </p>
-      </header>
+            : "Tell AI in one line, upload an old pamphlet, or type the details. Get an A4 print-ready devotional pamphlet in 30 seconds."
+        }
+      />
 
-      {/* AI INPUT, primary, sits above the form so first-time visitors
-          discover the fast path before scrolling into the field-heavy
-          form. Two paths share one band: describe-in-words on the
-          left, upload-an-image on the right. Both feed the same
-          pre-fill code path. */}
-      <section
-        aria-labelledby="ai-fill-heading"
-        className="mt-10 rounded-3xl border border-saffron-500/50 bg-gradient-to-br from-saffron-50 via-cream-50 to-cream-50 px-5 sm:px-7 py-6 sm:py-8 shadow-warm"
-      >
-        <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
-          <h2
-            id="ai-fill-heading"
-            className="inline-flex items-center gap-2 font-mukta uppercase tracking-[0.22em] text-saffron-600 text-[0.7rem] font-semibold"
-          >
-            <SparkleIcon />
+      <section className="bmi-sec tight" style={{ paddingTop: 0 }}>
+        <div className="bmi-wrap bmi-formgrid">
+          <div className="grid gap-10">
+      {/* AI INPUT, the fast path, above the form. Describe in words or
+          upload an image; both feed the same pre-fill code path. */}
+      <FormPanel>
+      <section aria-labelledby="ai-fill-heading" className="bmi-form" style={{ gap: 16 }}>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <h2 id="ai-fill-heading" className="bmi-fh" lang={lang}>
+            <span className="ic" aria-hidden><SparkleIcon /></span>
             {isHi ? "AI से एक पल में भरें" : "Fill instantly with AI"}
           </h2>
           {aiFilled ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-leaf-600/15 border border-leaf-600/40 text-leaf-600 px-2.5 py-0.5 text-[0.68rem] font-semibold uppercase tracking-[0.18em]">
+            <span className="bmi-chip leaf">
               <CheckIcon />
               {isHi ? "AI ने भर दिया" : "AI filled the form"}
             </span>
           ) : null}
         </div>
 
-        <p className="text-sm sm:text-[0.95rem] text-ink-600 leading-relaxed">
+        <p className="bmi-field-hint" style={{ marginTop: -6 }}>
           {isHi
             ? "एक लाइन में बताइए या अपना पुराना पर्चा/बैनर अपलोड कीजिए, नीचे का फ़ॉर्म अपने-आप भर जाएगा।"
             : "Describe in one line OR upload an old pamphlet/banner, the form below pre-fills automatically."}
         </p>
 
-        <div className="mt-4 flex flex-col gap-3">
-          {/* Textarea: free-form description. Submits on Enter (without
-              Shift) so mobile keyboards' green tick actually triggers
-              the AI call. Shift+Enter still inserts a newline. */}
-          <textarea
-            value={aiText}
-            onChange={(e) => setAiText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void aiFillFromText();
-              }
-            }}
-            placeholder={
-              isHi
-                ? "जैसे: 23 मई को अलीगंज में सुबह 11 बजे श्रीवास्तव परिवार का भंडारा, पूरी सब्ज़ी, मो. 98765 43210"
-                : "e.g. Shrivastav Pariwar bhandara on 23 May at 11am in Aliganj, puri sabzi, ph 98765 43210"
+        {/* Submits on Enter (without Shift) so the mobile keyboard's
+            tick triggers the AI call. Shift+Enter inserts a newline. */}
+        <textarea
+          value={aiText}
+          onChange={(e) => setAiText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void aiFillFromText();
             }
-            rows={3}
-            maxLength={2000}
-            disabled={aiBusy !== null}
-            className="w-full rounded-2xl border border-gold-500/45 bg-white px-4 py-3 text-ink-900 text-sm sm:text-base placeholder:text-ink-600/50 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600 resize-y disabled:opacity-60"
-          />
+          }}
+          aria-label={isHi ? "एक लाइन में बताइए" : "Describe in one line"}
+          placeholder={
+            isHi
+              ? "जैसे: 23 मई को अलीगंज में सुबह 11 बजे श्रीवास्तव परिवार का भंडारा, पूरी सब्ज़ी, मो. 98765 43210"
+              : "e.g. Shrivastav Pariwar bhandara on 23 May at 11am in Aliganj, puri sabzi, ph 98765 43210"
+          }
+          rows={3}
+          maxLength={2000}
+          disabled={aiBusy !== null}
+        />
 
-          <div className="flex flex-wrap gap-3 items-center">
-            <button
-              type="button"
-              onClick={() => void aiFillFromText()}
-              disabled={aiText.trim().length < 4 || aiBusy !== null}
-              data-ga="pamphlet_ai_fill_text"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-semibold px-5 py-2.5 text-sm shadow-warm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {aiBusy === "text" ? (
-                <>
-                  <Spinner />
-                  {isHi ? "पढ़ रहे हैं…" : "Reading…"}
-                </>
-              ) : (
-                <>
-                  <SparkleIcon />
-                  {isHi ? "AI से भरें" : "Fill with AI"}
-                </>
-              )}
-            </button>
-
-            <span aria-hidden className="text-gold-500/70 text-sm font-medium">
-              {isHi ? "या" : "or"}
-            </span>
-
-            {/* Hidden file input + visible label-button pair: lets us
-                style the button without losing native picker UX. */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void aiFillFromImage(file);
-              }}
-              disabled={aiBusy !== null}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={aiBusy !== null}
-              data-ga="pamphlet_ai_fill_image"
-              className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-600 hover:text-cream-50 font-semibold px-5 py-2.5 text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {aiBusy === "image" ? (
-                <>
-                  <Spinner />
-                  {isHi ? "पर्चा पढ़ रहे हैं…" : "Reading pamphlet…"}
-                </>
-              ) : (
-                <>
-                  <UploadIcon />
-                  {isHi ? "पुराना पर्चा अपलोड करें" : "Upload old pamphlet"}
-                </>
-              )}
-            </button>
-          </div>
-
-          {aiError ? (
-            <p className="text-sm text-alert-500" role="alert">
-              {aiError}
-            </p>
-          ) : null}
-        </div>
-      </section>
-
-      {/* REVIEW & EDIT, same fields as before, just framed as "tweak
-          what AI filled" instead of "fill from scratch". When the AI
-          has run successfully, the section header reflects that;
-          otherwise it reads as the primary entry point for users who
-          prefer to type. */}
-      <section className="mt-10">
-        <header className="flex items-center justify-between gap-3 flex-wrap mb-4">
-          <h2
-            className={`text-xl sm:text-2xl text-sindoor-700 ${
-              isHi ? "font-tiro" : "font-fraunces font-semibold"
-            }`}
+        <div className="flex flex-wrap gap-3 items-center">
+          <button
+            type="button"
+            onClick={() => void aiFillFromText()}
+            disabled={aiText.trim().length < 4 || aiBusy !== null}
+            data-ga="pamphlet_ai_fill_text"
+            className="bmi-b bmi-b-s sm"
           >
-            {aiFilled
-              ? isHi
-                ? "विवरण की समीक्षा करें"
-                : "Review the details"
-              : isHi
-                ? "या ख़ुद विवरण भरें"
-                : "Or fill the details yourself"}
-          </h2>
-          <p className="text-xs text-ink-600">
-            <span aria-hidden className="text-sindoor-700">*</span>{" "}
-            {isHi ? "ज़रूरी फ़ील्ड" : "required"}
-          </p>
-        </header>
+            {aiBusy === "text" ? <Spinner /> : <SparkleIcon />}
+            <span>
+              {aiBusy === "text"
+                ? isHi ? "पढ़ रहे हैं…" : "Reading…"
+                : isHi ? "AI से भरें" : "Fill with AI"}
+            </span>
+          </button>
 
+          <span aria-hidden className="bmi-field-hint">
+            {isHi ? "या" : "or"}
+          </span>
+
+          {/* Hidden file input + visible button pair. */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void aiFillFromImage(file);
+            }}
+            disabled={aiBusy !== null}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={aiBusy !== null}
+            data-ga="pamphlet_ai_fill_image"
+            className="bmi-b bmi-b-s sm"
+          >
+            {aiBusy === "image" ? <Spinner /> : <UploadIcon />}
+            <span>
+              {aiBusy === "image"
+                ? isHi ? "पर्चा पढ़ रहे हैं…" : "Reading pamphlet…"
+                : isHi ? "पुराना पर्चा अपलोड करें" : "Upload old pamphlet"}
+            </span>
+          </button>
+        </div>
+
+        {aiError ? (
+          <p className="bmi-alert" role="alert">
+            {aiError}
+          </p>
+        ) : null}
+      </section>
+      </FormPanel>
+
+      {/* REVIEW & EDIT: the same fields, framed as "tweak what AI
+          filled" once it has run. */}
+      <section aria-labelledby="pamphlet-details-h">
+        <div className="bmi-sec-head" style={{ marginBottom: 20 }}>
+          <div>
+            <h2 id="pamphlet-details-h" className={`bmi-h2 ${isHi ? "" : "lat"}`} lang={lang}>
+              {aiFilled
+                ? isHi
+                  ? "विवरण की समीक्षा करें"
+                  : "Review the details"
+                : isHi
+                  ? "या ख़ुद विवरण भरें"
+                  : "Or fill the details yourself"}
+            </h2>
+          </div>
+        </div>
+
+        <FormPanel>
         <form
-          className="grid gap-5"
+          className="bmi-form"
           onSubmit={(e) => {
             e.preventDefault();
             void generate();
@@ -525,7 +494,7 @@ export default function PamphletGenerator() {
             placeholder="उदाहरण: श्रीवास्तव परिवार भंडारा"
           />
 
-          <div className="grid sm:grid-cols-2 gap-5">
+          <div className="bmi-grid2">
             <Field
               label={isHi ? "क्षेत्र / मोहल्ला" : "Area / locality"}
               value={state.area}
@@ -553,7 +522,7 @@ export default function PamphletGenerator() {
             }
           />
 
-          <div className="grid sm:grid-cols-2 gap-5">
+          <div className="bmi-grid2">
             <Field
               label={isHi ? "शुरू होने का समय" : "Start time"}
               required
@@ -578,19 +547,15 @@ export default function PamphletGenerator() {
             }
           />
 
-          <div className="grid sm:grid-cols-2 gap-5">
+          <div className="bmi-grid2">
             <Field
               label={isHi ? "आयोजक का नाम" : "Organizer name"}
               value={state.organizerName}
               onChange={(v) => set("organizerName", v)}
               placeholder={isHi ? "जैसे श्रीवास्तव परिवार" : "e.g. Shrivastav Pariwar"}
             />
-            {/* Phone uses the same +91-chip + 10-digit input pattern
-                as BhandaraForm so the two organiser flows feel
-                identical. The visual +91 chip is read-only; state
-                stores only the raw 10 digits. The post-input check
-                surfaces a soft-warning helper line when the user has
-                started typing but hasn't reached 10 digits yet. */}
+            {/* Same +91 chip and 10-digit input as the other organiser
+                forms; state stores only the raw 10 digits. */}
             <PhoneField
               label={isHi ? "आयोजक का फ़ोन (वैकल्पिक)" : "Organizer phone (optional)"}
               value={state.organizerPhone}
@@ -605,26 +570,12 @@ export default function PamphletGenerator() {
             />
           </div>
 
-          {/* THEME PICKER, two free options:
-              • AI Invitation: Gemini Flash (free) writes personalised
-                Devanagari invitation copy, Satori composes a rich
-                reference-style layout around a static Hanuman.
-                ~5-8s.
-              • Classic: the original all-CSS template, no AI at all.
-                Instant.
-              Both are zero-cost per pamphlet. The 4 paid Gemini
-              image themes were removed at the user's request. */}
-          <fieldset className="pt-4">
-            <legend className="inline-flex items-center gap-2 font-mukta uppercase tracking-[0.22em] text-saffron-600 text-[0.7rem] font-semibold mb-3">
-              <SparkleIcon />
+          {/* THEME PICKER: pick by look. Every theme is zero cost. */}
+          <fieldset className="bmi-fieldset bmi-vsec">
+            <legend className="bmi-field-label" lang={lang} style={{ float: "left", width: "100%", marginBottom: 14 }}>
               {isHi ? "डिज़ाइन शैली चुनें" : "Pick a design style"}
             </legend>
-            {/* Visual picker, each AI theme card shows a thumbnail
-                of its Hanuman illustration so the organiser picks
-                by look, not by name. Classic theme stays as a
-                text-only card at the end (no thumbnail because the
-                classic template doesn't use a pre-baked bg). */}
-            <div className="grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-5">
+            <div className="bmi-themes" role="radiogroup" style={{ clear: "both" }}>
               {PAMPHLET_THEMES.map((t) => {
                 const active = theme === t.id;
                 return (
@@ -636,51 +587,19 @@ export default function PamphletGenerator() {
                     onClick={() => setTheme(t.id)}
                     data-ga="pamphlet_theme_pick"
                     data-ga-theme={t.id}
-                    className={[
-                      "relative text-left rounded-2xl border-2 overflow-hidden transition-all",
-                      active
-                        ? "border-saffron-600 shadow-warm -translate-y-0.5"
-                        : "border-gold-500/40 hover:border-saffron-500/70",
-                    ].join(" ")}
+                    className={`bmi-theme ${active ? "on" : ""}`.trim()}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={t.thumb}
-                      alt=""
-                      loading="lazy"
-                      className="block w-full aspect-[3/4] object-cover bg-saffron-50"
-                    />
-                    <div className="px-3 py-2.5 bg-cream-50">
-                      <span className="block font-fraunces font-semibold text-sm text-sindoor-700 leading-tight">
-                        {isHi ? t.label.hi : t.label.en}
-                      </span>
-                      <span className="mt-1 block text-[10px] text-ink-600 leading-snug line-clamp-2">
-                        {isHi ? t.tagline.hi : t.tagline.en}
-                      </span>
-                    </div>
-                    {/* AI · Free chip, bottom-left over the thumb */}
-                    <span
-                      aria-hidden
-                      className="absolute top-2 left-2 inline-flex items-center gap-0.5 rounded-full bg-leaf-600 text-cream-50 text-[0.55rem] uppercase tracking-[0.16em] font-bold px-1.5 py-0.5"
-                    >
-                      <SparkleIcon /> {isHi ? "मुफ़्त" : "Free"}
-                    </span>
+                    <img src={t.thumb} alt="" loading="lazy" />
+                    <span className="t" lang={lang}>{isHi ? t.label.hi : t.label.en}</span>
+                    <span className="s" lang={lang}>{isHi ? t.tagline.hi : t.tagline.en}</span>
                     {active ? (
-                      <span
-                        aria-hidden
-                        className="absolute top-2 right-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-saffron-600 text-cream-50 border-2 border-cream-50 shadow-warm"
-                      >
-                        <CheckIcon />
-                      </span>
+                      <span className="tick" aria-hidden><CheckIcon /></span>
                     ) : null}
                   </button>
                 );
               })}
-              {/* Classic, instant, no AI call, the original Satori
-                  template with decorative marigolds + bells built
-                  from CSS. No thumbnail (no pre-baked bg), distinct
-                  text-only card so the picker still reads as one
-                  unified row. */}
+              {/* Classic: instant, no AI call, the original template. */}
               <button
                 type="button"
                 role="radio"
@@ -688,139 +607,108 @@ export default function PamphletGenerator() {
                 onClick={() => setTheme("classic")}
                 data-ga="pamphlet_theme_pick"
                 data-ga-theme="classic"
-                className={[
-                  "relative text-left rounded-2xl border-2 overflow-hidden transition-all flex flex-col",
-                  theme === "classic"
-                    ? "border-saffron-600 shadow-warm -translate-y-0.5"
-                    : "border-gold-500/40 hover:border-saffron-500/70",
-                ].join(" ")}
+                className={`bmi-theme ${theme === "classic" ? "on" : ""}`.trim()}
               >
-                <div className="flex-1 aspect-[3/4] bg-gradient-to-br from-saffron-50 via-cream-50 to-saffron-200 flex items-center justify-center">
-                  <span aria-hidden className="text-5xl">🪔</span>
-                </div>
-                <div className="px-3 py-2.5 bg-cream-50">
-                  <span className="block font-fraunces font-semibold text-sm text-sindoor-700 leading-tight">
-                    {isHi ? "क्लासिक" : "Classic"}
-                  </span>
-                  <span className="mt-1 block text-[10px] text-ink-600 leading-snug">
-                    {isHi ? "बिना AI, तुरंत तैयार" : "No AI, instant"}
-                  </span>
-                </div>
-                <span
-                  aria-hidden
-                  className="absolute top-2 left-2 inline-flex items-center rounded-full bg-ink-700 text-cream-50 text-[0.55rem] uppercase tracking-[0.16em] font-bold px-1.5 py-0.5"
-                >
-                  ⚡ {isHi ? "तुरंत" : "Instant"}
+                <span className="ph" aria-hidden>
+                  <span lang="hi">जय श्री राम</span>
                 </span>
+                <span className="t" lang={lang}>{isHi ? "क्लासिक" : "Classic"}</span>
+                <span className="s" lang={lang}>{isHi ? "बिना AI, तुरंत तैयार" : "No AI, instant"}</span>
                 {theme === "classic" ? (
-                  <span
-                    aria-hidden
-                    className="absolute top-2 right-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-saffron-600 text-cream-50 border-2 border-cream-50 shadow-warm"
-                  >
-                    <CheckIcon />
-                  </span>
+                  <span className="tick" aria-hidden><CheckIcon /></span>
                 ) : null}
               </button>
             </div>
-            <p className="mt-4 text-xs text-ink-600 inline-flex items-center gap-1.5">
-              {theme === "classic" ? (
-                <>
-                  <span aria-hidden>⚡</span>
-                  {isHi
-                    ? "तुरंत तैयार। AI नहीं चलेगा।"
-                    : "Ready instantly, no AI generation."}
-                </>
-              ) : (
-                <>
-                  <SparkleIcon />
-                  {isHi
-                    ? "AI आपके विवरण से व्यक्तिगत हिंदी निमंत्रण लिखेगा (~5-8 सेकंड)। पूरी तरह मुफ़्त।"
-                    : "AI writes a personalised Hindi invitation from your details (~5-8s). Completely free."}
-                </>
-              )}
+            <p className="bmi-field-hint" style={{ marginTop: 14 }}>
+              {theme === "classic"
+                ? isHi
+                  ? "तुरंत तैयार। AI नहीं चलेगा।"
+                  : "Ready instantly, no AI generation."
+                : isHi
+                  ? "AI आपके विवरण से व्यक्तिगत हिंदी निमंत्रण लिखेगा (लगभग 5 से 8 सेकंड)। पूरी तरह मुफ़्त।"
+                  : "AI writes a personalised Hindi invitation from your details (about 5 to 8 seconds). Completely free."}
             </p>
           </fieldset>
 
           {error ? (
-            <p className="text-sm text-alert-500" role="alert">
+            <p className="bmi-alert" role="alert">
               {isHi ? `नहीं बन पाया: ${error}` : `Couldn't generate: ${error}`}
             </p>
           ) : null}
 
-          {/* Sticky-feeling generate row. Disabled until the four
-              required fields are present so the visitor can scan
-              missing ones quickly. */}
-          <div className="flex flex-wrap gap-3 items-center justify-center pt-2">
+          {/* The one saffron action; enabled once the four required
+              fields are present. */}
+          <div className="bmi-form-foot">
             <button
               type="submit"
               disabled={!canGenerate || generating}
               data-ga="pamphlet_generate"
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-semibold px-6 py-3 text-base shadow-warm transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="bmi-b bmi-b-p"
             >
-              {generating ? (
-                <>
-                  <Spinner />
-                  {isHi ? "बना रहे हैं…" : "Generating…"}
-                </>
-              ) : isHi ? (
-                "पैम्फलेट बनाएँ (PNG)"
-              ) : (
-                "Generate pamphlet (PNG)"
-              )}
+              {generating ? <Spinner /> : null}
+              <span>
+                {generating
+                  ? isHi ? "बना रहे हैं…" : "Generating…"
+                  : isHi ? "पैम्फलेट बनाएँ (PNG)" : "Generate pamphlet (PNG)"}
+              </span>
             </button>
             {doneUrl ? (
               <a
                 href={doneUrl}
                 download="bada-mangal-pamphlet.png"
                 data-ga="pamphlet_redownload"
-                className="inline-flex items-center justify-center gap-2 rounded-full border-2 border-saffron-600 text-saffron-600 hover:bg-saffron-50 font-semibold px-5 py-3 text-sm"
+                className="bmi-b bmi-b-s"
               >
                 {isHi ? "फिर से डाउनलोड करें" : "Download again"}
               </a>
             ) : null}
           </div>
+          <p className="bmi-fine">
+            {isHi
+              ? "टिप: इस PNG को WhatsApp पर लेकर किसी भी स्थानीय प्रेस शॉप पर जाएँ, वे A4 / A5 कॉपी ₹2 से कम में प्रिंट कर देंगे।"
+              : "Tip: Walk into any local press shop with this PNG on WhatsApp, they'll print A4 / A5 copies for under ₹2 each."}
+          </p>
         </form>
+        </FormPanel>
       </section>
-
-      {/* Post-generate cross-sell: pre-fills /list-bhandara with the
-          same fields so the organiser can publish to the directory in
-          one click. Tucked below the form so it never interrupts the
-          primary "generate pamphlet" flow. */}
-      <section className="mt-12 rounded-2xl border border-gold-500/45 bg-gradient-to-br from-saffron-50 to-cream-50 px-6 py-7 sm:px-8 sm:py-9 shadow-warm">
-        <p className="font-mukta uppercase tracking-[0.2em] text-saffron-600 text-[0.65rem] font-semibold">
-          {isHi ? "एक और कदम (वैकल्पिक)" : "One More Step (Optional)"}
-        </p>
-        <h2
-          className={`mt-2 font-bold text-xl sm:text-2xl text-sindoor-700 ${
-            isHi ? "font-tiro" : "font-fraunces"
-          }`}
-        >
-          {isHi
-            ? "इस भंडारे को BadaMangal.com पर भी सूचीबद्ध करें"
-            : "Also list this bhandara on BadaMangal.com"}
-        </h2>
-        <p className="mt-2 text-sm sm:text-base text-ink-600">
-          {isHi
-            ? "मुफ़्त। आपने अभी-अभी जो जानकारी भरी है वही लिस्टिंग फ़ॉर्म में पहले से भर जाती है, यानी एक-क्लिक प्रकाशन। लखनऊ में भंडारे खोज रहे भक्तगण नक़्शे पर आपका भंडारा पाएँगे। अपने प्रिंटेड पैम्फलेट पर नीचे लगे QR कोड के साथ BadaMangal.com का उल्लेख करें, हर स्कैन यहीं पहुँचेगा।"
-            : "Free. The same details you just typed pre-fill the listing form, so it's a one-tap publish. Devotees searching for bhandaras in Lucknow will find yours on the map. Mention BadaMangal.com on your printed pamphlet via the QR code at the bottom, every scan goes here."}
-        </p>
-        <div className="mt-4">
-          <Link
-            href={listHref}
-            data-ga="pamphlet_cross_sell_list"
-            className="inline-flex items-center gap-2 rounded-full bg-leaf-600 hover:bg-leaf-600/90 text-cream-50 font-semibold px-5 py-2.5 text-sm shadow-sm"
-          >
-            {isHi ? "मेरा भंडारा सूचीबद्ध करें, मुफ़्त →" : "List my bhandara, free →"}
-          </Link>
+          </div>
+          <div className="bmi-formart" aria-hidden>
+            <Plate
+              src={HOME_ART.hanumanStanding.src}
+              width={HOME_ART.hanumanStanding.width}
+              height={HOME_ART.hanumanStanding.height}
+              alt=""
+              fade="bottom"
+            />
+          </div>
         </div>
       </section>
 
-      <p className="mt-6 text-center text-xs text-ink-600">
-        {isHi
-          ? "टिप: इस PNG को WhatsApp पर लेकर किसी भी स्थानीय प्रेस शॉप पर जाएँ, वे A4 / A5 कॉपी ₹2 से कम में प्रिंट कर देंगे।"
-          : "Tip: Walk into any local press shop with this PNG on WhatsApp, they'll print A4 / A5 copies for under ₹2 each."}
-      </p>
-    </div>
+      {/* Cross-sell: pre-fills /list-bhandara with the same fields so
+          the organiser can publish in one tap. */}
+      <Band
+        kicker={<Kicker>{isHi ? "एक और कदम (वैकल्पिक)" : "One more step (optional)"}</Kicker>}
+        heading={
+          <h2 className={`bmi-h2 ${isHi ? "" : "lat"}`} lang={lang}>
+            {isHi
+              ? "इस भंडारे को BadaMangal.com पर भी सूचीबद्ध करें"
+              : "Also list this bhandara on BadaMangal.com"}
+          </h2>
+        }
+        lede={
+          isHi
+            ? "मुफ़्त। आपने जो जानकारी भरी है वही लिस्टिंग फ़ॉर्म में पहले से भर जाती है। लखनऊ में भंडारे खोज रहे भक्तगण नक़्शे पर आपका भंडारा पाएँगे।"
+            : "Free. The same details you just typed pre-fill the listing form, so it's a one-tap publish. Devotees searching for bhandaras in Lucknow will find yours on the map."
+        }
+        actions={
+          <Actions>
+            <Button href={listHref} variant="secondary" iconEnd="chevron" data-ga="pamphlet_cross_sell_list">
+              {isHi ? "मेरा भंडारा सूचीबद्ध करें, मुफ़्त" : "List my bhandara, free"}
+            </Button>
+          </Actions>
+        }
+      />
+    </InnerShell>
   );
 }
 
@@ -845,11 +733,11 @@ function PhoneField({
    *  "Enter a 10-digit mobile number" soft warning. */
   hint?: string;
 }) {
+  const m = label.match(/^(.*?)\s*\((optional|वैकल्पिक)\)$/);
   return (
-    <label className="grid gap-1.5">
-      <span className="text-sm text-ink-600">{label}</span>
-      <div className="flex items-stretch rounded-xl border border-gold-500/50 bg-white overflow-hidden focus-within:ring-2 focus-within:ring-saffron-600 focus-within:border-saffron-600">
-        <span className="inline-flex items-center justify-center px-3 text-ink-600 text-base font-medium border-r border-gold-500/40 bg-saffron-50/50 select-none font-numerals tabular-nums">
+    <KitField asLabel label={m ? m[1] : label} optional={m ? m[2] : undefined} hint={hint}>
+      <div className="bm-phone flex items-stretch overflow-hidden">
+        <span className="inline-flex items-center justify-center select-none tabular-nums">
           +91
         </span>
         <input
@@ -859,17 +747,14 @@ function PhoneField({
           pattern="[0-9]{10}"
           maxLength={10}
           value={value}
-          // Re-strip non-digits inside the input itself so a paste of
-          // a formatted number ("+91 98765 43210") instantly collapses
-          // to its 10-digit core, without this, the chip would
-          // briefly show the +91 doubled up.
+          // Re-strip non-digits so a pasted "+91 98765 43210" collapses
+          // to its 10-digit core.
           onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 10))}
           placeholder="98765 43210"
-          className="flex-1 bg-transparent px-3 py-2.5 text-ink-900 placeholder:text-ink-600/55 focus:outline-none font-numerals tabular-nums tracking-wide"
+          className="flex-1 tabular-nums tracking-wide"
         />
       </div>
-      {hint ? <span className="text-xs text-saffron-600">{hint}</span> : null}
-    </label>
+    </KitField>
   );
 }
 
@@ -889,21 +774,23 @@ function Field({
   required?: boolean;
   type?: string;
 }) {
+  const m = label.match(/^(.*?)\s*\((?:Hindi, )?(optional|वैकल्पिक)\)$/);
+  const hindiOpt = /\(हिंदी, वैकल्पिक\)$/.test(label);
+  const clean = hindiOpt ? label.replace(/\s*\(हिंदी, वैकल्पिक\)$/, " (हिंदी)") : m ? m[1] + (/Hindi, optional/.test(label) ? " (Hindi)" : "") : label;
   return (
-    <label className="grid gap-1.5">
-      <span className="text-sm text-ink-600">
-        {label}
-        {required ? <span className="text-sindoor-700"> *</span> : null}
-      </span>
+    <KitField
+      asLabel
+      label={clean}
+      optional={hindiOpt ? "वैकल्पिक" : m ? m[2] : undefined}
+    >
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        className="w-full rounded-xl border border-gold-500/50 bg-white px-3 py-2.5 text-ink-900 placeholder:text-ink-600/55 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
       />
-    </label>
+    </KitField>
   );
 }
 

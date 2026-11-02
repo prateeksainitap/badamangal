@@ -1,0 +1,42 @@
+/* BadaMangal design tokens, shared by the homepage (.bmh) and every
+   inner page (.bmi). One source for colour, type and motion; each
+   surface keeps its own layout variables (--gut, --maxw, --sec).
+   Change a value here and both surfaces move together. */
+
+.bmh,
+.bmi {
+  /* grounds */
+  --cream: #fbf7f0;
+  --paper: #f5efe3;
+  /* saffron: the action colour */
+  --saffron: #f2944c;
+  --saffron-2: #e07a1f;
+  --saffron-ink: #a3520b;
+  /* gold: rules, rings, ornament */
+  --gold: #c9a24a;
+  --gold-2: #f5eac9;
+  --gold-ink: #7e5f17;
+  /* sindoor: display headings only, never a button */
+  --sindoor: #9c2a2a;
+  /* ink */
+  --ink: #1a1410;
+  --ink-2: #5a4f46;
+  --leaf: #3f7a3f;
+  --line: rgba(201, 162, 74, 0.38);
+  /* type */
+  --f-hi: var(--font-mukta), var(--font-anek-latin), system-ui, sans-serif;
+  --f-en: var(--font-anek-latin), var(--font-mukta), system-ui, sans-serif;
+  --f-body: var(--font-mukta), system-ui, sans-serif;
+  /* motion */
+  --pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  /* the one primary button (saffron pill) and the cream secondary */
+  --btn-p-bg: linear-gradient(180deg, #f6a25e, #e8862f);
+  --btn-p-ink: #2a1205;
+  --btn-p-shadow: 0 1px 0 rgba(255, 255, 255, 0.45) inset, 0 8px 22px -10px rgba(224, 122, 31, 0.75);
+  --btn-p-shadow-hover: 0 1px 0 rgba(255, 255, 255, 0.45) inset, 0 12px 26px -10px rgba(224, 122, 31, 0.85);
+  --btn-s-ring: inset 0 0 0 1px rgba(201, 162, 74, 0.6);
+  --btn-s-ring-hover: inset 0 0 0 1px var(--gold);
+  /* the dark footer ground, for bands that melt into it */
+  --night: #1e1611;
+}

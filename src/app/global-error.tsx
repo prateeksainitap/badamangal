@@ -7,9 +7,38 @@
  * doesn't see a raw Next.js error overlay or a blank screen.
  *
  * This is intentionally tiny and self-contained (no dependency on our
- * brand components), since whatever broke might also break a
- * deeper-imported component.
+ * brand components, CSS or web fonts), since whatever broke might also
+ * break a deeper-imported component. Everything is inline: the site's
+ * colours, a heavy system sans, the painted diya from /public, one
+ * saffron retry button and a quiet way home, both 48px tall.
  */
+const C = {
+  cream: "#FBF7F0",
+  ink: "#1A1410",
+  ink2: "#5A4F46",
+  sindoor: "#9C2A2A",
+  saffronInk: "#A3520B",
+  gold: "#C9A24A",
+  btn: "#E8862F",
+  btnInk: "#2A1205",
+};
+
+const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Noto Sans Devanagari', sans-serif";
+
+const pill = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  minHeight: 48,
+  padding: "0 24px",
+  borderRadius: 9999,
+  fontWeight: 700,
+  fontSize: 16,
+  fontFamily: FONT,
+  textDecoration: "none",
+  cursor: "pointer",
+} as const;
+
 export default function GlobalError({
   error,
   reset,
@@ -21,65 +50,60 @@ export default function GlobalError({
     <html lang="en">
       <body
         style={{
-          fontFamily:
-            "ui-serif, Georgia, 'Iowan Old Style', 'Apple Garamond', serif",
-          background: "#FBF7F0",
-          color: "#1A1410",
+          margin: 0,
+          fontFamily: FONT,
+          background: C.cream,
+          color: C.ink,
           minHeight: "100dvh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "2rem",
+          padding: "32px 16px",
+          boxSizing: "border-box",
         }}
       >
-        <div style={{ maxWidth: 480, textAlign: "center" }}>
+        <main style={{ maxWidth: 480, width: "100%", textAlign: "center" }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/illustrations/error-diya.webp"
+            alt=""
+            width={200}
+            height={200}
+            style={{ display: "block", width: 200, height: 200, margin: "0 auto 8px" }}
+          />
           <p
             style={{
-              fontFamily:
-                "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif",
               textTransform: "uppercase",
-              letterSpacing: "0.32em",
-              fontSize: "0.7rem",
-              color: "#E07A1F",
-              fontWeight: 600,
+              letterSpacing: "0.14em",
+              fontSize: 13,
+              color: C.saffronInk,
+              fontWeight: 700,
               margin: 0,
             }}
           >
-            🪔 Pause for a breath
+            Pause for a breath
           </p>
           <h1
             style={{
-              marginTop: "0.75rem",
-              fontSize: "2rem",
-              fontWeight: 600,
-              color: "#9C2A2A",
-              lineHeight: 1.2,
+              margin: "12px 0 0",
+              fontSize: "clamp(30px, 7vw, 40px)",
+              fontWeight: 800,
+              letterSpacing: "-0.02em",
+              color: C.sindoor,
+              lineHeight: 1.12,
             }}
           >
             Something stopped working.
           </h1>
-          <p style={{ marginTop: "1rem", color: "#5A4F46", lineHeight: 1.6 }}>
+          <p style={{ margin: "14px 0 0", color: C.ink2, fontSize: 17, lineHeight: 1.55 }}>
             We hit an unexpected error and the page couldn&apos;t finish loading.
             The team has been notified, please try again.
           </p>
-          {error?.digest ? (
-            <p
-              style={{
-                marginTop: "1rem",
-                fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                fontSize: "0.7rem",
-                color: "#5A4F46",
-                opacity: 0.6,
-              }}
-            >
-              Reference: {error.digest}
-            </p>
-          ) : null}
           <div
             style={{
-              marginTop: "1.5rem",
+              marginTop: 28,
               display: "flex",
-              gap: "0.75rem",
+              gap: 12,
               justifyContent: "center",
               flexWrap: "wrap",
             }}
@@ -87,38 +111,23 @@ export default function GlobalError({
             <button
               type="button"
               onClick={() => reset()}
-              style={{
-                background: "#E07A1F",
-                color: "#FBF7F0",
-                border: "none",
-                borderRadius: 9999,
-                padding: "0.7rem 1.4rem",
-                fontWeight: 600,
-                fontSize: "0.95rem",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
+              style={{ ...pill, background: C.btn, color: C.btnInk, border: "none" }}
             >
               Try again
             </button>
             <a
               href="/"
-              style={{
-                background: "transparent",
-                color: "#9C2A2A",
-                border: "1.5px solid #C9A24A",
-                borderRadius: 9999,
-                padding: "0.6rem 1.3rem",
-                fontWeight: 600,
-                fontSize: "0.95rem",
-                textDecoration: "none",
-                fontFamily: "inherit",
-              }}
+              style={{ ...pill, background: C.cream, color: C.ink, border: "none", boxShadow: `inset 0 0 0 1px ${C.gold}` }}
             >
-              ← Back home
+              Back home
             </a>
           </div>
-        </div>
+          {error?.digest ? (
+            <p style={{ margin: "22px 0 0", fontSize: 13, color: C.ink2, opacity: 0.75, overflowWrap: "anywhere" }}>
+              Reference: {error.digest}
+            </p>
+          ) : null}
+        </main>
       </body>
     </html>
   );

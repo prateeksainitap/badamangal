@@ -53,8 +53,8 @@
  * suffixed onto `https://wa.me/?text=`, WhatsApp's mobile web URL
  * format which deep-links to the share-target picker on Android/iOS.
  */
-import type { Bhandara } from "@/types/bhandara";
-import { format12h } from "@/lib/time";
+import type { BhandaraListItem } from "@/types/bhandara";
+import { format12h, formatTimeRange } from "@/lib/time";
 import { SITE_URL } from "@/lib/seo";
 
 type Locale = "hi" | "en";
@@ -118,16 +118,14 @@ function pickServeDate(dates: string[] | undefined): string | null {
  *
  * See file-header comment for the full message shape.
  */
-export function bhandaraShareText(b: Bhandara, locale: Locale): string {
+export function bhandaraShareText(b: BhandaraListItem, locale: Locale): string {
   const isHi = locale === "hi";
   const url = `${SITE_URL}/bhandara/${b.slug}${isHi ? "" : "?lang=en"}`;
   const name = isHi ? b.nameHi || b.name : b.name;
   const address = isHi
     ? b.addressHi || b.address || ""
     : b.address || "";
-  const range = b.timeEnd
-    ? `${format12h(b.timeStart)} – ${format12h(b.timeEnd)}`
-    : format12h(b.timeStart);
+  const range = formatTimeRange(b.timeStart, b.timeEnd, locale);
 
   const serveOn = pickServeDate(b.tuesdayDates);
   const dateBody = serveOn
@@ -207,7 +205,7 @@ export function bhandaraShareText(b: Bhandara, locale: Locale): string {
  * prefer (not just WhatsApp).
  */
 export function whatsappShareUrlForBhandara(
-  b: Bhandara,
+  b: BhandaraListItem,
   locale: Locale,
 ): string {
   return `https://wa.me/?text=${encodeURIComponent(bhandaraShareText(b, locale))}`;

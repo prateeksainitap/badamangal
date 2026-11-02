@@ -1,70 +1,63 @@
+import {
+  SEASON_2026,
+  SEASON_2027,
+  ALL_SEASON_TUESDAYS,
+  badaMangalToday,
+  isInSeason,
+  nextTuesdayAfterToday,
+} from "@/lib/season";
+
+// Season config lives in src/lib/season.ts (one entry per year). The
+// *_2026 / ALL_*_ISO / SEASON_*_ISO exports below describe the 2026
+// season ONLY: history (recap, archive, season section). Anything that
+// means "the season people list for now" uses listingSeason() or
+// upcomingSeason() from season.ts instead.
+
+// Tuesdays are anchored at 04:30 UTC (10:00 IST) as a soft "morning of"
+// moment; any countdown reads sensibly from any timezone and still flips
+// on the correct calendar day in IST.
+const tuesdayAnchor = (iso: string) => new Date(`${iso}T04:30:00Z`);
+
 // 8 Bada Mangals of 2026 (Tuesdays of Jyeshtha + Adhik Maas).
-// Stored as UTC ISO with the local Lucknow start moment (≈ 04:30 UTC = 10:00 IST).
-// Using 04:30 UTC as a soft "morning of" anchor; any countdown will read sensibly
-// from any timezone and still flip on the correct calendar day in IST.
-export const BADA_MANGAL_DATES_2026: ReadonlyArray<Date> = [
-  new Date("2026-05-05T04:30:00Z"),
-  new Date("2026-05-12T04:30:00Z"),
-  new Date("2026-05-19T04:30:00Z"),
-  new Date("2026-05-26T04:30:00Z"),
-  new Date("2026-06-02T04:30:00Z"),
-  new Date("2026-06-09T04:30:00Z"),
-  new Date("2026-06-16T04:30:00Z"),
-  new Date("2026-06-23T04:30:00Z"),
-] as const;
+export const BADA_MANGAL_DATES_2026: ReadonlyArray<Date> =
+  SEASON_2026.tuesdays.map(tuesdayAnchor);
 
-// ISO date strings (YYYY-MM-DD) for the 8 Bada Mangals, used as the wire
-// format for tuesdayDates in form submission and the seed.
-export const ALL_TUESDAY_ISO: readonly string[] = BADA_MANGAL_DATES_2026.map(
-  (d) => d.toISOString().slice(0, 10),
-);
+// ISO date strings (YYYY-MM-DD) for the 8 Bada Mangals of 2026.
+export const ALL_TUESDAY_ISO: readonly string[] = SEASON_2026.tuesdays;
 
-// Bada Shanivars of the same Jyeshtha + Adhik Maas window, organizers
-// often run a parallel Saturday bhandara, so we surface these alongside
-// the Tuesdays in the form.
-export const BADA_SHANIVAR_DATES_2026: ReadonlyArray<Date> = [
-  new Date("2026-05-02T04:30:00Z"),
-  new Date("2026-05-09T04:30:00Z"),
-  new Date("2026-05-16T04:30:00Z"),
-  new Date("2026-05-23T04:30:00Z"),
-  new Date("2026-05-30T04:30:00Z"),
-  new Date("2026-06-06T04:30:00Z"),
-  new Date("2026-06-13T04:30:00Z"),
-  new Date("2026-06-20T04:30:00Z"),
-  new Date("2026-06-27T04:30:00Z"),
-] as const;
+// Bada Shanivars of the 2026 Jyeshtha + Adhik Maas window.
+export const BADA_SHANIVAR_DATES_2026: ReadonlyArray<Date> =
+  SEASON_2026.saturdays.map(tuesdayAnchor);
 
-export const ALL_SATURDAY_ISO: readonly string[] =
-  BADA_SHANIVAR_DATES_2026.map((d) => d.toISOString().slice(0, 10));
+export const ALL_SATURDAY_ISO: readonly string[] = SEASON_2026.saturdays;
 
-/**
- * Combined preset list of season service-days (Tuesdays + Saturdays),
- * sorted chronologically. Organizers also have a free calendar picker
- * for any other date, so this list is preset-only, not the closed set.
- */
+/** 2026 preset service days (Tuesdays + Saturdays), sorted. */
 export const ALL_SEASON_ISO: readonly string[] = [
   ...ALL_TUESDAY_ISO,
   ...ALL_SATURDAY_ISO,
 ].sort();
 
-/** Season window used to bound the free calendar picker. */
-export const SEASON_START_ISO = "2026-05-01";
-export const SEASON_END_ISO = "2026-06-30";
+/** 2026 season window. History only; forms use listingSeason(). */
+export const SEASON_START_ISO = SEASON_2026.startISO;
+export const SEASON_END_ISO = SEASON_2026.endISO;
+
+/** Every Bada Mangal Tuesday across all configured seasons, as anchors. */
+const ALL_TUESDAY_ANCHORS: ReadonlyArray<Date> = ALL_SEASON_TUESDAYS.map(tuesdayAnchor);
 
 /**
- * True once every 2026 Bada Mangal Tuesday has passed (IST). Used to
+ * True between seasons (IST), i.e. outside every season window. Used to
  * gate "live right now" chrome (the bottom-left activity ticker's
  * viewer count, in particular) that would otherwise keep implying
  * real-time traffic long after the season, and the actual visitors,
  * are gone.
  */
 export function isBadaMangalSeasonOver(now: Date = new Date()): boolean {
-  const today = istTodayIso(now);
-  return !ALL_TUESDAY_ISO.some((d) => d >= today);
+  return !isInSeason(now);
 }
 
+/** The next Bada Mangal Tuesday anchor (10:00 IST) after `now`, any season. */
 export function nextBadaMangal(now: Date = new Date()): Date | null {
-  for (const d of BADA_MANGAL_DATES_2026) {
+  for (const d of ALL_TUESDAY_ANCHORS) {
     if (d.getTime() > now.getTime()) return d;
   }
   return null;
@@ -196,9 +189,9 @@ export function expandBhandarasByDate<
 }
 
 /**
- * If today's IST calendar date matches one of the 8 Bada Mangals,
- * returns its 1-based ordinal (1 → 1st Bada Mangal, 2 → 2nd, …, 8 → 8th).
- * Returns `null` on every other day.
+ * If today's IST calendar date is a Bada Mangal Tuesday (any season),
+ * returns its 1-based ordinal inside that season. Returns `null` on
+ * every other day.
  *
  * IST is the right frame: a user opening the homepage at 11 PM on a
  * Bada Mangal Tuesday should still see the "Today is …" banner, even
@@ -207,24 +200,18 @@ export function expandBhandarasByDate<
 export function currentBadaMangalOrdinal(
   now: Date = new Date(),
 ): number | null {
-  const today = istTodayIso(now);
-  const idx = ALL_TUESDAY_ISO.indexOf(today);
-  return idx >= 0 ? idx + 1 : null;
+  return badaMangalToday(now)?.ordinal ?? null;
 }
 
 /**
- * The first Bada Mangal strictly AFTER today (IST). On live days this
- * is needed for the countdown timer, `nextBadaMangal()` would return
- * today's date earlier in the day (before its 10 AM IST anchor),
- * giving a sub-1-day countdown that flips to the next one at 10 AM.
+ * The first Bada Mangal strictly AFTER today (IST), any season. On live
+ * days this is needed for the countdown timer, `nextBadaMangal()` would
+ * return today's date earlier in the day (before its 10 AM IST anchor).
  * This variant always points at the next future Tuesday.
  */
 export function nextBadaMangalAfterToday(now: Date = new Date()): Date | null {
-  const today = istTodayIso(now);
-  for (let i = 0; i < BADA_MANGAL_DATES_2026.length; i += 1) {
-    if (ALL_TUESDAY_ISO[i] > today) return BADA_MANGAL_DATES_2026[i];
-  }
-  return null;
+  const iso = nextTuesdayAfterToday(now);
+  return iso ? tuesdayAnchor(iso) : null;
 }
 
 export type Countdown = {
@@ -271,3 +258,12 @@ export function formatEnglishDate(date: Date): string {
     timeZone: "Asia/Kolkata",
   });
 }
+
+/**
+ * First Bada Mangal of the 2027 season: Tuesday 25 May 2027, midnight
+ * IST, as an absolute instant. From SEASON_2027 in src/lib/season.ts
+ * (dates and sources are noted there). Live countdowns should prefer
+ * nextSeasonFirstTuesday() from season.ts, which rolls over by itself.
+ */
+export const NEXT_BADA_MANGAL_ISO = SEASON_2027.tuesdays[0];
+export const NEXT_BADA_MANGAL_AT = Date.parse(`${NEXT_BADA_MANGAL_ISO}T00:00:00+05:30`);

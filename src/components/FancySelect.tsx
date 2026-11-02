@@ -97,7 +97,7 @@ export default function FancySelect({
       <div className={`relative ${className ?? ""}`}>
         <ListboxButton
           aria-label={ariaLabel}
-          className={`inline-flex w-full items-center justify-between gap-2 border border-gold-500/50 ${variantClasses} ${sizeClasses} text-ink-900 hover:border-saffron-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600 focus:border-saffron-600 transition-colors data-[disabled]:opacity-70 data-[disabled]:cursor-not-allowed data-[disabled]:bg-saffron-50/50`}
+          className={`bm-ctl inline-flex w-full items-center justify-between gap-2 border border-gold-500/50 ${variantClasses} ${sizeClasses} text-ink-900 hover:border-saffron-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600 focus:border-saffron-600 transition-colors data-[disabled]:opacity-70 data-[disabled]:cursor-not-allowed data-[disabled]:bg-saffron-50/50`}
         >
           <span
             className={`truncate text-left ${

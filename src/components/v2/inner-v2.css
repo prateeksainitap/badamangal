@@ -1,0 +1,1131 @@
+/* BadaMangal inner page kit (v2). Everything is scoped under .bmi, the
+   wrapper <InnerShell> renders, so nothing leaks into the homepage
+   (.bmh) or the admin. Tokens come from ./tokens.css (shared with the
+   homepage); this file only holds layout and components.
+   Read README.md in this folder before adding to it. Prefix every new
+   class with bmi- so it can never collide with Tailwind or .bmh. */
+
+/* ── frame ──────────────────────────────────────────────────────────
+   The content edge lines up with the global header and footer (both
+   `max-w-6xl px-4 sm:px-6`): 1152px wide, 16px gutter, 24px from
+   640px. Measure the logo's left edge against a heading: same x. */
+.bmi {
+  --gut: 16px;
+  --maxw: 1152px;
+  --sec: 56px;
+  --hairline: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--f-body);
+  font-size: 17px;
+  line-height: 1.6;
+  overflow-x: clip;
+}
+@media (min-width: 640px) { .bmi { --gut: 24px; } }
+@media (min-width: 900px) { .bmi { --sec: 80px; } }
+@media (min-width: 1200px) { .bmi { font-size: 18px; } }
+.bmi *, .bmi *::before, .bmi *::after { box-sizing: border-box; }
+.bmi img { max-width: 100%; }
+.bmi a { color: inherit; text-decoration: none; }
+.bmi figure { margin: 0; }
+.bmi button { font: inherit; color: inherit; }
+.bmi :focus-visible { outline: 2px solid var(--saffron-2); outline-offset: 3px; border-radius: 6px; }
+.bmi .bmi-wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 var(--gut); }
+.bmi .bmi-wrap.narrow { max-width: calc(780px + 2 * var(--gut)); }
+.bmi .bmi-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.bmi .bmi-nb { white-space: nowrap; }
+.bmi .bmi-ic { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.bmi[data-ground="paper"] { background: var(--paper); }
+
+/* ── type ─────────────────────────────────────────────────────────── */
+.bmi .bmi-kick {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px;
+  font: 700 13px/1.4 var(--f-en); letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--saffron-ink); margin: 0 0 14px;
+}
+.bmi .bmi-kick:lang(hi), .bmi .bmi-kick [lang="hi"] { font-family: var(--f-hi); letter-spacing: 0; text-transform: none; font-size: 15px; }
+.bmi .bmi-kick .sep { width: 4px; height: 4px; border-radius: 50%; background: var(--gold); flex: none; }
+.bmi .bmi-kick .live { width: 8px; height: 8px; border-radius: 50%; background: var(--leaf); flex: none; animation: bmi-pulse 1.8s ease-in-out infinite; }
+@keyframes bmi-pulse { 50% { opacity: 0.35; } }
+
+/* Headings. Devanagari gets line-height 1.3 and a hair of top room so
+   matras never clip; Latin is set tight. <Heading> adds .lat for
+   English. */
+.bmi .bmi-h1, .bmi .bmi-h2, .bmi .bmi-h3 {
+  margin: 0; color: var(--sindoor); font-family: var(--f-hi); font-weight: 800;
+  line-height: 1.3; padding-top: 0.06em; text-wrap: balance;
+}
+.bmi .bmi-h1 { font-size: clamp(36px, 8.4vw, 68px); }
+.bmi .bmi-h2 { font-size: clamp(28px, 4.6vw, 44px); }
+.bmi .bmi-h3 { font-size: clamp(22px, 2.4vw, 28px); color: var(--ink); }
+.bmi .bmi-h1.lat, .bmi .bmi-h2.lat, .bmi .bmi-h3.lat { font-family: var(--f-en); letter-spacing: -0.025em; line-height: 1.08; padding-top: 0; }
+.bmi .bmi-h3.lat { letter-spacing: -0.015em; line-height: 1.2; }
+.bmi .bmi-h1.long { font-size: clamp(32px, 6.4vw, 56px); }
+.bmi .bmi-lede { margin: 14px 0 0; max-width: 36em; color: var(--ink-2); font-size: 17px; line-height: 1.55; text-wrap: pretty; }
+@media (min-width: 900px) { .bmi .bmi-lede { font-size: 19px; } }
+.bmi .bmi-lede b, .bmi .bmi-lede strong { color: var(--ink); font-weight: 600; }
+.bmi .bmi-lede em { font-style: normal; }
+.bmi .bmi-fine { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); }
+
+/* ── buttons: one shape, one height everywhere (homepage .b) ──────── */
+.bmi .bmi-b {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  height: 52px; padding: 0 26px; border-radius: 999px; border: 0; cursor: pointer;
+  font: 700 17px/1 var(--f-en); letter-spacing: 0.01em; white-space: nowrap; text-decoration: none;
+  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease), background-color 0.25s;
+}
+.bmi .bmi-b:lang(hi), .bmi .bmi-b [lang="hi"] { font-family: var(--f-hi); }
+.bmi .bmi-b .bmi-ic { width: 18px; height: 18px; }
+.bmi .bmi-b-p { background: var(--btn-p-bg); color: var(--btn-p-ink); box-shadow: var(--btn-p-shadow); }
+.bmi .bmi-b-p:hover { transform: translateY(-1px); box-shadow: var(--btn-p-shadow-hover); }
+.bmi .bmi-b-s { background: var(--cream); color: var(--ink); box-shadow: var(--btn-s-ring); }
+.bmi .bmi-b-s:hover { background: #fffcf6; box-shadow: var(--btn-s-ring-hover); transform: translateY(-1px); }
+.bmi .bmi-b:active { transform: translateY(1px) scale(0.99); }
+.bmi .bmi-b.sm { height: 48px; padding: 0 20px; font-size: 16px; }
+.bmi .bmi-b.block { width: 100%; }
+.bmi .bmi-b[aria-disabled="true"], .bmi .bmi-b:disabled { opacity: 0.5; pointer-events: none; }
+.bmi .bmi-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.bmi .bmi-actions .bmi-tl { margin-left: 4px; }
+@media (max-width: 479px) {
+  /* Phones: the buttons stack full width (equal edges, no squeezed
+     labels); a text link sits centred under them. */
+  .bmi .bmi-actions.split { gap: 10px; }
+  .bmi .bmi-actions.split .bmi-b { flex: 1 1 100%; }
+  .bmi .bmi-actions.split .bmi-tl { flex: 1 1 100%; justify-content: center; margin: 0; }
+}
+.bmi .bmi-tl {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 48px; padding: 0;
+  font: 700 16px/1.3 var(--f-en); color: var(--saffron-ink); background: none; border: 0; cursor: pointer;
+}
+.bmi .bmi-tl:lang(hi), .bmi .bmi-tl [lang="hi"] { font-family: var(--f-hi); }
+.bmi .bmi-tl .bmi-ic { width: 16px; height: 16px; transition: transform 0.25s var(--ease); }
+.bmi .bmi-tl:hover { color: var(--sindoor); }
+.bmi .bmi-tl:hover .bmi-ic.go { transform: translateX(3px); }
+.bmi .bmi-tl.inline { min-height: 0; }
+
+/* ── chips ────────────────────────────────────────────────────────── */
+.bmi .bmi-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.bmi .bmi-chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 14px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.55); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink);
+  font: 600 15px/1.2 var(--f-body); white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.bmi a.bmi-chip { min-height: 44px; transition: background-color 0.2s, box-shadow 0.2s; }
+.bmi a.bmi-chip:hover { background: #fffcf6; box-shadow: inset 0 0 0 1px var(--gold); }
+.bmi .bmi-chip.saffron { background: rgba(242, 148, 76, 0.14); box-shadow: inset 0 0 0 1px rgba(224, 122, 31, 0.4); color: #7a3c06; }
+.bmi .bmi-chip.gold { background: var(--gold-2); box-shadow: none; color: var(--gold-ink); }
+.bmi .bmi-chip.leaf { background: rgba(63, 122, 63, 0.12); box-shadow: none; color: #2c5a2c; }
+.bmi .bmi-chip.muted { background: transparent; color: var(--ink-2); }
+.bmi .bmi-chip .bmi-ic { width: 15px; height: 15px; }
+
+/* ── breadcrumb ───────────────────────────────────────────────────── */
+.bmi .bmi-crumbs { margin: 0 0 22px; }
+.bmi .bmi-crumbs ol { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; margin: 0; padding: 0; list-style: none; font: 600 14px/1.3 var(--f-en); color: var(--ink-2); }
+.bmi .bmi-crumbs:lang(hi) ol { font-family: var(--f-hi); font-size: 15px; }
+.bmi .bmi-crumbs li { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; }
+.bmi .bmi-crumbs li + li::before { content: ""; width: 6px; height: 6px; border-top: 1.5px solid var(--gold); border-right: 1.5px solid var(--gold); transform: rotate(45deg); margin-right: 2px; }
+.bmi .bmi-crumbs a { display: inline-flex; align-items: center; gap: 6px; }
+.bmi .bmi-crumbs a:hover { color: var(--saffron-ink); }
+.bmi .bmi-crumbs [aria-current] { color: var(--ink); }
+
+/* ── page hero ────────────────────────────────────────────────────── */
+.bmi .bmi-hero { position: relative; padding: 24px 0 40px; isolation: isolate; }
+.bmi .bmi-hero::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(64% 46% at 74% 50%, rgba(245, 234, 201, 0.85), rgba(245, 234, 201, 0) 100%);
+}
+.bmi .bmi-hero-grid { display: grid; gap: 28px; align-items: center; }
+.bmi .bmi-hero .bmi-actions { margin-top: 26px; }
+.bmi .bmi-hero-meta { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+.bmi .bmi-hero-art { position: relative; }
+.bmi .bmi-hero.center { text-align: center; }
+.bmi .bmi-hero.center .bmi-kick, .bmi .bmi-hero.center .bmi-actions, .bmi .bmi-hero.center .bmi-hero-meta { justify-content: center; }
+.bmi .bmi-hero.center .bmi-lede { margin-left: auto; margin-right: auto; }
+.bmi .bmi-hero.center .bmi-crumbs ol { justify-content: center; }
+@media (min-width: 1024px) {
+  .bmi .bmi-hero { padding: 40px 0 64px; }
+  .bmi .bmi-hero-grid.has-art { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 64px; }
+}
+
+/* Painted plate: fades into the ground, never boxed. */
+.bmi .bmi-plate { position: relative; display: block; width: 100%; }
+.bmi .bmi-plate img { display: block; width: 100%; height: auto; }
+.bmi .bmi-plate.fade img {
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, transparent 100%);
+}
+.bmi .bmi-plate.fade-b img {
+  -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 72%, transparent 100%);
+}
+
+/* A real photo or pamphlet, mounted like the homepage's prints: a
+   white mat, one soft shadow, a slight tilt. Contain, never crop. */
+.bmi .bmi-print {
+  position: relative; display: block; margin: 0 auto; width: fit-content; max-width: 100%;
+  background: #fff; padding: 8px; border-radius: 4px; rotate: var(--tilt, -1.2deg);
+  box-shadow: 0 1px 2px rgba(60, 40, 10, 0.12), 0 24px 40px -22px rgba(60, 40, 10, 0.5);
+}
+.bmi .bmi-hero-art .bmi-print { max-width: calc(100% - 20px); }
+.bmi .bmi-print img { display: block; width: auto; max-width: 100%; max-height: min(72vh, 620px); object-fit: contain; border-radius: 2px; background: var(--paper); }
+.bmi .bmi-print-a { display: block; cursor: zoom-in; }
+.bmi .bmi-print figcaption .bmi-print-h, .bmi .bmi-print figcaption h2 { margin: 0; font: inherit; color: inherit; }
+.bmi .bmi-print figcaption { padding: 8px 4px 2px; font: 600 13px/1.3 var(--f-en); color: var(--ink-2); text-align: center; }
+
+/* Two columns on desktop: facts on the left, a picture or map on the right. */
+.bmi .bmi-split { display: grid; gap: 40px; }
+@media (min-width: 1024px) { .bmi .bmi-split { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 64px; align-items: start; } }
+.bmi .bmi-after-list { margin-top: 12px; }
+
+/* ── section ──────────────────────────────────────────────────────── */
+.bmi .bmi-sec { position: relative; padding: var(--sec) 0 0; }
+.bmi .bmi-sec.tight { padding-top: calc(var(--sec) * 0.6); }
+.bmi .bmi-sec:last-child { padding-bottom: var(--sec); }
+.bmi .bmi-sec.paper { background: linear-gradient(180deg, rgba(245, 239, 227, 0), var(--paper) 12%, var(--paper) 88%, rgba(245, 239, 227, 0)); padding-bottom: var(--sec); }
+.bmi .bmi-sec-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 24px; margin-bottom: 24px; }
+.bmi .bmi-sec-head > div { max-width: 720px; }
+.bmi .bmi-sec-head .bmi-lede { margin-top: 8px; font-size: 16.5px; }
+.bmi .bmi-sec-head .bmi-tl { flex: none; }
+.bmi .bmi-sec-head.center { justify-content: center; text-align: center; }
+.bmi .bmi-sec-head.center .bmi-kick { justify-content: center; }
+.bmi .bmi-sec-head.center .bmi-lede { margin-left: auto; margin-right: auto; }
+.bmi .bmi-sec-head h2 a { text-decoration: underline; text-decoration-color: rgba(201, 162, 74, 0.7); text-decoration-thickness: 2px; text-underline-offset: 0.18em; }
+.bmi .bmi-sec-head h2 a:hover { color: var(--saffron-ink); }
+.bmi .bmi-rule { height: 1px; border: 0; margin: 0; background: var(--line); }
+
+/* ── info list: label and value rows, hairlines, no cards ─────────── */
+.bmi .bmi-info { margin: 0; padding: 0; border-top: var(--hairline); }
+.bmi .bmi-irow { display: grid; gap: 6px; padding: 18px 0; border-bottom: var(--hairline); }
+.bmi .bmi-ilabel {
+  margin: 0; display: flex; align-items: center; gap: 8px;
+  font: 700 13px/1.3 var(--f-en); letter-spacing: 0.12em; text-transform: uppercase; color: var(--saffron-ink);
+}
+.bmi .bmi-ilabel:lang(hi) { font-family: var(--f-hi); font-size: 15px; letter-spacing: 0; text-transform: none; }
+.bmi .bmi-ilabel .bmi-ic { width: 17px; height: 17px; color: var(--gold-ink); }
+.bmi .bmi-ival { min-width: 0; font-size: 17px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
+.bmi .bmi-ival .big { display: block; font: 700 clamp(20px, 2vw, 24px)/1.3 var(--f-en); letter-spacing: -0.01em; }
+.bmi .bmi-ival .big:lang(hi) { font-family: var(--f-hi); }
+.bmi .bmi-ival .sub { display: block; margin-top: 2px; font-size: 15.5px; color: var(--ink-2); }
+.bmi .bmi-ival .bmi-chips { margin-top: 2px; }
+.bmi .bmi-ival .bmi-actions { margin-top: 10px; gap: 4px 22px; }
+@media (min-width: 760px) {
+  .bmi .bmi-irow { grid-template-columns: 200px minmax(0, 1fr); gap: 24px; align-items: baseline; padding: 22px 0; }
+  .bmi .bmi-ilabel { padding-top: 2px; }
+}
+
+/* ── list rows: bhandaras, temples, anything listed ───────────────── */
+.bmi .bmi-list { margin: 0; padding: 0; list-style: none; border-top: var(--hairline); }
+.bmi .bmi-list > li { border-bottom: var(--hairline); }
+.bmi .bmi-row {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px;
+  min-height: 76px; padding: 14px 2px; color: var(--ink);
+}
+.bmi .bmi-row.has-thumb { grid-template-columns: 64px minmax(0, 1fr) auto; }
+.bmi .bmi-row-thumb { position: relative; width: 64px; height: 64px; border-radius: 14px; overflow: hidden; background: var(--paper); flex: none; }
+.bmi .bmi-row-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bmi .bmi-row-thumb.gada { display: grid; place-items: center; background: var(--gold-2); }
+.bmi .bmi-row-thumb.gada img { width: 30px; height: 30px; object-fit: contain; }
+.bmi .bmi-row-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.bmi .bmi-row-kick { font: 700 13px/1.3 var(--f-en); letter-spacing: 0.02em; color: var(--saffron-ink); font-variant-numeric: tabular-nums; }
+.bmi .bmi-row-kick:lang(hi) { font-family: var(--f-hi); font-size: 14px; }
+.bmi .bmi-row-title { margin: 0; font: 700 18px/1.3 var(--f-en); color: var(--ink); letter-spacing: -0.005em; overflow-wrap: anywhere; }
+.bmi .bmi-row-title:lang(hi) { font-family: var(--f-hi); font-size: 19px; line-height: 1.35; }
+.bmi .bmi-row-meta { font-size: 15px; line-height: 1.4; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bmi .bmi-row-end { display: inline-flex; align-items: center; gap: 10px; color: var(--saffron-ink); }
+.bmi .bmi-row-end .bmi-ic { width: 18px; height: 18px; opacity: 0.55; transition: transform 0.25s var(--ease), opacity 0.2s; }
+.bmi a.bmi-row:hover .bmi-row-title { color: var(--sindoor); }
+.bmi a.bmi-row:hover .bmi-row-end .bmi-ic { opacity: 1; transform: translateX(3px); }
+.bmi .bmi-row.muted .bmi-row-kick { color: var(--ink-2); }
+.bmi .bmi-row.muted .bmi-row-thumb img { filter: saturate(0.75); }
+@media (min-width: 760px) {
+  .bmi .bmi-row { gap: 20px; padding: 16px 4px; }
+  .bmi .bmi-row.has-thumb { grid-template-columns: 76px minmax(0, 1fr) auto; }
+  .bmi .bmi-row-thumb { width: 76px; height: 76px; }
+}
+/* Two columns of rows on wide screens. */
+@media (min-width: 1024px) {
+  .bmi .bmi-list.cols { display: grid; grid-template-columns: 1fr 1fr; column-gap: 48px; border-top: 0; }
+  .bmi .bmi-list.cols > li:nth-child(-n + 2) { border-top: var(--hairline); }
+}
+
+/* ── feed row: the live feed, a spot or a chat line ───────────────── */
+.bmi .bmi-feed { margin: 0; padding: 0; list-style: none; }
+.bmi .bmi-feed > li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 14px; padding: 18px 0; border-top: var(--hairline); }
+.bmi .bmi-feed > li:first-child { border-top: 0; }
+.bmi .bmi-feed-dot { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-2); }
+.bmi .bmi-feed-dot img { width: 24px; height: 24px; }
+.bmi .bmi-feed-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font: 600 13.5px/1.3 var(--f-en); color: var(--ink-2); }
+.bmi .bmi-feed-meta b { color: var(--saffron-ink); font-weight: 700; }
+.bmi .bmi-feed-text { margin: 4px 0 0; font-size: 16.5px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
+.bmi .bmi-feed-pic { position: relative; display: block; margin-top: 10px; width: min(100%, 420px); aspect-ratio: 4 / 3; border-radius: 16px; overflow: hidden; background: var(--paper); }
+.bmi .bmi-feed-pic img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ── photo grid: gallery, spots at a bhandara ─────────────────────── */
+.bmi .bmi-photos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.bmi .bmi-photo { position: relative; margin: 0; }
+.bmi .bmi-photo-img { position: relative; display: block; aspect-ratio: 1; border-radius: 16px; overflow: hidden; background: var(--paper); }
+.bmi .bmi-photo-img img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.9s var(--ease); }
+.bmi a.bmi-photo-img:hover img, .bmi button.bmi-photo-img:hover img { transform: scale(1.04); }
+.bmi button.bmi-photo-img { width: 100%; padding: 0; border: 0; cursor: zoom-in; }
+.bmi .bmi-photo figcaption { margin-top: 8px; padding: 0 2px; }
+.bmi .bmi-photo figcaption b { display: block; font: 700 14px/1.3 var(--f-en); color: var(--ink); }
+.bmi .bmi-photo figcaption span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 14.5px; line-height: 1.4; color: var(--ink-2); }
+@media (min-width: 640px) { .bmi .bmi-photos { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } }
+@media (min-width: 1024px) { .bmi .bmi-photos { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; } .bmi .bmi-photos.lead > li:first-child { grid-column: span 2; grid-row: span 2; } }
+/* PhotoGrid dense (long photo archives): 3 up on phones, 6 on desktop. */
+.bmi .bmi-photos.dense { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.bmi .bmi-photos.dense .bmi-photo-img { border-radius: 12px; }
+@media (min-width: 640px) { .bmi .bmi-photos.dense { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; } }
+@media (min-width: 1024px) { .bmi .bmi-photos.dense { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; } .bmi .bmi-photos.dense .bmi-photo-img { border-radius: 14px; } }
+/* PhotoGrid badge ("Live") on a photo's top left corner. */
+.bmi .bmi-photo-badge { position: absolute; top: 8px; left: 8px; z-index: 1; display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px; border-radius: 999px; background: rgba(251, 247, 240, 0.94); color: var(--ink); font: 700 11px/1 var(--f-en); letter-spacing: 0.1em; text-transform: uppercase; pointer-events: none; }
+.bmi .bmi-photo-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--leaf); animation: bmi-pulse 1.8s ease-in-out infinite; }
+
+/* ── tiles: only where a grid is right (resources, temples) ───────── */
+.bmi .bmi-tiles { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; margin: 0; padding: 0; list-style: none; border-top: var(--hairline); }
+.bmi .bmi-tiles > li { border-bottom: var(--hairline); }
+.bmi .bmi-tile { display: flex; align-items: center; gap: 16px; min-height: 76px; padding: 14px 2px; }
+.bmi .bmi-tile-art { position: relative; flex: none; width: 56px; height: 56px; border-radius: 14px; overflow: hidden; background: var(--gold-2); }
+.bmi .bmi-tile-art img { width: 100%; height: 100%; object-fit: cover; }
+.bmi .bmi-tile-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bmi .bmi-tile-t { font: 700 18px/1.3 var(--f-en); color: var(--ink); }
+.bmi .bmi-tile-t:lang(hi) { font-family: var(--f-hi); font-size: 19px; }
+.bmi .bmi-tile-l { font-size: 15px; line-height: 1.4; color: var(--ink-2); }
+.bmi .bmi-tile .bmi-ic { width: 18px; height: 18px; color: var(--saffron-ink); opacity: 0.55; transition: transform 0.25s var(--ease), opacity 0.2s; }
+.bmi a.bmi-tile:hover .bmi-tile-t { color: var(--sindoor); }
+.bmi a.bmi-tile:hover .bmi-ic { opacity: 1; transform: translateX(3px); }
+@media (min-width: 760px) {
+  /* Wide screens: open tiles with art on top, separated by space, not boxes. */
+  .bmi .bmi-tiles.grid { grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 40px 28px; border-top: 0; }
+  .bmi .bmi-tiles.grid > li { border-bottom: 0; }
+  .bmi .bmi-tiles.grid .bmi-tile { flex-direction: column; align-items: flex-start; gap: 14px; padding: 0; }
+  .bmi .bmi-tiles.grid .bmi-tile-art { width: 100%; height: auto; aspect-ratio: 4 / 3; border-radius: 20px; }
+  .bmi .bmi-tiles.grid .bmi-tile > .bmi-ic { display: none; }
+  .bmi .bmi-tiles.grid a.bmi-tile:hover .bmi-tile-art img { transform: scale(1.04); }
+  .bmi .bmi-tiles.grid .bmi-tile-art img { transition: transform 0.9s var(--ease); }
+}
+/* A row of plain text links split by gold hairlines (homepage rpaths). */
+.bmi .bmi-links { display: flex; flex-wrap: wrap; margin: 0; padding: 0; list-style: none; gap: 0; }
+.bmi .bmi-links > li { flex: 1 1 50%; min-width: 0; border-top: var(--hairline); }
+.bmi .bmi-links a { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 60px; padding: 12px 14px 12px 0; font: 700 17px/1.3 var(--f-en); color: var(--ink); }
+.bmi .bmi-links a:lang(hi), .bmi .bmi-links a [lang="hi"] { font-family: var(--f-hi); }
+.bmi .bmi-links a .bmi-ic { width: 16px; height: 16px; color: var(--saffron-ink); opacity: 0.55; transition: transform 0.25s var(--ease), opacity 0.2s; }
+.bmi .bmi-links a:hover { color: var(--sindoor); }
+.bmi .bmi-links a:hover .bmi-ic { opacity: 1; transform: translateX(3px); }
+@media (min-width: 900px) {
+  .bmi .bmi-links { border-top: var(--hairline); border-bottom: var(--hairline); }
+  .bmi .bmi-links > li { flex: 1 1 0; border-top: 0; }
+  .bmi .bmi-links > li + li a { border-left: var(--hairline); padding-left: 20px; }
+}
+
+/* ── band: a closing invitation (list yours, volunteer) ───────────── */
+.bmi .bmi-band { position: relative; margin-top: var(--sec); padding: calc(var(--sec) * 0.8) 0; background: radial-gradient(ellipse 62% 46% at 50% 50%, rgba(242, 148, 76, 0.16), rgba(245, 234, 201, 0.32) 55%, rgba(251, 247, 240, 0) 100%); overflow: clip; }
+.bmi .bmi-band-grid { display: grid; gap: 24px; align-items: center; justify-items: center; text-align: center; }
+.bmi .bmi-band .bmi-kick { justify-content: center; }
+.bmi .bmi-band .bmi-lede { margin-left: auto; margin-right: auto; }
+.bmi .bmi-band .bmi-actions { justify-content: center; margin-top: 24px; }
+.bmi .bmi-band-grid > div > .bmi-lede:first-child { margin-top: 0; font: 700 clamp(22px, 2.6vw, 30px)/1.35 var(--f-en); color: var(--ink); max-width: 24em; letter-spacing: -0.01em; }
+.bmi .bmi-band-grid > div > .bmi-lede:first-child:lang(hi) { font-family: var(--f-hi); line-height: 1.5; }
+.bmi .bmi-band-art { width: min(168px, 44vw); }
+@media (min-width: 900px) {
+  .bmi .bmi-band-grid.has-art { grid-template-columns: 260px minmax(0, 1fr); justify-items: start; text-align: left; gap: 56px; }
+  .bmi .bmi-band-grid.has-art .bmi-kick, .bmi .bmi-band-grid.has-art .bmi-actions { justify-content: flex-start; }
+  .bmi .bmi-band-grid.has-art .bmi-lede { margin-left: 0; }
+  .bmi .bmi-band-art { width: 260px; }
+}
+
+/* ── empty state: never reads as failure ──────────────────────────── */
+.bmi .bmi-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 32px 0 8px; }
+.bmi .bmi-empty-art { width: min(200px, 52vw); margin-bottom: 8px; }
+.bmi .bmi-empty .bmi-h3 { max-width: 20em; }
+.bmi .bmi-empty .bmi-lede { margin-left: auto; margin-right: auto; max-width: 30em; font-size: 16.5px; }
+.bmi .bmi-empty .bmi-actions { justify-content: center; margin-top: 22px; }
+
+/* ── painted map preview ──────────────────────────────────────────── */
+.bmi .bmi-pmap { position: relative; display: block; overflow: hidden; border-radius: 28px; aspect-ratio: 16 / 10; background: var(--paper);
+  -webkit-mask-image: radial-gradient(ellipse 72% 72% at 50% 50%, #000 70%, transparent 100%); mask-image: radial-gradient(ellipse 72% 72% at 50% 50%, #000 70%, transparent 100%); }
+.bmi .bmi-pmap-plate { position: absolute; max-width: none; height: auto; pointer-events: none; }
+.bmi .bmi-pmap-w { position: relative; }
+.bmi .bmi-pmap-lbl { position: absolute; transform: translate(-50%, -50%); padding: 3px 9px 2px; border-radius: 10px; background: rgba(251, 247, 240, 0.88); box-shadow: 0 0 0 1px rgba(201, 162, 74, 0.35); font: 700 13px/1.25 var(--f-en); color: #3b2b20; white-space: nowrap; pointer-events: none; }
+.bmi .bmi-pmap-lbl:lang(hi) { font-family: var(--f-hi); }
+.bmi .bmi-pmap-pin { position: absolute; width: 42px; height: 42px; transform: translate(-50%, -93%); z-index: 2; }
+.bmi .bmi-pmap-pin img { width: 100%; height: 100%; filter: drop-shadow(0 0 1px #fff8ea) drop-shadow(0 3px 2px rgba(60, 20, 10, 0.4)); animation: bmi-pindrop 0.95s cubic-bezier(0.3, 0.6, 0.4, 1) 0.3s both; transform-origin: 50% 93%; }
+.bmi .bmi-pmap-pin.sm { width: 30px; height: 30px; z-index: 1; }
+.bmi .bmi-pmap-pin.sm img { animation-delay: calc(0.4s + var(--i, 0) * 0.06s); }
+.bmi .bmi-pmap-pin::after { content: ""; position: absolute; left: 50%; top: 91%; width: 46%; height: 10%; margin-left: -23%; border-radius: 50%; background: rgba(40, 20, 10, 0.35); filter: blur(1.5px); }
+.bmi .bmi-pmap-ring { position: absolute; width: 150px; height: 150px; transform: translate(-50%, -62%); border-radius: 50%; background: radial-gradient(closest-side, rgba(242, 148, 76, 0.55), rgba(245, 234, 201, 0.35) 55%, rgba(242, 148, 76, 0)); animation: bmi-breathe 3.2s ease-in-out infinite; pointer-events: none; }
+@keyframes bmi-breathe { 50% { transform: translate(-50%, -62%) scale(1.15); opacity: 0.7; } }
+@keyframes bmi-pindrop { 0% { opacity: 0; transform: translateY(-80px); } 15% { opacity: 1; } 55% { transform: translateY(0) scale(1.06, 0.9); } 72% { transform: translateY(-8px); } 100% { opacity: 1; transform: none; } }
+.bmi .bmi-pmap-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 20px; margin-top: 14px; }
+.bmi .bmi-pmap-foot p { margin: 0; font-size: 15.5px; line-height: 1.45; color: var(--ink-2); max-width: 34em; }
+
+/* ── prose: history, FAQ answers, terms, devotional texts ─────────── */
+.bmi .bmi-prose { max-width: 42em; font-size: 18px; line-height: 1.7; color: var(--ink); }
+.bmi .bmi-prose:lang(hi), .bmi .bmi-prose [lang="hi"] { line-height: 1.85; }
+.bmi .bmi-prose > * + * { margin-top: 1.05em; }
+.bmi .bmi-prose p { margin: 0; text-wrap: pretty; }
+/* The p reset above outranks the rhythm rule, so restate the gap for a
+   paragraph that follows anything (a paragraph, a list, a heading). */
+.bmi .bmi-prose > * + p { margin-top: 1.05em; }
+.bmi .bmi-prose > h2 + p, .bmi .bmi-prose > h3 + p { margin-top: 0.6em; }
+.bmi .bmi-prose > * { margin-bottom: 0; }
+.bmi .bmi-prose h2 { margin: 2em 0 0; font: 800 clamp(26px, 3vw, 34px)/1.15 var(--f-en); color: var(--sindoor); letter-spacing: -0.02em; scroll-margin-top: 96px; }
+.bmi .bmi-prose h3 { margin: 1.6em 0 0; font: 700 clamp(20px, 2vw, 24px)/1.25 var(--f-en); color: var(--ink); scroll-margin-top: 96px; }
+.bmi .bmi-prose h2:lang(hi), .bmi .bmi-prose h3:lang(hi), .bmi .bmi-prose:lang(hi) h2, .bmi .bmi-prose:lang(hi) h3 { font-family: var(--f-hi); line-height: 1.35; letter-spacing: 0; padding-top: 0.04em; }
+.bmi .bmi-prose h2:first-child, .bmi .bmi-prose h3:first-child { margin-top: 0; }
+.bmi .bmi-prose a { color: var(--saffron-ink); text-decoration: underline; text-decoration-color: rgba(201, 162, 74, 0.7); text-underline-offset: 0.18em; }
+.bmi .bmi-prose a:hover { color: var(--sindoor); }
+.bmi .bmi-prose strong, .bmi .bmi-prose b { font-weight: 700; }
+.bmi .bmi-prose em { font-style: normal; color: var(--saffron-ink); }
+.bmi .bmi-prose ul, .bmi .bmi-prose ol { padding-left: 1.3em; }
+.bmi .bmi-prose li + li { margin-top: 0.45em; }
+.bmi .bmi-prose ul { list-style: none; padding-left: 0; }
+.bmi .bmi-prose ul > li { position: relative; padding-left: 1.3em; }
+.bmi .bmi-prose ul > li::before { content: ""; position: absolute; left: 0.2em; top: 0.72em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+.bmi .bmi-prose ol > li::marker { color: var(--saffron-ink); font-weight: 700; }
+.bmi .bmi-prose blockquote { margin-left: 0; margin-right: 0; padding: 4px 0 4px 22px; border-left: 2px solid var(--gold); font: 700 clamp(20px, 2.2vw, 26px)/1.4 var(--f-en); color: var(--ink); }
+.bmi .bmi-prose blockquote:lang(hi) { font-family: var(--f-hi); line-height: 1.6; }
+.bmi .bmi-prose hr { border: 0; height: 1px; background: var(--line); margin: 2.2em 0; }
+.bmi .bmi-prose table { width: 100%; border-collapse: collapse; font-size: 16px; }
+.bmi .bmi-prose th, .bmi .bmi-prose td { padding: 12px 10px 12px 0; border-bottom: var(--hairline); text-align: left; vertical-align: top; }
+.bmi .bmi-prose th { font: 700 13px/1.3 var(--f-en); letter-spacing: 0.1em; text-transform: uppercase; color: var(--saffron-ink); }
+.bmi .bmi-prose .tw { overflow-x: auto; }
+/* Devotional verse: the text is the hero. Centred, generous leading. */
+.bmi .bmi-prose.verse { max-width: 34em; margin-left: auto; margin-right: auto; text-align: center; font-family: var(--f-hi); font-weight: 700; font-size: clamp(21px, 2.3vw, 27px); line-height: 1.9; color: var(--ink); }
+.bmi .bmi-prose.verse p + p { margin-top: 1.4em; }
+.bmi .bmi-prose.verse .num { display: block; margin-bottom: 4px; font: 700 13px/1 var(--f-en); letter-spacing: 0.14em; color: var(--gold-ink); }
+.bmi .bmi-prose.verse .tr { display: block; margin-top: 0.5em; font: 400 17px/1.6 var(--f-body); color: var(--ink-2); }
+/* With a table of contents (legal pages, long guides). */
+.bmi .bmi-doc { display: grid; gap: 32px; }
+.bmi .bmi-toc { font-size: 15px; }
+.bmi .bmi-toc p { margin: 0 0 10px; font: 700 13px/1.3 var(--f-en); letter-spacing: 0.12em; text-transform: uppercase; color: var(--saffron-ink); }
+.bmi .bmi-toc ol { margin: 0; padding: 0; list-style: none; border-left: 1px solid var(--line); }
+.bmi .bmi-toc a { display: block; padding: 7px 0 7px 16px; margin-left: -1px; border-left: 2px solid transparent; color: var(--ink-2); line-height: 1.35; }
+.bmi .bmi-toc a:hover { color: var(--ink); }
+.bmi .bmi-toc a[aria-current="true"] { color: var(--sindoor); border-left-color: var(--saffron-2); font-weight: 600; }
+.bmi .bmi-toc details summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 0 2px; border-top: var(--hairline); border-bottom: var(--hairline); font: 700 16px/1.3 var(--f-en); }
+.bmi .bmi-toc details summary::-webkit-details-marker { display: none; }
+.bmi .bmi-toc details[open] summary { margin-bottom: 12px; }
+.bmi .bmi-toc details summary:lang(hi), .bmi .bmi-toc:lang(hi) summary { font-family: var(--f-hi); }
+/* A chevron that turns when the folded contents open. */
+.bmi .bmi-toc details summary::after { content: ""; width: 8px; height: 8px; margin: -4px 8px 0 0; border-right: 2px solid var(--saffron-ink); border-bottom: 2px solid var(--saffron-ink); transform: rotate(45deg); transition: transform 0.25s var(--ease), margin 0.25s var(--ease); }
+.bmi .bmi-toc details[open] summary::after { transform: rotate(-135deg); margin-top: 4px; }
+.bmi .bmi-toc-d { display: none; }
+@media (min-width: 1024px) {
+  .bmi .bmi-doc { grid-template-columns: 240px minmax(0, 1fr); gap: 64px; align-items: start; }
+  .bmi .bmi-toc { position: sticky; top: 96px; }
+  .bmi .bmi-toc details { display: none; }
+  .bmi .bmi-toc-d { display: block; }
+}
+
+/* ── FAQ list (homepage .faq-list) ────────────────────────────────── */
+.bmi .bmi-faq { margin: 0; padding: 0; list-style: none; border-top: var(--hairline); }
+.bmi .bmi-faq > li { border-bottom: var(--hairline); scroll-margin-top: 96px; }
+.bmi .bmi-faq h3, .bmi .bmi-faq h2 { margin: 0; }
+.bmi .bmi-faq-q { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 64px; padding: 18px 2px; background: none; border: 0; cursor: pointer; text-align: left; font: 700 clamp(18px, 1.6vw, 21px)/1.35 var(--f-en); color: var(--ink); }
+.bmi .bmi-faq-q:lang(hi), .bmi .bmi-faq:lang(hi) .bmi-faq-q { font-family: var(--f-hi); line-height: 1.45; }
+.bmi .bmi-faq-q:hover { color: var(--sindoor); }
+.bmi .bmi-faq-q .pm { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(201, 162, 74, 0.6); flex: none; transition: transform 0.35s var(--ease), background-color 0.25s; }
+.bmi .bmi-faq-q .pm .bmi-ic { width: 16px; height: 16px; }
+.bmi .bmi-faq-q[aria-expanded="true"] .pm { transform: rotate(45deg); background: var(--gold-2); }
+.bmi .bmi-faq-a { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.4s var(--ease); }
+.bmi .bmi-faq-a.open { grid-template-rows: 1fr; }
+.bmi .bmi-faq-a > div { overflow: hidden; }
+.bmi .bmi-faq-a .in { padding: 0 52px 24px 2px; color: var(--ink-2); font-size: 16.5px; line-height: 1.65; text-wrap: pretty; }
+.bmi .bmi-faq-a .in:lang(hi), .bmi .bmi-faq:lang(hi) .bmi-faq-a .in { line-height: 1.85; }
+.bmi .bmi-faq-a .rel { display: flex; flex-wrap: wrap; gap: 0 22px; margin-top: 8px; }
+
+/* ── forms: wrap existing inputs, never change their logic ────────── */
+.bmi .bmi-form { display: grid; gap: 22px; }
+.bmi .bmi-field { display: grid; gap: 8px; min-width: 0; }
+.bmi .bmi-field > label, .bmi .bmi-field-label { font: 700 15px/1.3 var(--f-en); color: var(--ink); }
+.bmi .bmi-field > label:lang(hi), .bmi .bmi-field-label:lang(hi) { font-family: var(--f-hi); font-size: 16px; }
+.bmi .bmi-field .opt { font: 500 13px/1 var(--f-body); color: var(--ink-2); margin-left: 6px; }
+.bmi .bmi-field-hint { margin: 0; font-size: 14px; line-height: 1.45; color: var(--ink-2); }
+.bmi .bmi-field-err { margin: 0; font: 600 14px/1.4 var(--f-body); color: #8a3b12; display: flex; gap: 6px; align-items: flex-start; }
+.bmi .bmi-field :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]), textarea, select),
+.bmi .bmi-form :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]), textarea, select) {
+  width: 100%; min-height: 52px; padding: 13px 16px; border: 0; border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78); color: var(--ink); font: 500 17px/1.4 var(--f-body);
+  box-shadow: inset 0 0 0 1px rgba(201, 162, 74, 0.45); outline: none; appearance: none; -webkit-appearance: none;
+  transition: box-shadow 0.2s, background-color 0.2s;
+}
+.bmi .bmi-field textarea, .bmi .bmi-form textarea { min-height: 120px; resize: vertical; line-height: 1.55; }
+.bmi .bmi-field :is(input, textarea, select)::placeholder, .bmi .bmi-form :is(input, textarea)::placeholder { color: rgba(90, 79, 70, 0.62); }
+.bmi .bmi-field :is(input, textarea, select):hover, .bmi .bmi-form :is(input, textarea, select):hover { box-shadow: inset 0 0 0 1px var(--gold); }
+.bmi .bmi-field :is(input, textarea, select):focus, .bmi .bmi-form :is(input, textarea, select):focus { background: #fff; box-shadow: inset 0 0 0 2px var(--saffron); }
+.bmi .bmi-field :is(input, textarea, select)[aria-invalid="true"] { box-shadow: inset 0 0 0 2px #c46a2c; }
+.bmi .bmi-field select, .bmi .bmi-form select, .bmi .bmi-select select {
+  padding-right: 46px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3520b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 16px center; background-size: 18px;
+}
+/* Checkbox and radio: the homepage gold ring, saffron when on. */
+.bmi .bmi-form :is(input[type="checkbox"], input[type="radio"]), .bmi .bmi-field :is(input[type="checkbox"], input[type="radio"]) {
+  appearance: none; -webkit-appearance: none; width: 22px; height: 22px; margin: 0; flex: none; display: inline-grid; place-content: center;
+  border-radius: 7px; background: #fff; box-shadow: inset 0 0 0 1.5px rgba(201, 162, 74, 0.8); cursor: pointer; transition: background-color 0.2s, box-shadow 0.2s;
+}
+.bmi .bmi-form input[type="radio"], .bmi .bmi-field input[type="radio"] { border-radius: 50%; }
+.bmi .bmi-form :is(input[type="checkbox"], input[type="radio"]):checked, .bmi .bmi-field :is(input[type="checkbox"], input[type="radio"]):checked { background: var(--saffron-2); box-shadow: none; }
+.bmi .bmi-form input[type="checkbox"]:checked::after, .bmi .bmi-field input[type="checkbox"]:checked::after { content: ""; width: 10px; height: 6px; border-left: 2.4px solid #fff; border-bottom: 2.4px solid #fff; transform: translateY(-1px) rotate(-45deg); }
+.bmi .bmi-form input[type="radio"]:checked::after, .bmi .bmi-field input[type="radio"]:checked::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #fff; }
+.bmi .bmi-check { display: flex; align-items: flex-start; gap: 12px; min-height: 48px; padding: 12px 0; cursor: pointer; font-size: 16px; line-height: 1.45; }
+.bmi .bmi-check input { margin-top: 1px; }
+/* Choice pills (segmented options built from radios or buttons). */
+.bmi .bmi-choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.bmi .bmi-choice { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 18px; border-radius: 999px; background: rgba(255, 255, 255, 0.7); box-shadow: inset 0 0 0 1px rgba(201, 162, 74, 0.5); font: 600 16px/1.2 var(--f-body); cursor: pointer; transition: background-color 0.2s, box-shadow 0.2s, color 0.2s; }
+.bmi .bmi-choice:hover { box-shadow: inset 0 0 0 1px var(--gold); }
+.bmi .bmi-choice[aria-pressed="true"], .bmi .bmi-choice[aria-checked="true"], .bmi .bmi-choice:has(input:checked) { background: var(--gold-2); box-shadow: inset 0 0 0 1.5px var(--saffron-2); color: var(--ink); }
+.bmi .bmi-choice input { position: absolute; opacity: 0; pointer-events: none; }
+/* A form panel: the one place a soft surface is right (a form needs a
+   frame). No border colour, no shadow stack. */
+.bmi .bmi-panel { padding: 24px 18px; border-radius: 28px; background: rgba(255, 255, 255, 0.55); box-shadow: inset 0 0 0 1px rgba(201, 162, 74, 0.28); }
+@media (min-width: 640px) { .bmi .bmi-panel { padding: 36px 40px; } }
+.bmi .bmi-form-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding-top: 6px; }
+.bmi .bmi-form-foot .bmi-fine { flex: 1 1 260px; }
+
+/* Stepper: where you are in a multi step form. */
+.bmi .bmi-steps { display: flex; align-items: center; gap: 0; margin: 0 0 28px; padding: 0; list-style: none; counter-reset: s; }
+.bmi .bmi-steps li { display: flex; align-items: center; gap: 10px; flex: 1 1 0; min-width: 0; font: 700 14px/1.2 var(--f-en); color: var(--ink-2); counter-increment: s; }
+.bmi .bmi-steps li::before { content: counter(s); flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--cream); box-shadow: inset 0 0 0 1.5px rgba(201, 162, 74, 0.6); font-variant-numeric: tabular-nums; }
+.bmi .bmi-steps li::after { content: ""; flex: 1; height: 1.5px; background: var(--line); margin: 0 10px; }
+.bmi .bmi-steps li:last-child { flex: 0 0 auto; }
+.bmi .bmi-steps li:last-child::after { display: none; }
+.bmi .bmi-steps li[aria-current="step"] { color: var(--ink); }
+.bmi .bmi-steps li[aria-current="step"]::before { background: var(--saffron-2); color: #fff; box-shadow: none; }
+.bmi .bmi-steps li.done::before { content: ""; background: var(--gold-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237e5f17' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 15px no-repeat; box-shadow: none; }
+.bmi .bmi-steps li.done::after { background: var(--gold); }
+.bmi .bmi-steps .lbl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 559px) { .bmi .bmi-steps li:not([aria-current="step"]) .lbl { display: none; } }
+
+/* ── sticky actions (phones) ──────────────────────────────────────── */
+.bmi-sticky {
+  position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 950;
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; padding: 6px;
+  border-radius: 22px; background: rgba(251, 247, 240, 0.96); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  box-shadow: inset 0 0 0 1px rgba(201, 162, 74, 0.4), 0 18px 36px -18px rgba(60, 40, 10, 0.5);
+  transform: translateY(calc(100% + 24px)); transition: transform 0.35s var(--ease);
+  font-family: var(--f-body);
+}
+.bmi-sticky.on { transform: none; }
+.bmi-sticky a, .bmi-sticky button {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 56px; padding: 6px 4px;
+  border: 0; border-radius: 16px; background: none; color: var(--ink); text-decoration: none; cursor: pointer;
+  font: 700 13px/1.15 var(--f-en); white-space: nowrap;
+}
+.bmi-sticky :is(a, button):lang(hi) { font-family: var(--f-hi); font-size: 14px; }
+.bmi-sticky :is(a, button) svg { width: 21px; height: 21px; color: var(--saffron-ink); }
+.bmi-sticky .p { background: var(--btn-p-bg); color: var(--btn-p-ink); box-shadow: var(--btn-p-shadow); }
+.bmi-sticky .p svg { color: var(--btn-p-ink); }
+@media (min-width: 640px) { .bmi-sticky { display: none; } }
+
+/* ── reveal motion (same as the homepage) ─────────────────────────── */
+@keyframes bmi-rise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@keyframes bmi-word { from { opacity: 0; transform: translateY(0.45em); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .bmi [data-rv] { animation: bmi-rise linear both; animation-timeline: view(); animation-range: entry 0% entry 50%; }
+    .bmi .words .w { display: inline-block; animation: bmi-word linear both; animation-timeline: view(); animation-range: entry calc(4% + var(--wi, 0) * 5%) entry calc(46% + var(--wi, 0) * 5%); }
+  }
+}
+@supports not (animation-timeline: view()) {
+  .bmi[data-js] [data-rv]:not(.in) { opacity: 0; transform: translateY(22px); }
+  .bmi[data-js] [data-rv] { transition: opacity 0.9s var(--ease), transform 0.9s var(--ease); }
+  .bmi .words .w { display: inline-block; }
+  .bmi[data-js] .words:not(.in) .w { opacity: 0; transform: translateY(0.45em); }
+  .bmi[data-js] .words .w { transition: opacity 0.7s var(--ease), transform 0.7s var(--ease); transition-delay: calc(var(--wi, 0) * 70ms); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bmi *, .bmi *::before, .bmi *::after, .bmi-sticky { animation-duration: 0.001s !important; animation-iteration-count: 1 !important; animation-delay: 0s !important; transition-duration: 0.001s !important; }
+  .bmi[data-js] [data-rv]:not(.in), .bmi[data-js] .words:not(.in) .w { opacity: 1 !important; transform: none !important; }
+  .bmi .bmi-print { rotate: none; }
+}
+
+/* ── the global chrome on inner pages, same as the homepage ───────────
+   Phones: the floating Spot pill collapses to the homepage's 52px
+   camera button, the separate back-to-top circle goes, and the footer
+   keeps room under its legal line. When a page shows its own sticky
+   actions bar, the floating button steps aside. */
+@media (max-width: 767px) {
+  body:has(.bmi) a[data-ga="cta_floating_spot"] { width: 52px; height: 52px; padding: 0; justify-content: center; gap: 0; }
+  body:has(.bmi) a[data-ga="cta_floating_spot"] > span:last-child { display: none; }
+  body:has(.bmi) button[aria-label="Scroll to top"] { display: none !important; }
+  body:has(.bmi) footer > div { padding-bottom: calc(52px + 20px + 24px + env(safe-area-inset-bottom)); }
+}
+body:has(.bmi-sticky) a[data-ga="cta_floating_spot"] { transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s; }
+@media (max-width: 639px) {
+  body:has(.bmi-sticky.on) a[data-ga="cta_floating_spot"] { opacity: 0; transform: translateY(12px); pointer-events: none; visibility: hidden; }
+}
+
+/* Existing buttons dropped into the kit (CopyButton, BackToHomeLink). */
+.bmi .bmi-copy svg { width: 16px; height: 16px; }
+
+/* ── forms, part 2 (phase 2 group B: list, spot, organise, volunteer,
+   contact, pamphlet). Skins the site's shared custom controls so they
+   sit flush with kit inputs, plus choice tiles and the path chooser.
+   Hooks: .bm-ctl (FancySelect, TimeField triggers), .bm-phone
+   (PhoneInput), .bm-ctl-date (SeasonDatePicker trigger). ─────────── */
+.bmi span.bmi-field-hint, .bmi span.bmi-field-err { display: block; }
+.bmi .bmi-field .bm-ctl, .bmi .bmi-form .bm-ctl {
+  min-height: 52px; padding: 13px 16px; border: 0; border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78); color: var(--ink); font: 500 17px/1.4 var(--f-body);
+  box-shadow: inset 0 0 0 1px rgba(201, 162, 74, 0.45); transition: box-shadow 0.2s, background-color 0.2s;
+}
+.bmi .bmi-form .bm-ctl:hover { box-shadow: inset 0 0 0 1px var(--gold); }
+.bmi .bmi-form .bm-ctl:focus-visible, .bmi .bmi-form .bm-ctl[data-open], .bmi .bmi-form .bm-ctl[aria-expanded="true"] { outline: none; background: #fff; box-shadow: inset 0 0 0 2px var(--saffron); }
+.bmi .bmi-form .bm-ctl svg { color: var(--saffron-ink); }
+.bmi .bmi-form .bm-phone { min-height: 52px; border: 0; border-radius: 14px; background: rgba(255, 255, 255, 0.78); box-shadow: inset 0 0 0 1px rgba(201, 162, 74, 0.45); transition: box-shadow 0.2s, background-color 0.2s; }
+.bmi .bmi-form .bm-phone:hover { box-shadow: inset 0 0 0 1px var(--gold); }
+.bmi .bmi-form .bm-phone:focus-within { background: #fff; box-shadow: inset 0 0 0 2px var(--saffron); }
+.bmi .bmi-form .bm-phone > span { padding: 0 4px 0 16px; background: transparent; border: 0; font: 600 17px/1 var(--f-body); color: var(--ink-2); }
+.bmi .bmi-form .bm-phone input { min-height: 50px !important; padding: 13px 16px 13px 10px !important; background: transparent !important; box-shadow: none !important; border-radius: 0 !important; }
+.bmi .bmi-form .bm-ctl-date { min-height: 48px; padding: 0 20px; border: 0; background: var(--cream); color: var(--ink); font: 700 16px/1 var(--f-en); box-shadow: var(--btn-s-ring); }
+.bmi .bmi-form .bm-ctl-date:lang(hi), .bmi:lang(hi) .bmi-form .bm-ctl-date { font-family: var(--f-hi); }
+.bmi .bmi-form .bm-ctl-date:hover { background: #fffcf6; box-shadow: var(--btn-s-ring-hover); }
+.bmi .bmi-form .bm-ctl-date svg { color: var(--saffron-ink); }
+/* Native date and time inputs: the kit field plus a drawn calendar or
+   clock; the browser's own indicator stays (invisible) on top of it so
+   a tap still opens the system picker. */
+.bmi .bmi-form input:is([type="date"], [type="time"], [type="datetime-local"]) {
+  position: relative; padding-right: 50px; min-width: 0; font-variant-numeric: tabular-nums;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3520b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3.5' y='5' width='17' height='15' rx='2.5'/%3E%3Cpath d='M3.5 9.5h17M8 3v4M16 3v4'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important; background-position: right 16px center !important; background-size: 20px !important;
+}
+.bmi .bmi-form input[type="time"] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3520b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Cpath d='M12 7.5V12l3 2'/%3E%3C/svg%3E") !important; }
+.bmi .bmi-form input:is([type="date"], [type="time"], [type="datetime-local"])::-webkit-calendar-picker-indicator { position: absolute; right: 8px; top: 50%; width: 36px; height: 36px; margin: -18px 0 0; opacity: 0; cursor: pointer; }
+.bmi .bmi-form input:is([type="date"], [type="time"])::-webkit-date-and-time-value { text-align: left; }
+.bmi .bmi-form input:is([type="date"], [type="time"])::-webkit-datetime-edit { padding: 0; }
+.bmi .bmi-form input:is([type="date"], [type="time"]):invalid::-webkit-datetime-edit, .bmi .bmi-form input:is([type="date"], [type="time"])[value=""]::-webkit-datetime-edit { color: rgba(90, 79, 70, 0.62); }
+/* A chip-input (type and press Enter): the field look on the box, the
+   inner input bare. */
+.bmi .bmi-form .bmi-tagbox { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 52px; padding: 7px 10px; border-radius: 14px; background: rgba(255, 255, 255, 0.78); box-shadow: inset 0 0 0 1px rgba(201, 162, 74, 0.45); transition: box-shadow 0.2s, background-color 0.2s; }
+.bmi .bmi-form .bmi-tagbox:focus-within { background: #fff; box-shadow: inset 0 0 0 2px var(--saffron); }
+.bmi .bmi-form .bmi-tagbox input { flex: 1 1 140px; width: auto !important; min-height: 38px !important; padding: 4px 6px !important; background: transparent !important; box-shadow: none !important; }
+.bmi .bmi-tag { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 6px 0 14px; border-radius: 999px; background: var(--gold-2); font: 600 15px/1.2 var(--f-body); color: var(--ink); }
+.bmi .bmi-tag button { width: 28px; height: 28px; border: 0; border-radius: 50%; background: none; display: grid; place-items: center; cursor: pointer; color: var(--ink-2); }
+.bmi .bmi-tag button:hover { background: rgba(255, 255, 255, 0.7); color: var(--ink); }
+.bmi .bmi-tag button .bmi-ic { width: 14px; height: 14px; }
+/* Date tiles: a season date to tick. Two across on phones, four on wide. */
+.bmi .bmi-dates { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 640px) { .bmi .bmi-dates { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.bmi .bmi-date { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 66px; padding: 10px 12px 10px 16px; border-radius: 16px; background: rgba(255, 255, 255, 0.7); box-shadow: inset 0 0 0 1px rgba(201, 162, 74, 0.5); cursor: pointer; user-select: none; transition: background-color 0.2s, box-shadow 0.2s; }
+.bmi .bmi-date:hover { box-shadow: inset 0 0 0 1px var(--gold); }
+.bmi .bmi-date:has(input:checked) { background: var(--gold-2); box-shadow: inset 0 0 0 1.5px var(--saffron-2); }
+.bmi .bmi-date:has(input:focus-visible), .bmi .bmi-choice:has(input:focus-visible) { outline: 2px solid var(--saffron-2); outline-offset: 3px; }
+.bmi .bmi-date input { position: absolute; opacity: 0; pointer-events: none; }
+.bmi .bmi-date .d { display: block; font: 700 18px/1.25 var(--f-en); color: var(--ink); font-variant-numeric: tabular-nums; }
+.bmi .bmi-date .d:lang(hi) { font-family: var(--f-hi); line-height: 1.35; }
+.bmi .bmi-date .w { display: block; margin-top: 2px; font: 500 13.5px/1.3 var(--f-body); color: var(--ink-2); }
+.bmi .bmi-date .tick { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: #fff; box-shadow: inset 0 0 0 1.5px rgba(201, 162, 74, 0.8); color: transparent; transition: background-color 0.2s, color 0.2s; }
+.bmi .bmi-date .tick .bmi-ic { width: 14px; height: 14px; stroke-width: 3; }
+.bmi .bmi-date:has(input:checked) .tick { background: var(--saffron-2); box-shadow: none; color: #fff; }
+.bmi .bmi-choice input[type="checkbox"], .bmi .bmi-choice input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+.bmi .bmi-choice:lang(hi), .bmi .bmi-choice [lang="hi"] { font-family: var(--f-hi); }
+/* A quiet note inside a form: icon disc and one or two lines, no box. */
+.bmi .bmi-fnote { display: flex; align-items: flex-start; gap: 12px; margin: 0; font-size: 15.5px; line-height: 1.5; color: var(--ink-2); }
+.bmi .bmi-fnote > .ic { flex: none; width: 36px; height: 36px; margin-top: -4px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-2); color: var(--saffron-ink); }
+.bmi .bmi-fnote > .ic .bmi-ic, .bmi .bmi-fnote > .ic svg { width: 18px; height: 18px; }
+.bmi .bmi-fnote b { color: var(--ink); font-weight: 600; }
+.bmi .bmi-fnote.warn > .ic { background: rgba(224, 122, 31, 0.16); }
+/* A form-level message (submit failed). Warm, never red. */
+.bmi .bmi-alert { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 16px; background: rgba(224, 122, 31, 0.1); color: #7a3c06; font: 600 15.5px/1.45 var(--f-body); }
+.bmi .bmi-alert.ok { background: rgba(63, 122, 63, 0.1); color: #2c5a2c; }
+/* Step body and nav for multi step forms. */
+.bmi .bmi-step-h { margin: 0 0 22px; }
+.bmi .bmi-step-h .bmi-h3 { font-size: clamp(24px, 2.6vw, 30px); color: var(--sindoor); }
+.bmi .bmi-step-h p { margin: 6px 0 0; color: var(--ink-2); font-size: 16px; line-height: 1.5; }
+.bmi .bmi-grid2 { display: grid; gap: 22px; align-items: start; }
+@media (min-width: 640px) { .bmi .bmi-grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 20px; } }
+.bmi .bmi-grid2 > .full { grid-column: 1 / -1; }
+.bmi .bmi-form-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 30px; padding-top: 22px; border-top: var(--hairline); }
+.bmi .bmi-form-nav .bmi-tl[disabled] { opacity: 0.35; pointer-events: none; }
+.bmi .bmi-fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.bmi .bmi-fieldset > legend { padding: 0; }
+.bmi .bmi-sub { margin: 28px 0 0; padding-top: 24px; border-top: var(--hairline); }
+/* Done state of a form: tick, heading, one line, one action. */
+.bmi .bmi-done { text-align: center; padding: 8px 0; }
+.bmi .bmi-done-tick { width: 64px; height: 64px; margin: 0 auto 18px; border-radius: 50%; display: grid; place-items: center; background: var(--leaf); color: #fff; animation: bmi-pop 0.6s var(--pop) both; }
+.bmi .bmi-done-tick .bmi-ic, .bmi .bmi-done-tick svg { width: 30px; height: 30px; stroke-width: 3; }
+@keyframes bmi-pop { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
+.bmi .bmi-done .bmi-lede { margin-left: auto; margin-right: auto; }
+.bmi .bmi-done .bmi-actions { justify-content: center; margin-top: 24px; }
+.bmi .bmi-next { display: grid; gap: 12px; max-width: 360px; margin: 24px auto 0; padding: 0; list-style: none; text-align: left; }
+.bmi .bmi-next li { display: flex; align-items: center; gap: 12px; font: 600 16px/1.35 var(--f-body); color: var(--ink); }
+.bmi .bmi-next li::before { content: ""; flex: none; width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgba(201, 162, 74, 0.7); background: #fff; }
+.bmi .bmi-next li.done::before { box-shadow: none; background: var(--gold-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237e5f17' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / 14px no-repeat; }
+/* The path chooser (/list-bhandara): three ways in as hairline rows. */
+.bmi .bmi-paths { margin: 0; padding: 0; list-style: none; border-top: var(--hairline); }
+.bmi .bmi-paths > li { border-bottom: var(--hairline); }
+.bmi .bmi-path { width: 100%; display: grid; grid-template-columns: 56px minmax(0, 1fr) 44px; align-items: center; gap: 18px; padding: 24px 2px; border: 0; background: none; text-align: left; cursor: pointer; color: inherit; }
+.bmi .bmi-path-ic { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-2); color: var(--saffron-ink); transition: transform 0.35s var(--pop); }
+.bmi .bmi-path-ic svg { width: 26px; height: 26px; }
+.bmi .bmi-path .k { display: block; margin: 0 0 4px; font: 700 12.5px/1.3 var(--f-en); letter-spacing: 0.14em; text-transform: uppercase; color: var(--saffron-ink); }
+.bmi .bmi-path .k:lang(hi) { font-family: var(--f-hi); font-size: 14px; letter-spacing: 0; text-transform: none; }
+.bmi .bmi-path h2 { margin: 0; font: 800 clamp(21px, 2.3vw, 27px)/1.2 var(--f-en); letter-spacing: -0.012em; color: var(--ink); transition: color 0.2s; text-wrap: pretty; }
+.bmi .bmi-path h2:lang(hi) { font-family: var(--f-hi); line-height: 1.35; letter-spacing: 0; }
+.bmi .bmi-path p { margin: 6px 0 0; font-size: 16px; line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
+.bmi .bmi-path .go { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(201, 162, 74, 0.6); color: var(--saffron-ink); transition: transform 0.25s var(--ease), background-color 0.25s; }
+.bmi .bmi-path .go .bmi-ic { width: 18px; height: 18px; }
+.bmi .bmi-path:hover h2 { color: var(--sindoor); }
+.bmi .bmi-path:hover .go { transform: translateX(3px); background: var(--gold-2); }
+.bmi .bmi-path:hover .bmi-path-ic { transform: rotate(-6deg) scale(1.04); }
+.bmi .bmi-path.p .bmi-path-ic { background: var(--saffron-2); color: #fff; }
+.bmi .bmi-path.p .go { background: var(--btn-p-bg); color: var(--btn-p-ink); box-shadow: var(--btn-p-shadow); }
+@media (max-width: 479px) { .bmi .bmi-path { grid-template-columns: 48px minmax(0, 1fr) 40px; gap: 14px; } .bmi .bmi-path-ic { width: 48px; height: 48px; } .bmi .bmi-path .go { width: 40px; height: 40px; } }
+/* Back link that sits above a form's kicker. */
+.bmi .bmi-back { margin: 0 0 14px; }
+.bmi .bmi-paths-art { width: 100%; max-width: 520px; margin: 0 auto; align-self: center; }
+
+/* ── figures: numbers on hairlines, never tiles (Figures.tsx) ─────── */
+.bmi .bmi-bigfig .n { margin: 0; font: 800 clamp(76px, 11vw, 148px)/0.92 var(--f-en); color: var(--sindoor); letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
+.bmi .bmi-bigfig .l { margin: 10px 0 0; font: 700 clamp(19px, 1.9vw, 24px)/1.3 var(--f-en); color: var(--ink); }
+.bmi .bmi-bigfig .l:lang(hi), .bmi:lang(hi) .bmi-bigfig .l { font-family: var(--f-hi); }
+.bmi .bmi-bigfig .s { margin: 6px 0 0; font-size: 16px; line-height: 1.5; color: var(--ink-2); max-width: 30em; text-wrap: pretty; }
+.bmi .bmi-bigfig.center { text-align: center; }
+.bmi .bmi-bigfig.center .s { margin-left: auto; margin-right: auto; }
+.bmi .bmi-figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 20px; margin: 0; padding: 0; list-style: none; }
+.bmi .bmi-figs > li { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 20px 0 22px; border-top: var(--hairline); }
+.bmi .bmi-figs .n { font: 800 clamp(30px, 3.4vw, 44px)/1 var(--f-en); color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bmi .bmi-figs .l { font: 600 15px/1.35 var(--f-body); color: var(--ink-2); }
+.bmi .bmi-figs .s { font-size: 14px; line-height: 1.4; color: var(--ink-2); opacity: 0.85; }
+@media (min-width: 900px) { .bmi .bmi-figs { grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); column-gap: 32px; } }
+/* Meters: label, a solid bar, the value. */
+.bmi .bmi-meters { display: grid; grid-template-columns: minmax(0, 1fr); column-gap: 48px; margin: 0; padding: 0; list-style: none; border-top: var(--hairline); }
+.bmi .bmi-meters > li { display: grid; grid-template-columns: 104px minmax(0, 1fr) 64px; align-items: center; gap: 14px; min-height: 54px; border-bottom: var(--hairline); }
+.bmi .bmi-meters .ml { font: 700 16px/1.3 var(--f-en); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bmi .bmi-meters .ml:lang(hi), .bmi:lang(hi) .bmi-meters .ml { font-family: var(--f-hi); }
+.bmi .bmi-meters .mb { display: block; height: 10px; border-radius: 99px; background: var(--gold-2); overflow: hidden; }
+.bmi .bmi-meters .mb i { display: block; height: 100%; width: calc(var(--v) * 100%); border-radius: 99px; background: var(--gold); transform-origin: left center; }
+.bmi .bmi-meters li.hot .mb i { background: var(--saffron-2); }
+.bmi .bmi-meters .mv { font: 800 17px/1 var(--f-en); color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+@media (min-width: 900px) {
+  .bmi .bmi-meters.cols { grid-template-columns: 1fr 1fr; border-top: 0; }
+  .bmi .bmi-meters.cols > li:nth-child(-n + 2) { border-top: var(--hairline); }
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .bmi .bmi-meters .mb i { animation: bmi-grow-x linear both; animation-timeline: view(); animation-range: entry calc(30% + var(--i, 0) * 3%) cover calc(35% + var(--i, 0) * 2%); }
+  }
+}
+@keyframes bmi-grow-x { from { transform: scaleX(0); } to { transform: none; } }
+
+/* ── /recap: the season story (RecapView.tsx) ─────────────────────── */
+.bmi .bmi-s26host { margin-top: 8px; }
+.bmi .bmi-recap-fine { margin: 28px auto 0; max-width: 46em; text-align: center; font-size: 14px; line-height: 1.55; color: var(--ink-2); text-wrap: balance; }
+.bmi .bmi-growth { display: grid; gap: 40px; }
+.bmi .bmi-growth .bmi-meters { margin-top: 28px; }
+.bmi .bmi-growth .bmi-meters > li { grid-template-columns: 64px minmax(0, 1fr) 72px; min-height: 60px; }
+@media (min-width: 1024px) { .bmi .bmi-growth { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 72px; align-items: center; } }
+.bmi .bmi-quoteline { display: flex; align-items: center; gap: 14px; margin: 36px 0 0; font: 700 clamp(18px, 1.8vw, 22px)/1.4 var(--f-en); color: var(--ink); text-wrap: balance; }
+.bmi .bmi-quoteline:lang(hi) { font-family: var(--f-hi); line-height: 1.55; }
+.bmi .bmi-quoteline img { width: 30px; height: 30px; flex: none; }
+.bmi .bmi-quoteline.center { justify-content: center; text-align: left; }
+.bmi .bmi-social-figs { max-width: 680px; margin: 40px auto 0; text-align: left; }
+.bmi .bmi-press { display: grid; grid-template-columns: minmax(0, 1fr); margin: 0; padding: 0; list-style: none; border-top: var(--hairline); }
+.bmi .bmi-press > li { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: 20px; padding: 20px 0; border-bottom: var(--hairline); }
+.bmi .bmi-press-logo { display: grid; place-items: center; height: 72px; }
+.bmi .bmi-press-logo img { max-height: 64px; max-width: 112px; width: auto; height: auto; object-fit: contain; mix-blend-mode: multiply; }
+.bmi .bmi-press-k { margin: 0; font: 700 13px/1.3 var(--f-en); letter-spacing: 0.12em; text-transform: uppercase; color: var(--saffron-ink); }
+.bmi .bmi-press-t { margin: 4px 0 0; font: 800 22px/1.2 var(--f-en); color: var(--ink); letter-spacing: -0.01em; }
+.bmi .bmi-press-s { margin: 4px 0 0; font-size: 16px; line-height: 1.4; color: var(--ink-2); }
+.bmi .bmi-press-s:lang(hi) { font-family: var(--f-body); }
+@media (min-width: 900px) {
+  .bmi .bmi-press { grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 0; border-bottom: var(--hairline); }
+  .bmi .bmi-press > li { grid-template-columns: 1fr; align-items: start; justify-items: start; gap: 18px; padding: 8px 32px 32px; border-bottom: 0; }
+  .bmi .bmi-press > li:first-child { padding-left: 0; }
+  .bmi .bmi-press > li + li { border-left: var(--hairline); }
+  .bmi .bmi-press-logo { justify-items: start; height: 80px; }
+  .bmi .bmi-press-logo img { max-height: 76px; max-width: 160px; }
+}
+.bmi .bmi-print-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 28px; }
+.bmi .bmi-print-row img { height: 52px; width: auto; mix-blend-mode: multiply; }
+.bmi .bmi-print-row p { margin: 0; font-size: 16px; color: var(--ink-2); }
+.bmi .bmi-benediction { margin: 22px 0 0; font: 700 18px/1.6 var(--f-hi); color: var(--gold-ink); }
+
+/* ── gallery page: one block per day (h2 date, count, dense grid) ─── */
+.bmi .bmi-gday { padding-top: 40px; scroll-margin-top: 84px; }
+.bmi .bmi-gday-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 14px; padding-bottom: 12px; margin-bottom: 14px; border-bottom: var(--hairline); }
+.bmi .bmi-gday-head .bmi-h3 { color: var(--sindoor); }
+.bmi .bmi-gday-facts { display: inline-flex; align-items: baseline; gap: 12px; }
+.bmi .bmi-gday-tag { font: 700 12px/1.3 var(--f-en); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-ink); }
+.bmi .bmi-gday-tag:lang(hi) { font-family: var(--f-hi); font-size: 14px; letter-spacing: 0; text-transform: none; }
+.bmi .bmi-gday-count { font: 600 14px/1.3 var(--f-en); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.bmi .bmi-gday-count:lang(hi) { font-family: var(--f-hi); }
+/* Quiet days share a row: same column grid as the dense photo grid,
+   each day spans as many columns as it has photos. */
+.bmi .bmi-grow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 6px; }
+.bmi .bmi-gcell { grid-column: span var(--span, 1); min-width: 0; scroll-margin-top: 84px; }
+.bmi .bmi-gcell .bmi-gday-head { display: block; padding-bottom: 8px; margin-bottom: 10px; }
+.bmi .bmi-gcell .bmi-h3 { font-size: 17px; line-height: 1.25; letter-spacing: -0.01em; }
+.bmi .bmi-gcell .bmi-h3:lang(hi) { line-height: 1.35; }
+.bmi .bmi-gcell .bmi-gday-facts { display: flex; gap: 8px; margin-top: 2px; }
+.bmi .bmi-gcell .bmi-gday-count, .bmi .bmi-gcell .bmi-gday-tag { font-size: 12.5px; }
+.bmi .bmi-gcell .bmi-photos.dense { grid-template-columns: repeat(var(--span, 1), minmax(0, 1fr)); }
+.bmi .bmi-gal-jump { align-self: center; margin-right: 4px; font: 700 13px/1.3 var(--f-en); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); }
+.bmi .bmi-gal-jump:lang(hi) { font-family: var(--f-hi); font-size: 15px; letter-spacing: 0; text-transform: none; }
+.bmi .bmi-gal-hero .bmi-print img { max-height: 360px; }
+@media (min-width: 640px) {
+  .bmi .bmi-grow { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px 10px; }
+}
+@media (min-width: 900px) { .bmi .bmi-gday { padding-top: 56px; } }
+@media (min-width: 1024px) {
+  .bmi .bmi-grow { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 36px 12px; }
+  .bmi .bmi-gcell .bmi-h3 { font-size: 19px; }
+  .bmi .bmi-gal-hero .bmi-print img { max-height: 440px; }
+}
+
+/* ── group A: temples, devotional texts, resources hub, history ──────
+   Added 2 Nov 2026 (phase 2, group A). All classes prefixed bmi-. */
+
+/* Temple art in the homepage's mandir arch: painted plate, round top,
+   a hair of gold inside the edge. Never crop Hanuman ji's face. */
+.bmi .bmi-arch { position: relative; display: block; width: 100%; aspect-ratio: 10 / 9; border-radius: 999px 999px 18px 18px; overflow: hidden; background: var(--gold-2); box-shadow: 0 22px 36px -28px rgba(90, 50, 20, 0.55); }
+.bmi .bmi-arch img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 42%; transition: transform 1.2s var(--ease); }
+.bmi .bmi-arch::after { content: ""; position: absolute; inset: 8px; border-radius: 999px 999px 12px 12px; box-shadow: inset 0 0 0 1px rgba(245, 234, 201, 0.8); pointer-events: none; }
+.bmi .bmi-arch.big { aspect-ratio: 4 / 5; }
+.bmi .bmi-arch-empty { position: absolute; inset: 0; display: grid; place-items: center; }
+.bmi .bmi-arch-fig { width: min(100%, 320px); margin: 8px auto 0; }
+@media (min-width: 760px) { .bmi .bmi-arch { aspect-ratio: 4 / 4.6; } }
+@media (min-width: 1024px) { .bmi .bmi-arch-fig { width: min(100%, 400px); margin: 0 0 0 auto; } }
+
+/* The temple directory: one editorial row per temple, art and words,
+   alternating sides on desktop. No cards. */
+.bmi .bmi-temples { display: grid; gap: 56px; margin: 0; padding: 0; list-style: none; }
+.bmi .bmi-temple { display: grid; gap: 22px; align-items: center; }
+.bmi .bmi-temple-art { display: block; width: 100%; max-width: 440px; }
+.bmi a.bmi-temple-art:hover .bmi-arch img { transform: scale(1.04); }
+.bmi .bmi-temple-num { margin: 0 0 6px; font: 800 44px/1 var(--f-en); letter-spacing: -0.02em; color: var(--gold); font-variant-numeric: tabular-nums; }
+.bmi .bmi-temple-copy .bmi-h2 a { text-decoration: none; }
+.bmi .bmi-temple-copy .bmi-h2 a:hover { color: var(--saffron-ink); }
+.bmi .bmi-temple-copy .bmi-lede { margin-top: 12px; }
+.bmi .bmi-temple-copy .bmi-actions { margin-top: 6px; }
+@media (min-width: 900px) {
+  .bmi .bmi-temples { gap: 96px; }
+  .bmi .bmi-temple { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 72px; }
+  .bmi .bmi-temple:nth-child(even) { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
+  .bmi .bmi-temple:nth-child(even) .bmi-temple-art { order: 2; justify-self: end; }
+  .bmi .bmi-temple-num { font-size: 56px; }
+}
+.bmi .bmi-temple-history { max-width: 40em; }
+
+/* ── 404 and error states (app/not-found.tsx, app/error.tsx) ──────── */
+.bmi .bmi-lost { text-align: center; padding-bottom: var(--sec); }
+.bmi .bmi-lost .bmi-kick { justify-content: center; }
+.bmi .bmi-lost .bmi-lede { margin-left: auto; margin-right: auto; }
+.bmi .bmi-lost .bmi-actions { justify-content: center; margin-top: 28px; }
+.bmi .bmi-lost-art { display: block; width: min(260px, 64vw); height: auto; margin: -12px auto 4px; }
+.bmi .bmi-lost-links { margin-top: 48px; max-width: calc(880px + 2 * var(--gut)); text-align: left; }
+@media (max-width: 899px) { .bmi .bmi-lost-links .bmi-links > li { flex-basis: 100%; } .bmi .bmi-lost-links .bmi-links > li:last-child { border-bottom: var(--hairline); } }
+.bmi .bmi-lost.err { min-height: 62dvh; display: grid; align-content: center; }
+.bmi .bmi-lost .bmi-ref { margin: 22px 0 0; font: 500 13px/1.4 var(--f-body); color: var(--ink-2); opacity: 0.75; overflow-wrap: anywhere; }
+/* FAQ page: the list keeps the hero's left edge at a reading width. */
+.bmi .bmi-faq-col { max-width: 820px; }
+/* Photo picker: a soft drop zone, camera disc, two quiet buttons. */
+.bmi .bmi-drop { display: grid; justify-items: center; gap: 10px; padding: 28px 20px 24px; border-radius: 20px; background: var(--paper); border: 1.5px dashed rgba(201, 162, 74, 0.6); text-align: center; }
+.bmi .bmi-drop-ic { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-2); color: var(--saffron-ink); }
+.bmi .bmi-drop-ic svg { width: 28px; height: 28px; }
+.bmi .bmi-drop-t { margin: 0; font: 700 18px/1.35 var(--f-en); color: var(--ink); }
+.bmi:lang(hi) .bmi-drop-t, .bmi .bmi-drop-t:lang(hi) { font-family: var(--f-hi); }
+.bmi .bmi-drop-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 4px; }
+.bmi .bmi-drop-img { display: block; border-radius: 16px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+
+/* Group A: devotional texts. The verse is the hero; each line of a
+   verse is its own line, a long line breaks at its comma first (.vh
+   halves wrap as units). Dohas in sindoor, as in a printed pothi. */
+.bmi .bmi-prose.verse.bmi-verses { max-width: 36em; font-weight: 600; font-size: clamp(20px, 2.1vw, 25px); line-height: 1.95; }
+.bmi .bmi-prose.verse .vl { display: block; text-wrap: balance; }
+.bmi .bmi-prose.verse .vh { display: inline-block; }
+.bmi .bmi-prose.verse:lang(hi) .num { font-family: var(--f-hi); font-size: 15px; line-height: 1.5; letter-spacing: 0.02em; margin-bottom: 2px; }
+.bmi .bmi-prose.verse p + p { margin-top: 1.5em; }
+.bmi .bmi-prose.verse .doha { color: var(--sindoor); }
+.bmi .bmi-reader > * + * { margin-top: 40px; }
+.bmi .bmi-dev-art { width: min(220px, 58vw); margin: 4px auto 0; }
+.bmi .bmi-dev-text { scroll-margin-top: 72px; }
+.bmi .bmi-dev-by { margin-top: 14px; text-align: center; }
+@media (min-width: 1024px) {
+  .bmi .bmi-dev-art { width: min(100%, 340px); margin: 0 auto; }
+}
+
+/* Group A: the resources hub. */
+.bmi .bmi-res-hero-art { width: min(240px, 60vw); margin: 4px auto 0; }
+@media (min-width: 1024px) { .bmi .bmi-res-hero-art { width: min(100%, 360px); margin: 0 auto; } }
+.bmi .bmi-res-feat { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; color: var(--ink); }
+.bmi .bmi-res-feat-img { position: relative; display: block; width: 100%; aspect-ratio: 16 / 9; margin-bottom: 10px; border-radius: 20px; overflow: hidden; background: var(--paper); }
+.bmi .bmi-res-feat-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform 0.9s var(--ease); }
+.bmi .bmi-res-feat-src { position: absolute; inset: 0; display: grid; place-items: center; font: 700 13px/1.3 var(--f-en); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-ink); }
+.bmi .bmi-res-feat-t { margin: 0; font: 800 clamp(22px, 2.4vw, 30px)/1.2 var(--f-en); letter-spacing: -0.015em; color: var(--sindoor); text-wrap: balance; }
+.bmi .bmi-res-feat-t:lang(hi) { font-family: var(--f-hi); line-height: 1.4; letter-spacing: 0; }
+.bmi .bmi-res-feat-x { margin: 0; max-width: 36em; font-size: 16.5px; line-height: 1.55; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.bmi a.bmi-res-feat:hover .bmi-res-feat-t { color: var(--saffron-ink); }
+.bmi a.bmi-res-feat:hover .bmi-res-feat-img img { transform: scale(1.03); }
+.bmi .bmi-res-news .bmi-row-title { font-size: 17px; }
+.bmi .bmi-res-about { margin: 0 auto; text-align: center; color: var(--ink-2); }
+.bmi .bmi-res-feat-img img.fallback { object-position: 50% 30%; }
+.bmi .bmi-res-faq { max-width: 780px; }
+.bmi .bmi-hero.center .bmi-kick { text-wrap: balance; }
+.bmi .bmi-dev-note { margin: 0 auto; text-align: center; color: var(--ink-2); }
+
+/* A row of temple arches (the hub). Phones: a snap row inside the
+   page (no page scroll); desktop: five across. No shadows here, the
+   gold hairline inside each arch is enough. */
+.bmi .bmi-arches { display: flex; gap: 14px; margin: 0 calc(var(--gut) * -1); padding: 0 var(--gut) 6px; list-style: none; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: var(--gut); scrollbar-width: none; }
+.bmi .bmi-arches::-webkit-scrollbar { display: none; }
+.bmi .bmi-arches > li { flex: 0 0 44%; scroll-snap-align: start; }
+.bmi .bmi-arches .bmi-arch { aspect-ratio: 4 / 4.8; box-shadow: none; }
+.bmi .bmi-arches-a { display: block; text-align: center; }
+.bmi .bmi-arches-a:hover .bmi-arch img { transform: scale(1.04); }
+.bmi .bmi-arches b { display: block; margin-top: 14px; font: 700 16px/1.3 var(--f-en); color: var(--ink); }
+.bmi .bmi-arches b:lang(hi) { font-family: var(--f-hi); font-size: 17px; line-height: 1.4; }
+.bmi .bmi-arches-a:hover b { color: var(--sindoor); }
+.bmi .bmi-arches small { display: block; margin-top: 2px; font: 500 14px/1.3 var(--f-body); color: var(--ink-2); }
+@media (min-width: 900px) {
+  .bmi .bmi-arches { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; margin: 0; padding: 0; overflow: visible; }
+}
+/* Stepper fix: the current step's label was squeezed to nothing (the
+   connector lines took the room). Phones: it sits as a caption under
+   the dots. Wider: it never shrinks. */
+.bmi .bmi-steps li[aria-current="step"] .lbl { flex: none; }
+@media (max-width: 559px) {
+  .bmi .bmi-steps { position: relative; margin-bottom: 56px; }
+  .bmi .bmi-steps li[aria-current="step"] .lbl { position: absolute; left: 0; top: 44px; font: 700 14px/1.2 var(--f-en); letter-spacing: 0.12em; text-transform: uppercase; color: var(--saffron-ink); }
+  .bmi .bmi-steps li[aria-current="step"] .lbl:lang(hi), .bmi:lang(hi) .bmi-steps .lbl { font-family: var(--f-hi); letter-spacing: 0; text-transform: none; font-size: 15px; }
+}
+
+/* ── live page: quiet state, countdown, feed controls ─────────────── */
+.bmi .bmi-live-quiet { display: grid; gap: 40px; align-items: center; }
+.bmi .bmi-live-quiet .bmi-lede { max-width: 32em; }
+.bmi .bmi-live-acts { margin-top: 26px; }
+.bmi .bmi-live-count { text-align: center; padding: 8px 0; }
+.bmi .bmi-live-count-k { margin: 0; font: 700 13px/1.3 var(--f-en); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-ink); }
+.bmi .bmi-live-count-k:lang(hi) { font-family: var(--f-hi); font-size: 15px; letter-spacing: 0; text-transform: none; }
+.bmi .bmi-live-count-n { margin: 6px 0 0; display: flex; align-items: baseline; justify-content: center; gap: 12px; color: var(--sindoor); }
+.bmi .bmi-live-count-n span { font: 800 clamp(88px, 15vw, 148px)/0.95 var(--f-en); letter-spacing: -0.045em; font-variant-numeric: tabular-nums; }
+.bmi .bmi-live-count-n small { font: 700 clamp(18px, 1.8vw, 22px)/1.2 var(--f-en); color: var(--ink); letter-spacing: -0.01em; }
+.bmi .bmi-live-count-n small:lang(hi) { font-family: var(--f-hi); }
+.bmi .bmi-live-tues { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 28px 0 0; padding: 0; list-style: none; border-top: var(--hairline); border-bottom: var(--hairline); }
+.bmi .bmi-live-tues li { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 14px 4px; }
+.bmi .bmi-live-tues li + li { border-left: var(--hairline); }
+.bmi .bmi-live-tues .k { font: 700 11.5px/1.3 var(--f-en); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+.bmi .bmi-live-tues .k:lang(hi) { font-family: var(--f-hi); font-size: 13px; letter-spacing: 0; text-transform: none; }
+.bmi .bmi-live-tues .d { font: 800 30px/1.1 var(--f-en); color: var(--ink); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.bmi .bmi-live-tues .m { font: 600 14px/1.3 var(--f-en); color: var(--ink-2); }
+.bmi .bmi-live-tues .m:lang(hi) { font-family: var(--f-hi); }
+.bmi .bmi-live-tues li.first .d { color: var(--saffron-ink); }
+.bmi .bmi-live-tues li.first .k { color: var(--saffron-ink); }
+@media (min-width: 1024px) {
+  .bmi .bmi-live-quiet { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 64px; }
+}
+.bmi .bmi-live-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; padding-bottom: 18px; border-bottom: var(--hairline); }
+.bmi .bmi-live-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.bmi .bmi-live-filters .bmi-choice[aria-current="true"] { background: var(--gold-2); box-shadow: inset 0 0 0 1.5px var(--saffron-2); }
+.bmi .bmi-live-near { margin-top: 10px; }
+.bmi .bmi-live-feed { max-width: 640px; }
+.bmi .bmi-live-where:hover b { color: var(--sindoor); }
+.bmi .bmi-feed-meta time { font-variant-numeric: tabular-nums; }
+.bmi .bmi-livepic { position: relative; display: block; width: 100%; max-width: 520px; margin-top: 12px; padding: 0; border: 0; border-radius: 18px; overflow: hidden; background: var(--paper); cursor: zoom-in; isolation: isolate; }
+.bmi .bmi-livepic img.bg { position: absolute; inset: -12%; width: 124%; height: 124%; max-width: none; object-fit: cover; filter: blur(26px) saturate(1.1); opacity: 0.5; z-index: -1; }
+.bmi .bmi-livepic img.fg { display: block; width: 100%; height: auto; min-height: 200px; max-height: 460px; object-fit: contain; margin: 0 auto; }
+.bmi .bmi-livepic-thumbs { display: flex; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+.bmi .bmi-livepic-thumbs button { width: 48px; height: 48px; padding: 0; border: 0; border-radius: 10px; overflow: hidden; cursor: pointer; opacity: 0.6; box-shadow: inset 0 0 0 1px var(--line); transition: opacity 0.2s; }
+.bmi .bmi-livepic-thumbs button[aria-pressed="true"] { opacity: 1; box-shadow: 0 0 0 2px var(--saffron-2); }
+.bmi .bmi-livepic-thumbs img { width: 100%; height: 100%; object-fit: cover; }
+.bmi .bmi-live-acts-row { display: flex; flex-wrap: wrap; gap: 0 22px; margin-top: 4px; }
+.bmi .bmi-live-acts-row .bmi-tl { font-size: 15px; }
+.bmi .bmi-live-new { position: fixed; top: 84px; left: 50%; transform: translateX(-50%); z-index: 1500; }
+.bmi .bmi-live-new:hover { transform: translateX(-50%) translateY(-1px); }
+.bmi .bmi-live-new .bmi-ic.up { transform: rotate(-90deg); }
+/* Last season's feed: two columns of entries on wide screens. */
+@media (min-width: 1024px) {
+  .bmi .bmi-live-past .bmi-feed { display: grid; grid-template-columns: 1fr 1fr; column-gap: 48px; }
+  .bmi .bmi-live-past .bmi-feed > li:nth-child(2) { border-top: 0; }
+}
+
+/* Group A: the Tuesday vrat guide. Numbered sections, gada pins as
+   bullets (the homepage's bead), the painted mandala as hero art. */
+.bmi .bmi-rit-art { width: min(100%, 420px); margin: 0 auto; }
+.bmi .bmi-prose .bmi-rit-sec { margin-top: 0; }
+.bmi .bmi-prose .bmi-rit-sec + .bmi-rit-sec { margin-top: 56px; padding-top: 40px; border-top: var(--hairline); }
+.bmi .bmi-prose .bmi-rit-sec > h2 { margin-top: 2px; scroll-margin-top: 96px; }
+.bmi .bmi-rit-num { margin: 0; font: 800 15px/1.2 var(--f-en); letter-spacing: 0.14em; color: var(--gold-ink); font-variant-numeric: tabular-nums; }
+.bmi .bmi-prose ul.bmi-gada-list { margin-top: 18px; }
+.bmi .bmi-prose ul.bmi-gada-list > li { padding-left: 34px; }
+.bmi .bmi-prose ul.bmi-gada-list > li + li { margin-top: 0.8em; }
+.bmi .bmi-prose ul.bmi-gada-list > li::before { left: 0; top: 0.18em; width: 20px; height: 20px; border-radius: 0; background: url("/brand/map-pin-gada.svg") center / contain no-repeat; }
+/* A titled block inside a form (spot: photo, location). */
+.bmi .bmi-fsec { display: grid; gap: 12px; }
+.bmi .bmi-fsec + .bmi-fsec, .bmi .bmi-fsec + .bmi-field { padding-top: 24px; border-top: var(--hairline); }
+.bmi .bmi-fh { display: flex; align-items: center; gap: 12px; margin: 0; font: 800 clamp(21px, 2.2vw, 25px)/1.25 var(--f-en); letter-spacing: -0.01em; color: var(--ink); }
+.bmi .bmi-fh:lang(hi) { font-family: var(--f-hi); line-height: 1.4; letter-spacing: 0; }
+.bmi .bmi-fh .ic { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-2); color: var(--saffron-ink); }
+.bmi .bmi-fh .ic svg { width: 20px; height: 20px; }
+/* Phones: a form's one action pinned to the bottom edge. */
+.bmi .bmi-sbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 800; padding: 12px 16px max(env(safe-area-inset-bottom), 14px); background: rgba(251, 247, 240, 0.94); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 -1px 0 var(--line); }
+body:has(.bmi-sbar) a[data-ga="cta_floating_spot"] { display: none !important; }
+/* Tile titles rendered as headings (titleAs) keep the tile's type. */
+.bmi :is(h2, h3).bmi-tile-t { margin: 0; }
+.bmi .bmi-tile-body .bmi-row-kick { display: block; }
+/* A form page: the form on the left edge (lined up with the hero), a
+   painted plate beside it on wide screens only. */
+.bmi .bmi-formgrid { display: grid; gap: 40px; align-items: start; }
+.bmi .bmi-formgrid > :first-child { min-width: 0; max-width: 780px; }
+.bmi .bmi-formart { display: none; }
+@media (min-width: 1024px) {
+  .bmi .bmi-formgrid { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 64px; }
+  .bmi .bmi-formart { display: block; position: sticky; top: 110px; }
+}
+.bmi .bmi-live-links { display: flex; flex-wrap: wrap; gap: 0 24px; margin-top: 10px; }
+@media (max-width: 479px) { .bmi .bmi-live-links { justify-content: center; } }
+/* File attach row: a field-height row with an upload disc. */
+.bmi .bmi-file { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 60px; padding: 8px 16px 8px 8px; border-radius: 14px; background: rgba(255, 255, 255, 0.78); box-shadow: inset 0 0 0 1px rgba(201, 162, 74, 0.45); cursor: pointer; font: 600 16px/1.3 var(--f-body); color: var(--ink); transition: box-shadow 0.2s, background-color 0.2s; }
+.bmi .bmi-file:hover { box-shadow: inset 0 0 0 1px var(--gold); background: #fff; }
+.bmi .bmi-file:focus-within { box-shadow: inset 0 0 0 2px var(--saffron); }
+.bmi .bmi-file.busy { opacity: 0.7; cursor: wait; }
+.bmi .bmi-file.bad { box-shadow: inset 0 0 0 2px #c46a2c; }
+.bmi .bmi-file-ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--gold-2); color: var(--saffron-ink); flex: none; }
+.bmi .bmi-file-meta { font: 500 13.5px/1.2 var(--f-body); color: var(--ink-2); white-space: nowrap; }
+.bmi .bmi-form .bm-phone ~ span { font: 500 14px/1.45 var(--f-body); color: var(--ink-2); }
+.bmi .bmi-form .bm-phone ~ span.text-alert-500 { font-weight: 600; color: #8a3b12; }
+
+/* Group A: /history, a long-form editorial. Reading column 780px,
+   chapter markers with a big gold numeral, plates wider than the text,
+   one pull quote, the timeline on gada pins, a benediction. */
+.bmi .bmi-hist-open { margin-top: -8px; }
+.bmi .bmi-hist-open .bmi-plate { max-width: 1040px; margin: 0 auto; }
+.bmi .bmi-hist { padding-bottom: 8px; }
+.bmi .bmi-hist-b + .bmi-hist-b { margin-top: 64px; }
+.bmi .bmi-hist-b.opening { margin-top: 24px; }
+@media (min-width: 900px) { .bmi .bmi-hist-b + .bmi-hist-b { margin-top: 96px; } }
+.bmi .bmi-hist-prose { max-width: none; font-size: 18.5px; line-height: 1.75; }
+.bmi .bmi-hist-prose:lang(hi), .bmi:lang(hi) .bmi-hist-prose, .bmi .bmi-hist:lang(hi) .bmi-hist-prose { font-size: 19px; line-height: 1.9; }
+@media (min-width: 900px) { .bmi .bmi-hist-prose { font-size: 19.5px; } }
+.bmi .bmi-hist-lead p:first-child { font-size: 1.12em; color: var(--ink); }
+.bmi .bmi-hist-lead.drop p:first-child::first-letter { float: left; margin: 0.06em 0.12em 0 0; font: 800 4.1em/0.8 var(--f-en); color: var(--sindoor); }
+.bmi .bmi-hist-ch { scroll-margin-top: 88px; }
+.bmi .bmi-hist-mark { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+.bmi .bmi-hist-n { font: 800 clamp(56px, 7vw, 84px)/0.9 var(--f-en); letter-spacing: -0.03em; color: var(--gold); font-variant-numeric: tabular-nums; }
+.bmi .bmi-hist-mark .bmi-kick { margin: 0; }
+.bmi .bmi-hist-ch .bmi-h2 { margin-bottom: 22px; }
+.bmi .bmi-hist-quote { text-align: center; }
+.bmi .bmi-hist-quote blockquote { max-width: 22em; margin: 0 auto; }
+.bmi .bmi-hist-quote p { margin: 0; font: 800 clamp(28px, 4vw, 48px)/1.2 var(--f-en); letter-spacing: -0.02em; color: var(--sindoor); text-wrap: balance; }
+.bmi .bmi-hist-quote blockquote:lang(hi) p { font-family: var(--f-hi); line-height: 1.45; letter-spacing: 0; }
+.bmi .bmi-hist-q-rule { display: block; width: 64px; height: 2px; margin: 0 auto 28px; background: var(--gold); }
+.bmi .bmi-hist-plate .bmi-plate { max-width: 1040px; margin: 0 auto; }
+.bmi .bmi-hist-plate.mandala .bmi-plate { max-width: 720px; }
+.bmi .bmi-hist-plate figcaption { margin-top: 6px; text-align: center; font: 700 13px/1.4 var(--f-en); letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold-ink); }
+.bmi .bmi-hist-plate figcaption:lang(hi), .bmi .bmi-hist:lang(hi) .bmi-hist-plate figcaption { font-family: var(--f-hi); font-size: 15px; letter-spacing: 0; text-transform: none; }
+/* Timeline: a vertical chain on phones, five across from 900px. */
+.bmi .bmi-hist-tl .bmi-kick { justify-content: center; text-align: center; margin-bottom: 28px; }
+.bmi .bmi-hist-tl ol { position: relative; display: grid; gap: 26px; max-width: 780px; margin: 0 auto; padding: 0 0 0 46px; list-style: none; }
+.bmi .bmi-hist-tl ol::before { content: ""; position: absolute; left: 15px; top: 10px; bottom: 10px; width: 1.5px; background: var(--line); }
+.bmi .bmi-hist-tl li { position: relative; display: grid; gap: 2px; }
+.bmi .bmi-hist-tl .pin { position: absolute; left: -46px; top: 0; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; background: var(--cream); box-shadow: inset 0 0 0 1.5px var(--line); }
+.bmi .bmi-hist-tl .pin img { width: 20px; height: 20px; }
+.bmi .bmi-hist-tl li.hl .pin { background: var(--gold-2); box-shadow: inset 0 0 0 1.5px var(--saffron-2); }
+.bmi .bmi-hist-tl b { font: 800 22px/1.2 var(--f-en); color: var(--sindoor); font-variant-numeric: tabular-nums; }
+.bmi .bmi-hist-tl li > span:last-child { font-size: 16px; line-height: 1.5; color: var(--ink-2); }
+.bmi .bmi-hist-tl li > span:last-child:lang(hi), .bmi .bmi-hist:lang(hi) .bmi-hist-tl li > span:last-child { line-height: 1.7; }
+@media (min-width: 900px) {
+  .bmi .bmi-hist-tl ol { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; max-width: none; padding: 0; text-align: center; }
+  .bmi .bmi-hist-tl ol::before { left: 10%; right: 10%; top: 21px; bottom: auto; width: auto; height: 1.5px; }
+  .bmi .bmi-hist-tl li { justify-items: center; gap: 6px; }
+  .bmi .bmi-hist-tl .pin { position: relative; left: auto; width: 44px; height: 44px; margin-bottom: 10px; }
+  .bmi .bmi-hist-tl .pin img { width: 26px; height: 26px; }
+}
+.bmi .bmi-hist-bless { margin: 48px 0 0; text-align: center; font: 800 clamp(24px, 3vw, 34px)/1.5 var(--f-hi); color: var(--sindoor); white-space: pre-wrap; }
+.bmi .bmi-hist-next { padding-bottom: var(--sec); }
+/* Volunteer landing: form column + body column. */
+.bmi .bmi-vol { display: grid; gap: 48px; align-items: start; }
+.bmi .bmi-vol-body { display: grid; gap: 48px; min-width: 0; }
+.bmi .bmi-vol-block { display: grid; gap: 6px; }
+@media (min-width: 1024px) {
+  .bmi .bmi-vol { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 64px; }
+  .bmi .bmi-vol-form { order: 2; position: sticky; top: 96px; }
+  .bmi .bmi-vol-body { order: 1; }
+}
+/* Big figures in a row, split by gold hairlines (no boxes). */
+.bmi .bmi-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; border-top: var(--hairline); border-bottom: var(--hairline); }
+.bmi .bmi-stats li { display: grid; gap: 4px; align-content: start; padding: 20px 12px 20px 0; }
+.bmi .bmi-stats li + li { padding-left: 16px; border-left: var(--hairline); }
+.bmi .bmi-stats b { font: 800 clamp(34px, 5vw, 52px)/1 var(--f-en); letter-spacing: -0.02em; color: var(--sindoor); font-variant-numeric: tabular-nums; }
+.bmi .bmi-stats span { font: 600 14px/1.35 var(--f-body); color: var(--ink-2); }
+/* Numbered steps / plain entries on hairlines. */
+.bmi .bmi-steplist { margin: 14px 0 0; padding: 0; list-style: none; border-top: var(--hairline); }
+.bmi .bmi-steplist > li { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 16px; align-items: start; padding: 20px 0; border-bottom: var(--hairline); }
+.bmi .bmi-steplist.plain > li { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 640px) { .bmi .bmi-steplist.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 32px; } }
+.bmi .bmi-steplist .n { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-2); font: 800 22px/1 var(--f-en); color: var(--saffron-ink); }
+.bmi .bmi-steplist h3 { margin: 2px 0 4px; font: 800 20px/1.25 var(--f-en); color: var(--ink); letter-spacing: -0.01em; }
+.bmi .bmi-steplist h3:lang(hi) { font-family: var(--f-hi); line-height: 1.4; letter-spacing: 0; }
+.bmi .bmi-steplist p { margin: 0; font-size: 16px; line-height: 1.55; color: var(--ink-2); }
+
+/* ── archive page: tabs, search, jumps (day blocks reuse .bmi-gday) ── */
+.bmi .bmi-arch-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 24px; }
+.bmi .bmi-arch-tabs { display: flex; gap: 8px; }
+.bmi .bmi-arch-tabs .bmi-choice { min-width: 132px; }
+.bmi .bmi-arch-tabs .bmi-choice[aria-selected="true"] { background: var(--gold-2); box-shadow: inset 0 0 0 1.5px var(--saffron-2); }
+.bmi .bmi-arch-tabs .n { font: 600 14px/1 var(--f-en); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.bmi .bmi-arch-search { position: relative; flex: 1 1 320px; max-width: 460px; }
+.bmi .bmi-arch-search .ic { position: absolute; left: 16px; top: 50%; width: 18px; height: 18px; transform: translateY(-50%); color: var(--ink-2); pointer-events: none; }
+.bmi .bmi-field.bmi-arch-search input { padding-left: 46px !important; padding-right: 48px !important; border-radius: 999px !important; }
+.bmi .bmi-arch-search .clr { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: none; border-radius: 50%; color: var(--ink-2); cursor: pointer; }
+.bmi .bmi-arch-search .clr .bmi-ic { width: 18px; height: 18px; transform: rotate(45deg); }
+.bmi .bmi-arch-search .clr:hover { color: var(--sindoor); }
+.bmi .bmi-arch-search input::-webkit-search-cancel-button { display: none; }
+.bmi .bmi-arch-n { margin-top: 10px; }
+.bmi .bmi-arch-jump { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 20px; }
+@media (max-width: 479px) {
+  .bmi .bmi-arch-tabs { width: 100%; }
+  .bmi .bmi-arch-tabs .bmi-choice { flex: 1 1 0; min-width: 0; }
+  .bmi .bmi-arch-search { flex-basis: 100%; max-width: none; }
+}
+.bmi .bmi-code { padding: 22px 16px; border-radius: 20px; background: var(--gold-2); }
+.bmi .bmi-code-v { margin: 8px 0 6px; font: 800 clamp(28px, 7vw, 40px)/1.1 var(--f-en); letter-spacing: 0.06em; color: var(--sindoor); }
+.bmi button.bmi-choice { border: 0; color: var(--ink); }
+.bmi .bmi-choice .bmi-ic { width: 16px; height: 16px; color: var(--saffron-ink); }
+/* Group A: news tiles keep excerpts to three lines; history plates
+   melt on all four edges (no oval vignette on a wide plate). */
+.bmi .bmi-news .bmi-tile-l { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.bmi .bmi-news .bmi-tile-t { font-size: 17px; }
+.bmi .bmi-hist-plate .bmi-plate.fade img, .bmi .bmi-hist-open .bmi-plate img {
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent), linear-gradient(180deg, transparent, #000 12%, #000 82%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(90deg, transparent, #000 9%, #000 91%, transparent), linear-gradient(180deg, transparent, #000 12%, #000 82%, transparent);
+  mask-composite: intersect;
+}
+.bmi .bmi-vsec + .bmi-vsec, .bmi .bmi-form > .bmi-vsec:not(:first-of-type) { padding-top: 28px; border-top: var(--hairline); }
+.bmi span.bmi-livepic { cursor: default; }
+@media (min-width: 900px) { .bmi .bmi-steplist.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 32px; } }
+/* Package tiers: three columns, each a tappable panel. No coloured
+   rails; the chosen one takes the gold wash. */
+.bmi .bmi-pkgs { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 900px) { .bmi .bmi-pkgs { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; } }
+.bmi .bmi-pkgs > li { display: flex; }
+.bmi .bmi-pkg { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 26px 24px 18px; border: 0; border-radius: 24px; background: rgba(255, 255, 255, 0.6); box-shadow: inset 0 0 0 1px rgba(201, 162, 74, 0.32); text-align: left; cursor: pointer; transition: background-color 0.25s, box-shadow 0.25s, transform 0.25s var(--ease); }
+.bmi .bmi-pkg:hover { background: #fffcf6; box-shadow: inset 0 0 0 1px var(--gold); transform: translateY(-2px); }
+.bmi .bmi-pkg.on { background: var(--gold-2); box-shadow: inset 0 0 0 1.5px var(--saffron-2); }
+.bmi .bmi-pkg .k { font: 700 12.5px/1.3 var(--f-en); letter-spacing: 0.12em; text-transform: uppercase; color: var(--saffron-ink); }
+.bmi .bmi-pkg .k:lang(hi) { font-family: var(--f-hi); font-size: 14px; letter-spacing: 0; text-transform: none; }
+.bmi .bmi-pkg h3 { margin: 2px 0 0; font: 800 clamp(28px, 3vw, 34px)/1.2 var(--f-en); letter-spacing: -0.015em; color: var(--sindoor); }
+.bmi .bmi-pkg h3:lang(hi) { font-family: var(--f-hi); line-height: 1.35; letter-spacing: 0; }
+.bmi .bmi-pkg .r { font: 700 16px/1.3 var(--f-body); color: var(--ink); }
+.bmi .bmi-pkg ul { margin: 14px 0 12px; padding: 14px 0 0; list-style: none; border-top: var(--hairline); display: grid; gap: 8px; width: 100%; }
+.bmi .bmi-pkg ul li { position: relative; padding-left: 18px; font-size: 15.5px; line-height: 1.45; color: var(--ink-2); }
+.bmi .bmi-pkg ul li::before { content: ""; position: absolute; left: 2px; top: 0.6em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+/* Pamphlet theme picker: pick by look. */
+.bmi .bmi-themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 640px) { .bmi .bmi-themes { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.bmi .bmi-theme { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 6px 6px 12px; border: 0; border-radius: 18px; background: rgba(255, 255, 255, 0.7); box-shadow: inset 0 0 0 1px rgba(201, 162, 74, 0.4); text-align: left; cursor: pointer; transition: box-shadow 0.2s, background-color 0.2s, transform 0.25s var(--ease); }
+.bmi .bmi-theme:hover { box-shadow: inset 0 0 0 1px var(--gold); transform: translateY(-2px); }
+.bmi .bmi-theme.on { background: var(--gold-2); box-shadow: inset 0 0 0 2px var(--saffron-2); }
+.bmi .bmi-theme img, .bmi .bmi-theme .ph { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 13px; background: var(--paper); margin-bottom: 8px; }
+.bmi .bmi-theme .ph { display: grid; place-items: center; font: 800 20px/1.3 var(--f-hi); color: var(--sindoor); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+.bmi .bmi-theme .t { padding: 0 6px; font: 700 15px/1.3 var(--f-en); color: var(--ink); }
+.bmi .bmi-theme .t:lang(hi) { font-family: var(--f-hi); }
+.bmi .bmi-theme .s { padding: 0 6px; font: 500 12.5px/1.35 var(--f-body); color: var(--ink-2); }
+.bmi .bmi-theme .tick { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--saffron-2); color: #fff; box-shadow: 0 0 0 2px #fff; }
+.bmi .bmi-chip svg { width: 14px; height: 14px; }
+.bmi .bmi-field-label { display: block; font: 700 15px/1.3 var(--f-en); color: var(--ink); }
+.bmi .bmi-field-label:lang(hi) { font-family: var(--f-hi); font-size: 16px; }
+.bmi .bmi-field-label .opt { font: 500 13px/1 var(--f-body); color: var(--ink-2); margin-left: 6px; }
+/* Many steps in a narrow panel: only the current step is named. */
+.bmi .bmi-steps-compact .bmi-steps li:not([aria-current="step"]) .lbl { display: none; }

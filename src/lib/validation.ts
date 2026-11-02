@@ -1,18 +1,22 @@
 import { z } from "zod";
-import { SEASON_START_ISO, SEASON_END_ISO } from "@/lib/dates";
+import { isListableDate } from "@/lib/season";
 import { MENU_KEYS } from "@/lib/menu";
 
 const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
 
-// Bhandara service-day. Any YYYY-MM-DD inside the season window, we no
-// longer constrain to the 8 Tuesdays since organizers also run Saturday
-// bhandaras and may pick any custom date within the season via the
-// calendar picker.
+// Bhandara service-day. Any YYYY-MM-DD inside the window of a season
+// that has not ended yet (src/lib/season.ts), we no longer constrain to
+// the Tuesdays since organizers also run Saturday bhandaras and may
+// pick any custom date within the season via the calendar picker.
+// Checked at parse time, so the window rolls over with the calendar.
 const seasonDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
-  .refine((d) => d >= SEASON_START_ISO && d <= SEASON_END_ISO, {
-    message: "Pick a date inside the 2026 Bada Mangal season",
+  .refine((d) => isListableDate(d), {
+    message: "Pick a date inside the coming Bada Mangal season",
+  })
+  .refine((d) => !Number.isNaN(Date.parse(`${d}T00:00:00Z`)), {
+    message: "Use a real date",
   });
 
 const blankToUndefined = (v: unknown) =>

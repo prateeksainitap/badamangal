@@ -1,16 +1,42 @@
 "use client";
 
-import Link from "next/link";
 import { strings } from "@/content/strings";
 import { RITUALS } from "@/content/rituals";
-import { GadaBullet, MarigoldDivider, SunburstSpark } from "@/components/ornaments";
 import { useLocaleFromContext } from "@/lib/locale-context";
+import {
+  Breadcrumb,
+  InnerShell,
+  Kicker,
+  LinkRow,
+  PageHero,
+  Plate,
+  ProseDoc,
+  Section,
+} from "@/components/v2";
 
 /**
- * /resources/rituals body, extracted out of the server-rendered page
- * so the kicker, heading, intro, every section title/body, and outro
- * CTA labels swap on the Hindi toggle without a server-tree refresh.
+ * /resources/rituals body (v2 inner page kit). Client component so
+ * every label swaps on the Hindi toggle; still server rendered, so the
+ * h1, the five section h2s and every line are in the static HTML (the
+ * FAQ JSON-LD in the server wrapper reads the same content).
+ *
+ * A guide with a contents column on desktop (folded list on phones),
+ * gada pins as bullets, the painted eight-fold mandala as the hero art.
+ *
+ * SEO: the h1, the five h2s and every href are the same as before.
  */
+
+/** Stable anchor for a ritual section, from its English heading. */
+const anchor = (en: string) =>
+  en
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+/** Display only: "200 to 500 plates". The FAQ JSON-LD keeps the
+ *  content's own strings. */
+const noDash = (s: string) => s.replace(/\s*[\u2013\u2014]\s*/g, " to ");
+
 export default function RitualsView() {
   const locale = useLocaleFromContext();
   const t = strings[locale];
@@ -18,89 +44,57 @@ export default function RitualsView() {
   const langSuffix = locale === "en" ? "?lang=en" : "";
 
   return (
-    <article className="pb-24">
-      {/* HEADER */}
-      <header className="mx-auto max-w-3xl px-4 sm:px-6 pt-12 sm:pt-16 pb-10 text-center">
-        <Link
-          href={`/resources${langSuffix}`}
-          className="inline-block text-sm text-ink-600 hover:text-saffron-600 transition-colors"
-        >
-          {t.resources.common.backToResources}
-        </Link>
-        <p className="mt-4 font-mukta uppercase tracking-[0.32em] text-gold-500 text-xs">
-          {t.resources.rituals.kicker}
-        </p>
-        <h1
-          className={`mt-3 ${
-            isHi ? "font-deva text-sindoor-700" : "font-fraunces text-sindoor-700"
-          } font-medium text-[2rem] sm:text-[2.6rem] leading-[1.2]`}
-        >
-          {t.resources.rituals.heading}
-        </h1>
-        <p className="mt-5 max-w-2xl mx-auto font-fraunces italic text-lg sm:text-xl text-ink-900 leading-relaxed">
-          {t.resources.rituals.intro}
-        </p>
-        <div className="mt-7 flex justify-center">
-          <SunburstSpark size={44} className="text-gold-500" />
-        </div>
-      </header>
+    <InnerShell>
+      <PageHero
+        crumbs={
+          <Breadcrumb
+            items={[
+              { label: isHi ? "होम" : "Home", href: `/${langSuffix}` },
+              { label: isHi ? "संसाधन" : "Resources", href: `/resources${langSuffix}` },
+              { label: t.resources.rituals.heading },
+            ]}
+          />
+        }
+        kicker={<Kicker>{t.resources.rituals.kicker}</Kicker>}
+        title={{ en: strings.en.resources.rituals.heading, hi: strings.hi.resources.rituals.heading }}
+        lede={t.resources.rituals.intro}
+        art={
+          <div className="bmi-rit-art">
+            <Plate src="/illustrations/eight-mandala.webp" width={1600} height={901} alt="" fade="edges" priority />
+          </div>
+        }
+      />
 
-      {/* SECTIONS */}
-      <div className="mx-auto max-w-3xl px-4 sm:px-6 space-y-10">
-        {RITUALS.map((section, idx) => (
-          <section key={idx}>
-            <h2
-              className={`font-fraunces font-semibold text-2xl sm:text-[1.7rem] leading-tight text-sindoor-700`}
-            >
-              {isHi ? section.heading.hi : section.heading.en}
-            </h2>
-            <ul className="mt-4 space-y-3">
-              {(isHi ? section.body.hi : section.body.en).map((line, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <GadaBullet
-                    className="text-gold-500 mt-1.5 shrink-0"
-                    size={16}
-                  />
-                  <p className="font-fraunces text-[1.05rem] leading-[1.7] text-ink-900">
-                    {line}
-                  </p>
-                </li>
-              ))}
-            </ul>
-            {idx < RITUALS.length - 1 ? (
-              <div className="flex justify-center mt-10">
-                <MarigoldDivider size={220} className="text-gold-500" />
-              </div>
-            ) : null}
-          </section>
-        ))}
-      </div>
+      <Section tight id="guide">
+        <ProseDoc
+          lang={isHi ? "hi" : "en"}
+          tocTitle={isHi ? "इस पन्ने पर" : "On this page"}
+          toc={RITUALS.map((s) => ({ id: anchor(s.heading.en), label: isHi ? s.heading.hi : s.heading.en }))}
+        >
+          {RITUALS.map((section, idx) => (
+            <section key={idx} className="bmi-rit-sec" aria-labelledby={anchor(section.heading.en)}>
+              <p className="bmi-rit-num" aria-hidden>
+                {String(idx + 1).padStart(2, "0")}
+              </p>
+              <h2 id={anchor(section.heading.en)}>{isHi ? section.heading.hi : section.heading.en}</h2>
+              <ul className="bmi-gada-list">
+                {(isHi ? section.body.hi : section.body.en).map((line, i) => (
+                  <li key={i}>{noDash(line)}</li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </ProseDoc>
+      </Section>
 
-      {/* OUTRO CTAs */}
-      <section className="mx-auto max-w-3xl px-4 sm:px-6 mt-14 grid gap-3 sm:grid-cols-2">
-        <Link
-          href={`/${langSuffix}#map`}
-          className="rounded-2xl border border-gold-500/40 bg-white shadow-warm px-6 py-5 hover:border-saffron-500 transition-colors block"
-        >
-          <p className="font-fraunces text-lg text-sindoor-700">
-            {t.cta.findBhandara}
-          </p>
-          <p className="text-sm text-ink-600 mt-1">
-            {isHi ? "नक़्शे पर भंडारा देखें →" : "See bhandaras on the map →"}
-          </p>
-        </Link>
-        <Link
-          href={`/list-bhandara${langSuffix}`}
-          className="rounded-2xl border border-gold-500/40 bg-white shadow-warm px-6 py-5 hover:border-saffron-500 transition-colors block"
-        >
-          <p className="font-fraunces text-lg text-sindoor-700">
-            {t.cta.listBhandara}
-          </p>
-          <p className="text-sm text-ink-600 mt-1">
-            {isHi ? "अपना भंडारा सूचीबद्ध करें →" : "Register your bhandara →"}
-          </p>
-        </Link>
-      </section>
-    </article>
+      <Section id="next" kicker={<Kicker>{isHi ? "आगे" : "Next"}</Kicker>}>
+        <LinkRow
+          items={[
+            { href: `/${langSuffix}#map`, label: t.cta.findBhandara },
+            { href: `/list-bhandara${langSuffix}`, label: t.cta.listBhandara },
+          ]}
+        />
+      </Section>
+    </InnerShell>
   );
 }

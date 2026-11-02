@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import PinDropMap from "@/components/PinDropMap";
+import { useLocaleFromContext } from "@/lib/locale-context";
+import { Icon } from "@/components/v2";
 import {
   olaAutocomplete,
   olaReverseGeocode,
@@ -25,11 +27,12 @@ type Props = {
 type PermState = "idle" | "asking" | "granted" | "denied" | "unsupported";
 
 export default function PinDropStep({ value, onChange }: Props) {
+  const isHi = useLocaleFromContext() === "hi";
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<AutocompleteHit[]>([]);
   const [searching, setSearching] = useState(false);
   const [perm, setPerm] = useState<PermState>("idle");
-  const [permError, setPermError] = useState<string | null>(null);
+  const [, setPermError] = useState<string | null>(null);
   const onChangeRef = useRef(onChange);
   /** Set to true by `pickSuggestion` so the upcoming `query` change
    *  (caused by stamping the picked label into the input) doesn't
@@ -122,77 +125,86 @@ export default function PinDropStep({ value, onChange }: Props) {
       value.lng > 81.2);
 
   return (
-    <div className="grid gap-4">
-      {/* Permission ask */}
-      <div className="rounded-2xl border border-gold-500/40 bg-cream-50 p-4">
-        <p className="text-sm text-ink-900">
-          <span className="font-tiro text-base text-sindoor-700 mr-1">
-            हम आपकी लोकेशन सिर्फ़ pin लगाने के लिए इस्तेमाल करते हैं।
+    <div className="grid gap-5">
+      {/* Permission ask: one quiet line and a secondary button (the
+          step's one saffron action is Continue). */}
+      <div className="grid gap-3">
+        <p className="bmi-fnote">
+          <span className="ic" aria-hidden>
+            <Icon name="pin" />
           </span>
-          <span className="text-ink-600">
-            We&apos;ll use your location only to drop the pin. Nothing is tracked.
+          <span>
+            {isHi
+              ? "हम आपकी लोकेशन सिर्फ़ पिन लगाने के लिए इस्तेमाल करते हैं।"
+              : "We'll use your location only to drop the pin. Nothing is tracked."}
           </span>
         </p>
-        <div className="mt-3 flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap gap-x-4 gap-y-2 items-center">
           <button
             type="button"
             onClick={useMyLocation}
             disabled={perm === "asking"}
-            className="inline-flex items-center rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-4 py-2 text-sm shadow-warm transition-colors disabled:opacity-60"
+            className="bmi-b bmi-b-s sm"
           >
-            {perm === "asking"
-              ? "Locating…"
-              : perm === "granted"
-                ? "Location used ✓"
-                : "Use my current location"}
+            <Icon name={perm === "granted" ? "check" : "map"} />
+            <span>
+              {perm === "asking"
+                ? isHi
+                  ? "लोकेशन ले रहे हैं…"
+                  : "Locating…"
+                : perm === "granted"
+                  ? isHi
+                    ? "लोकेशन ले ली"
+                    : "Location used"
+                  : isHi
+                    ? "मेरी मौजूदा लोकेशन"
+                    : "Use my current location"}
+            </span>
           </button>
           {perm === "denied" || perm === "unsupported" ? (
-            <span className="text-xs text-ink-600">
-              No problem, search for the address below.
+            <span className="bmi-field-hint">
+              {isHi ? "कोई बात नहीं, नीचे पता खोजें।" : "No problem, search for the address below."}
             </span>
-          ) : null}
-          {permError && perm === "denied" ? (
-            <span className="text-[10px] text-ink-600/80">({permError})</span>
           ) : null}
         </div>
       </div>
 
       {/* Search */}
       <div className="relative z-[700]">
-        <label className="block">
-          <span className="text-sm font-medium text-ink-900">
-            <span className="font-tiro text-base text-sindoor-700 mr-1">
-              पता या निशानी खोजें
-            </span>
-            <span>/ Search address or landmark</span>
+        <label className="bmi-field">
+          <span className="bmi-field-label" lang={isHi ? "hi" : "en"}>
+            {isHi ? "पता या निशानी खोजें" : "Search address or landmark"}
           </span>
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Type address..."
-            className="mt-1.5 w-full rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 placeholder:text-ink-600/60 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+            placeholder={isHi ? "पता लिखें…" : "Type address..."}
+            className="w-full"
             autoComplete="off"
           />
         </label>
         {searching ? (
-          <p className="absolute right-3 top-9 text-[11px] text-ink-600">searching…</p>
+          <p className="absolute right-4 bottom-4 text-[13px] text-ink-600">
+            {isHi ? "खोज रहे हैं…" : "searching…"}
+          </p>
         ) : null}
         {suggestions.length > 0 ? (
           <ul
             role="listbox"
-            className="absolute z-[800] mt-1 w-full rounded-xl border border-gold-500/40 bg-white shadow-warm overflow-hidden"
+            className="absolute z-[800] mt-2 w-full rounded-2xl bg-white overflow-hidden"
+            style={{ boxShadow: "inset 0 0 0 1px rgba(201,162,74,0.45), 0 18px 36px -18px rgba(60,40,10,0.45)" }}
           >
             {suggestions.map((s) => (
               <li key={s.id}>
                 <button
                   type="button"
                   onClick={() => pickSuggestion(s)}
-                  className="block w-full text-left px-3 py-2 text-sm hover:bg-saffron-50"
+                  className="block w-full text-left px-4 py-3 text-[15px] hover:bg-[#f5eac9]/60"
                 >
                   <span className="text-ink-900 line-clamp-1">{s.label}</span>
                   {s.secondary ? (
-                    <span className="block text-[11px] text-ink-600 mt-0.5 line-clamp-1">
+                    <span className="block text-[13px] text-ink-600 mt-0.5 line-clamp-1">
                       {s.secondary}
                     </span>
                   ) : null}
@@ -208,37 +220,38 @@ export default function PinDropStep({ value, onChange }: Props) {
         lat={value?.lat ?? null}
         lng={value?.lng ?? null}
         onChange={onPinChange}
-        className="h-[55vh] sm:h-[460px] w-full rounded-2xl overflow-hidden border border-gold-500/40 bg-saffron-50"
+        className="h-[55vh] sm:h-[460px] w-full rounded-[20px] overflow-hidden bg-[#f5efe3]"
       />
 
       {/* Confirmed location */}
       {value ? (
-        <div
-          className={[
-            "rounded-2xl border px-4 py-3 text-sm",
-            outOfBounds
-              ? "border-alert-500/60 bg-alert-500/10"
-              : "border-gold-500/40 bg-saffron-50",
-          ].join(" ")}
-        >
-          <p className="text-[10px] uppercase tracking-[0.2em] text-ink-600">
-            Pin dropped at
-          </p>
-          <p className="mt-0.5 text-ink-900 font-medium">{value.address || "(no address)"}</p>
-          <p className="mt-1 text-xs text-ink-600 tabular-nums">
-            {value.lat.toFixed(5)}, {value.lng.toFixed(5)}
-            {value.geoNeighborhood ? ` · ${value.geoNeighborhood}` : ""}
-            {value.geoDistrict ? ` · ${value.geoDistrict}` : ""}
-          </p>
-          {outOfBounds ? (
-            <p className="mt-2 text-xs text-alert-500">
-              This looks like it&apos;s outside Lucknow. Move the pin if that&apos;s wrong.
-            </p>
-          ) : null}
+        <div className={outOfBounds ? "bmi-alert" : "bmi-fnote"} role={outOfBounds ? "alert" : undefined}>
+          {outOfBounds ? null : (
+            <span className="ic" aria-hidden>
+              <Icon name="check" />
+            </span>
+          )}
+          <span>
+            <b>{value.address || (isHi ? "(पता नहीं मिला)" : "(no address)")}</b>
+            <span className="block text-[13px] tabular-nums mt-0.5">
+              {value.lat.toFixed(5)}, {value.lng.toFixed(5)}
+              {value.geoNeighborhood ? `, ${value.geoNeighborhood}` : ""}
+              {value.geoDistrict ? `, ${value.geoDistrict}` : ""}
+            </span>
+            {outOfBounds ? (
+              <span className="block mt-1">
+                {isHi
+                  ? "यह जगह लखनऊ के बाहर लगती है। ग़लत हो तो पिन खिसकाएँ।"
+                  : "This looks like it's outside Lucknow. Move the pin if that's wrong."}
+              </span>
+            ) : null}
+          </span>
         </div>
       ) : (
-        <p className="rounded-2xl border border-dashed border-gold-500/50 bg-cream-50 px-4 py-3 text-sm text-ink-600">
-          Tap the map (or search above) to drop a pin where your bhandara will run.
+        <p className="bmi-field-hint">
+          {isHi
+            ? "नक़्शे पर टैप करें (या ऊपर खोजें) ताकि भंडारे की जगह पर पिन लग जाए।"
+            : "Tap the map (or search above) to drop a pin where your bhandara will run."}
         </p>
       )}
     </div>

@@ -7,6 +7,7 @@ import {
   getAllApprovedBhandaras,
   prisma,
   toBhandara,
+  toPublicBhandaraListItem,
 } from "@/lib/db";
 import {
   bhandaraEventSchema,
@@ -18,6 +19,9 @@ import {
 } from "@/lib/seo";
 import { hasUpcomingDate } from "@/lib/dates";
 import { stripBotProvenance } from "@/lib/sanitize";
+import { cleanName } from "@/lib/display-name";
+import { joinTimeRange } from "@/lib/time";
+import { placeOnPaintedMap } from "@/lib/home-map";
 
 // ISR. Was force-dynamic, every visit cold-started a Netlify Function
 // (3-4s lag when clicking a bhandara from the homepage). Now each slug
@@ -87,7 +91,13 @@ export async function generateMetadata({
     (await prisma.bhandara.findUnique({ where: { slug } }));
   if (!record) return { title: "Bhandara not found" };
 
-  const time = `${format12h(record.timeStart)}${record.timeEnd ? `–${format12h(record.timeEnd)}` : ""}`;
+  const time = joinTimeRange(
+    format12h(record.timeStart),
+    record.timeEnd ? format12h(record.timeEnd) : "",
+  );
+  // The raw column keeps the organiser's dashes; every public surface
+  // shows the cleaned name (same as the page heading via toBhandara).
+  const name = cleanName(record.name);
 
   // Pick the most-imminent serving date for the title, if a future
   // Tuesday is set, surface that ("May 19" creates urgency in the
@@ -130,7 +140,7 @@ export async function generateMetadata({
   //   • Date right after, answers "when?" before they click,
   //     creates urgency for "today" / "this Tuesday" searches.
   //   • Brand at end, softens, signals trustworthy directory.
-  const titleHead = `${record.name}, ${record.area}`;
+  const titleHead = `${name}, ${record.area}`;
   const titleMid = dateForTitle
     ? `Free Prasad ${dateForTitle}`
     : "Free Prasad";
@@ -158,7 +168,7 @@ export async function generateMetadata({
       : null) ??
     `Free Bada Mangal bhandara in ${record.area}, Lucknow. ${record.organizerName}'s seva at ${record.address}. Serving ${time}${dateForTitle ? ` on ${dateForTitle}` : ""}.`;
   const ogImage = record.photoUrl ?? `${SITE_URL}/illustrations/hanuman-sitting.webp`;
-  const ogAlt = `${record.name} bhandara in ${record.area}, Lucknow`;
+  const ogAlt = `${name} bhandara in ${record.area}, Lucknow`;
 
   return {
     title,
@@ -212,10 +222,59 @@ export default async function BhandaraDetailPage({
       (r) =>
         r.area === b.area &&
         r.id !== b.id &&
-        hasUpcomingDate(toBhandara(r)),
+        hasUpcomingDate(toPublicBhandaraListItem(r)),
     )
     .slice(0, 3);
-  const others = otherRecords.map(toBhandara);
+  // The "others in this area" cards are a list, so they get the public
+  // projection (no phone, WhatsApp or UPI). Only `b`, this page's own
+  // bhandara, keeps its contact details for the call and WhatsApp
+  // buttons (Founder's ruling, 1 Nov 2026).
+  const others = otherRecords.map(toPublicBhandaraListItem);
+  // Off season nothing in the area is upcoming, so the page would end
+  // with no way onward. Then the area's latest season is shown instead,
+  // clearly as served (public projection, no phones).
+  let othersPast = false;
+  if (others.length === 0) {
+    const served = all
+      .filter((r) => r.area === b.area && r.id !== b.id && r.status === "APPROVED")
+      .map(toPublicBhandaraListItem)
+      .filter((o) => o.tuesdayDates.length > 0);
+    const last = (o: { tuesdayDates: string[] }) => [...o.tuesdayDates].sort().at(-1) ?? "";
+    const year = served.map(last).sort().at(-1)?.slice(0, 4);
+    if (year) {
+      others.push(
+        ...served
+          .filter((o) => last(o).startsWith(year))
+          .sort((a, z) => last(z).localeCompare(last(a)))
+          .slice(0, 4),
+      );
+      othersPast = others.length > 0;
+    }
+  }
+
+  // Spots neighbours posted at this bhandara: photos and captions only,
+  // never the spotter's name (Founder's ruling, 1 Nov 2026). Read only.
+  let spots: { id: string; photoUrl: string; caption: string | null; createdAt: string }[] = [];
+  try {
+    const rows = await prisma.spot.findMany({
+      where: { bhandaraId: b.id, status: "APPROVED", photoUrl: { not: null } },
+      select: { id: true, photoUrl: true, caption: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+    });
+    spots = rows.map((r) => ({
+      id: r.id,
+      photoUrl: r.photoUrl as string,
+      caption: stripBotProvenance(r.caption) || null,
+      createdAt: r.createdAt.toISOString(),
+    }));
+  } catch {
+    spots = [];
+  }
+
+  // Where it is on the painted Lucknow plate (same projection as the
+  // homepage map), for the still map preview. Coordless rows get none.
+  const painted = placeOnPaintedMap([{ id: b.id, lat: b.lat, lng: b.lng }], all);
 
   // Locale-agnostic strings used in the JSON-LD breadcrumb. We never
   // ship the breadcrumb's label to a visitor, it's pure SEO, so
@@ -264,7 +323,9 @@ export default async function BhandaraDetailPage({
       timeStart: b.timeStart,
       timeEnd: b.timeEnd,
       organizerName: b.organizerName,
-      organizerPhone: b.organizerPhone ?? null,
+      // No telephone in the schema: the listing form promises the
+      // number is never shown publicly (Founder, 2 Nov 2026).
+      organizerPhone: null,
       photoUrl: b.photoUrl ?? null,
     }),
   ];
@@ -301,7 +362,16 @@ export default async function BhandaraDetailPage({
           near the footer when they back-and-forward between bhandara
           pages within a session. See ScrollToTopOnMount for context. */}
       <ScrollToTopOnMount />
-      <BhandaraDetailView b={b} others={others} />
+      <BhandaraDetailView
+        // Contact and payment fields never reach the browser (they
+        // would sit in the page's data even without a button).
+        b={{ ...b, organizerPhone: "", organizerWhatsapp: undefined, upiId: undefined, upiQrUrl: undefined }}
+        others={others}
+        othersPast={othersPast}
+        spots={spots}
+        mapPin={painted.pins[0] ?? null}
+        mapLabels={painted.labels}
+      />
     </>
   );
 }

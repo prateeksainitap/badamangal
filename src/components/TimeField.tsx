@@ -79,7 +79,7 @@ export default function TimeField({
     <Popover className="relative">
       <PopoverButton
         aria-label={ariaLabel}
-        className="inline-flex w-full items-center justify-between gap-2 rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-base text-ink-900 hover:border-saffron-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600 focus:border-saffron-600 transition-colors data-[open]:border-saffron-600 data-[open]:ring-2 data-[open]:ring-saffron-600"
+        className="bm-ctl inline-flex w-full items-center justify-between gap-2 rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-base text-ink-900 hover:border-saffron-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600 focus:border-saffron-600 transition-colors data-[open]:border-saffron-600 data-[open]:ring-2 data-[open]:ring-saffron-600"
       >
         <span className="inline-flex items-center gap-2">
           <ClockIcon />

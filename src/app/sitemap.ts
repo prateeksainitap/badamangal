@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
 import { ALL_AREA_SLUGS } from "@/lib/areaSlug";
+import { TEMPLES } from "@/content/temples";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://badamangal.com";
 
@@ -128,5 +129,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }),
   );
 
-  return [...staticEntries, ...bhandaraEntries, ...areaEntries];
+  // One page per temple (two were renamed on 29 and 30 Oct 2026; the
+  // old URLs 308 to these).
+  const templeEntries: MetadataRoute.Sitemap = TEMPLES.map((t) =>
+    urlWithAlternates(`/resources/temples/${t.slug}`, { changeFrequency: "monthly", priority: 0.6 }),
+  );
+
+  return [...staticEntries, ...bhandaraEntries, ...areaEntries, ...templeEntries];
 }

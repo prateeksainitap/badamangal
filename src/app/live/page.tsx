@@ -1,9 +1,16 @@
 import type { Metadata } from "next";
-import LiveFeedTimeline from "@/components/LiveFeedTimeline";
-import LiveHero from "@/components/LiveHero";
+import LivePageView, { type PastPost } from "@/components/LivePageView";
 import { prisma } from "@/lib/db";
-import { localised } from "@/lib/seo";
+import { localised, DEFAULT_OG_IMAGE } from "@/lib/seo";
 import { stripBotProvenance } from "@/lib/sanitize";
+import { cleanName } from "@/lib/display-name";
+import { isHiddenPublicPhoto, isPoliticalText, publicCaption } from "@/lib/public-caption";
+import {
+  SEASONS,
+  istIso,
+  istMidnight,
+  lastCompletedSeason,
+} from "@/lib/season";
 
 // ISR. Previously force-dynamic because the page read `?bhandara=<slug>`
 // from searchParams on the server to pre-filter the feed, that gave
@@ -18,11 +25,12 @@ import { stripBotProvenance } from "@/lib/sanitize";
 export const revalidate = 30;
 
 export const metadata: Metadata = {
-  title: "Live from the bhandara, Bada Mangal Lucknow today · BadaMangal",
+  title: { absolute: "Live from the bhandara, Bada Mangal Lucknow today · BadaMangal" },
   description:
     "Real-time photos and updates from Bada Mangal bhandaras across Lucknow. See what's serving right now, where the crowds are, and follow the city's seva live.",
   alternates: localised("/live"),
   openGraph: {
+    images: [DEFAULT_OG_IMAGE],
     title: "Live from Lucknow's Bada Mangal bhandaras · BadaMangal",
     description:
       "Photos and updates from devotees across the city, refreshed in real time. Follow the seva live.",
@@ -63,7 +71,17 @@ export default async function LivePage() {
       },
       orderBy: { createdAt: "desc" },
       take: 50,
-      include: {
+      // Explicit select so the spotter's reporterName is never read
+      // for this public page.
+      select: {
+        id: true,
+        lat: true,
+        lng: true,
+        caption: true,
+        photoUrl: true,
+        extraPhotoUrls: true,
+        language: true,
+        createdAt: true,
         bhandara: {
           select: { slug: true, name: true, nameHi: true, lat: true, lng: true },
         },
@@ -96,10 +114,12 @@ export default async function LivePage() {
     return {
     id: `spot:${s.id}`,
     bhandaraSlug: s.bhandara?.slug ?? null,
-    bhandaraName: s.bhandara?.name ?? null,
+    bhandaraName: cleanName(s.bhandara?.name),
     bhandaraLat: s.bhandara?.lat ?? s.lat,
     bhandaraLng: s.bhandara?.lng ?? s.lng,
-    authorName: s.reporterName?.trim() || "Spotter",
+    // Neutral label only, never the spotter's name (Founder's ruling,
+    // 1 Nov 2026).
+    authorName: "Spotter",
     // Strip [bot:whatsapp …] tag, public live feed must show prose
     // only. See lib/sanitize.ts.
     text: stripBotProvenance(s.caption) || null,
@@ -110,7 +130,11 @@ export default async function LivePage() {
     };
   });
 
-  const feed = spots.slice(0, 50);
+  // Founder's rule: no politician pamphlets (src/lib/public-caption.ts).
+  const feed = spots
+    .filter((p) => !isHiddenPublicPhoto(p.id.replace(/^spot:/, ""), p.photoUrl))
+    .map((p) => ({ ...p, photoUrls: p.photoUrls.filter((u) => !isHiddenPublicPhoto(null, u)) }))
+    .slice(0, 50);
 
   // For the "filter by bhandara" pill list, surface every approved
   // bhandara that has at least one currently-live spot tied to it.
@@ -126,17 +150,84 @@ export default async function LivePage() {
     take: 40,
   });
 
-  return (
-    <div className="relative">
-      <LiveHero liveCount={liveCount} />
+  // Off season (nothing live): the last Tuesday of the latest finished
+  // season, as Lucknow posted it, so the quiet page still shows the
+  // seva. Photos only, no names, no AI vision captions, nothing
+  // political (Founder's rules).
+  let pastDay: string | null = null;
+  let pastPosts: PastPost[] = [];
+  let pastDayCount = 0;
+  const done = liveCount === 0 ? lastCompletedSeason(now) : null;
+  if (done) {
+    pastDay = done.tuesdays[done.tuesdays.length - 1] ?? null;
+    if (pastDay) {
+      const from = new Date(istMidnight(pastDay));
+      const to = new Date(istMidnight(pastDay) + 24 * 60 * 60 * 1000);
+      const dayWhere = {
+        status: "APPROVED",
+        photoUrl: { not: null },
+        createdAt: { gte: from, lt: to },
+      };
+      const [rows, count] = await Promise.all([
+        prisma.spot.findMany({
+          where: dayWhere,
+          orderBy: { createdAt: "desc" },
+          take: 300,
+          select: {
+            id: true,
+            caption: true,
+            photoUrl: true,
+            area: true,
+            createdAt: true,
+            bhandara: { select: { slug: true, name: true, nameHi: true, area: true } },
+          },
+        }),
+        prisma.spot.count({ where: dayWhere }),
+      ]);
+      pastDayCount = count;
+      pastPosts = rows
+        .filter(
+          (r) =>
+            r.photoUrl &&
+            !isHiddenPublicPhoto(r.id, r.photoUrl) &&
+            !isPoliticalText(r.caption) &&
+            !isPoliticalText(r.bhandara?.name) &&
+            !isPoliticalText(r.bhandara?.nameHi),
+        )
+        // Twelve moments spread across the day, morning to night, so
+        // the day reads as it unfolded.
+        .reverse()
+        .filter((_, i, all) => all.length <= 12 || i % Math.ceil(all.length / 12) === 0)
+        .slice(0, 12)
+        .map((r) => ({
+          id: r.id,
+          photoUrl: r.photoUrl as string,
+          text: publicCaption(stripBotProvenance(r.caption)),
+          area: r.area ?? r.bhandara?.area ?? null,
+          bhandaraSlug: r.bhandara?.slug ?? null,
+          bhandaraName: cleanName(r.bhandara?.name) || null,
+          bhandaraNameHi: r.bhandara?.nameHi ? cleanName(r.bhandara.nameHi) : null,
+          createdAt: r.createdAt.toISOString(),
+        }));
+    }
+  }
 
-      <LiveFeedTimeline
-        initial={feed}
-        bhandaras={bhandarasWithActivity.map((b) => ({
-          slug: b.slug,
-          name: b.name,
-        }))}
-      />
-    </div>
+  // The next season's Tuesdays, for the countdown.
+  const today = istIso(now);
+  const nextSeason = SEASONS.find((s) => s.startISO > today) ?? null;
+
+  return (
+    <LivePageView
+      liveCount={liveCount}
+      initial={feed}
+      bhandaras={bhandarasWithActivity.map((b) => ({
+        slug: b.slug,
+        name: b.name,
+      }))}
+      pastDay={pastDay}
+      pastDayCount={pastDayCount}
+      pastPosts={pastPosts}
+      nextTuesdays={nextSeason ? [...nextSeason.tuesdays] : []}
+    />
   );
 }

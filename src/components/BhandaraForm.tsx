@@ -14,6 +14,11 @@ import FancySelect from "@/components/FancySelect";
 import TimeField from "@/components/TimeField";
 import PhoneInput from "@/components/PhoneInput";
 import UpiQrUpload from "@/components/UpiQrUpload";
+import { FormPanel, FormSkin, Stepper, Field as KitField, Heading, Button, Icon } from "@/components/v2";
+
+// Donations are off for now (Founder, Nov 2026): the organiser UPI and
+// QR fields stay in the code and the payload, hidden from the public.
+const SHOW_DONATIONS = false;
 
 // Dynamic-import the heavy sub-components so the form's first paint
 // doesn't have to wait for them.
@@ -33,7 +38,7 @@ import UpiQrUpload from "@/components/UpiQrUpload";
 const PhotoPicker = dynamic(() => import("@/components/PhotoPicker"), {
   ssr: false,
   loading: () => (
-    <div className="h-48 rounded-2xl border-2 border-dashed border-gold-500/50 bg-cream-50 flex items-center justify-center text-sm text-ink-600 motion-safe:animate-pulse">
+    <div className="h-48 rounded-2xl bg-[#f5efe3] flex items-center justify-center text-sm text-ink-600 motion-safe:animate-pulse">
       Loading photo upload…
     </div>
   ),
@@ -42,19 +47,13 @@ const PhotoPicker = dynamic(() => import("@/components/PhotoPicker"), {
 const PinDropStep = dynamic(() => import("@/components/PinDropStep"), {
   ssr: false,
   loading: () => (
-    <div className="h-[420px] rounded-2xl border-2 border-dashed border-gold-500/50 bg-cream-50 flex items-center justify-center text-sm text-ink-600 motion-safe:animate-pulse">
+    <div className="h-[420px] rounded-2xl bg-[#f5efe3] flex items-center justify-center text-sm text-ink-600 motion-safe:animate-pulse">
       Loading map…
     </div>
   ),
 });
-import {
-  ALL_TUESDAY_ISO,
-  ALL_SATURDAY_ISO,
-  SEASON_START_ISO,
-  SEASON_END_ISO,
-  formatHindiDate,
-  formatEnglishDate,
-} from "@/lib/dates";
+import { formatHindiDate, formatEnglishDate } from "@/lib/dates";
+import { isListableDate, listingSeason } from "@/lib/season";
 import { AREAS } from "@/lib/lucknow";
 import { MENU_ITEMS, MENU_KEYS } from "@/lib/menu";
 import { isValidIndianMobile } from "@/lib/validation";
@@ -126,8 +125,9 @@ type ApiErr = {
   issues?: { fieldErrors: FieldErrors; formErrors: string[] };
 };
 
-const inputBase =
-  "w-full rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 placeholder:text-ink-600/60 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600";
+// The kit's FormSkin styles every input inside the form (52px field,
+// gold hairline, saffron focus ring), so inputs carry no look of their own.
+const inputBase = "w-full";
 
 const TOTAL_STEPS = 6;
 
@@ -239,7 +239,13 @@ export default function BhandaraForm({
       // undefined, every field in FormState stays a defined value.
       // Stale drafts keep all the data the organiser already typed;
       // newly-added fields simply default to their INITIAL value.
-      setState({ ...INITIAL, ...blob.state });
+      // Drop dates from a season that has since ended (a 2026 draft
+      // opened in the 2027 season), the server would refuse them.
+      const restored = { ...INITIAL, ...blob.state };
+      setState({
+        ...restored,
+        tuesdayDates: (restored.tuesdayDates ?? []).filter((d) => isListableDate(d)),
+      });
       setStep(blob.step);
     }
   }, [initialValues]);
@@ -284,7 +290,7 @@ export default function BhandaraForm({
     });
   }, []);
 
-  // Compact Tuesday-chip data: short label (`12 May`) + year (`2026`) so
+  // Compact Tuesday-chip data: short label (`25 May`) + year (`2027`) so
   // the chips stay small but still show every detail clearly.
   const HI_MONTHS = [
     "जन", "फ़र", "मार्च", "अप्रै", "मई", "जून",
@@ -300,8 +306,10 @@ export default function BhandaraForm({
     // date that's already happened.
     const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
     const todayIso = ist.toISOString().slice(0, 10);
-    const tuesdays = ALL_TUESDAY_ISO.map((iso) => ({ iso, weekday: "tue" as const }));
-    const saturdays = ALL_SATURDAY_ISO.map((iso) => ({ iso, weekday: "sat" as const }));
+    // Presets come from the season people list for now (lib/season.ts).
+    const season = listingSeason();
+    const tuesdays = season.tuesdays.map((iso) => ({ iso, weekday: "tue" as const }));
+    const saturdays = season.saturdays.map((iso) => ({ iso, weekday: "sat" as const }));
     return [...tuesdays, ...saturdays]
       .filter((r) => r.iso >= todayIso)
       .sort((a, b) => a.iso.localeCompare(b.iso))
@@ -498,115 +506,117 @@ export default function BhandaraForm({
 
   if (success) return <ThankYou slug={success.slug} />;
 
+  const isHi = locale === "hi";
+  const stepLabels = isHi ? STEP_TITLES_HI : STEP_TITLES_EN;
+
   return (
-    <div className="grid gap-6">
+    <FormPanel>
+      <div className="bmi-steps-compact">
+        <Stepper
+          steps={stepLabels}
+          current={step - 1}
+          label={isHi ? "फ़ॉर्म के चरण" : "Form steps"}
+        />
+      </div>
+
       {formError ? (
-        <div className="rounded-xl border border-alert-500 bg-alert-500/10 text-alert-500 px-4 py-3 text-sm">
+        <div className="bmi-alert" role="alert" style={{ marginBottom: 22 }}>
           {formError}
         </div>
       ) : null}
 
       {/* Step body */}
-      <fieldset className="rounded-3xl border border-gold-500/40 bg-cream-50 p-5 sm:p-8">
-        <legend className="px-3 text-[10px] uppercase tracking-[0.3em] text-gold-500">
-          {STEP_TITLES[step - 1]}
-        </legend>
+      <FormSkin>
+        <fieldset className="bmi-fieldset">
+          <legend className="bmi-sr">
+            {isHi ? `चरण ${step}: ${stepLabels[step - 1]}` : `Step ${step}: ${stepLabels[step - 1]}`}
+          </legend>
 
-        {step === 1 ? (
-          <Step1
-            pin={state.pin}
-            onChange={(v) => setField("pin", v)}
-          />
-        ) : null}
-        {step === 2 ? (
-          <Step2
-            state={state}
-            errors={errors}
-            setField={setField}
-          />
-        ) : null}
-        {step === 3 ? (
-          <Step3
-            state={state}
-            errors={errors}
-            setField={setField}
-            toggle={toggleInArray}
-            dates={dateOptions}
-          />
-        ) : null}
-        {step === 4 ? (
-          <Step4
-            state={state}
-            errors={errors}
-            setField={setField}
-            toggle={toggleInArray}
-          />
-        ) : null}
-        {step === 5 ? (
-          <Step5
-            state={state}
-            errors={errors}
-            setField={setField}
-          />
-        ) : null}
-        {step === 6 ? (
-          <Step6
-            state={state}
-            errors={errors}
-            setField={setField}
-            locale={locale}
-          />
-        ) : null}
-      </fieldset>
+          {step === 1 ? (
+            <Step1
+              pin={state.pin}
+              onChange={(v) => setField("pin", v)}
+            />
+          ) : null}
+          {step === 2 ? (
+            <Step2
+              state={state}
+              errors={errors}
+              setField={setField}
+            />
+          ) : null}
+          {step === 3 ? (
+            <Step3
+              state={state}
+              errors={errors}
+              setField={setField}
+              toggle={toggleInArray}
+              dates={dateOptions}
+            />
+          ) : null}
+          {step === 4 ? (
+            <Step4
+              state={state}
+              errors={errors}
+              setField={setField}
+              toggle={toggleInArray}
+            />
+          ) : null}
+          {step === 5 ? (
+            <Step5
+              state={state}
+              errors={errors}
+              setField={setField}
+            />
+          ) : null}
+          {step === 6 ? (
+            <Step6
+              state={state}
+              errors={errors}
+              setField={setField}
+              locale={locale}
+            />
+          ) : null}
+        </fieldset>
+      </FormSkin>
 
-      {/* Nav */}
-      <div className="flex items-center justify-between gap-3">
+      {/* Nav: one saffron action per step, Back as a quiet link. */}
+      <div className="bmi-form-nav">
         <button
           type="button"
           onClick={back}
           disabled={step === 1 || submitting}
-          className="text-sm text-ink-600 hover:text-sindoor-700 disabled:opacity-40"
+          className="bmi-tl"
         >
-          ← Back
+          <Icon name="back" />
+          <span>{isHi ? "वापस" : "Back"}</span>
         </button>
         {step < TOTAL_STEPS ? (
-          <button
-            type="button"
+          <Button
             onClick={advance}
             disabled={!canAdvance(step, state) || submitting}
-            className="inline-flex items-center rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-6 py-3 shadow-warm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            iconEnd="chevron"
           >
-            Continue →
-          </button>
+            {isHi ? "आगे बढ़ें" : "Continue"}
+          </Button>
         ) : (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting}
-            className={[
-              "diya-morph btn btn-sindoor",
-              submitting ? "is-on" : "",
-            ].join(" ")}
-          >
-            <span className="relative z-10 inline-flex items-center gap-2">
-              {submitting ? "🪔 Submitting…" : "जमा करें / Submit"}
-            </span>
-          </button>
+          <Button onClick={handleSubmit} disabled={submitting} icon="check">
+            {submitting
+              ? isHi
+                ? "भेज रहे हैं…"
+                : "Submitting…"
+              : isHi
+                ? "जमा करें"
+                : "Submit"}
+          </Button>
         )}
       </div>
-
-    </div>
+    </FormPanel>
   );
 }
 
-const STEP_TITLES = [
-  "Step 1 · Where",
-  "Step 2 · Bhandara",
-  "Step 3 · When",
-  "Step 4 · Thali",
-  "Step 5 · Organizer",
-  "Step 6 · Photo",
-];
+const STEP_TITLES_EN = ["Where", "Bhandara", "When", "Thali", "Organiser", "Photo"];
+const STEP_TITLES_HI = ["कहाँ", "भंडारा", "कब", "थाली", "व्यवस्थापक", "फ़ोटो"];
 
 function stepForFirstError(fe: FieldErrors): number | null {
   // If validation rejected at the API after we thought we passed, jump to the
@@ -629,10 +639,10 @@ function stepForFirstError(fe: FieldErrors): number | null {
 // ── Steps ────────────────────────────────────────────────────────────────
 
 function StepHeading({ hi, en }: { hi: string; en: string }) {
+  // One language: the visitor's.
   return (
-    <header className="mt-1 mb-5">
-      <h3 className="font-tiro text-2xl text-sindoor-700">{hi}</h3>
-      <p className="font-fraunces italic text-ink-600 mt-1">{en}</p>
+    <header className="bmi-step-h">
+      <Heading as="h3" en={en} hi={hi} />
     </header>
   );
 }
@@ -686,7 +696,7 @@ function Step2({ state, errors, setField }: StepProps) {
   return (
     <div>
       <StepHeading hi="भंडारा का परिचय" en="About the bhandara" />
-      <div className="grid gap-4 sm:grid-cols-2 items-start">
+      <div className="bmi-grid2">
         <Field
           hi="भंडारा का नाम"
           en="Bhandara Name"
@@ -698,7 +708,7 @@ function Step2({ state, errors, setField }: StepProps) {
             className={`${inputBase} font-mukta`}
             value={state.name}
             onChange={(e) => setField("name", e.target.value)}
-            placeholder="Bada Mangal Bhandara"
+            placeholder={locale === "hi" ? "बड़ा मंगल भंडारा" : "Bada Mangal Bhandara"}
           />
         </Field>
         <Field hi="क्षेत्र" en="Area" required error={errors.area?.[0]}>
@@ -723,9 +733,10 @@ function Step2({ state, errors, setField }: StepProps) {
                   setCustomMode(false);
                   trackEvent("bhandara_area_back_to_list");
                 }}
-                className="text-[11px] uppercase tracking-[0.18em] text-ink-600 hover:text-sindoor-700"
+                className="bmi-tl"
               >
-                ← {locale === "hi" ? "सूची से चुनें" : "Pick from the list"}
+                <Icon name="back" />
+                <span>{locale === "hi" ? "सूची से चुनें" : "Pick from the list"}</span>
               </button>
             </div>
           ) : (
@@ -765,7 +776,7 @@ function Step2({ state, errors, setField }: StepProps) {
             className={inputBase}
             value={state.landmark}
             onChange={(e) => setField("landmark", e.target.value)}
-            placeholder="Aliganj police chowki"
+            placeholder={locale === "hi" ? "अलीगंज पुलिस चौकी" : "Aliganj police chowki"}
           />
         </Field>
         <Field
@@ -778,7 +789,7 @@ function Step2({ state, errors, setField }: StepProps) {
             className={`${inputBase} font-mukta`}
             value={state.description}
             onChange={(e) => setField("description", e.target.value)}
-            placeholder="हर मंगल को 12,000 थाली / 12,000 plates every Tuesday"
+            placeholder={locale === "hi" ? "हर मंगल को 12,000 थाली" : "12,000 plates every Tuesday"}
           />
         </Field>
       </div>
@@ -815,6 +826,9 @@ function Step3({
   // we use to filter past chips out of the preset grid.
   const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
   const todayIso = ist.toISOString().slice(0, 10);
+  const season = listingSeason();
+  const SEASON_START_ISO = season.startISO;
+  const SEASON_END_ISO = season.endISO;
   const minIso = todayIso > SEASON_START_ISO ? todayIso : SEASON_START_ISO;
 
   const onPickCustomDate = (v: string) => {
@@ -831,59 +845,48 @@ function Step3({
     );
   };
 
+  const isHi = locale === "hi";
   const DateChip = ({ d }: { d: typeof dates[number] }) => {
     const checked = state.tuesdayDates.includes(d.iso);
     const weekdayHi = d.weekday === "tue" ? "मंगलवार" : "शनिवार";
     const weekdayEn = d.weekday === "tue" ? "Tuesday" : "Saturday";
     return (
-      <label
-        className={`relative flex items-center justify-between gap-2 rounded-xl border px-3 py-2 cursor-pointer select-none transition-colors ${
-          checked
-            ? "bg-saffron-50 border-saffron-600 text-sindoor-700"
-            : "bg-white border-gold-500/40 text-ink-900 hover:border-saffron-500"
-        }`}
-        title={`${weekdayEn}, ${d.en}`}
-      >
+      <label className="bmi-date" title={`${weekdayEn}, ${d.en}`}>
         <input
           type="checkbox"
-          className="sr-only"
           checked={checked}
           onChange={() => toggle("tuesdayDates", d.iso)}
         />
-        <span className="leading-tight min-w-0">
-          <span className="block font-deva font-semibold text-[0.95rem]">
-            {d.hiShort}
+        <span className="min-w-0">
+          <span className="d" lang={isHi ? "hi" : "en"}>
+            {isHi ? d.hiShort : d.enShort}
           </span>
-          <span className="block font-mukta text-[0.7rem] text-ink-600 mt-0.5 font-numerals tabular-nums">
-            {weekdayEn}, {d.enShort} {d.year}
+          <span className="w">
+            {isHi ? `${weekdayHi} ${d.year}` : `${weekdayEn} ${d.year}`}
           </span>
         </span>
-        <span
-          aria-hidden
-          className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full border transition-colors ${
-            checked
-              ? "bg-saffron-600 border-saffron-600 text-cream-50"
-              : "bg-cream-50 border-gold-500/55 text-transparent"
-          }`}
-        >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M5 13l4 4L19 7" />
-          </svg>
+        <span className="tick" aria-hidden>
+          <Icon name="check" />
         </span>
-        <span className="sr-only">{weekdayHi}</span>
       </label>
     );
   };
 
   const GroupLabel = ({ hi, en }: { hi: string; en: string }) => (
-    <p className="font-mukta uppercase tracking-[0.24em] text-[0.65rem] text-gold-500 font-semibold mb-2">
-      <span className="font-tiro normal-case tracking-normal text-sm text-sindoor-700 mr-2">
-        {hi}
-      </span>
-      / {en}
+    <p className="bmi-ilabel" lang={isHi ? "hi" : "en"} style={{ marginBottom: 12 }}>
+      {isHi ? hi : en}
     </p>
   );
+
+  const fmtShort = (iso: string) => {
+    const d = new Date(`${iso}T04:30:00Z`);
+    return d.toLocaleDateString(isHi ? "hi-IN" : "en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "Asia/Kolkata",
+    });
+  };
 
   return (
     <div>
@@ -892,30 +895,25 @@ function Step3({
       {tuesdays.length > 0 ? (
         <>
           <GroupLabel hi="बड़े मंगल" en="Bada Mangal Tuesdays" />
-          <div className="grid gap-1.5 grid-cols-2 sm:grid-cols-4" role="group" aria-label="Tuesdays">
+          <div className="bmi-dates" role="group" aria-label="Tuesdays">
             {tuesdays.map((d) => <DateChip key={d.iso} d={d} />)}
           </div>
         </>
       ) : null}
 
       {saturdays.length > 0 ? (
-        <div className="mt-5">
+        <div style={{ marginTop: 26 }}>
           <GroupLabel hi="बड़े शनिवार" en="Bada Shanivar Saturdays" />
-          <div className="grid gap-1.5 grid-cols-2 sm:grid-cols-4" role="group" aria-label="Saturdays">
+          <div className="bmi-dates" role="group" aria-label="Saturdays">
             {saturdays.map((d) => <DateChip key={d.iso} d={d} />)}
           </div>
         </div>
       ) : null}
 
-      {/* Free calendar pick, any day in the 2026 Bada Mangal season. */}
-      <div className="mt-5 rounded-2xl border border-gold-500/40 bg-cream-50 px-4 py-3">
-        <p className="font-mukta uppercase tracking-[0.24em] text-[0.65rem] text-gold-500 font-semibold">
-          <span className="font-tiro normal-case tracking-normal text-sm text-sindoor-700 mr-2">
-            कोई और दिन?
-          </span>
-          / Pick any other date
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
+      {/* Free calendar pick, any day in the listing season's window. */}
+      <div style={{ marginTop: 26 }}>
+        <GroupLabel hi="कोई और दिन?" en="Pick any other date" />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <SeasonDatePicker
             minIso={minIso}
             maxIso={SEASON_END_ISO}
@@ -923,8 +921,10 @@ function Step3({
             onPick={(iso) => onPickCustomDate(iso)}
             locale={locale}
           />
-          <span className="text-xs text-ink-600 font-numerals tabular-nums">
-            {SEASON_START_ISO} – {SEASON_END_ISO}
+          <span className="bmi-field-hint">
+            {isHi
+              ? `${fmtShort(SEASON_START_ISO)} से ${fmtShort(SEASON_END_ISO)} तक`
+              : `${fmtShort(SEASON_START_ISO)} to ${fmtShort(SEASON_END_ISO)}`}
           </span>
         </div>
 
@@ -934,17 +934,14 @@ function Step3({
               const d = new Date(`${iso}T04:30:00Z`);
               return (
                 <li key={iso}>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-saffron-50 border border-saffron-500/50 text-ink-900 text-xs px-2.5 py-1">
-                    <span className="font-numerals tabular-nums">{iso}</span>
-                    <span className="text-ink-600">·</span>
-                    <span className="text-ink-600">{formatEnglishDate(d)}</span>
+                  <span className="bmi-tag" title={formatEnglishDate(d)}>
+                    <span>{fmtShort(iso)}</span>
                     <button
                       type="button"
                       onClick={() => removeDate(iso)}
                       aria-label={`Remove ${iso}`}
-                      className="text-ink-600 hover:text-alert-500 leading-none"
                     >
-                      ×
+                      <Icon name="plus" className="rotate-45" />
                     </button>
                   </span>
                 </li>
@@ -955,56 +952,49 @@ function Step3({
       </div>
 
       {errors.tuesdayDates ? (
-        <p className="text-xs text-alert-500 mt-2">{errors.tuesdayDates[0]}</p>
+        <p className="bmi-field-err" role="alert" style={{ marginTop: 10 }}>{errors.tuesdayDates[0]}</p>
       ) : null}
 
-      {/* Timing row, section divider + two compact time pickers. */}
-      <div className="mt-7 pt-5 border-t border-gold-500/30 grid gap-4 sm:grid-cols-2 items-start">
+      {/* Timing row, a hairline then two time pickers. */}
+      <div className="bmi-sub bmi-grid2">
         <Field hi="शुरू होने का समय" en="Start time" required error={errors.timeStart?.[0]}>
           <TimeField
             ariaLabel="Start time"
             value={state.timeStart}
             onChange={(v) => setField("timeStart", v)}
-            placeholder="Pick start time"
+            placeholder={isHi ? "समय चुनें" : "Pick start time"}
           />
         </Field>
         <Field
           hi="समाप्ति का समय"
           en="End time (optional)"
           error={errors.timeEnd?.[0]}
+          helper={
+            state.timeEnd
+              ? undefined
+              : isHi
+                ? "ख़ाली छोड़ें तो प्रभु इच्छा तक"
+                : "Leave empty for prabhu iccha tak, open ended"
+          }
         >
-          <div className="grid gap-2">
-            <TimeField
-              ariaLabel="End time"
-              value={state.timeEnd}
-              onChange={(v) => setField("timeEnd", v)}
-              placeholder="प्रभु इच्छा तक"
-            />
-            {/* Toggle pill: when end-time is empty, show the "Prabhu iccha
-                tak" tag as the implicit value. Clicking it (when set)
-                clears the field back to blank. */}
-            {state.timeEnd ? (
-              <button
-                type="button"
-                onClick={() => setField("timeEnd", "")}
-                className="self-start inline-flex items-center gap-1.5 rounded-full border border-gold-500/45 bg-cream-50 px-3 py-1 text-xs text-ink-900 hover:border-saffron-500 transition-colors"
-              >
-                <span aria-hidden>×</span>
-                <span>
-                  <span className="font-tiro text-sindoor-700">प्रभु इच्छा तक</span>
-                  <span className="text-ink-600"> · clear end time</span>
-                </span>
-              </button>
-            ) : (
-              <span className="inline-flex items-center gap-2 rounded-full border border-saffron-500/40 bg-saffron-50 px-3 py-1 text-xs self-start">
-                <span aria-hidden className="block h-1.5 w-1.5 rounded-full bg-saffron-600 motion-safe:animate-pulse" />
-                <span>
-                  <span className="font-tiro text-sindoor-700">प्रभु इच्छा तक</span>
-                  <span className="text-ink-600"> · open-ended</span>
-                </span>
-              </span>
-            )}
-          </div>
+          <TimeField
+            ariaLabel="End time"
+            value={state.timeEnd}
+            onChange={(v) => setField("timeEnd", v)}
+            placeholder="प्रभु इच्छा तक"
+          />
+          {/* When an end time is set, one tap clears it back to
+              "prabhu iccha tak" (open ended). */}
+          {state.timeEnd ? (
+            <button
+              type="button"
+              onClick={() => setField("timeEnd", "")}
+              className="bmi-tl"
+              style={{ justifySelf: "start" }}
+            >
+              {isHi ? "समाप्ति समय हटाएँ" : "Clear end time"}
+            </button>
+          ) : null}
         </Field>
       </div>
     </div>
@@ -1017,47 +1007,45 @@ function Step4({
   return (
     <div>
       <StepHeading hi="थाली में क्या है?" en="What's served?" />
-      <div className="flex flex-wrap gap-2">
+      <StepMenu state={state} errors={errors} setField={setField} toggle={toggle} />
+    </div>
+  );
+}
+
+function StepMenu({
+  state, errors, setField, toggle,
+}: StepProps & { toggle: (f: "tuesdayDates" | "menu", v: string) => void }) {
+  const { locale } = useT();
+  const isHi = locale === "hi";
+  return (
+    <>
+      <div className="bmi-choices" role="group" aria-label={isHi ? "थाली" : "Menu"}>
         {MENU_ITEMS.map((m) => {
           const checked = state.menu.includes(m.en);
           return (
-            <label
-              key={m.en}
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 cursor-pointer transition-colors text-sm ${
-                checked
-                  ? "bg-saffron-600 border-saffron-600 text-cream-50"
-                  : "bg-white border-gold-500/40 text-ink-900 hover:border-saffron-500"
-              }`}
-            >
+            <label key={m.en} className="bmi-choice" lang={isHi ? "hi" : "en"}>
               <input
                 type="checkbox"
-                className="sr-only"
                 checked={checked}
                 onChange={() => toggle("menu", m.en)}
               />
-              <span className="font-tiro">{m.hi}</span>
-              <span>· {m.en}</span>
+              {checked ? <Icon name="check" /> : null}
+              <span>{isHi ? m.hi : m.en.charAt(0).toUpperCase() + m.en.slice(1)}</span>
             </label>
           );
         })}
       </div>
-      {errors.menu ? <p className="text-xs text-alert-500 mt-2">{errors.menu[0]}</p> : null}
+      {errors.menu ? <p className="bmi-field-err" role="alert" style={{ marginTop: 10 }}>{errors.menu[0]}</p> : null}
 
       {/* Free-form items the organizer types in */}
-      <div className="mt-6">
-        <p className="text-sm font-medium text-ink-900">
-          <span className="font-tiro text-base text-sindoor-700 mr-1">और कुछ?</span>
-          <span className="text-ink-600">
-            / Anything else? Type and press Enter
-          </span>
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-gold-500/50 bg-white px-2 py-2 focus-within:ring-2 focus-within:ring-saffron-600 focus-within:border-saffron-600">
+      <div className="bmi-field" style={{ marginTop: 28 }}>
+        <span className="bmi-field-label" lang={isHi ? "hi" : "en"}>
+          {isHi ? "और कुछ?" : "Anything else?"}
+        </span>
+        <div className="bmi-tagbox">
           {state.menuOther.map((item, i) => (
-            <span
-              key={`${item}-${i}`}
-              className="inline-flex items-center gap-1 rounded-full bg-saffron-50 border border-saffron-500/50 text-ink-900 text-sm px-2.5 py-1"
-            >
-              <span className="font-mukta">{item}</span>
+            <span key={`${item}-${i}`} className="bmi-tag">
+              <span>{item}</span>
               <button
                 type="button"
                 onClick={() =>
@@ -1067,14 +1055,14 @@ function Step4({
                   )
                 }
                 aria-label={`Remove ${item}`}
-                className="text-ink-600 hover:text-alert-500 leading-none"
               >
-                ×
+                <Icon name="plus" className="rotate-45" />
               </button>
             </span>
           ))}
           <input
             type="text"
+            aria-label={isHi ? "और कुछ?" : "Anything else?"}
             value={state.menuOtherDraft}
             onChange={(e) => setField("menuOtherDraft", e.target.value)}
             onKeyDown={(e) => {
@@ -1110,21 +1098,24 @@ function Step4({
             }}
             placeholder={
               state.menuOther.length === 0
-                ? "इमरती / chana / lassi"
+                ? isHi
+                  ? "इमरती, चना, लस्सी"
+                  : "Imarti, chana, lassi"
                 : ""
             }
-            className="min-w-[140px] flex-1 bg-transparent text-ink-900 px-2 py-1 outline-none placeholder:text-ink-600/60 font-mukta"
+            className="font-mukta"
           />
         </div>
-        <p className="mt-1 text-xs text-ink-600">
-          Type each item and press Enter (or use commas). Hindi or English both work.
-        </p>
+        <span className="bmi-field-hint">
+          {isHi
+            ? "हर चीज़ लिखकर Enter दबाएँ (या कॉमा लगाएँ)। हिंदी या अंग्रेज़ी, दोनों चलेंगे।"
+            : "Type each item and press Enter (or use commas). Hindi or English both work."}
+        </span>
         {errors.menuOther ? (
-          <p className="text-xs text-alert-500 mt-1">{errors.menuOther[0]}</p>
+          <span className="bmi-field-err" role="alert">{errors.menuOther[0]}</span>
         ) : null}
       </div>
-
-    </div>
+    </>
   );
 }
 
@@ -1148,36 +1139,26 @@ function Step5({ state, errors, setField }: StepProps) {
       <StepHeading hi="व्यवस्थापक की जानकारी" en="Your contact details" />
 
       {/* Honest expectation-setter, we WILL call this number. Keeping
-          the language explicit avoids surprise + builds trust ("they
-          actually picked up the phone" is the verification model). */}
-      <div className="mb-5 rounded-2xl border border-saffron-500/40 bg-saffron-50/60 px-4 py-3 flex items-center gap-3">
-        <span
-          aria-hidden
-          className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full bg-saffron-600 text-cream-50"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.86 19.86 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.86 19.86 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
-          </svg>
+          the language explicit avoids surprise + builds trust. */}
+      <p className="bmi-fnote" style={{ marginBottom: 24 }}>
+        <span className="ic" aria-hidden>
+          <Icon name="phone" />
         </span>
-        <p className="text-sm text-ink-900 leading-relaxed">
-          <span className="font-semibold text-sindoor-700">
-            {locale === "hi" ? "कन्फ़र्मेशन" : "Confirmation"}:
-          </span>{" "}
+        <span>
           {locale === "hi"
             ? "अगर आप नंबर देंगे तो हम उस पर कॉल करके जानकारी सत्यापित करेंगे, फिर भंडारा लाइव होगा। नंबर कहीं सार्वजनिक नहीं होगा।"
             : "If you share a number, our team will call to confirm the details and your bhandara goes live right after. Your number is never shown publicly."}
-        </p>
-      </div>
+        </span>
+      </p>
 
-      <div className="grid gap-4 sm:grid-cols-2 items-start">
+      <div className="bmi-grid2">
         <Field hi="नाम" en="Full name" required error={errors.organizerName?.[0]}>
           <input
             required
             className={inputBase}
             value={state.organizerName}
             onChange={(e) => setField("organizerName", e.target.value)}
-            placeholder="Ramesh Tiwari"
+            placeholder={locale === "hi" ? "रमेश तिवारी" : "Ramesh Tiwari"}
           />
         </Field>
         <Field
@@ -1186,7 +1167,9 @@ function Step5({ state, errors, setField }: StepProps) {
           error={
             errors.organizerPhone?.[0] ??
             (state.organizerPhone.length > 0 && !phoneValid
-              ? "Enter a valid 10-digit Indian mobile number"
+              ? locale === "hi"
+                ? "10 अंकों का सही मोबाइल नंबर डालें"
+                : "Enter a valid 10-digit Indian mobile number"
               : undefined)
           }
         >
@@ -1211,8 +1194,9 @@ function Step5({ state, errors, setField }: StepProps) {
           donate flow stays available regardless. Kept inside the
           existing fieldset on a thin top-border so it reads as a
           peer to "contact info", not a separate noisy section. */}
-      <div className="mt-5 pt-4 border-t border-gold-500/30">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-sindoor-700 font-semibold">
+      {SHOW_DONATIONS ? (
+      <div className="bmi-sub">
+        <p className="bmi-ilabel">
           {locale === "hi"
             ? "दान सक्षम करें (वैकल्पिक)"
             : "Enable donations (optional)"}
@@ -1251,6 +1235,7 @@ function Step5({ state, errors, setField }: StepProps) {
           />
         </div>
       </div>
+      ) : null}
     </div>
   );
 }
@@ -1273,37 +1258,25 @@ function Step6({ state, setField, locale }: StepProps & { locale: "hi" | "en" })
       */}
 
 
-      {/* Hint card, surface the pamphlet/banner use-case up-front so
-          organizers know they can upload printed invites, not just food
-          photos. */}
-      <div className="mb-4 rounded-2xl border border-saffron-500/40 bg-saffron-50/60 px-4 py-3 flex items-center gap-3">
-        <span
-          aria-hidden
-          className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full bg-saffron-600 text-cream-50"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <circle cx="9" cy="10" r="2" />
-            <path d="m3 18 5-5 4 4 3-3 6 6" />
-          </svg>
+      {/* Surface the pamphlet/banner use-case up-front so organisers
+          know they can upload printed invites, not just food photos. */}
+      <p className="bmi-fnote" style={{ marginBottom: 20 }}>
+        <span className="ic" aria-hidden>
+          <Icon name="camera" />
         </span>
-        <p className="text-sm text-ink-900 leading-relaxed">
-          <span className="font-semibold text-saffron-600">
-            {isHi ? "टिप:" : "Tip:"}
-          </span>{" "}
+        <span>
           {isHi
             ? "आप यहाँ अपना भंडारा का पर्चा (पैम्फ़्लेट), बैनर या निमंत्रण की तस्वीर भी अपलोड कर सकते हैं।"
             : "You can also upload your pamphlet, banner, or invite-card photo here."}
-        </p>
-      </div>
+        </span>
+      </p>
 
       <PhotoPicker
         value={state.photoUrl}
         onChange={(url) => setField("photoUrl", url)}
         locale={locale}
       />
-      <p className="mt-4 text-xs text-ink-600">
+      <p className="bmi-field-hint" style={{ marginTop: 14 }}>
         {isHi
           ? "एक अच्छी तस्वीर भंडारा को 3X ज़्यादा क्लिक मिलवाती है।"
           : "A clear photo gets 3X the engagement."}
@@ -1315,7 +1288,7 @@ function Step6({ state, setField, locale }: StepProps & { locale: "hi" | "en" })
 function Field({
   hi,
   en,
-  required,
+  required: _required,
   helper,
   error,
   children,
@@ -1327,20 +1300,23 @@ function Field({
   error?: string;
   children: React.ReactNode;
 }) {
-  // Fixed-height label row so Devanagari + Latin labels render at the same
-  // baseline across columns. Without this, Hindi labels with different
-  // ascender heights nudge the input below them out of alignment.
+  // One language per label (the visitor's). Optional fields say so
+  // quietly; required ones carry no star.
+  const { locale } = useT();
+  const isHi = locale === "hi";
+  const optional = /\(optional\)/i.test(en);
+  const label = isHi ? hi : en.replace(/\s*\(optional\)/i, "");
   return (
-    <label className="grid gap-1.5 self-start">
-      <span className="flex items-baseline gap-2 text-sm min-h-[1.6rem] leading-tight">
-        <span className="font-tiro text-base text-sindoor-700">{hi}</span>
-        <span className="text-ink-600">/ {en}</span>
-        {required ? <span className="text-alert-500">*</span> : null}
-      </span>
+    <KitField
+      asLabel
+      label={label}
+      lang={isHi ? "hi" : "en"}
+      optional={optional ? (isHi ? "वैकल्पिक" : "optional") : undefined}
+      hint={helper}
+      error={error}
+    >
       {children}
-      {helper && !error ? <span className="text-xs text-ink-600">{helper}</span> : null}
-      {error ? <span className="text-xs text-alert-500">{error}</span> : null}
-    </label>
+    </KitField>
   );
 }
 
@@ -1348,6 +1324,8 @@ function Field({
 
 function ThankYou(_props: { slug: string }) {
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const { locale } = useT();
+  const isHi = locale === "hi";
 
   // Play the Jai Shree Ram blessing once when the success card mounts,
   // and scroll it into view so the tick + chant land in the user's eyeline
@@ -1363,166 +1341,40 @@ function ThankYou(_props: { slug: string }) {
   }, []);
 
   return (
-    <div
-      ref={cardRef}
-      className="relative overflow-hidden rounded-3xl border border-saffron-500/40 bg-cream-50 p-8 sm:p-12 text-center shadow-warm"
-    >
-      {/* Soft saffron glow behind the tick */}
-      <div
-        aria-hidden
-        className="absolute inset-0 -z-10"
-        style={{
-          background:
-            "radial-gradient(420px 260px at 50% 18%, rgba(242,148,76,0.22), transparent 65%)",
-        }}
-      />
+    <FormPanel>
+      <div ref={cardRef} className="bmi-done">
+        <div className="bmi-done-tick" aria-hidden>
+          <Icon name="check" />
+        </div>
+        <p className="bmi-kick" style={{ justifyContent: "center" }} lang={isHi ? "hi" : "en"}>
+          {isHi ? "जय हनुमान" : "Jai Hanuman"}
+        </p>
+        <Heading
+          as="h2"
+          en="Your bhandara is now live on the city map."
+          hi="भंडारा लाइव हो गया!"
+        />
+        <p className="bmi-lede">
+          {isHi
+            ? "हमारी टीम 24 घंटे में कॉल करके जानकारी पक्की करेगी और सत्यापित बैज जोड़ेगी।"
+            : "Our team will call you within 24 hours to confirm the details and add a Verified badge."}
+        </p>
 
-      {/* Animated success tick */}
-      <div className="flex justify-center">
-        <span className="relative inline-flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-leaf-600 text-cream-50 shadow-warm">
-          <span
-            aria-hidden
-            className="absolute inset-0 rounded-full ring-2 ring-leaf-600/25 motion-safe:animate-ping"
-          />
-          <svg
-            viewBox="0 0 52 52"
-            className="relative w-6 h-6 sm:w-7 sm:h-7"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <path
-              d="M14 27 L23 36 L38 18"
-              className="motion-safe:[stroke-dasharray:50] motion-safe:[stroke-dashoffset:50] motion-safe:[animation:bm-tick_500ms_ease-out_180ms_forwards]"
-            />
-          </svg>
-        </span>
+        {/* What happens next. The listing is live the moment this
+            shows, so the first two are ticked; the call remains. */}
+        <ol className="bmi-next">
+          <li className="done">{isHi ? "आपका भंडारा मिल गया" : "Submission received"}</li>
+          <li className="done">{isHi ? "शहर के नक़्शे पर लाइव" : "Live on the city map"}</li>
+          <li>{isHi ? "सत्यापन कॉल (24 घंटे में)" : "Our team calls to verify (within 24h)"}</li>
+        </ol>
+
+        <div className="bmi-actions">
+          <Button href={isHi ? "/" : "/?lang=en"} data-ga="thankyou_home" icon="back" iconEnd={null}>
+            {isHi ? "होम" : "Home"}
+          </Button>
+        </div>
       </div>
-
-      {/* Devanagari "जय हनुमान" needs tighter tracking than the rest of
-          the kicker line, the global Hindi tracking reset would let the
-          letters drift apart at this size, so we override locally. */}
-      <p className="mt-6 font-mukta uppercase text-saffron-600 text-xs font-semibold">
-        <span className="font-deva [letter-spacing:0.02em]">जय हनुमान</span>
-        <span className="mx-1.5">·</span>
-        <span className="tracking-[0.3em]">JAI HANUMAN</span>
-      </p>
-      <h2 className="mt-3 font-tiro text-3xl sm:text-4xl text-sindoor-700">
-        भंडारा लाइव हो गया!
-      </h2>
-      <p className="mt-1 font-fraunces italic text-lg text-ink-900">
-        Your bhandara is now live on the city map.
-      </p>
-      <p className="mt-3 mx-auto max-w-md text-sm text-ink-600 leading-relaxed">
-        Our team will call you within 24 hours to confirm the details
-        and add a{" "}
-        <span className="inline-flex items-center gap-1 align-middle px-1.5 py-0.5 rounded-full bg-leaf-600/10 border border-leaf-600/40 text-leaf-600 font-semibold text-[0.7rem]">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <path d="M12 2 14.39 4.39 17.66 3.66 18.39 6.93 21.66 7.66 20.93 10.93 23.32 12 20.93 13.07 21.66 16.34 18.39 17.07 17.66 20.34 14.39 19.61 12 22 9.61 19.61 6.34 20.34 5.61 17.07 2.34 16.34 3.07 13.07 0.68 12 3.07 10.93 2.34 7.66 5.61 6.93 6.34 3.66 9.61 4.39z" />
-            <path d="M9 12l2 2 4-4" stroke="white" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-          </svg>
-          Verified
-        </span>{" "}
-        badge.
-      </p>
-
-      {/* What-happens-next stepper. Listing is live the moment the user
-          lands on this card, so steps 1 + 2 are both ticked; only the
-          team's confirmation call remains. */}
-      <ol className="mt-7 mx-auto max-w-md grid gap-3 text-left">
-        <NextStep
-          n={1}
-          title="आपका भंडारा"
-          en="Submission received"
-          done
-        />
-        <NextStep
-          n={2}
-          title="लाइव हो गया"
-          en="Live on the city map"
-          done
-        />
-        <NextStep
-          n={3}
-          title="सत्यापन कॉल"
-          en="Our team calls to verify (within 24h)"
-        />
-      </ol>
-
-      {/* Single CTA back home, we removed the WhatsApp share + copy-link
-          row because there's no public URL to share yet. */}
-      <div className="mt-7 mx-auto max-w-md">
-        <Link
-          href="/"
-          className="btn btn-primary w-full justify-center"
-          data-ga="thankyou_home"
-        >
-          Home
-        </Link>
-      </div>
-
-      {/* Full-service-organising upsell removed for now (was sitting
-          here as a "Need help arranging? / Get a free quote" card
-          linking to /organise-bhandara?from=upsell). Bring back when
-          the organise-bhandara flow is ready to handle the inbound
-          quote volume; until then the card was over-promising. */}
-    </div>
-  );
-}
-
-/**
- * One row in the post-submit "what happens next" stepper. `done` collapses
- * the leaf-green tick over the step number, so step 1 reads as completed
- * the instant the user lands on this card.
- */
-function NextStep({
-  n,
-  title,
-  en,
-  done,
-}: {
-  n: number;
-  title: string;
-  en: string;
-  done?: boolean;
-}) {
-  return (
-    <li className="flex items-start gap-3">
-      <span
-        className={`shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full border ${
-          done
-            ? "bg-leaf-600 border-leaf-600 text-cream-50"
-            : "bg-cream-50 border-gold-500/50 text-sindoor-700 font-semibold"
-        }`}
-        aria-hidden
-      >
-        {done ? (
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M5 13l4 4L19 7" />
-          </svg>
-        ) : (
-          <span className="font-numerals tabular-nums text-sm">{n}</span>
-        )}
-      </span>
-      <span className="pt-0.5 leading-snug">
-        <span className="block font-tiro text-base text-sindoor-700">
-          {title}
-        </span>
-        <span className="block text-xs text-ink-600">{en}</span>
-      </span>
-    </li>
+    </FormPanel>
   );
 }
 

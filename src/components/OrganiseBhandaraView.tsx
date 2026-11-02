@@ -2,13 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AREAS } from "@/lib/lucknow";
-import {
-  ALL_TUESDAY_ISO,
-  ALL_SATURDAY_ISO,
-  SEASON_END_ISO,
-  SEASON_START_ISO,
-} from "@/lib/dates";
-import { JaliCorner, MarigoldDivider } from "@/components/ornaments";
+import { listingSeason } from "@/lib/season";
+import { InnerShell, PageHero, Kicker, Actions, Button, Section, Heading, FormPanel, Field, Icon, Plate } from "@/components/v2";
+import { HOME_ART } from "@/content/home-art";
 import { trackEvent } from "@/lib/ga";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import FancySelect, { type FancySelectOption } from "@/components/FancySelect";
@@ -65,12 +61,12 @@ const PACKAGES: PackageDef[] = [
       en: {
         name: "Mohalla",
         tagline: "Neighbourhood bhandara",
-        range: "100 – 300 plates",
+        range: "100 to 300 plates",
       },
       hi: {
         name: "मोहल्ला",
         tagline: "मोहल्ले का भंडारा",
-        range: "100 – 300 थाली",
+        range: "100 से 300 थाली",
       },
     },
     includes: {
@@ -97,12 +93,12 @@ const PACKAGES: PackageDef[] = [
       en: {
         name: "Pariwar",
         tagline: "Community-scale bhandara",
-        range: "300 – 800 plates",
+        range: "300 to 800 plates",
       },
       hi: {
         name: "परिवार",
         tagline: "मोहल्ला-व्यापी भंडारा",
-        range: "300 – 800 थाली",
+        range: "300 से 800 थाली",
       },
     },
     includes: {
@@ -131,12 +127,12 @@ const PACKAGES: PackageDef[] = [
       en: {
         name: "Vishal",
         tagline: "Large-scale bhandara",
-        range: "800 – 3000+ plates",
+        range: "800 to 3000+ plates",
       },
       hi: {
         name: "विशाल",
         tagline: "विशाल भंडारा",
-        range: "800 – 3000+ थाली",
+        range: "800 से 3000+ थाली",
       },
     },
     includes: {
@@ -236,12 +232,16 @@ export default function OrganiseBhandaraView() {
   // Date preset chips, Bada Mangal Tuesdays + Bade Shanivars from
   // the season list. We slice off dates already past (IST) so the
   // organiser never picks a chip that's invalid, plus the custom
-  // picker below is bounded to today→season-end.
+  // picker below is bounded to today→season-end. The season is the one
+  // people list for now (src/lib/season.ts), so it rolls over by itself.
   const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
   const todayIso = ist.toISOString().slice(0, 10);
+  const season = listingSeason();
+  const SEASON_START_ISO = season.startISO;
+  const SEASON_END_ISO = season.endISO;
   const minIso = todayIso > SEASON_START_ISO ? todayIso : SEASON_START_ISO;
-  const presetTuesdays = ALL_TUESDAY_ISO.filter((d) => d >= todayIso);
-  const presetSaturdays = ALL_SATURDAY_ISO.filter((d) => d >= todayIso);
+  const presetTuesdays = season.tuesdays.filter((d) => d >= todayIso);
+  const presetSaturdays = season.saturdays.filter((d) => d >= todayIso);
   const presetSet = useMemo(
     () => new Set<string>([...presetTuesdays, ...presetSaturdays]),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -356,75 +356,53 @@ export default function OrganiseBhandaraView() {
     );
   }
 
+  const lang = isHi ? "hi" : "en";
+  const fmtRange = (iso: string) => {
+    const d = new Date(`${iso}T04:30:00Z`);
+    return d.toLocaleDateString(isHi ? "hi-IN" : "en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
+  };
+
   return (
-    <main>
+    <InnerShell>
       {/* HERO */}
-      <section className="relative isolate overflow-hidden">
-        <div
-          aria-hidden
-          className="absolute inset-0 -z-10"
-          style={{
-            background:
-              "radial-gradient(800px 500px at 20% 20%, rgba(242,148,76,0.22), transparent 65%), radial-gradient(800px 500px at 80% 80%, rgba(201,162,74,0.18), transparent 65%), linear-gradient(180deg, #FFF7EB 0%, #FBF7F0 70%, #FBF7F0 100%)",
-          }}
-        />
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 pt-12 pb-8 sm:pt-16 sm:pb-10 text-center">
-          <p className="font-mukta uppercase tracking-[0.3em] text-saffron-600 text-[0.7rem] sm:text-xs font-semibold inline-flex items-center gap-2">
-            <span className="block w-1.5 h-1.5 rounded-full bg-saffron-600 motion-safe:animate-pulse" />
-            {t("Full-service organising", "पूर्ण सेवा आयोजन")}
-          </p>
-          <h1
-            className={`mt-4 text-3xl sm:text-5xl leading-tight text-sindoor-700 [text-wrap:balance] ${
-              isHi ? "font-tiro" : "font-fraunces font-semibold"
-            }`}
-          >
-            {t(
-              "Want to organise a bhandara? We'll handle the rest.",
-              "भंडारा आयोजित करना चाहते हैं? बाक़ी सब हम पर छोड़ दें।",
-            )}
-          </h1>
-          <p className="mt-5 mx-auto max-w-2xl text-ink-600 leading-relaxed text-sm sm:text-base">
-            {t(
-              "Tent, catering, plates, prasad, transport, volunteers. Pick a package or build your own, our team coordinates every piece end-to-end and you focus on the seva.",
-              "टेंट, कैटरिंग, थाली, प्रसाद, परिवहन, स्वयंसेवक, हमारी टीम हर चीज़ का इंतज़ाम करेगी, आप बस सेवा पर ध्यान दें।",
-            )}
-          </p>
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-            <a
-              href="#request"
-              className="btn btn-primary"
-              data-ga="organise_hero_cta"
-              data-ga-source={source}
-            >
+      <PageHero
+        kicker={<Kicker>{t("Full-service organising", "पूर्ण सेवा आयोजन")}</Kicker>}
+        title={{
+          en: "Want to organise a bhandara? We'll handle the rest.",
+          hi: "भंडारा आयोजित करना चाहते हैं? बाक़ी सब हम पर छोड़ दें।",
+        }}
+        lede={t(
+          "Tent, catering, plates, prasad, transport, volunteers. Pick a package or build your own, our team coordinates every piece end-to-end and you focus on the seva.",
+          "टेंट, कैटरिंग, थाली, प्रसाद, परिवहन, स्वयंसेवक, हमारी टीम हर चीज़ का इंतज़ाम करेगी, आप बस सेवा पर ध्यान दें।",
+        )}
+        actions={
+          <Actions split>
+            <Button href="#request" iconEnd="chevron" data-ga="organise_hero_cta" data-ga-source={source}>
               {t("Request a free quote", "मुफ़्त क़ीमत मँगवाएँ")}
-              <span aria-hidden>→</span>
-            </a>
-            <a
-              href="#packages"
-              className="btn btn-ghost"
-              data-ga="organise_hero_packages"
-            >
+            </Button>
+            <Button href="#packages" variant="secondary" data-ga="organise_hero_packages">
               {t("See packages", "पैकेज देखें")}
-            </a>
-          </div>
-        </div>
-      </section>
+            </Button>
+          </Actions>
+        }
+        art={
+          <Plate
+            src={HOME_ART.bhandaraLine.src}
+            width={HOME_ART.bhandaraLine.width}
+            height={HOME_ART.bhandaraLine.height}
+            alt={t("Hands frying puris and serving at a bhandara", "भंडारे में पूड़ी तलते और परोसते हाथ")}
+            priority
+          />
+        }
+      />
 
       {/* HOW IT WORKS */}
-      <section className="mx-auto max-w-5xl px-4 sm:px-6 py-12 sm:py-16">
-        <header className="text-center">
-          <p className="font-mukta uppercase tracking-[0.3em] text-saffron-600 text-[0.65rem] sm:text-xs font-semibold">
-            {t("How it works", "कैसे काम करता है")}
-          </p>
-          <h2
-            className={`mt-2 text-2xl sm:text-3xl text-sindoor-700 ${
-              isHi ? "font-tiro" : "font-fraunces font-semibold"
-            }`}
-          >
-            {t("Three steps to your bhandara", "आपके भंडारे के तीन क़दम")}
-          </h2>
-        </header>
-        <ol className="mt-8 grid gap-5 sm:grid-cols-3">
+      <Section
+        id="how"
+        kicker={<Kicker>{t("How it works", "कैसे काम करता है")}</Kicker>}
+        title={{ en: "Three steps to your bhandara", hi: "आपके भंडारे के तीन क़दम" }}
+      >
+        <ol className="bmi-steplist three" data-rv>
           <Step
             n={1}
             title={t("Pick a package or build your own", "पैकेज चुनें या अपना बनाएँ")}
@@ -432,6 +410,7 @@ export default function OrganiseBhandaraView() {
               "Three published sizes cover most bhandaras; pick the closest fit or send a custom request below.",
               "तीन पैकेज ज़्यादातर भंडारों के लिए हैं; नज़दीकी चुनें या नीचे कस्टम अनुरोध भेजें।",
             )}
+            lang={lang}
           />
           <Step
             n={2}
@@ -440,6 +419,7 @@ export default function OrganiseBhandaraView() {
               "Date, time, area, and how many plates (or how many kg of wheat). Anything else relevant goes in the notes.",
               "तारीख़, समय, क्षेत्र, और कितनी थाली (या कितने किलो गेहूँ)। बाक़ी जानकारी नोट्स में।",
             )}
+            lang={lang}
           />
           <Step
             n={3}
@@ -448,97 +428,70 @@ export default function OrganiseBhandaraView() {
               "Our team calls you to confirm, share a quote, and start arranging tent, catering, plates, and logistics.",
               "हमारी टीम कॉल करके पुष्टि करेगी, क़ीमत देगी, और टेंट, कैटरिंग, थाली, और बाक़ी इंतज़ाम शुरू करेगी।",
             )}
+            lang={lang}
           />
         </ol>
-      </section>
+      </Section>
 
       {/* PACKAGES */}
-      <section
+      <Section
         id="packages"
-        className="bg-cream-50/60 border-y border-gold-500/30 py-12 sm:py-16 scroll-mt-20"
+        tone="paper"
+        className="scroll-mt-20"
+        kicker={<Kicker>{t("Bhandara packages", "भंडारा पैकेज")}</Kicker>}
+        title={{ en: "Three ready-to-go sizes", hi: "तीन तैयार पैकेज" }}
+        lede={t(
+          "Pricing is custom to your venue, date, and headcount, click a package and we'll share a quote.",
+          "क़ीमत आपके स्थान, तारीख़ और संख्या के अनुसार, पैकेज पर क्लिक करें, क़ीमत बताएँगे।",
+        )}
       >
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <header className="text-center">
-            <p className="font-mukta uppercase tracking-[0.3em] text-saffron-600 text-[0.65rem] sm:text-xs font-semibold">
-              {t("Bhandara packages", "भंडारा पैकेज")}
-            </p>
-            <h2
-              className={`mt-2 text-2xl sm:text-3xl text-sindoor-700 ${
-                isHi ? "font-tiro" : "font-fraunces font-semibold"
-              }`}
-            >
-              {t("Three ready-to-go sizes", "तीन तैयार पैकेज")}
-            </h2>
-            <p className="mt-2 text-sm text-ink-600">
-              {t(
-                "Pricing is custom to your venue, date, and headcount, click a package and we'll share a quote.",
-                "क़ीमत आपके स्थान, तारीख़ और संख्या के अनुसार, पैकेज पर क्लिक करें, क़ीमत बताएँगे।",
-              )}
-            </p>
-          </header>
-          <ul className="mt-8 grid gap-5 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {PACKAGES.map((p) => (
-              <PackageCard
-                key={p.id}
-                pkg={p}
-                isHi={isHi}
-                active={tier === p.id}
-                onPick={() => pickPackage(p)}
-              />
-            ))}
-          </ul>
-        </div>
-      </section>
+        <ul className="bmi-pkgs" data-rv>
+          {PACKAGES.map((p) => (
+            <PackageCard
+              key={p.id}
+              pkg={p}
+              isHi={isHi}
+              active={tier === p.id}
+              onPick={() => pickPackage(p)}
+            />
+          ))}
+        </ul>
+      </Section>
 
       {/* FORM */}
-      <section
+      <Section
         id="request"
-        className="mx-auto max-w-3xl px-4 sm:px-6 py-12 sm:py-16 scroll-mt-20"
+        className="scroll-mt-20"
+        kicker={<Kicker>{t("Send a request", "अनुरोध भेजें")}</Kicker>}
+        heading={
+          <Heading
+            as="h2"
+            id="request-h"
+            en={
+              tier === "CUSTOM"
+                ? "Tell us about your bhandara"
+                : `Request the ${selectedPackageName(tier, "en")} package`
+            }
+            hi={
+              tier === "CUSTOM"
+                ? "अपने भंडारे के बारे में बताएँ"
+                : `${selectedPackageName(tier, "hi")} पैकेज माँगें`
+            }
+          />
+        }
+        lede={t(
+          "We call back within a working day with a quote and next steps.",
+          "हम एक कामकाजी दिन में क़ीमत और अगले क़दम के साथ कॉल करते हैं।",
+        )}
       >
-        <header className="text-center">
-          <p className="font-mukta uppercase tracking-[0.3em] text-saffron-600 text-[0.65rem] sm:text-xs font-semibold">
-            {t("Send a request", "अनुरोध भेजें")}
-          </p>
-          <h2
-            className={`mt-2 text-2xl sm:text-3xl text-sindoor-700 ${
-              isHi ? "font-tiro" : "font-fraunces font-semibold"
-            }`}
-          >
-            {tier === "CUSTOM"
-              ? t("Tell us about your bhandara", "अपने भंडारे के बारे में बताएँ")
-              : t(
-                  `Request the ${selectedPackageName(tier, "en")} package`,
-                  `${selectedPackageName(tier, "hi")} पैकेज माँगें`,
-                )}
-          </h2>
-          <p className="mt-2 text-sm text-ink-600">
-            {t(
-              "We call back within a working day with a quote and next steps.",
-              "हम एक कामकाजी दिन में क़ीमत और अगले क़दम के साथ कॉल करते हैं।",
-            )}
-          </p>
-        </header>
-
-        {/* The whole form sits inside a card now (was bare on the
-            page background, which made it read as a "loose collection
-            of inputs" instead of a single submittable thing). Warm
-            gradient + saffron border + jali corners mirror the
-            chooser cards' visual language, so the form feels like
-            the destination card of the same family. */}
+        <div className="bmi-formgrid">
+        <FormPanel>
         <form
           ref={formRef}
           onSubmit={onSubmit}
-          className="relative mt-8 overflow-hidden rounded-3xl border border-saffron-500/45 p-6 sm:p-9 shadow-warm"
-          style={{
-            background:
-              "radial-gradient(700px 360px at 18% 0%, rgba(242,148,76,0.13), transparent 65%), radial-gradient(700px 360px at 82% 100%, rgba(201,162,74,0.14), transparent 65%), linear-gradient(180deg, #FFF7EB 0%, #FBF7F0 100%)",
-          }}
+          className="bmi-form"
+          style={{ gap: 0 }}
         >
-          <JaliCorner position="tl" className="absolute top-3 left-3 w-8 h-8 text-gold-500/55" />
-          <JaliCorner position="tr" className="absolute top-3 right-3 w-8 h-8 text-gold-500/55" />
-          <JaliCorner position="bl" className="absolute bottom-3 left-3 w-8 h-8 text-gold-500/55" />
-          <JaliCorner position="br" className="absolute bottom-3 right-3 w-8 h-8 text-gold-500/55" />
-
           {/* Honeypot removed, modern password managers / autofill
               extensions were filling the hidden `website` field on
               legitimate users, causing their submissions to silently
@@ -547,7 +500,7 @@ export default function OrganiseBhandaraView() {
               protection for this low-volume lead-capture surface. */}
 
           {/* ── Package tier chip row ─────────────────────────────── */}
-          <fieldset className="grid gap-2">
+          <fieldset className="bmi-fieldset grid gap-3">
             <SectionLabel
               title={t("Package", "पैकेज")}
               hint={t(
@@ -555,7 +508,7 @@ export default function OrganiseBhandaraView() {
                 "अभी भी बदल सकते हैं, अनुरोध उसी के अनुसार बनेगा।",
               )}
             />
-            <div className="flex flex-wrap gap-2">
+            <div className="bmi-choices">
               {PACKAGES.map((p) => (
                 <TierChip
                   key={p.id}
@@ -582,7 +535,7 @@ export default function OrganiseBhandaraView() {
               "हम इसी नंबर पर एक कामकाजी दिन में कॉल करते हैं।",
             )}
           />
-          <div className="mt-4 grid sm:grid-cols-2 gap-4 sm:gap-5">
+          <div className="bmi-grid2" style={{ marginTop: 18 }}>
             <FieldText
               label={t("Your name", "आपका नाम")}
               value={name}
@@ -590,14 +543,9 @@ export default function OrganiseBhandaraView() {
               required
               error={fieldErrors.name}
             />
-            <label className="grid gap-1.5 self-start">
-              <span className="text-sm text-ink-900 font-medium">
-                {t("Phone (we call back)", "फ़ोन (कॉलबैक)")}
-                <span className="text-sindoor-700"> *</span>
-              </span>
+            <Field asLabel label={t("Phone (we call back)", "फ़ोन (कॉलबैक)")}>
               {/* Shared PhoneInput: +91 prefix locked in visually, 10-digit
-                  cap, numeric keyboard on mobile. Same control everywhere
-                  on the site. */}
+                  cap, numeric keyboard on mobile. */}
               <PhoneInput
                 value={phone}
                 onChange={setPhone}
@@ -605,7 +553,7 @@ export default function OrganiseBhandaraView() {
                 error={fieldErrors.phone}
                 hint={t("10-digit Indian mobile", "10-अंकीय भारतीय मोबाइल")}
               />
-            </label>
+            </Field>
             <FieldText
               label={t("Email (optional)", "ईमेल (वैकल्पिक)")}
               value={email}
@@ -623,23 +571,17 @@ export default function OrganiseBhandaraView() {
 
           {/* ── Where + when ────────────────────────────────────── */}
           <SectionHeading
-            kicker={t("Where + when", "कहाँ और कब")}
+            kicker={t("Where and when", "कहाँ और कब")}
             body={t(
               "Pick one or many dates. Skip the date if you haven't fixed it yet.",
               "एक या कई तारीख़ें चुनें। अगर अभी तय नहीं की तो छोड़ दें।",
             )}
           />
-          <div className="mt-4 grid sm:grid-cols-2 gap-4 sm:gap-5">
-            <label className="grid gap-1.5 self-start">
-              <span className="text-sm text-ink-900 font-medium">
-                {t("Area in Lucknow", "लखनऊ में क्षेत्र")}
-              </span>
+          <div className="bmi-grid2" style={{ marginTop: 18 }}>
+            <Field asLabel label={t("Area in Lucknow", "लखनऊ में क्षेत्र")}>
               {customAreaMode ? (
-                // Free-text mode: typed by organisers in areas not in
-                // the curated 36-list (smaller localities, new
-                // colonies). The "← Pick from list" link below flips
-                // back to the dropdown without losing form state.
-                <div className="grid gap-1.5">
+                // Free-text mode for areas outside the curated list.
+                <div className="grid gap-1">
                   <input
                     type="text"
                     value={area}
@@ -650,7 +592,6 @@ export default function OrganiseBhandaraView() {
                     )}
                     maxLength={50}
                     autoFocus
-                    className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
                   />
                   <button
                     type="button"
@@ -658,9 +599,11 @@ export default function OrganiseBhandaraView() {
                       setArea("");
                       setCustomAreaMode(false);
                     }}
-                    className="self-start text-xs underline decoration-dotted underline-offset-4 text-ink-600 hover:text-sindoor-700"
+                    className="bmi-tl"
+                    style={{ justifySelf: "start" }}
                   >
-                    {t("← Pick from list", "← सूची से चुनें")}
+                    <Icon name="back" />
+                    <span>{t("Pick from list", "सूची से चुनें")}</span>
                   </button>
                 </div>
               ) : (
@@ -668,9 +611,7 @@ export default function OrganiseBhandaraView() {
                   ariaLabel={t("Area in Lucknow", "लखनऊ में क्षेत्र")}
                   value={area}
                   onChange={(v) => {
-                    // Sentinel handoff to free-text mode. Clear the
-                    // value first so the input renders empty + focused
-                    // rather than carrying "__custom__" as text.
+                    // Sentinel handoff to free-text mode.
                     if (v === "__custom__") {
                       setArea("");
                       setCustomAreaMode(true);
@@ -685,7 +626,7 @@ export default function OrganiseBhandaraView() {
                   searchPlaceholder={t("Search areas…", "क्षेत्र खोजें…")}
                 />
               )}
-            </label>
+            </Field>
             <FieldText
               label={t("Venue / landmark", "स्थान / लैंडमार्क")}
               value={addressNotes}
@@ -698,33 +639,26 @@ export default function OrganiseBhandaraView() {
             />
           </div>
 
-          {/* Multi-date chips (Bada Mangal Tuesdays + Bade Shanivars
-              from ALL_TUESDAY_ISO / ALL_SATURDAY_ISO, past dates
-              dropped). Same chip pattern BhandaraForm uses on its
-              dates step, kept here so organisers used to the listing
-              flow recognise it immediately. Below the presets, a
-              shared SeasonDatePicker lets them add any other date
-              inside the season window. */}
-          <div className="mt-5 grid gap-3">
-            <span className="text-sm text-ink-900 font-medium">
+          {/* Multi-date tiles (season dates from lib/season.ts, past
+              dates dropped), then any other date in the season. */}
+          <div className="grid gap-4" style={{ marginTop: 26 }}>
+            <span className="bmi-field-label" lang={lang}>
               {t("Pick service dates", "तारीख़ें चुनें")}
-              <span className="ml-1.5 text-xs font-normal text-ink-600">
-                {t("(multi-select)", "(कई चुन सकते हैं)")}
-              </span>
+              <span className="opt">{t("pick as many as you like", "कई चुन सकते हैं")}</span>
             </span>
 
             {presetTuesdays.length > 0 ? (
               <div>
-                <p className="font-mukta uppercase tracking-[0.22em] text-[0.65rem] text-gold-500 font-semibold mb-2">
+                <p className="bmi-ilabel" style={{ marginBottom: 12 }}>
                   {t("Bada Mangal Tuesdays", "बड़े मंगल")}
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                <div className="bmi-dates">
                   {presetTuesdays.map((iso) => (
                     <DateChip
                       key={iso}
                       iso={iso}
                       weekday="Tue"
-                      weekdayHi="मंगल"
+                      weekdayHi="मंगलवार"
                       checked={eventDates.includes(iso)}
                       onToggle={() => toggleDate(iso)}
                       isHi={isHi}
@@ -735,17 +669,17 @@ export default function OrganiseBhandaraView() {
             ) : null}
 
             {presetSaturdays.length > 0 ? (
-              <div>
-                <p className="font-mukta uppercase tracking-[0.22em] text-[0.65rem] text-gold-500 font-semibold mb-2">
+              <div style={{ marginTop: 8 }}>
+                <p className="bmi-ilabel" style={{ marginBottom: 12 }}>
                   {t("Bade Shanivar Saturdays", "बड़े शनिवार")}
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                <div className="bmi-dates">
                   {presetSaturdays.map((iso) => (
                     <DateChip
                       key={iso}
                       iso={iso}
                       weekday="Sat"
-                      weekdayHi="शनि"
+                      weekdayHi="शनिवार"
                       checked={eventDates.includes(iso)}
                       onToggle={() => toggleDate(iso)}
                       isHi={isHi}
@@ -756,11 +690,11 @@ export default function OrganiseBhandaraView() {
             ) : null}
 
             {/* Custom date, any day in the season window. */}
-            <div className="rounded-2xl border border-gold-500/40 bg-cream-50 px-4 py-3">
-              <p className="font-mukta uppercase tracking-[0.22em] text-[0.65rem] text-gold-500 font-semibold">
+            <div style={{ marginTop: 8 }}>
+              <p className="bmi-ilabel" style={{ marginBottom: 12 }}>
                 {t("Custom date", "कोई और दिन")}
               </p>
-              <div className="mt-2 flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <SeasonDatePicker
                   minIso={minIso}
                   maxIso={SEASON_END_ISO}
@@ -768,23 +702,24 @@ export default function OrganiseBhandaraView() {
                   onPick={addCustomDate}
                   locale={isHi ? "hi" : "en"}
                 />
-                <span className="text-xs text-ink-600 font-numerals tabular-nums">
-                  {SEASON_START_ISO} – {SEASON_END_ISO}
+                <span className="bmi-field-hint tabular-nums">
+                  {t(`${fmtRange(SEASON_START_ISO)} to ${fmtRange(SEASON_END_ISO)}`, `${fmtRange(SEASON_START_ISO)} से ${fmtRange(SEASON_END_ISO)} तक`)}
                 </span>
               </div>
               {customDates.length > 0 ? (
                 <ul className="mt-3 flex flex-wrap gap-2">
                   {customDates.map((iso) => (
                     <li key={iso}>
-                      <button
-                        type="button"
-                        onClick={() => removeDate(iso)}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-saffron-50 border border-saffron-500/60 text-sindoor-700 px-2.5 py-1 text-xs font-semibold hover:bg-saffron-100"
-                        title={t("Remove", "हटाएँ")}
-                      >
-                        {formatIsoShort(iso, isHi)}
-                        <span aria-hidden>×</span>
-                      </button>
+                      <span className="bmi-tag">
+                        <span>{formatIsoShort(iso, isHi)}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeDate(iso)}
+                          aria-label={t("Remove", "हटाएँ")}
+                        >
+                          <Icon name="plus" className="rotate-45" />
+                        </button>
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -792,36 +727,28 @@ export default function OrganiseBhandaraView() {
             </div>
 
             {eventDates.length > 0 ? (
-              <p className="text-xs text-ink-600">
+              <p className="bmi-field-hint">
                 {isHi
                   ? `${eventDates.length} तारीख़${eventDates.length === 1 ? "" : "ें"} चुनी गईं।`
                   : `${eventDates.length} date${eventDates.length === 1 ? "" : "s"} selected.`}
               </p>
             ) : null}
             {fieldErrors.eventDates ? (
-              <span className="text-xs text-alert-500">
+              <span className="bmi-field-err" role="alert">
                 {fieldErrors.eventDates}
               </span>
             ) : null}
           </div>
 
           {/* Time on its own row so the picker popover has room. */}
-          <div className="mt-4 grid sm:grid-cols-2 gap-4 sm:gap-5">
-            <label className="grid gap-1.5 self-start">
-              <span className="text-sm text-ink-900 font-medium">
-                {t("Time", "समय")}
-              </span>
+          <div className="bmi-grid2" style={{ marginTop: 22 }}>
+            <Field asLabel label={t("Time", "समय")} error={fieldErrors.eventTime}>
               <TimeField
                 ariaLabel={t("Pick a time", "समय चुनें")}
                 value={eventTime}
                 onChange={setEventTime}
               />
-              {fieldErrors.eventTime ? (
-                <span className="text-xs text-alert-500">
-                  {fieldErrors.eventTime}
-                </span>
-              ) : null}
-            </label>
+            </Field>
           </div>
 
           <SectionDivider />
@@ -834,8 +761,9 @@ export default function OrganiseBhandaraView() {
               "अंदाज़ा भी चलेगा, कॉल पर पक्का कर लेंगे।",
             )}
           />
-          <fieldset className="mt-4 grid gap-3">
-            <div className="flex gap-2">
+          <fieldset className="bmi-fieldset grid gap-4" style={{ marginTop: 18 }}>
+            <legend className="bmi-sr">{t("How big?", "कितना बड़ा?")}</legend>
+            <div className="bmi-choices">
               <TierChip
                 label={t("Plates", "थाली")}
                 active={quantityType === "PLATES"}
@@ -847,7 +775,7 @@ export default function OrganiseBhandaraView() {
                 onClick={() => setQuantityType("WHEAT_KG")}
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <input
                 type="number"
                 min={1}
@@ -855,26 +783,25 @@ export default function OrganiseBhandaraView() {
                 value={quantityValue}
                 onChange={(e) => setQuantityValue(e.target.value)}
                 required
-                className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600 w-40 tabular-nums"
+                aria-label={quantityType === "PLATES" ? t("plates", "थाली") : t("kg of wheat", "किलो गेहूँ")}
+                className="tabular-nums"
+                style={{ width: 160 }}
               />
-              <span className="text-sm text-ink-600">
+              <span className="bmi-field-hint" style={{ fontSize: 16 }}>
                 {quantityType === "PLATES"
                   ? t("plates", "थाली")
                   : t("kg of wheat", "किलो गेहूँ")}
               </span>
             </div>
             {fieldErrors.quantityValue ? (
-              <span className="text-xs text-alert-500">
+              <span className="bmi-field-err" role="alert">
                 {fieldErrors.quantityValue}
               </span>
             ) : null}
           </fieldset>
 
-          <div className="mt-5">
-            <label className="grid gap-1.5">
-              <span className="text-sm text-ink-900 font-medium">
-                {t("Anything else?", "और कुछ बताना है?")}
-              </span>
+          <div style={{ marginTop: 22 }}>
+            <Field asLabel label={t("Anything else?", "और कुछ बताना है?")} optional={t("optional", "वैकल्पिक")}>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -884,29 +811,23 @@ export default function OrganiseBhandaraView() {
                   "e.g. sound system for kirtan, separate veg / non-prasad section, parking constraints…",
                   "जैसे, कीर्तन के लिए साउंड, अलग प्रसाद-शाकाहारी कक्ष, पार्किंग…",
                 )}
-                className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
               />
-            </label>
+            </Field>
           </div>
 
           {formError ? (
-            <div className="mt-5 rounded-xl border border-alert-500/45 bg-cream-50 p-3 text-sm text-alert-500">
+            <div className="bmi-alert" role="alert" style={{ marginTop: 22 }}>
               {formError}
             </div>
           ) : null}
 
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="btn btn-primary"
-            >
+          <div className="bmi-form-foot" style={{ marginTop: 28 }}>
+            <Button type="submit" disabled={submitting} iconEnd={submitting ? null : "chevron"}>
               {submitting
                 ? t("Sending…", "भेज रहे हैं…")
                 : t("Send request", "अनुरोध भेजें")}
-              {submitting ? null : <span aria-hidden>→</span>}
-            </button>
-            <p className="text-xs text-ink-600">
+            </Button>
+            <p className="bmi-fine">
               {t(
                 "We don't share your number. Callback within one working day.",
                 "हम आपका नंबर साझा नहीं करते। एक कामकाजी दिन में कॉल।",
@@ -914,12 +835,18 @@ export default function OrganiseBhandaraView() {
             </p>
           </div>
         </form>
-      </section>
-
-      <div className="flex justify-center pb-12">
-        <MarigoldDivider size={220} className="text-gold-500" />
-      </div>
-    </main>
+        </FormPanel>
+        <div className="bmi-formart" aria-hidden>
+          <Plate
+            src={HOME_ART.sevaHands.src}
+            width={HOME_ART.sevaHands.width}
+            height={HOME_ART.sevaHands.height}
+            alt=""
+          />
+        </div>
+        </div>
+      </Section>
+    </InnerShell>
   );
 }
 
@@ -955,9 +882,7 @@ function formatIsoShort(iso: string, isHi: boolean): string {
 
 /* ────────── Sub-components ────────── */
 
-/** Section heading inside the form card. Saffron uppercase kicker
- *  + serif heading + optional body line. Used to break the form into
- *  scannable groups (Contact, Where + when, How big, etc.). */
+/** A group heading inside the form: kicker and one line. */
 function SectionHeading({
   kicker,
   body,
@@ -967,47 +892,30 @@ function SectionHeading({
 }) {
   return (
     <header>
-      <p className="font-mukta uppercase tracking-[0.24em] text-[0.65rem] text-saffron-600 font-semibold">
-        {kicker}
-      </p>
+      <p className="bmi-fh" style={{ fontSize: 22 }}>{kicker}</p>
       {body ? (
-        <p className="mt-1 text-xs text-ink-600">{body}</p>
+        <p className="bmi-field-hint" style={{ marginTop: 4 }}>{body}</p>
       ) : null}
     </header>
   );
 }
 
-/** Compact section label for tighter rows like the package chip
- *  selector. Kicker + inline hint, no body line break. */
+/** Compact label for the package chip row. */
 function SectionLabel({ title, hint }: { title: string; hint?: string }) {
   return (
-    <span className="flex flex-wrap items-baseline gap-x-2 mb-1">
-      <span className="font-mukta uppercase tracking-[0.24em] text-[0.65rem] text-saffron-600 font-semibold">
-        {title}
-      </span>
-      {hint ? (
-        <span className="text-xs text-ink-600 normal-case tracking-normal">
-          {hint}
-        </span>
-      ) : null}
-    </span>
+    <legend className="bmi-field-label" style={{ marginBottom: 2 }}>
+      {title}
+      {hint ? <span className="opt">{hint}</span> : null}
+    </legend>
   );
 }
 
-/** Faint gold rule between form sections so the card reads as
- *  grouped blocks instead of one long stack. */
+/** Gold hairline between form groups. */
 function SectionDivider() {
-  return (
-    <div
-      aria-hidden
-      className="my-6 sm:my-7 h-px bg-gradient-to-r from-transparent via-gold-500/45 to-transparent"
-    />
-  );
+  return <hr className="bmi-rule" style={{ margin: "30px 0" }} />;
 }
 
-/** Single tappable date chip for the multi-select preset grid. Mirrors
- *  BhandaraForm's DateChip but flatter (no Devanagari label stack)
- *  because the Organise form is single-line per chip. */
+/** One season date to tick (kit date tile). */
 function DateChip({
   iso,
   weekday,
@@ -1026,53 +934,30 @@ function DateChip({
   const [y, m, d] = iso.split("-").map(Number);
   const monthsEn = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const monthsHi = ["जन","फ़र","मार्च","अप्रैल","मई","जून","जुल","अग","सित","अक्ट","नव","दिस"];
-  const label =
-    y && m && d
-      ? `${isHi ? weekdayHi : weekday} · ${d} ${(isHi ? monthsHi : monthsEn)[m - 1]}`
-      : iso;
+  const day = y && m && d ? `${d} ${(isHi ? monthsHi : monthsEn)[m - 1]}` : iso;
+  const wk = isHi ? weekdayHi : weekday === "Tue" ? "Tuesday" : "Saturday";
   return (
-    <label
-      className={`relative flex items-center justify-between gap-2 rounded-xl border px-3 py-2 cursor-pointer select-none transition-colors text-sm ${
-        checked
-          ? "bg-saffron-50 border-saffron-600 text-sindoor-700"
-          : "bg-white border-gold-500/40 text-ink-900 hover:border-saffron-500"
-      }`}
-      title={iso}
-    >
-      <input
-        type="checkbox"
-        className="sr-only"
-        checked={checked}
-        onChange={onToggle}
-      />
-      <span className="font-medium tabular-nums">{label}</span>
-      <span
-        aria-hidden
-        className={`shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-full border transition-colors ${
-          checked
-            ? "bg-saffron-600 border-saffron-600 text-cream-50"
-            : "bg-cream-50 border-gold-500/55 text-transparent"
-        }`}
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d="M5 13l4 4L19 7" />
-        </svg>
+    <label className="bmi-date" title={iso}>
+      <input type="checkbox" checked={checked} onChange={onToggle} />
+      <span className="min-w-0">
+        <span className="d" lang={isHi ? "hi" : "en"}>{day}</span>
+        <span className="w">{wk} {y}</span>
+      </span>
+      <span className="tick" aria-hidden>
+        <Icon name="check" />
       </span>
     </label>
   );
 }
 
-function Step({ n, title, body }: { n: number; title: string; body: string }) {
+function Step({ n, title, body, lang }: { n: number; title: string; body: string; lang: string }) {
   return (
-    <li className="relative rounded-2xl border border-gold-500/40 bg-cream-50 p-5 shadow-warm">
-      <span className="absolute -top-3 -left-3 inline-flex items-center justify-center w-9 h-9 rounded-full bg-saffron-600 text-cream-50 font-numerals font-bold shadow-warm">
-        {n}
+    <li>
+      <span className="n" aria-hidden>{n}</span>
+      <span>
+        <h3 lang={lang}>{title}</h3>
+        <p lang={lang}>{body}</p>
       </span>
-      <h3 className="font-fraunces text-lg font-semibold text-sindoor-700 mt-2">
-        {title}
-      </h3>
-      <p className="mt-1.5 text-sm text-ink-600 leading-relaxed">{body}</p>
     </li>
   );
 }
@@ -1090,48 +975,37 @@ function PackageCard({
 }) {
   const labels = pkg.labels[isHi ? "hi" : "en"];
   const includes = pkg.includes[isHi ? "hi" : "en"];
+  const lang = isHi ? "hi" : "en";
   return (
     <li>
       <button
         type="button"
         onClick={onPick}
-        className={`relative w-full text-left rounded-3xl border bg-cream-50 p-6 sm:p-7 shadow-warm transition-transform hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600 ${
-          active
-            ? "border-saffron-500 ring-2 ring-saffron-500/40"
-            : "border-gold-500/45"
-        }`}
+        aria-pressed={active}
+        className={`bmi-pkg ${active ? "on" : ""}`.trim()}
         data-ga="organise_package_pick"
         data-ga-tier={pkg.id}
       >
-        <JaliCorner position="tl" className="absolute top-3 left-3 w-7 h-7 text-gold-500/55" />
-        <JaliCorner position="tr" className="absolute top-3 right-3 w-7 h-7 text-gold-500/55" />
-        <p className="font-mukta uppercase tracking-[0.22em] text-[0.7rem] text-saffron-600 font-semibold">
-          {labels.tagline}
-        </p>
-        <h3
-          className={`mt-1 text-2xl text-sindoor-700 ${
-            isHi ? "font-tiro" : "font-fraunces font-semibold"
-          }`}
-        >
-          {labels.name}
-        </h3>
-        <p className="text-sm text-ink-600 font-medium mt-0.5">{labels.range}</p>
-        <ul className="mt-4 space-y-1.5 text-sm text-ink-900">
+        <span className="k" lang={lang}>{labels.tagline}</span>
+        <h3 lang={lang}>{labels.name}</h3>
+        <span className="r" lang={lang}>{labels.range}</span>
+        <ul>
           {includes.map((line) => (
-            <li key={line} className="flex items-start gap-1.5">
-              <span aria-hidden className="text-saffron-600 mt-0.5">✓</span>
-              <span>{line}</span>
-            </li>
+            <li key={line} lang={lang}>{line}</li>
           ))}
         </ul>
-        <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-saffron-600">
-          {active
-            ? isHi
-              ? "चुना गया"
-              : "Selected"
-            : isHi
-              ? "इसी पर अनुरोध भेजें →"
-              : "Request this →"}
+        <span className="bmi-tl" style={{ marginTop: "auto" }}>
+          {active ? <Icon name="check" /> : null}
+          <span>
+            {active
+              ? isHi
+                ? "चुना गया"
+                : "Selected"
+              : isHi
+                ? "इसी पर अनुरोध भेजें"
+                : "Request this"}
+          </span>
+          {active ? null : <Icon name="chevron" className="go" />}
         </span>
       </button>
     </li>
@@ -1148,16 +1022,9 @@ function TierChip({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
-        active
-          ? "border-saffron-500 bg-saffron-50 text-sindoor-700"
-          : "border-gold-500/40 bg-cream-50 text-ink-600 hover:border-saffron-500/60"
-      }`}
-    >
-      {label}
+    <button type="button" onClick={onClick} aria-pressed={active} className="bmi-choice">
+      {active ? <Icon name="check" /> : null}
+      <span>{label}</span>
     </button>
   );
 }
@@ -1181,32 +1048,18 @@ function FieldText({
   error?: string;
   hint?: string;
 }) {
+  const m = label.match(/^(.*?)\s*\((optional|वैकल्पिक)\)$/);
   return (
-    // `self-start` keeps each field anchored to the TOP of its grid
-    // row, so a field WITH a hint doesn't push its sibling WITHOUT
-    // one down by half a line. This is the alignment bug visible in
-    // the earlier screenshot, "Phone" had a hint below it, "Your
-    // name" didn't, and the row's natural stretch pulled the inputs
-    // to different vertical positions.
-    <label className="grid gap-1.5 self-start">
-      <span className="text-sm text-ink-900 font-medium">
-        {label}
-        {required ? <span className="text-sindoor-700"> *</span> : null}
-      </span>
+    <Field asLabel label={m ? m[1] : label} optional={m ? m[2] : undefined} hint={hint} error={error}>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         required={required}
         maxLength={maxLength}
-        className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+        aria-invalid={error ? true : undefined}
       />
-      {error ? (
-        <span className="text-xs text-alert-500">{error}</span>
-      ) : hint ? (
-        <span className="text-xs text-ink-600">{hint}</span>
-      ) : null}
-    </label>
+    </Field>
   );
 }
 
@@ -1223,34 +1076,36 @@ function SuccessView({
 }) {
   const tierLabel = selectedPackageName(tier, isHi ? "hi" : "en");
   return (
-    <section className="mx-auto max-w-2xl px-4 sm:px-6 py-16 sm:py-24 text-center">
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-leaf-600 text-cream-50 shadow-warm">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <polyline points="20 6 9 17 4 12" />
-        </svg>
-      </div>
-      <h1
-        className={`mt-5 text-3xl sm:text-4xl text-sindoor-700 ${
-          isHi ? "font-tiro" : "font-fraunces font-semibold"
-        }`}
-      >
-        {isHi ? `धन्यवाद ${name}!` : `Thank you, ${name}!`}
-      </h1>
-      <p className="mt-3 text-ink-600 leading-relaxed">
-        {isHi
-          ? `आपका ${tier === "CUSTOM" ? "कस्टम" : tierLabel} पैकेज का अनुरोध हमें मिल गया है। हमारी टीम एक कामकाजी दिन में ${phone} पर कॉल करेगी।`
-          : `Your request for the ${tier === "CUSTOM" ? "custom" : tierLabel} package has reached us. Our team will call you on ${phone} within one working day.`}
-      </p>
-      <p className="mt-2 text-sm text-ink-600">
-        {isHi
-          ? "अगर कुछ बदलना हो तो बस वही नंबर वापस भेजें।"
-          : "Need to change anything? Just reply on the same number."}
-      </p>
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-        <a href="/" className="btn btn-ghost">
-          {isHi ? "← होम" : "← Home"}
-        </a>
-      </div>
-    </section>
+    <InnerShell>
+      <section className="bmi-sec">
+        <div className="bmi-wrap narrow">
+          <FormPanel>
+            <div className="bmi-done" aria-live="polite">
+              <div className="bmi-done-tick" aria-hidden>
+                <Icon name="check" />
+              </div>
+              <h1 className={`bmi-h2 ${isHi ? "" : "lat"}`}>
+                {isHi ? `धन्यवाद ${name}!` : `Thank you, ${name}!`}
+              </h1>
+              <p className="bmi-lede">
+                {isHi
+                  ? `आपका ${tier === "CUSTOM" ? "कस्टम" : tierLabel} पैकेज का अनुरोध हमें मिल गया है। हमारी टीम एक कामकाजी दिन में ${phone} पर कॉल करेगी।`
+                  : `Your request for the ${tier === "CUSTOM" ? "custom" : tierLabel} package has reached us. Our team will call you on ${phone} within one working day.`}
+              </p>
+              <p className="bmi-fine" style={{ marginTop: 8 }}>
+                {isHi
+                  ? "अगर कुछ बदलना हो तो बस वही नंबर वापस भेजें।"
+                  : "Need to change anything? Just reply on the same number."}
+              </p>
+              <div className="bmi-actions">
+                <Button href="/" variant="secondary" icon="back" iconEnd={null}>
+                  {isHi ? "होम" : "Home"}
+                </Button>
+              </div>
+            </div>
+          </FormPanel>
+        </div>
+      </section>
+    </InnerShell>
   );
 }

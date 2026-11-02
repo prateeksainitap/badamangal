@@ -219,9 +219,10 @@ function renderLines(
     case "spot":
       return {
         kicker: isHi ? `लाइव स्पॉट · ${ago}` : `Live spot · ${ago}`,
+        // Spotters are never named publicly; the API sends who: "".
         body: isHi
-          ? `${e.who} ने ${e.where ? `${e.where} में ` : ""}एक भंडारा देखा।`
-          : `${e.who} spotted a bhandara${e.where ? ` in ${e.where}` : ""}.`,
+          ? `${e.who || "किसी"} ने ${e.where ? `${e.where} में ` : ""}एक भंडारा देखा।`
+          : `${e.who || "Someone"} spotted a bhandara${e.where ? ` in ${e.where}` : ""}.`,
       };
     case "viewers": {
       // Floor the public-facing count so a quiet minute never reads as

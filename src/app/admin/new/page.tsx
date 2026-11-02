@@ -5,7 +5,7 @@ import ScanReview from "@/components/admin/ScanReview";
 import { isAdmin } from "@/lib/admin-auth";
 import { AREAS } from "@/lib/lucknow";
 import { MENU_ITEMS } from "@/lib/menu";
-import { ALL_TUESDAY_ISO, ALL_SATURDAY_ISO } from "@/lib/dates";
+import { listingSeason } from "@/lib/season";
 import AdminShell from "@/components/admin/AdminShell";
 import { getAdminNavCounts } from "@/lib/admin-nav-counts";
 import BotHeartbeat from "@/components/admin/BotHeartbeat";
@@ -100,8 +100,8 @@ export default async function AdminNewPage({
           <ScanReview
             areas={[...AREAS]}
             menuItems={[...MENU_ITEMS]}
-            tuesdays={[...ALL_TUESDAY_ISO]}
-            saturdays={[...ALL_SATURDAY_ISO]}
+            tuesdays={[...listingSeason().tuesdays]}
+            saturdays={[...listingSeason().saturdays]}
             initialBlank={initialKind}
           />
         </div>

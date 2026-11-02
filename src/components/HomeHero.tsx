@@ -4,12 +4,8 @@ import Link from "next/link";
 import AnimatedHeading from "@/components/AnimatedHeading";
 import { strings } from "@/content/strings";
 import { useLocaleFromContext } from "@/lib/locale-context";
-import {
-  formatEnglishDate,
-  formatHindiDate,
-  nextBadaMangal,
-  BADA_MANGAL_DATES_2026,
-} from "@/lib/dates";
+import { formatEnglishDate, formatHindiDate } from "@/lib/dates";
+import { featuredSeason, istIso } from "@/lib/season";
 
 /**
  * Homepage hero, extracted out of the server-rendered page so its
@@ -26,8 +22,10 @@ import {
  *   immediately on hydration based on the bm_lang cookie.
  *
  * The "next Tuesday" / "today" copy is derived live on the client
- * from BADA_MANGAL_DATES_2026 + the current IST clock, the server
- * doesn't need to pass anything in.
+ * from the featured season (lib/season.ts: the running season, else
+ * the last completed one) + the current IST clock, the server doesn't
+ * need to pass anything in. Off season that is 2026, so the copy stays
+ * exactly as it was; in the 2027 season it follows the 2027 Tuesdays.
  */
 export default function HomeHero() {
   const locale = useLocaleFromContext();
@@ -40,13 +38,15 @@ export default function HomeHero() {
   // - Once the season is over (no upcoming dates), fall back to a quiet
   //   season-complete line so we never show a stale 2026 date.
   const now = new Date();
-  const istTodayIso = new Date(now.getTime() + 5.5 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-  const todayIsBadaMangal = BADA_MANGAL_DATES_2026.find(
-    (d) => d.toISOString().slice(0, 10) === istTodayIso,
-  );
-  const upcomingBadaMangal = todayIsBadaMangal ?? nextBadaMangal(now);
+  const season = featuredSeason(now);
+  const is2026 = season.year === 2026;
+  const istTodayIso = istIso(now);
+  const anchor = (iso: string) => new Date(`${iso}T04:30:00Z`);
+  const todayIsBadaMangal = season.tuesdays.includes(istTodayIso)
+    ? anchor(istTodayIso)
+    : null;
+  const nextIso = season.tuesdays.find((d) => d > istTodayIso);
+  const upcomingBadaMangal = todayIsBadaMangal ?? (nextIso ? anchor(nextIso) : null);
   const seasonOver = !upcomingBadaMangal;
   const tuesdayKicker = todayIsBadaMangal
     ? isHi
@@ -56,9 +56,13 @@ export default function HomeHero() {
       ? "अगला मंगल"
       : "Next Tuesday";
   const tuesdayLine = seasonOver
-    ? isHi
-      ? "इस वर्ष के सभी आठ बड़े मंगल पूर्ण। जय हनुमान।"
-      : "This year's eight Bada Mangals are complete. Jai Hanuman."
+    ? is2026
+      ? isHi
+        ? "इस वर्ष के सभी आठ बड़े मंगल पूर्ण। जय हनुमान।"
+        : "This year's eight Bada Mangals are complete. Jai Hanuman."
+      : isHi
+        ? "इस वर्ष के सभी बड़े मंगल पूर्ण। जय हनुमान।"
+        : "This year's Bada Mangals are complete. Jai Hanuman."
     : isHi
       ? `${formatHindiDate(upcomingBadaMangal)}, सुबह से शाम तक, शहर भर के द्वार खुले रहेंगे।`
       : `${formatEnglishDate(upcomingBadaMangal)}, gates open across the city, dawn to dusk.`;
@@ -79,8 +83,8 @@ export default function HomeHero() {
         <span className="block w-2 h-2 rounded-full bg-saffron-600 motion-safe:animate-pulse" />
         <span className="font-mukta font-semibold uppercase tracking-[0.22em] text-[0.65rem] sm:text-[0.8rem] text-sindoor-700">
           {isHi
-            ? "बड़ा मंगल · लखनऊ · 2026"
-            : "Bada Mangal · Lucknow · 2026"}
+            ? `बड़ा मंगल · लखनऊ · ${season.year}`
+            : `Bada Mangal · Lucknow · ${season.year}`}
         </span>
       </div>
 
@@ -92,9 +96,13 @@ export default function HomeHero() {
       />
 
       <p className="mt-5 sm:mt-6 max-w-xl mx-auto lg:mx-0 text-ink-900/85 text-base sm:text-lg leading-relaxed">
-        {isHi
-          ? "हर मंगलवार लखनऊ एक बड़ी रसोई बन जाता है। इस दुर्लभ 8-मंगल वर्ष में, हर भंडारा एक नक़्शे पर।"
-          : "Every Tuesday of Jyeshtha, Lucknow becomes one giant kitchen. In this rare 8-Tuesday year, every bhandara on one map."}
+        {is2026
+          ? isHi
+            ? "हर मंगलवार लखनऊ एक बड़ी रसोई बन जाता है। इस दुर्लभ 8-मंगल वर्ष में, हर भंडारा एक नक़्शे पर।"
+            : "Every Tuesday of Jyeshtha, Lucknow becomes one giant kitchen. In this rare 8-Tuesday year, every bhandara on one map."
+          : isHi
+            ? "ज्येष्ठ के हर मंगलवार लखनऊ एक बड़ी रसोई बन जाता है। हर भंडारा, एक नक़्शे पर।"
+            : "Every Tuesday of Jyeshtha, Lucknow becomes one giant kitchen. Every bhandara, on one map."}
       </p>
 
       {/* Hero CTAs, both pinned to the same min-width so the

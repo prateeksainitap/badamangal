@@ -27,7 +27,8 @@ import {
 import { DEFAULT_CENTER, DEFAULT_ZOOM } from "@/lib/lucknow";
 import { useCity } from "@/lib/city-context";
 import { stripBotProvenance } from "@/lib/sanitize";
-import type { Bhandara } from "@/types/bhandara";
+import { joinTimeRange } from "@/lib/time";
+import type { BhandaraListItem } from "@/types/bhandara";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import {
   bhandaraShareText,
@@ -69,9 +70,9 @@ export type LiveSpotPin = {
 };
 
 type Props = {
-  listings: Bhandara[];
+  listings: BhandaraListItem[];
   className?: string;
-  onPinClick?: (b: Bhandara) => void;
+  onPinClick?: (b: BhandaraListItem) => void;
   /** When set, overrides the auto-fit and centers the map here. */
   center?: { lat: number; lng: number };
   /** Zoom used when `center` is set or only one listing is present. */
@@ -763,7 +764,7 @@ function buildPhotoBlock(photoUrl: string): string {
  * ("View details" + "Directions") fit without truncation.
  */
 function buildListedBhandaraPopupHtml(
-  b: Bhandara,
+  b: BhandaraListItem,
   locale: "hi" | "en",
 ): string {
   // Listings sometimes carry 0,0 when geocoding failed at submission
@@ -787,8 +788,7 @@ function buildListedBhandaraPopupHtml(
   const timeRange = (() => {
     const start = b.timeStart ? format12hShort(b.timeStart) : "";
     const end = b.timeEnd ? format12hShort(b.timeEnd) : "";
-    if (start && end) return `${start} – ${end}`;
-    return start || "";
+    return start ? joinTimeRange(start, end, locale) : "";
   })();
 
   return `

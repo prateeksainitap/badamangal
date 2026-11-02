@@ -19,6 +19,7 @@ import { prisma } from "@/lib/db";
 import { MENU_KEYS, menuHiFor } from "@/lib/menu";
 import { createBhandaraWithSlugRetry, slugify } from "@/lib/slugify";
 import { isAdmin } from "@/lib/admin-auth";
+import { SEASONS } from "@/lib/season";
 import { isInAnyCity, resolveCityFromCoords } from "@/lib/cities";
 
 export const runtime = "nodejs";
@@ -38,17 +39,20 @@ const MENU_VALUES = [...MENU_KEYS] as [string, ...string[]];
 const areaInput = z.string().trim().min(2).max(50);
 
 // Admin date validator, wider than the public form's. The public
-// /list-bhandara only accepts the season window (May–June 2026); the
+// /list-bhandara only accepts the upcoming season window; the
 // admin needs full freedom to record one-off events that fall outside
 // the canonical Tuesdays (Saturday community lunches, post-season
 // thanksgiving meals, Shani Jayanti overlaps, etc.). Constrain only
-// to "any reasonable date in 2026" so a typo doesn't accidentally
-// schedule something in 1926.
+// to "any date from 2026 to the last configured season's year" so a
+// typo doesn't accidentally schedule something in 1926, while old 2026
+// rows and new 2027 ones both pass.
+const ADMIN_MIN_ISO = `${SEASONS[0].year}-01-01`;
+const ADMIN_MAX_ISO = `${SEASONS[SEASONS.length - 1].year}-12-31`;
 const adminDate = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
-  .refine((d) => d >= "2026-01-01" && d <= "2026-12-31", {
-    message: "Pick a date inside 2026",
+  .refine((d) => d >= ADMIN_MIN_ISO && d <= ADMIN_MAX_ISO, {
+    message: `Pick a date between ${SEASONS[0].year} and ${SEASONS[SEASONS.length - 1].year}`,
   });
 
 // Phone-shaped, intentionally loose, the form already collects in a

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Bhandara } from "@/types/bhandara";
+import type { BhandaraListItem } from "@/types/bhandara";
 import type { Locale } from "@/content/strings";
 import { strings } from "@/content/strings";
 import { JaliCorner } from "@/components/ornaments";
@@ -8,9 +8,10 @@ import { JaliCorner } from "@/components/ornaments";
 // where the sharer clicked from. See lib/share.ts for the rationale
 // behind the new "🪔 Bada Mangal Bhandara, <name>" layout.
 import { hasMapPin, whatsappShareUrlForBhandara } from "@/lib/share";
+import { joinTimeRange } from "@/lib/time";
 
 type Props = {
-  bhandara: Bhandara;
+  bhandara: BhandaraListItem;
   locale: Locale;
   /**
    * Optional date override for the card's header chip. When set, the
@@ -28,6 +29,13 @@ type Props = {
    * that doesn't opt in to expansion.
    */
   pinnedDate?: string | null;
+  /**
+   * Past-season card (area pages off season). The date chip then reads
+   * "Served 5 May to 23 Jun 2026" in a muted colour instead of an
+   * upcoming-looking date, so a finished bhandara never reads as one
+   * you can still visit. `pinnedDate` is ignored when this is set.
+   */
+  past?: boolean;
 };
 
 function format12h(time: string): string {
@@ -68,6 +76,26 @@ function shortDate(iso: string, isHi: boolean): string {
   return `${d} ${month}`;
 }
 
+/** "Served 12 May 2026" / "Served 5 May to 23 Jun 2026" (Hindi: "सेवा: ..."). */
+function servedLabel(dates: string[], isHi: boolean): string {
+  const sorted = [...dates].filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
+  if (sorted.length === 0) return "";
+  const fmt = (iso: string) => {
+    const [, m, d] = iso.split("-").map(Number);
+    return `${d} ${(isHi ? HINDI_MONTHS_SHORT : EN_MONTHS_SHORT)[(m ?? 1) - 1]}`;
+  };
+  const first = sorted[0]!;
+  const last = sorted[sorted.length - 1]!;
+  const year = last.slice(0, 4);
+  const span =
+    first === last
+      ? `${fmt(first)} ${year}`
+      : isHi
+        ? `${fmt(first)} से ${fmt(last)} ${year}`
+        : `${fmt(first)} to ${fmt(last)} ${year}`;
+  return isHi ? `सेवा: ${span}` : `Served ${span}`;
+}
+
 /** Pick the bhandara's next-upcoming serving Tuesday (or today if it serves today). */
 function nextServingDate(dates: string[]): string | null {
   if (!Array.isArray(dates) || dates.length === 0) return null;
@@ -84,11 +112,16 @@ function nextServingDate(dates: string[]): string | null {
 // locale so Hindi vs English shares get appropriate Devanagari name,
 // menu, and date formatting plus a localised ?lang query on the URL.)
 
-function googleDirectionsUrl(b: Bhandara): string {
+function googleDirectionsUrl(b: BhandaraListItem): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}`;
 }
 
-export default function BhandaraCard({ bhandara, locale, pinnedDate }: Props) {
+export default function BhandaraCard({
+  bhandara,
+  locale,
+  pinnedDate,
+  past = false,
+}: Props) {
   const t = strings[locale];
   const isHi = locale === "hi";
   const displayName = isHi ? bhandara.nameHi : bhandara.name;
@@ -202,14 +235,23 @@ export default function BhandaraCard({ bhandara, locale, pinnedDate }: Props) {
             // serveOn is now resolved at function-body scope above so
             // both this header chip and the action-link GA trackers
             // below share the same date value.
-            const dateLabel = serveOn ? shortDate(serveOn, isHi) : "";
-            const isToday = dateLabel === "Today" || dateLabel === "आज";
+            const dateLabel = past
+              ? servedLabel(bhandara.tuesdayDates ?? [], isHi)
+              : serveOn
+                ? shortDate(serveOn, isHi)
+                : "";
+            const isToday =
+              !past && (dateLabel === "Today" || dateLabel === "आज");
             return (
               <p className="font-mukta uppercase tracking-[0.22em] text-[0.62rem] font-semibold flex items-center gap-1.5 flex-wrap">
                 {dateLabel ? (
                   <span
                     className={
-                      isToday ? "text-saffron-600" : "text-gold-500"
+                      past
+                        ? "text-ink-600"
+                        : isToday
+                          ? "text-saffron-600"
+                          : "text-gold-500"
                     }
                   >
                     {dateLabel}
@@ -219,8 +261,11 @@ export default function BhandaraCard({ bhandara, locale, pinnedDate }: Props) {
                   <span aria-hidden className="text-gold-500/60">·</span>
                 ) : null}
                 <span className="text-gold-500">
-                  {format12h(bhandara.timeStart)}
-                  {bhandara.timeEnd ? ` – ${format12h(bhandara.timeEnd)}` : ""}
+                  {joinTimeRange(
+                    format12h(bhandara.timeStart),
+                    bhandara.timeEnd ? format12h(bhandara.timeEnd) : "",
+                    locale,
+                  )}
                 </span>
               </p>
             );

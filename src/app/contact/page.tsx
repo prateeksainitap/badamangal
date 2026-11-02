@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import ContactForm from "@/components/ContactForm";
 import ContactHero from "@/components/ContactHero";
-import { localised } from "@/lib/seo";
+import { InnerShell, Plate } from "@/components/v2";
+import { HOME_ART } from "@/content/home-art";
+import { localised, DEFAULT_OG_IMAGE } from "@/lib/seo";
 
 // ISR. Was force-dynamic for cookies()-based locale; the page now
 // renders statically and both the hero + form pull the actual locale
@@ -15,6 +17,7 @@ export const metadata: Metadata = {
     "Reach the BadaMangal team for listing corrections, sponsorship, partnership, or any question about Lucknow's Bada Mangal bhandaras.",
   alternates: localised("/contact"),
   openGraph: {
+    images: [DEFAULT_OG_IMAGE],
     title: "Contact BadaMangal",
     description:
       "Questions, corrections, or partnership ideas, reach the team.",
@@ -26,11 +29,23 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <main className="mx-auto max-w-2xl px-4 sm:px-6 py-10 sm:py-14">
+    <InnerShell>
       <ContactHero />
-      <div className="mt-8">
-        <ContactForm />
-      </div>
-    </main>
+      <section className="bmi-sec tight" style={{ paddingTop: 0 }}>
+        <div className="bmi-wrap bmi-formgrid">
+          <div>
+            <ContactForm />
+          </div>
+          <div className="bmi-formart" aria-hidden>
+            <Plate
+              src={HOME_ART.aliganjDusk.src}
+              width={HOME_ART.aliganjDusk.width}
+              height={HOME_ART.aliganjDusk.height}
+              alt=""
+            />
+          </div>
+        </div>
+      </section>
+    </InnerShell>
   );
 }

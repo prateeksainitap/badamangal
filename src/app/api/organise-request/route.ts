@@ -13,8 +13,8 @@
  *   email          string? optional
  *   area           string? Lucknow neighbourhood, free-form
  *   addressNotes   string? landmark / venue text
- *   eventDates     string[]? array of YYYY-MM-DD ISO dates inside the
- *                            2026 season window. Empty array is OK
+ *   eventDates     string[]? array of YYYY-MM-DD ISO dates inside a
+ *                            season window. Empty array is OK
  *                            (organisers sometimes ask before fixing
  *                            any date). Stored as JSON-encoded string
  *                            in DB for parity with Bhandara.tuesdayDates.

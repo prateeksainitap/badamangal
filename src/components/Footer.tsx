@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { useT } from "@/lib/useT";
-import { MarigoldDivider } from "@/components/ornaments";
+import Image from "next/image";
 
 // The footer used to host a duplicate "Join the chat on WhatsApp"
 // list (Bada Mangal Community / Balaji ka Bhandara / Bhandara Group
@@ -34,7 +34,12 @@ function FooterInner() {
         // Deep-link with ?role=organizer so AddBhandaraSwitcher
         // skips the "how would you like to add a bhandara?" chooser
         // and drops the visitor straight on the listing form.
-        { href: "/list-bhandara?role=organizer", label: t.footer.getInvolvedAdd },
+        {
+          href: "/list-bhandara?role=organizer",
+          // Footer label without the "(Free)" suffix t.footer.getInvolvedAdd
+          // carries; same link target.
+          label: isHi ? "अपना भंडारा सूचीबद्ध करें" : "List a bhandara",
+        },
         // AI-pamphlet path, mirrors the third chooser card on
         // /list-bhandara. Deep-link with ?role=scanner so visitors
         // who want this flow specifically (e.g. clicked from a
@@ -121,8 +126,10 @@ function FooterInner() {
   ];
 
   return (
-    <footer className="mt-20 border-t-2 border-gold-500/70 bg-cream-50">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 sm:py-14">
+    <footer className="mt-20 bg-[#1E1611] text-cream-50/80">
+      {/* Extra room under the legal line on phones, where the floating
+          Spot and back-to-top buttons sit. */}
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-12 pb-28 sm:py-16">
         {/* Top row: brand + nav columns. Brand is tighter now (just
             logo + tagline + Follow); the WhatsApp tile row lives in
             its own full-width band below so the two halves of the
@@ -142,13 +149,15 @@ function FooterInner() {
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/brand/logo-mark.svg"
+                src="/brand/Final-Logo-BM-white.svg"
                 alt="BadaMangal"
-                className="h-16 w-auto"
+                width={1660}
+                height={479}
+                className="h-14 w-auto"
               />
               <span className="sr-only">Bada Mangal · BadaMangal.com</span>
             </Link>
-            <p className="text-sm text-ink-600 leading-relaxed max-w-xs">
+            <p className="text-sm text-cream-50/70 leading-relaxed max-w-xs">
               {isHi
                 ? "लखनऊ की 400 साल पुरानी बड़ा मंगल परंपरा को जीवित रखते हुए, हर भंडारा, कथा, और आरती, एक ही जगह।"
                 : "Keeping Lucknow's 400-year-old Bada Mangal tradition alive, every bhandara, story, and prayer in one place."}
@@ -162,7 +171,7 @@ function FooterInner() {
                 so a footer click doesn't masquerade as a QR scan in
                 Instagram's analytics. */}
             <div>
-              <p className="font-mukta uppercase tracking-[0.22em] text-[0.65rem] text-gold-500 font-semibold mb-2">
+              <p className="font-mukta uppercase tracking-[0.22em] text-[0.7rem] text-saffron-500 font-semibold mb-2">
                 {isHi ? "जुड़ें" : "Follow"}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -173,7 +182,7 @@ function FooterInner() {
                   aria-label="BadaMangal on Instagram"
                   data-ga="footer_social"
                   data-ga-network="instagram"
-                  className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-gold-500/45 bg-cream-50 text-sindoor-700 hover:bg-saffron-50 hover:border-saffron-500 hover:text-saffron-600 transition-colors"
+                  className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-cream-50/20 text-cream-50/85 hover:border-saffron-500 hover:text-saffron-500 transition-colors"
                   title="@badamangal on Instagram"
                 >
                   <IconInstagram />
@@ -195,7 +204,7 @@ function FooterInner() {
               Contact, totalling 5 cells. */}
           <nav
             aria-label="Footer"
-            className="grid gap-8 sm:grid-cols-2 md:grid-cols-5"
+            className="grid gap-8 sm:grid-cols-2 md:grid-cols-[1.3fr_1fr_1fr_1fr_0.8fr]"
           >
             {cols.map((col) => {
               const isResources = col.heading === t.footer.resourcesHeading;
@@ -204,12 +213,12 @@ function FooterInner() {
                 key={col.heading}
                 className={isResources ? "md:col-span-2" : undefined}
               >
-                <p className="font-mukta uppercase tracking-[0.22em] text-[0.7rem] text-gold-500 font-semibold">
+                <p className="font-mukta uppercase tracking-[0.22em] text-[0.72rem] text-saffron-500 font-bold">
                   {col.heading}
                 </p>
                 <ul
                   className={[
-                    "mt-3 text-sm text-ink-900",
+                    "mt-3 text-[0.95rem] text-cream-50/85",
                     // Resources flows its links into two CSS columns
                     // (instead of a grid) so a wrapping item like
                     // "Sankat Mochan Hanuman Ashtak" only steals
@@ -230,7 +239,7 @@ function FooterInner() {
                         data-ga="footer_link"
                         data-ga-href={l.href}
                         data-ga-label={l.label}
-                        className="hover:text-saffron-600 transition-colors"
+                        className="hover:text-saffron-500 transition-colors"
                       >
                         {l.label}
                       </Link>
@@ -244,39 +253,56 @@ function FooterInner() {
           </nav>
         </div>
 
-        {/* Marigold divider */}
-        <div className="mt-12 flex justify-center">
-          <MarigoldDivider size={260} className="text-gold-500" />
+        {/* DharmKriya family line, the real wordmark made for dark
+            grounds, never recoloured. */}
+        <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 border-t border-cream-50/10 pt-8">
+          <span className="font-mukta text-sm text-cream-50/70">
+            {isHi ? "धर्मक्रिया परिवार का हिस्सा" : "A part of the DharmKriya family"}
+          </span>
+          <a
+            href="https://dharmkriya.com"
+            target="_blank"
+            rel="noopener"
+            aria-label="DharmKriya"
+            data-ga="footer_dharmkriya"
+            className="inline-flex opacity-90 hover:opacity-100 transition-opacity"
+          >
+            <Image
+              src="/brand/dharmkriya/dharmkriya-wordmark-dark-ground@2x.png"
+              alt="DharmKriya"
+              width={2328}
+              height={604}
+              sizes="140px"
+              className="h-9 w-auto"
+            />
+          </a>
         </div>
 
         {/* Closing benediction (Jai Shri Ram…), with the seva line
             tucked directly underneath as a single quiet block. */}
-        <div className="mt-6 text-center">
-          <p className="font-tiro text-lg sm:text-xl text-sindoor-700">
+        <div className="mt-8 text-center">
+          <p className="font-mukta font-extrabold text-lg sm:text-xl text-gold-100">
             {t.footer.closing}
           </p>
-          <p className="mt-1.5 italic text-xs text-ink-600">
+          <p className="mt-1.5 text-xs text-cream-50/60">
             {t.footer.seva}
           </p>
         </div>
 
         {/* Copyright strip, legal links live in the About column
-            above. The contact email sits inline here too (between the
-            copyright and the "Made with seva" tagline) so a reader
-            scanning the foot of the page can grab it without scrolling
-            back up to the columns. */}
-        <div className="mt-8 pt-5 border-t border-gold-500/25 text-center text-xs text-ink-600">
+            above. The contact email sits inline here too. */}
+        <div className="mt-8 pt-5 border-t border-cream-50/10 text-center text-xs text-cream-50/60">
           <p className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
             <span>© {year} BadaMangal.com</span>
-            <span aria-hidden className="text-gold-500/50">·</span>
+            <span aria-hidden className="text-cream-50/30">·</span>
             <a
               href={`mailto:${t.footer.contactEmail}`}
-              className="text-saffron-600 hover:text-sindoor-700 transition-colors"
+              className="text-saffron-500 hover:text-saffron-50 transition-colors"
               data-ga="footer_email_mailto"
             >
               {t.footer.contactEmail}
             </a>
-            <span aria-hidden className="text-gold-500/50">·</span>
+            <span aria-hidden className="text-cream-50/30">·</span>
             <span>{t.footer.rights}</span>
           </p>
           <p className="mt-2">
@@ -322,7 +348,7 @@ export default function Footer() {
   return (
     <Suspense
       fallback={
-        <footer className="mt-20 border-t-2 border-gold-500/70 bg-cream-50">
+        <footer className="mt-20 bg-[#1E1611]">
           <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12 h-[280px]" />
         </footer>
       }

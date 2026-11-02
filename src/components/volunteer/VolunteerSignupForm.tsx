@@ -24,6 +24,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import PhoneInput from "@/components/PhoneInput";
+import { Field, Button, Icon } from "@/components/v2";
 import { AREAS } from "@/lib/lucknow";
 import { trackEvent } from "@/lib/ga";
 import { useLocaleFromContext } from "@/lib/locale-context";
@@ -58,7 +59,7 @@ const COPY = {
     },
     hints: {
       phone:
-        "⚠️ यह आपका active WhatsApp नंबर होना चाहिए। आपका volunteer code यहीं भेजा जाएगा। बिना WhatsApp वाले नंबर approve नहीं होंगे।",
+        "यह आपका active WhatsApp नंबर होना चाहिए। आपका volunteer code यहीं भेजा जाएगा। बिना WhatsApp वाले नंबर approve नहीं होंगे।",
       areasHelper:
         "ज़रूरी नहीं पर मददगार है। इससे हम coordinate कर पाते हैं कि दो स्वयंसेवक एक ही भण्डारे पर न पहुँचें।",
     },
@@ -70,7 +71,7 @@ const COPY = {
     },
     submit: {
       submitting: "आपका आवेदन भेजा जा रहा है…",
-      idle: "🙏 मेरा आवेदन भेजें",
+      idle: "मेरा आवेदन भेजें",
       tnc:
         "हर आवेदन की हम स्वयं समीक्षा करते हैं। आपका स्वयंसेवक कोड 24 घंटे के भीतर आपके वॉट्सऐप पर भेज दिया जाएगा।",
       viewTerms: "नियम और शर्तें पढ़ें →",
@@ -82,27 +83,27 @@ const COPY = {
       greetingSuffix: "जी",
       codeLabel: "आपका volunteer code",
       saveHint: "यह code save कर लीजिए। हर submission में इसकी ज़रूरत होगी।",
-      copy: "📋 Code कॉपी करें",
-      copied: "✓ कॉपी हो गया",
-      saveToWa: "💬 WhatsApp में save करें",
-      readyHeading: "✅ आप अभी से शुरू कर सकते हैं",
+      copy: "Code कॉपी करें",
+      copied: "कॉपी हो गया",
+      saveToWa: "WhatsApp में save करें",
+      readyHeading: "आप अभी से शुरू कर सकते हैं",
       step1: "अगले बड़े मंगल (मंगलवार) या बड़े शनिवार को अपने इलाके के किसी भण्डारे पर जाइए।",
       step2: "तस्वीरें + video + जानकारी फॉर्म में भर दीजिए।",
       step3:
         "हम 24 घंटे के अंदर समीक्षा करेंगे, फिर आपका भण्डारा directory पर live हो जाएगा।",
-      submitFirst: "📸 अपना पहला भण्डारा भेजें →",
+      submitFirst: "अपना पहला भण्डारा भेजें",
       savedHint:
         "आपका code इस browser में save हो गया है, अगली बार खुद से भर जाएगा।",
       backToOverview: "← पीछे",
-      backHome: "🏠 मुख्य पृष्ठ",
+      backHome: "मुख्य पृष्ठ",
       phoneOnRecord: "आपका दर्ज नंबर:",
       // WhatsApp self-share message
       waShareLines: {
-        title: "🚩 BadaMangal स्वयंसेवक",
+        title: "BadaMangal स्वयंसेवक",
         codeLabel: "*Volunteer code:*",
         nameLabel: "*नाम:*",
         submitLink: "भण्डारा भेजें:",
-        signOff: "जय बजरंगबली 🙏",
+        signOff: "जय बजरंगबली",
       },
     },
   },
@@ -118,7 +119,7 @@ const COPY = {
     },
     hints: {
       phone:
-        "⚠️ This MUST be a working WhatsApp number. Your volunteer code is delivered here. Numbers without WhatsApp won't get approved.",
+        "This MUST be a working WhatsApp number. Your volunteer code is delivered here. Numbers without WhatsApp won't get approved.",
       areasHelper:
         "Optional but helpful. Lets us coordinate so two volunteers don't end up at the same bhandara.",
     },
@@ -130,7 +131,7 @@ const COPY = {
     },
     submit: {
       submitting: "Submitting your application…",
-      idle: "🙏 Submit my application",
+      idle: "Submit my application",
       tnc:
         "Applications are reviewed manually. Your volunteer code will be sent to your WhatsApp within 24 hours.",
       viewTerms: "View terms & conditions →",
@@ -142,27 +143,27 @@ const COPY = {
       greetingSuffix: "ji",
       codeLabel: "Your volunteer code",
       saveHint: "Save this code, you'll need it for every submission.",
-      copy: "📋 Copy code",
-      copied: "✓ Copied",
-      saveToWa: "💬 Save to WhatsApp",
-      readyHeading: "✅ You can start right now",
+      copy: "Copy code",
+      copied: "Copied",
+      saveToWa: "Save to WhatsApp",
+      readyHeading: "You can start right now",
       step1:
         "On the next Bada Mangal (Tuesday) or Bade Shanivar (Saturday), visit any bhandara in your area.",
       step2: "Take photos + a video + fill the listing form.",
       step3:
         "We review within 24 hours, then your bhandara goes live on the public directory.",
-      submitFirst: "📸 Submit your first bhandara →",
+      submitFirst: "Submit your first bhandara",
       savedHint:
         "Your code is saved in this browser, it'll auto-fill next time.",
       backToOverview: "← Back to overview",
-      backHome: "🏠 BadaMangal home",
+      backHome: "BadaMangal home",
       phoneOnRecord: "Your phone on record:",
       waShareLines: {
-        title: "🚩 BadaMangal Volunteer",
+        title: "BadaMangal Volunteer",
         codeLabel: "*Volunteer code:*",
         nameLabel: "*Name:*",
         submitLink: "Submit a bhandara:",
-        signOff: "Jai Bajrang Bali 🙏",
+        signOff: "Jai Bajrang Bali",
       },
     },
   },
@@ -265,39 +266,26 @@ export default function VolunteerSignupForm() {
   // ─── FORM STATE ───────────────────────────────────────────────
   const submitting = phase.kind === "submitting";
   return (
-    <form onSubmit={onSubmit} className="grid gap-5">
+    <form onSubmit={onSubmit} className="bmi-form">
       {phase.kind === "error" ? (
-        <div className="rounded-xl border border-alert-500/40 bg-alert-500/10 px-3 py-2 text-sm text-alert-500">
+        <div className="bmi-alert" role="alert">
           {phase.message}
         </div>
       ) : null}
 
-      <label className="grid gap-1.5">
-        <span className="text-sm text-ink-600">
-          {t.labels.name} <span className="text-sindoor-700">*</span>
-        </span>
+      <Field asLabel label={t.labels.name} error={fieldErrors.name}>
         <input
           name="name"
           type="text"
           required
           maxLength={80}
           placeholder={t.placeholders.name}
-          className="rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
         />
-        {fieldErrors.name ? (
-          <span className="text-xs text-alert-500">{fieldErrors.name}</span>
-        ) : null}
-      </label>
+      </Field>
 
-      <label className="grid gap-1.5">
-        <span className="text-sm text-ink-600">
-          {t.labels.phone} <span className="text-sindoor-700">*</span>
-        </span>
+      <Field asLabel label={t.labels.phone} error={fieldErrors.phone}>
         <PhoneInput name="phone" hint={t.hints.phone} />
-        {fieldErrors.phone ? (
-          <span className="text-xs text-alert-500">{fieldErrors.phone}</span>
-        ) : null}
-      </label>
+      </Field>
 
       {/* UPI ID field removed 2026-05-26. The pure-seva framing made
           the field a distraction. DB column + API still accept upi
@@ -305,10 +293,10 @@ export default function VolunteerSignupForm() {
           UI. */}
 
       {/* Areas, multiselect. Optional but encouraged. */}
-      <div className="grid gap-2">
-        <span className="text-sm text-ink-600">{t.labels.areas}</span>
-        <p className="text-xs text-ink-600">{t.hints.areasHelper}</p>
-        <div className="flex flex-wrap gap-2">
+      <div className="bmi-field">
+        <span className="bmi-field-label">{t.labels.areas}</span>
+        <span className="bmi-field-hint">{t.hints.areasHelper}</span>
+        <div className="bmi-choices" style={{ marginTop: 6 }}>
           {AREAS.map((area) => {
             const active = selectedAreas.includes(area);
             return (
@@ -316,14 +304,11 @@ export default function VolunteerSignupForm() {
                 key={area}
                 type="button"
                 onClick={() => toggleArea(area)}
-                className={`text-sm rounded-full px-3 py-1.5 border transition-colors ${
-                  active
-                    ? "bg-saffron-600 border-saffron-600 text-cream-50"
-                    : "bg-white border-gold-500/50 text-ink-900 hover:bg-saffron-50"
-                }`}
+                aria-pressed={active}
+                className="bmi-choice"
               >
-                {active ? "✓ " : ""}
-                {area}
+                {active ? <Icon name="check" /> : null}
+                <span>{area}</span>
               </button>
             );
           })}
@@ -335,34 +320,25 @@ export default function VolunteerSignupForm() {
           value={otherArea}
           onChange={(e) => setOtherArea(e.target.value)}
           placeholder={t.placeholders.otherArea}
-          className="mt-1 rounded-xl border border-gold-500/50 bg-white px-3 py-2 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-saffron-600 focus:border-saffron-600"
+          aria-label={t.placeholders.otherArea}
+          style={{ marginTop: 6 }}
         />
       </div>
 
       {/* Submit + terms */}
-      <div className="mt-2 grid gap-3">
-        <button
-          type="submit"
-          disabled={submitting}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-6 py-3 text-base shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {submitting ? (
-            <>
-              <Spinner /> {t.submit.submitting}
-            </>
-          ) : (
-            <>{t.submit.idle}</>
-          )}
-        </button>
-        <p className="text-center text-xs text-ink-600">{t.submit.tnc}</p>
-        <p className="text-center text-xs text-ink-600">
+      <div className="grid gap-3">
+        <Button type="submit" disabled={submitting} block iconEnd={submitting ? null : "chevron"}>
+          {submitting ? t.submit.submitting : t.submit.idle}
+        </Button>
+        <p className="bmi-field-hint text-center">{t.submit.tnc}</p>
+        <p className="bmi-field-hint text-center">
           {t.submit.tncPrefix}{" "}
           <Link
             href="/volunteer/terms"
             target="_blank"
             rel="noopener noreferrer"
             data-ga="volunteer_signup_view_terms"
-            className="text-saffron-600 hover:text-sindoor-700 underline underline-offset-2 font-medium"
+            className="bmi-tl inline"
           >
             {t.submit.viewTerms}
           </Link>
@@ -419,99 +395,77 @@ function CodeIssuedCard({
   const firstName = (name.split(/\s+/)[0] ?? name).trim();
 
   return (
-    <div className="grid gap-5 text-center">
+    <div className="bmi-done grid gap-6">
       <div>
-        <p className="text-3xl">🙏</p>
-        <h2 className="font-fraunces text-2xl sm:text-3xl text-sindoor-700 mt-2">
+        <div className="bmi-done-tick" aria-hidden>
+          <Icon name="check" />
+        </div>
+        <h2 className="bmi-h3" style={{ color: "var(--sindoor)" }}>
           {t.greetingPrefix} {firstName}
           {t.greetingSuffix ? ` ${t.greetingSuffix}` : ""}
         </h2>
       </div>
 
-      {/* Big bold code block, focal point of the card. */}
-      <div className="rounded-2xl border-2 border-saffron-600 bg-saffron-50 p-5">
-        <p className="text-xs uppercase tracking-[0.18em] text-saffron-600 font-medium">
-          {t.codeLabel}
-        </p>
-        <p
-          className="mt-2 font-fraunces font-bold text-3xl sm:text-4xl text-sindoor-700 tracking-wider select-all"
-          aria-label={`Your volunteer code is ${code}`}
-        >
+      {/* The code is the focal point. */}
+      <div className="bmi-code">
+        <p className="bmi-ilabel" style={{ justifyContent: "center" }}>{t.codeLabel}</p>
+        <p className="bmi-code-v select-all" aria-label={`Your volunteer code is ${code}`}>
           {code}
         </p>
-        <p className="mt-2 text-xs text-ink-600">{t.saveHint}</p>
-
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-          <button
-            type="button"
-            onClick={copyCode}
-            className="inline-flex items-center gap-1.5 rounded-full border border-saffron-600/55 bg-white hover:bg-cream-50 text-ink-900 font-medium px-4 py-2 text-sm transition-colors"
-          >
-            {copied ? t.copied : t.copy}
+        <p className="bmi-field-hint">{t.saveHint}</p>
+        <div className="bmi-actions" style={{ justifyContent: "center", marginTop: 14 }}>
+          <button type="button" onClick={copyCode} className="bmi-b bmi-b-s sm">
+            <Icon name={copied ? "check" : "copy"} />
+            <span>{copied ? t.copied : t.copy}</span>
           </button>
           <a
             href={waMeUrl}
             target="_blank"
             rel="noopener noreferrer"
             data-ga="volunteer_code_save_to_whatsapp"
-            className="inline-flex items-center gap-1.5 rounded-full border border-saffron-600/55 bg-white hover:bg-cream-50 text-ink-900 font-medium px-4 py-2 text-sm transition-colors"
+            className="bmi-b bmi-b-s sm"
           >
-            {t.saveToWa}
+            <Icon name="whatsapp" />
+            <span>{t.saveToWa}</span>
           </a>
         </div>
       </div>
 
       {/* What happens next */}
-      <div className="rounded-xl border border-gold-500/40 bg-cream-50 px-4 py-3 text-sm text-ink-900 text-left">
-        <p className="font-medium">{t.readyHeading}</p>
-        <ul className="mt-2 list-disc list-inside space-y-1.5 text-sm text-ink-900">
+      <div className="text-left">
+        <p className="bmi-ilabel">{t.readyHeading}</p>
+        <ol className="bmi-next" style={{ margin: "12px 0 0", maxWidth: "none" }}>
           <li>{t.step1}</li>
           <li>{t.step2}</li>
           <li>{t.step3}</li>
-        </ul>
+        </ol>
       </div>
 
       {/* Primary CTA */}
-      <div className="flex flex-col gap-3 items-stretch">
-        <Link
+      <div className="grid gap-2">
+        <Button
           href={`/volunteer/submit?code=${encodeURIComponent(code)}`}
           data-ga="volunteer_signup_submit_first"
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-saffron-600 hover:bg-saffron-500 text-cream-50 font-medium px-6 py-3 text-base shadow-sm transition-colors"
+          block
+          iconEnd="chevron"
         >
           {t.submitFirst}
-        </Link>
-        <p className="text-xs text-ink-600">{t.savedHint}</p>
+        </Button>
+        <p className="bmi-field-hint">{t.savedHint}</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-3 justify-center">
-        <Link
-          href="/volunteer"
-          data-ga="volunteer_signup_back_to_overview"
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-gold-500/60 bg-white hover:bg-cream-50 text-ink-900 font-medium px-5 py-2.5 text-sm transition-colors"
-        >
+      <div className="bmi-actions" style={{ justifyContent: "center" }}>
+        <Button href="/volunteer" variant="text" data-ga="volunteer_signup_back_to_overview">
           {t.backToOverview}
-        </Link>
-        <Link
-          href="/"
-          data-ga="volunteer_signup_back_to_home"
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-gold-500/60 bg-white hover:bg-cream-50 text-ink-900 font-medium px-5 py-2.5 text-sm transition-colors"
-        >
+        </Button>
+        <Button href="/" variant="text" data-ga="volunteer_signup_back_to_home">
           {t.backHome}
-        </Link>
+        </Button>
       </div>
 
-      <p className="text-xs text-ink-600/80">
-        {t.phoneOnRecord} <span className="font-mono">…{phoneLast4}</span>
+      <p className="bmi-fine">
+        {t.phoneOnRecord} <span className="tabular-nums">…{phoneLast4}</span>
       </p>
     </div>
-  );
-}
-
-function Spinner() {
-  return (
-    <span
-      aria-hidden
-      className="inline-block h-4 w-4 motion-safe:animate-spin rounded-full border-2 border-cream-50/40 border-t-cream-50"
-    />
   );
 }

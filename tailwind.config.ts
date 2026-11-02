@@ -30,10 +30,19 @@ const config: Config = {
         alert:   { 500: "#C44A2C" },
       },
       fontFamily: {
-        tiro:      ["var(--font-tiro)", "serif"],
-        fraunces:  ["var(--font-fraunces)", "ui-serif", "Georgia", "serif"],
+        // Display faces (inner-page port, 1 Nov 2026). No serif anywhere
+        // (Founder's ruling): the legacy token names tiro / fraunces /
+        // cormorant now resolve to the homepage's heavy sans, Anek
+        // Devanagari + Anek Latin (loaded in app/layout.tsx), so the
+        // 100+ files using them switch without markup changes. `display`
+        // (Latin first) and `display-hi` (Devanagari first) are the
+        // names to use in new code.
+        display:      ["var(--font-anek-latin)", "var(--font-mukta)", "system-ui", "sans-serif"],
+        "display-hi": ["var(--font-mukta)", "var(--font-anek-latin)", "system-ui", "sans-serif"],
+        tiro:         ["var(--font-mukta)", "var(--font-anek-latin)", "system-ui", "sans-serif"],
+        fraunces:     ["var(--font-anek-latin)", "var(--font-mukta)", "system-ui", "sans-serif"],
+        cormorant:    ["var(--font-anek-latin)", "var(--font-mukta)", "system-ui", "sans-serif"],
         mukta:     ["var(--font-mukta)", "ui-sans-serif", "system-ui", "sans-serif"],
-        cormorant: ["var(--font-cormorant)", "serif"],
         deva:      ["var(--font-noto-deva)", "var(--font-mukta)", "sans-serif"],
         // Display sans for big numerals (countdown, stats, visitor counter).
         numerals:  ["var(--font-numerals)", "ui-sans-serif", "system-ui", "sans-serif"],

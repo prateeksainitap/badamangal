@@ -2,6 +2,7 @@
 
 import { useLocaleFromContext } from "@/lib/locale-context";
 import { strings } from "@/content/strings";
+import { PageHero, Kicker } from "@/components/v2";
 
 /**
  * Top-of-page hero for /contact. Pulled out of the server-rendered page
@@ -15,35 +16,27 @@ export default function ContactHero() {
   const t = strings[locale];
 
   return (
-    <header className="text-center">
-      <p className="font-mukta uppercase tracking-[0.32em] text-saffron-600 text-xs font-semibold">
-        {isHi ? "संपर्क करें" : "Get in touch"}
-      </p>
-      <h1
-        className={`mt-3 text-3xl sm:text-4xl ${
-          isHi
-            ? "font-deva font-medium text-sindoor-700"
-            : "font-fraunces font-semibold text-sindoor-700"
-        }`}
-      >
-        {isHi ? "हमें लिखें" : "Write to us"}
-      </h1>
-      <p className="mt-3 text-ink-600 leading-relaxed">
-        {isHi
+    <PageHero
+      kicker={<Kicker>{isHi ? "संपर्क करें" : "Get in touch"}</Kicker>}
+      title={{ en: "Write to us", hi: "हमें लिखें" }}
+      lede={
+        isHi
           ? "सुधार, सहयोग या कोई सवाल। एक संदेश छोड़ें, हम जल्द जवाब देंगे।"
-          : "Corrections, partnerships, or questions. Leave a note and we'll write back."}
-      </p>
-      <p className="mt-2 text-xs text-ink-600">
-        {isHi ? "या सीधे ईमेल करें: " : "Or email directly: "}
-        <a
-          href={`mailto:${t.footer.contactEmail}`}
-          data-ga="cta_contact_email_mailto"
-          data-ga-source="contact_hero"
-          className="text-saffron-600 hover:underline"
-        >
-          {t.footer.contactEmail}
-        </a>
-      </p>
-    </header>
+          : "Corrections, partnerships, or questions. Leave a note and we'll write back."
+      }
+      meta={
+        <p className="bmi-fine">
+          {isHi ? "या सीधे ईमेल करें: " : "Or email directly: "}
+          <a
+            href={`mailto:${t.footer.contactEmail}`}
+            data-ga="cta_contact_email_mailto"
+            data-ga-source="contact_hero"
+            className="bmi-tl inline"
+          >
+            {t.footer.contactEmail}
+          </a>
+        </p>
+      }
+    />
   );
 }

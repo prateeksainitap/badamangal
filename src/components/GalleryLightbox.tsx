@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * Shape shared between HomepageGallery and the full /gallery page.
@@ -56,12 +57,18 @@ export default function GalleryLightbox({
   const item = items[index];
   const total = items.length;
 
-  // Body-scroll lock while the lightbox is open
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  // Body-scroll lock while open; focus moves in, and returns to the
+  // element that opened it on close.
   useEffect(() => {
     const prev = document.body.style.overflow;
+    const opener = document.activeElement as HTMLElement | null;
     document.body.style.overflow = "hidden";
+    closeRef.current?.focus({ preventScroll: true });
     return () => {
       document.body.style.overflow = prev;
+      opener?.focus?.({ preventScroll: true });
     };
   }, []);
 
@@ -82,7 +89,9 @@ export default function GalleryLightbox({
     (isHi && item.captionHi ? item.captionHi : item.caption) ?? "";
   const fresh = isFreshSpot(item);
 
-  return (
+  // Portalled to <body>: an ancestor with a transform (scroll reveals)
+  // would otherwise pin this "fixed" layer to that ancestor.
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -139,6 +148,7 @@ export default function GalleryLightbox({
 
       {/* Close button (top-right) */}
       <button
+        ref={closeRef}
         type="button"
         onClick={onClose}
         aria-label={isHi ? "बंद करें" : "Close"}
@@ -214,6 +224,7 @@ export default function GalleryLightbox({
           </svg>
         </button>
       ) : null}
-    </div>
+    </div>,
+    document.body,
   );
 }

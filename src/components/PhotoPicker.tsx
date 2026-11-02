@@ -184,11 +184,11 @@ export default function PhotoPicker({
             <img
               src={value}
               alt="Bhandara photo preview"
-              className="w-full max-h-80 rounded-2xl object-contain border border-gold-500/50 shadow-warm bg-cream-50"
+              className="bmi-drop-img w-full max-h-80 object-contain"
             />
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2 justify-between">
-              <p className="text-sm text-ink-900 font-medium inline-flex items-center gap-2">
-                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-leaf-600 text-cream-50">
+              <p className="text-[15px] text-ink-900 font-semibold inline-flex items-center gap-2">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-leaf-600 text-cream-50">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d="M5 13l4 4L19 7" />
                   </svg>
@@ -203,7 +203,7 @@ export default function PhotoPicker({
                     galleryRef.current?.click();
                   }}
                   disabled={uploading}
-                  className="btn btn-ghost btn-sm"
+                  className="bmi-b bmi-b-s sm"
                 >
                   {uploading ? t.picking : t.change}
                 </button>
@@ -214,14 +214,14 @@ export default function PhotoPicker({
                     onChange("");
                   }}
                   disabled={uploading}
-                  className="btn btn-soft btn-sm"
+                  className="bmi-tl"
                 >
-                  ✕ {t.remove}
+                  {t.remove}
                 </button>
               </div>
             </div>
             {error ? (
-              <p className="text-xs text-alert-500">{error}</p>
+              <p className="bmi-field-err" role="alert">{error}</p>
             ) : null}
           </div>
         ) : (
@@ -234,11 +234,11 @@ export default function PhotoPicker({
               // `object-contain` shows the full pamphlet/banner without
               // cropping; max-h keeps very tall posters from blowing out
               // the form.
-              className="w-full sm:w-40 max-h-64 sm:max-h-48 rounded-2xl object-contain border border-gold-500/50 shadow-warm bg-cream-50"
+              className="bmi-drop-img w-full sm:w-40 max-h-64 sm:max-h-48 object-contain"
             />
             <div className="flex flex-col gap-2">
               <p className="text-sm text-ink-900 font-medium">
-                {locale === "hi" ? "फ़ोटो जोड़ी गई ✓" : "Photo added ✓"}
+                {locale === "hi" ? "फ़ोटो जोड़ी गई" : "Photo added"}
               </p>
               <p
                 className="text-xs text-ink-600 font-mono"
@@ -254,7 +254,7 @@ export default function PhotoPicker({
                     galleryRef.current?.click();
                   }}
                   disabled={uploading}
-                  className="btn btn-ghost btn-sm"
+                  className="bmi-b bmi-b-s sm"
                 >
                   {uploading ? t.picking : t.change}
                 </button>
@@ -265,25 +265,25 @@ export default function PhotoPicker({
                     onChange("");
                   }}
                   disabled={uploading}
-                  className="btn btn-soft btn-sm"
+                  className="bmi-tl"
                 >
-                  ✕ {t.remove}
+                  {t.remove}
                 </button>
               </div>
               {error ? (
-                <p className="text-xs text-alert-500">{error}</p>
+                <p className="bmi-field-err" role="alert">{error}</p>
               ) : null}
             </div>
           </div>
         )
       ) : (
-        <div className="rounded-2xl border-2 border-dashed border-gold-500/50 bg-saffron-50/50 px-5 py-7 text-center">
-          <p className="font-mukta uppercase tracking-[0.28em] text-gold-500 text-[0.65rem]">
-            {t.chooseSource}
-          </p>
-          <p className="mt-2 text-sm text-ink-900 font-medium">{t.pick}</p>
+        <div className="bmi-drop">
+          <span className="bmi-drop-ic" aria-hidden>
+            <IconCamera />
+          </span>
+          <p className="bmi-drop-t">{t.pick}</p>
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          <div className="bmi-drop-acts">
             <button
               type="button"
               onClick={() => {
@@ -291,7 +291,7 @@ export default function PhotoPicker({
                 cameraRef.current?.click();
               }}
               disabled={uploading}
-              className="btn btn-primary btn-sm"
+              className="bmi-b bmi-b-s sm"
               aria-label={
                 locale === "hi" ? "कैमरे से फ़ोटो लें" : "Take a photo with camera"
               }
@@ -306,7 +306,7 @@ export default function PhotoPicker({
                 galleryRef.current?.click();
               }}
               disabled={uploading}
-              className="btn btn-ghost btn-sm"
+              className="bmi-b bmi-b-s sm"
               aria-label={
                 locale === "hi"
                   ? "गैलरी से फ़ोटो चुनें"
@@ -318,11 +318,11 @@ export default function PhotoPicker({
             </button>
           </div>
 
-          <p className="mt-3 text-xs text-ink-600">
+          <p className="bmi-field-hint">
             {uploading ? t.picking : t.helper}
           </p>
           {error ? (
-            <p className="mt-2 text-xs text-alert-500">{error}</p>
+            <p className="bmi-field-err" role="alert">{error}</p>
           ) : null}
         </div>
       )}

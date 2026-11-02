@@ -1,12 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import {
   Bricolage_Grotesque,
-  Cormorant_Garamond,
-  Fraunces,
   Mukta,
   Noto_Sans_Devanagari,
-  Tiro_Devanagari_Hindi,
 } from "next/font/google";
+import localFont from "next/font/local";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import GAPageview from "@/components/GAPageview";
@@ -29,31 +27,30 @@ import { CityProvider } from "@/lib/city-context";
 import { SITE_URL } from "@/lib/seo";
 import "./globals.css";
 
-const tiro = Tiro_Devanagari_Hindi({
-  subsets: ["devanagari", "latin"],
-  weight: "400",
-  variable: "--font-tiro",
+// Site-wide display faces (inner-page port, 1 Nov 2026). The serif
+// display families (Tiro, Fraunces, Cormorant) are retired: the
+// Founder ruled no serif anywhere. Headings use the homepage's heavy
+// sans: Anek Latin for English (self-hosted from src/fonts) and
+// Mukta ExtraBold for Hindi, the live site's Hindi heading face
+// (Founder, 2 Nov 2026). Anek Latin is self-hosted
+// (never next/font/google). Same files and variable names as the
+// homepage tree (src/components/home/fonts.ts), so both resolve to
+// one download. The Tailwind `font-tiro` / `font-fraunces` /
+// `font-cormorant` tokens now point here (see tailwind.config.ts).
+const anekLatin = localFont({
+  src: "../fonts/AnekLatin-700-800.woff2",
+  weight: "700 800",
+  style: "normal",
   display: "swap",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-  axes: ["opsz"],
+  variable: "--font-anek-latin",
+  preload: true,
+  fallback: ["system-ui", "sans-serif"],
 });
 
 const mukta = Mukta({
   subsets: ["devanagari", "latin"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-mukta",
-  display: "swap",
-});
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-cormorant",
   display: "swap",
 });
 
@@ -216,7 +213,7 @@ export default async function RootLayout({
   return (
     <html
       lang={lang}
-      className={`${tiro.variable} ${fraunces.variable} ${mukta.variable} ${cormorant.variable} ${notoDeva.variable} ${bricolage.variable}`}
+      className={`${anekLatin.variable} ${mukta.variable} ${notoDeva.variable} ${bricolage.variable}`}
     >
       <head>
         {/* next/font already preloads font files; preconnect speeds up the

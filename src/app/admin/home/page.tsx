@@ -25,10 +25,8 @@ import {
   mostRecentOpenDayIST,
   dayNameEn,
 } from "@/lib/live-chat-schedule";
-import {
-  ALL_SEASON_ISO,
-  istTodayIso,
-} from "@/lib/dates";
+import { istTodayIso } from "@/lib/dates";
+import { SEASONS, seasonServiceDays } from "@/lib/season";
 import ActivityFeed, {
   ActivityFeedSkeleton,
 } from "@/components/admin/ActivityFeed";
@@ -70,7 +68,7 @@ export default async function AdminDashboardPage() {
   // lib/dates.ts:hasUpcomingDate, just expressed at the SQL layer
   // so we don't have to fetch every APPROVED row to count.
   const todayIso = istTodayIso(now);
-  const upcomingSeasonIso = ALL_SEASON_ISO.filter((d) => d >= todayIso);
+  const upcomingSeasonIso = SEASONS.flatMap(seasonServiceDays).filter((d) => d >= todayIso);
 
   // Above-the-fold queries only, KPI counts. The 3 map `findMany`
   // queries (live spots / bhandaras / mentions with coords) used to

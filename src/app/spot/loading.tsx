@@ -8,48 +8,22 @@
  * cold-start path.
  */
 export default function SpotLoading() {
+  // Matches the redesigned page: left-aligned hero, then the content.
   return (
-    <main className="min-h-[70vh] bg-cream-50">
-      {/* Hero band */}
-      <section className="relative bg-gradient-to-br from-saffron-50 via-cream-50 to-cream-50 px-4 sm:px-6 py-10 border-b border-gold-500/30">
-        <div className="mx-auto max-w-2xl text-center space-y-3">
-          <div className="mx-auto h-3 w-28 rounded-full bg-saffron-200/60 motion-safe:animate-pulse" />
-          <div className="mx-auto h-9 w-3/4 rounded-md bg-gold-200/60 motion-safe:animate-pulse" />
-          <div className="mx-auto h-4 w-5/6 rounded bg-gold-100/70 motion-safe:animate-pulse" />
+    <main className="min-h-[70vh] bg-[#fbf7f0]" aria-busy="true">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-8 pb-16">
+        <div className="space-y-4 max-w-2xl">
+          <div className="h-3 w-32 rounded-full bg-[#f5eac9] motion-safe:animate-pulse" />
+          <div className="h-12 w-11/12 rounded-md bg-[#f5eac9] motion-safe:animate-pulse" />
+          <div className="h-4 w-5/6 rounded bg-[#f5efe3] motion-safe:animate-pulse" />
         </div>
-      </section>
-
-      {/* Quick form card */}
-      <section className="px-4 sm:px-6 py-8">
-        <div className="mx-auto max-w-2xl rounded-3xl border border-gold-500/40 bg-cream-50 p-6 shadow-warm space-y-5">
-          {/* Photo upload area */}
-          <div className="rounded-2xl border-2 border-dashed border-gold-500/40 bg-saffron-50/30 h-44 flex items-center justify-center">
-            <div className="text-center space-y-2">
-              <div className="mx-auto w-10 h-10 rounded-xl bg-saffron-200/60 motion-safe:animate-pulse" />
-              <div className="mx-auto h-3 w-32 rounded bg-gold-200/60 motion-safe:animate-pulse" />
-            </div>
-          </div>
-
-          {/* Caption field */}
-          <div className="space-y-1.5">
-            <div className="h-3 w-20 rounded bg-gold-200/60 motion-safe:animate-pulse" />
-            <div className="h-11 w-full rounded-lg bg-cream-100/80 motion-safe:animate-pulse" />
-          </div>
-
-          {/* Location field */}
-          <div className="space-y-1.5">
-            <div className="h-3 w-24 rounded bg-gold-200/60 motion-safe:animate-pulse" />
-            <div className="h-11 w-full rounded-lg bg-cream-100/80 motion-safe:animate-pulse" />
-          </div>
-
-          {/* Submit button */}
-          <div className="h-12 w-full rounded-full bg-saffron-300/60 motion-safe:animate-pulse" />
+        <div className="mt-10 rounded-[28px] bg-white/55 p-6 space-y-5" style={{ boxShadow: "inset 0 0 0 1px rgba(201,162,74,0.28)" }}>
+          <div className="h-6 w-40 rounded bg-[#f5eac9] motion-safe:animate-pulse" />
+          <div className="h-44 rounded-[20px] bg-[#f5efe3] motion-safe:animate-pulse" />
+          <div className="h-6 w-52 rounded bg-[#f5eac9] motion-safe:animate-pulse" />
+          <div className="h-[52px] rounded-[14px] bg-[#f5efe3] motion-safe:animate-pulse" />
         </div>
-
-        <p className="mt-6 text-center text-xs text-ink-700/60 italic">
-          Loading spot form...
-        </p>
-      </section>
+      </div>
     </main>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { Bhandara } from "@/types/bhandara";
+import type { BhandaraListItem } from "@/types/bhandara";
 import { strings } from "@/content/strings";
 import { useLocaleFromContext } from "@/lib/locale-context";
 
@@ -35,7 +35,7 @@ import { useLocaleFromContext } from "@/lib/locale-context";
  * 4col on desktop). Cards link to the bhandara detail page.
  */
 type Props = {
-  listings: Bhandara[];
+  listings: BhandaraListItem[];
 };
 
 /** "YYYY-MM-DD" of today's date in IST. */
@@ -47,7 +47,7 @@ function todayIst(): string {
     .slice(0, 10);
 }
 
-function pickFeatured(listings: Bhandara[], today: string, max = 4): Bhandara[] {
+function pickFeatured(listings: BhandaraListItem[], today: string, max = 4): BhandaraListItem[] {
   const inSevenDays = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000 + 5.5 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
@@ -55,7 +55,7 @@ function pickFeatured(listings: Bhandara[], today: string, max = 4): Bhandara[] 
   // Helper: pull the soonest serving date for ordering within a
   // bucket. Returns "9999" for bhandaras without an upcoming date
   // so they sort to the bottom.
-  const soonest = (b: Bhandara): string => {
+  const soonest = (b: BhandaraListItem): string => {
     const upcoming = (b.tuesdayDates ?? [])
       .filter((d) => d >= today)
       .sort();
@@ -67,12 +67,12 @@ function pickFeatured(listings: Bhandara[], today: string, max = 4): Bhandara[] 
     // want to lead with right now (e.g. the bhandara that just
     // landed press coverage, the host bhandara for the next Tuesday).
     // Manually featured bhandaras skip every other check.
-    manualFeatured: [] as Bhandara[],
-    today: [] as Bhandara[],
-    weekVerifiedWithPhoto: [] as Bhandara[],
-    verifiedWithPhoto: [] as Bhandara[],
-    anyWithPhoto: [] as Bhandara[],
-    rest: [] as Bhandara[],
+    manualFeatured: [] as BhandaraListItem[],
+    today: [] as BhandaraListItem[],
+    weekVerifiedWithPhoto: [] as BhandaraListItem[],
+    verifiedWithPhoto: [] as BhandaraListItem[],
+    anyWithPhoto: [] as BhandaraListItem[],
+    rest: [] as BhandaraListItem[],
   };
 
   for (const b of listings) {
@@ -103,7 +103,7 @@ function pickFeatured(listings: Bhandara[], today: string, max = 4): Bhandara[] 
 
   // Sort each bucket by soonest serving date so the most urgent
   // surface first within a category.
-  const sortBySoonest = (list: Bhandara[]) =>
+  const sortBySoonest = (list: BhandaraListItem[]) =>
     list.slice().sort((a, b) => soonest(a).localeCompare(soonest(b)));
 
   return [
