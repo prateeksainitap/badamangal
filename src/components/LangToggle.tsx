@@ -1,13 +1,13 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import { Suspense, useCallback, useState, useTransition } from "react";
 import { useLocaleFromContext } from "@/lib/locale-context";
 import { trackEvent } from "@/lib/ga";
 import { LANG_COOKIE, LANG_COOKIE_MAX_AGE } from "@/lib/i18n";
 import type { Locale } from "@/content/strings";
 
-export default function LangToggle() {
+function LangToggleInner() {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -102,6 +102,11 @@ export default function LangToggle() {
     [lang, pending, params, pathname, router, startTransition],
   );
 
+  return <LangPill lang={lang} onPick={setLang} />;
+}
+
+/** The two-language pill. Without onPick it is the static stand-in. */
+function LangPill({ lang, onPick }: { lang: Locale; onPick?: (l: Locale) => void }) {
   const base =
     "relative z-10 inline-flex items-center justify-center h-9 w-[88px] pt-[3px] text-[0.78rem] font-semibold leading-none tracking-wide transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-saffron-600 rounded-full";
 
@@ -121,7 +126,7 @@ export default function LangToggle() {
       />
       <button
         type="button"
-        onClick={() => setLang("hi")}
+        onClick={onPick ? () => onPick("hi") : undefined}
         aria-pressed={lang === "hi"}
         className={`${base} font-mukta ${
           lang === "hi" ? "text-cream-50" : "text-ink-900/70 hover:text-sindoor-700"
@@ -131,7 +136,7 @@ export default function LangToggle() {
       </button>
       <button
         type="button"
-        onClick={() => setLang("en")}
+        onClick={onPick ? () => onPick("en") : undefined}
         aria-pressed={lang === "en"}
         className={`${base} ${
           lang === "en" ? "text-cream-50" : "text-ink-900/70 hover:text-sindoor-700"
@@ -140,5 +145,20 @@ export default function LangToggle() {
         English
       </button>
     </div>
+  );
+}
+
+/**
+ * LangToggle reads the query string (useSearchParams), which on a static
+ * page has to sit inside its own Suspense boundary. Keeping the boundary
+ * here, around the toggle only, means the rest of the header (logo and
+ * nav links) still renders into the server HTML that crawlers read.
+ */
+export default function LangToggle() {
+  const locale = useLocaleFromContext();
+  return (
+    <Suspense fallback={<LangPill lang={locale} />}>
+      <LangToggleInner />
+    </Suspense>
   );
 }

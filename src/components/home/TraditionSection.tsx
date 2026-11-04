@@ -107,7 +107,7 @@ export default function TraditionSection() {
         <ul className="mandirs">
           {TEMPLES.map((m, i) => (
             <li className="mandir" key={m.en} data-rv style={{ ["--rd" as string]: `${i * 0.1}s` }}>
-              <a href="/resources/temples">
+              <a href="/resources/temples" data-ga="home_temples_link">
                 <span className="arch">
                   <Image
                     src={m.art.src}
@@ -128,7 +128,7 @@ export default function TraditionSection() {
           ))}
         </ul>
         <div className="trad-more" data-rv>
-          <a className="tlink" href="/history">
+          <a className="tlink" href="/history" data-ga="home_history_link">
             <T en="Read the 400-year story" hi="400 साल की पूरी कहानी पढ़ें" />
             {ARROW}
           </a>

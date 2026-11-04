@@ -62,14 +62,53 @@ export function normaliseEventName(name: string): string {
 }
 
 /**
- * Fire a custom GA4 event. Silently no-ops if gtag is not loaded (e.g. dev
- * or when the user has DNT / an ad-blocker active). Always pass a stable
- * snake_case event name and a flat params bag, the `bm_` prefix is
- * applied automatically.
+ * Create the gtag queue (dataLayer + gtag + js + config) the first time
+ * anything needs it. gtag.js itself loads lazily after window load, so
+ * before this existed the landing page_view fired while window.gtag was
+ * still undefined and was dropped: a visit with no click sent GA nothing
+ * (found 4 Nov 2026). Calls made before gtag.js arrives now wait in
+ * dataLayer and are flushed in order when it loads.
+ *
+ * Hits are only sent from badamangal.com. Localhost and preview hosts
+ * still build the queue (so it can be inspected) but GA is disabled
+ * there, keeping test visits out of the real reports.
+ */
+export function ensureGtag(): boolean {
+  if (typeof window === "undefined" || !GA_ID) return false;
+  const w = window as unknown as Record<string, unknown>;
+  if (w.__bmGaInit) return true;
+  w.__bmGaInit = true;
+  const host = window.location.hostname;
+  if (host !== "badamangal.com" && !host.endsWith(".badamangal.com")) {
+    w[`ga-disable-${GA_ID}`] = true;
+  }
+  window.dataLayer = window.dataLayer || [];
+  if (typeof window.gtag !== "function") {
+    window.gtag = function gtag() {
+      // gtag.js expects the Arguments object itself, not an array.
+      // eslint-disable-next-line prefer-rest-params
+      window.dataLayer!.push(arguments);
+    };
+  }
+  window.gtag("js", new Date());
+  window.gtag("config", GA_ID, { send_page_view: false });
+  return true;
+}
+
+/** Owner and moderator screens are not visitor traffic. */
+export function isAdminPath(path: string): boolean {
+  return path === "/admin" || path.startsWith("/admin/");
+}
+
+/**
+ * Fire a custom GA4 event. Queued until gtag.js loads; a no-op when no
+ * measurement ID is configured. Always pass a stable snake_case event
+ * name and a flat params bag, the `bm_` prefix is applied automatically.
  */
 export function trackEvent(name: string, params?: GAParams): void {
   if (typeof window === "undefined") return;
-  if (!window.gtag) return;
+  if (isAdminPath(window.location.pathname)) return;
+  if (!ensureGtag() || !window.gtag) return;
   try {
     window.gtag("event", normaliseEventName(name), params ?? {});
   } catch {

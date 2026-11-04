@@ -62,7 +62,7 @@ export default function HomeFaqV2() {
                       {item.relatedLinks?.length ? (
                         <span className="rel">
                           {item.relatedLinks.map((l) => (
-                            <Link key={l.href} href={l.href} className="tlink" tabIndex={isOpen ? 0 : -1} prefetch={false}>
+                            <Link key={l.href} href={l.href} className="tlink" tabIndex={isOpen ? 0 : -1} prefetch={false} data-ga="home_faq_link">
                               {isHi ? l.labelHi : l.labelEn}
                               <svg viewBox="0 0 24 24" className="ic" aria-hidden>
                                 <path d="M9 6l6 6-6 6" />
@@ -79,7 +79,7 @@ export default function HomeFaqV2() {
           })}
         </ul>
         <div className="faq-all">
-          <Link href={isHi ? "/faq" : "/faq?lang=en"} className="b b-s" prefetch={false}>
+          <Link href={isHi ? "/faq" : "/faq?lang=en"} className="b b-s" prefetch={false} data-ga="home_faq_all">
             {isHi ? "सभी सवाल देखें" : "View all questions"}
           </Link>
         </div>

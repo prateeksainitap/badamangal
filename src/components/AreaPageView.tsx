@@ -152,7 +152,7 @@ export default function AreaPageView({
           <Breadcrumb
             items={[
               { label: isHi ? "होम" : "Home", href: `/${langSuffix}` },
-              { label: isHi ? "क्षेत्र" : "Areas", href: `/#map${langSuffix}` },
+              { label: isHi ? "क्षेत्र" : "Areas", href: `/${langSuffix}#map` },
               { label: areaLabel },
             ]}
           />

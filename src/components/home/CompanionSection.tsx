@@ -36,7 +36,7 @@ export default function CompanionSection() {
           <ul className="rpaths" data-rv>
             {PRAYERS.map((p) => (
               <li key={p.href}>
-                <LocaleLink href={p.href}>
+                <LocaleLink href={p.href} data-ga="home_prayer_click" data-ga-prayer={p.en}>
                   <b>
                     <T en={p.en} hi={p.hi} />
                   </b>
@@ -45,10 +45,10 @@ export default function CompanionSection() {
             ))}
           </ul>
           <p className="comp-more" data-rv>
-            <LocaleLink href="/resources/chalisa" className="tlink">
+            <LocaleLink href="/resources/chalisa" className="tlink" data-ga="home_prayer_click" data-ga-prayer="Chalisa">
               <T en="Read the Chalisa" hi="चालीसा पढ़ें" />
             </LocaleLink>
-            <LocaleLink href="/resources" className="tlink">
+            <LocaleLink href="/resources" className="tlink" data-ga="home_all_prayers">
               <T en="All prayers" hi="सभी पाठ" />
               <svg viewBox="0 0 24 24" className="ic" aria-hidden>
                 <path d="M9 6l6 6-6 6" />

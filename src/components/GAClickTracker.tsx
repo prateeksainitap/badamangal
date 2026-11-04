@@ -49,7 +49,8 @@ export default function GAClickTracker() {
       const params: Record<string, string> = {};
       for (const attr of Array.from(target.attributes)) {
         if (attr.name.startsWith("data-ga-")) {
-          const key = attr.name.slice("data-ga-".length);
+          // GA4 parameter names allow letters, digits and underscores only.
+          const key = attr.name.slice("data-ga-".length).replace(/-/g, "_");
           if (key) params[key] = attr.value;
         }
       }

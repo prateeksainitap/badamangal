@@ -44,11 +44,21 @@ export function stripBotProvenance(
   text: string | null | undefined,
 ): string | undefined {
   if (text === null || text === undefined) return undefined;
-  const cleaned = text.replace(BOT_TAG_RE, "\n\n").trim();
+  const cleaned = text
+    .replace(BOT_TAG_RE, "\n\n")
+    .split(/\n\s*\n/)
+    // Admin notes typed into the description while fixing bot rows, e.g.
+    // "Source: Image 2 of <member>'s 9:09 AM forward in <group>. Originally
+    // deduped against …". They name WhatsApp members, so never public.
+    .filter((para) => !SOURCE_NOTE_RE.test(para.trim()))
+    .join("\n\n")
+    .trim();
   // Collapse the 3+ newlines we might have created by removing a tag
   // that was sandwiched between paragraphs.
   return cleaned.replace(/\n{3,}/g, "\n\n");
 }
+
+const SOURCE_NOTE_RE = /^source:\s[\s\S]*\b(forward|forwarded|dedup|deduped|image \d|bot)\b/i;
 
 /**
  * Pull the `in:<groupName>` fragment out of a `[bot:…]` provenance

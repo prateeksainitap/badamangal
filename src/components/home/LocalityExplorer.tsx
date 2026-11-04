@@ -93,7 +93,7 @@ export default function LocalityExplorer({ groups }: { groups: LocalityGroup[] }
                 {isHi ? `${g.items.length} भंडारे` : `${g.items.length} ${g.items.length === 1 ? "bhandara" : "bhandaras"}`}
               </span>
               {g.href ? (
-                <a href={withLangEn(g.href)} className="tlink" data-ll="">
+                <a href={withLangEn(g.href)} className="tlink" data-ll="" data-ga="home_locality_area">
                   {isHi ? `${g.area} का पेज` : `Open the ${g.area} page`}
                   <svg viewBox="0 0 24 24" className="ic" aria-hidden>
                     <path d="M9 6l6 6-6 6" />
@@ -104,7 +104,7 @@ export default function LocalityExplorer({ groups }: { groups: LocalityGroup[] }
             <ul className="lx-list">
               {g.items.map((b) => (
                 <li key={b.slug}>
-                  <a href={`/bhandara/${b.slug}?lang=en`} data-ll="">
+                  <a href={`/bhandara/${b.slug}?lang=en`} data-ll="" data-ga="home_locality_bhandara">
                     <span className="lx-name">{isHi && b.nameHi ? b.nameHi : b.name}</span>
                     <span className="lx-when">{[b.place, when(b.dates, isHi)].filter(Boolean).join(", ")}</span>
                     <svg viewBox="0 0 24 24" className="ic" aria-hidden>

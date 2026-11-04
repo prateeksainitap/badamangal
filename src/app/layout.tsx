@@ -10,12 +10,12 @@ import Header from "@/components/Header";
 import GAPageview from "@/components/GAPageview";
 import GAScripts from "@/components/GAScripts";
 import GAClickTracker from "@/components/GAClickTracker";
-import GAClickDelegate from "@/components/GAClickDelegate";
 import SpotFloatingCta from "@/components/SpotFloatingCta";
 import FirstVisitGreeting from "@/components/FirstVisitGreeting";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
 import LiveActivityTicker from "@/components/LiveActivityTicker";
 import { ToastProvider } from "@/components/Toast";
+import PublicChrome from "@/components/PublicChrome";
 import { LocaleProvider } from "@/lib/locale-context";
 import { CityProvider } from "@/lib/city-context";
 // SITE_URL is the canonical site origin (https://badamangal.com).
@@ -200,15 +200,9 @@ export default async function RootLayout({
   const lang = "en-IN";
 
   // Admin routes own their viewport, they don't share the public
-  // Header / Footer / floating CTAs / locale provider chrome. The
-  // middleware (src/middleware.ts) injects `x-pathname` so we can
-  // detect server-side which "world" the request belongs to.
-  // Imported lazily inside the function so the static-prerender
-  // analyser doesn't try to read headers at build time.
-  const { headers } = await import("next/headers");
-  const h = await headers();
-  const pathname = h.get("x-pathname") ?? "";
-  const isAdmin = pathname.startsWith("/admin");
+  // Header / Footer / floating CTAs. <PublicChrome> decides that from
+  // the path on the client side of the boundary. Reading headers() here
+  // made every page render per request and skip the cache (4 Nov 2026).
 
   return (
     <html
@@ -253,38 +247,35 @@ export default async function RootLayout({
         <LocaleProvider value={initialLocale}>
         <CityProvider>
         <ToastProvider>
-          {isAdmin ? (
-            // Admin world: no public Header/Footer, no Spot CTA, no
-            // first-visit greeting, no scroll-to-top, no activity
-            // ticker. The admin layout (src/app/admin/layout.tsx)
-            // owns the entire viewport via <AdminShell>.
-            children
-          ) : (
-            <>
-              <a
-                href="#main"
-                className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-full focus:bg-saffron-600 focus:text-cream-50 focus:px-4 focus:py-2 focus:shadow-md"
-              >
-                Skip to content
-              </a>
-              <FirstVisitGreeting />
-              {/* First-ever-visit audio chant was retired, autoplay surprised
-                  users on the home page (especially on mobile data) and the
-                  visual "जय श्री राम" greeting above already carries the
-                  welcome moment. The <FirstVisitChant /> component is left
-                  in the repo in case we want to re-enable it later behind
-                  an explicit opt-in. */}
-              <GAClickDelegate />
-              <Header />
-              <main id="main" className="flex-1">
-                {children}
-              </main>
-              <SpotFloatingCta />
-              <ScrollToTopButton />
-              <LiveActivityTicker />
-              <Footer />
-            </>
-          )}
+          {/* Admin world (/admin): PublicChrome renders children only, no
+              public Header/Footer, Spot CTA, greeting, scroll-to-top or
+              activity ticker. src/app/admin/layout.tsx owns that viewport. */}
+          <PublicChrome
+            before={
+              <>
+                <a
+                  href="#main"
+                  className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-full focus:bg-saffron-600 focus:text-cream-50 focus:px-4 focus:py-2 focus:shadow-md"
+                >
+                  Skip to content
+                </a>
+                <FirstVisitGreeting />
+                {/* First-ever-visit audio chant was retired, autoplay surprised
+                    users on the home page (especially on mobile data). */}
+              </>
+            }
+            header={<Header />}
+            after={
+              <>
+                <SpotFloatingCta />
+                <ScrollToTopButton />
+                <LiveActivityTicker />
+                <Footer />
+              </>
+            }
+          >
+            {children}
+          </PublicChrome>
         </ToastProvider>
         </CityProvider>
         </LocaleProvider>

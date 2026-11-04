@@ -2,21 +2,17 @@
 
 import { Suspense, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-  }
-}
+import { ensureGtag, isAdminPath } from "@/lib/ga";
 
 function GAPageviewInner({ id }: { id: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (typeof window === "undefined" || typeof window.gtag !== "function") {
-      return;
-    }
+    if (!pathname || isAdminPath(pathname)) return;
+    // Builds the gtag queue if gtag.js has not loaded yet, so the landing
+    // page_view is kept instead of dropped.
+    if (!ensureGtag() || typeof window.gtag !== "function") return;
     const search = searchParams.toString();
     const url = pathname + (search ? `?${search}` : "");
     window.gtag("event", "page_view", {
