@@ -58,6 +58,91 @@ export function stripBotProvenance(
   return cleaned.replace(/\n{3,}/g, "\n\n");
 }
 
+// Same Indian mobile shape as db.ts PHONE_IN_TEXT (10 digits starting
+// 6 to 9, optional +91 or 0, spaces or hyphens allowed between digits).
+const PHONE_RE = /(?<![\w+])(?:\+?91[\s-]?|0)?[6-9](?:[\s-]?\d){9}(?!\d)/g;
+const hasPhone = (s: string) => new RegExp(PHONE_RE.source).test(s);
+
+/** Remove phone numbers from a short field (name, address, menu item). */
+export function redactPhones(text: string): string {
+  if (!text || !hasPhone(text)) return text;
+  return text
+    .replace(PHONE_RE, "")
+    .replace(/\s*[,;:]\s*(?=[,;:]|$)/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
+}
+
+/** Drop every sentence that carries a phone number from free prose, so
+ *  "If anyone wants to donate, reach 98xxxxxxxx on WhatsApp" goes away
+ *  whole instead of leaving a broken sentence behind. */
+export function dropPhoneSentences(text: string | null | undefined): string | null {
+  if (!text) return text ?? null;
+  if (!hasPhone(text)) return text;
+  const out = text
+    .split(/\n/)
+    .map((line) =>
+      line
+        .split(/(?<=[.!?।])\s+/)
+        .filter((sentence) => !hasPhone(sentence))
+        .join(" ")
+        .trim(),
+    )
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return out || null;
+}
+
+/**
+ * Copy of a bhandara row with every typed-in phone number removed from the
+ * text a visitor can read: name, address, landmark, organiser name, menu,
+ * description. For the public bhandara page only (Founder, 4 Nov 2026: no
+ * organiser phones in public, on the bhandara's own page too). Never use it
+ * on admin reads: the edit form would save the stripped text back.
+ */
+export function withoutPublicPhones<
+  T extends {
+    name: string;
+    nameHi?: string | null;
+    description?: string | null;
+    descriptionHi?: string | null;
+    address: string;
+    addressHi?: string | null;
+    landmark?: string | null;
+    organizerName: string;
+    menu?: string | null;
+    menuHi?: string | null;
+  },
+>(record: T): T {
+  const menu = (raw: string | null | undefined) => {
+    if (!raw || !hasPhone(raw)) return raw;
+    try {
+      const items = JSON.parse(raw);
+      if (!Array.isArray(items)) return raw;
+      return JSON.stringify(
+        items.map((i) => (typeof i === "string" ? redactPhones(i) : i)).filter((i) => i !== ""),
+      );
+    } catch {
+      return redactPhones(raw);
+    }
+  };
+  const opt = (s: string | null | undefined) => (s ? redactPhones(s) || null : s);
+  return {
+    ...record,
+    name: redactPhones(record.name),
+    nameHi: opt(record.nameHi),
+    description: dropPhoneSentences(record.description),
+    descriptionHi: dropPhoneSentences(record.descriptionHi),
+    address: redactPhones(record.address),
+    addressHi: opt(record.addressHi),
+    landmark: opt(record.landmark),
+    organizerName: redactPhones(record.organizerName),
+    menu: menu(record.menu),
+    menuHi: menu(record.menuHi),
+  };
+}
+
 const SOURCE_NOTE_RE = /^source:\s[\s\S]*\b(forward|forwarded|dedup|deduped|image \d|bot)\b/i;
 
 /**

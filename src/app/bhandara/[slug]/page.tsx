@@ -18,7 +18,7 @@ import {
   SITE_URL,
 } from "@/lib/seo";
 import { hasUpcomingDate } from "@/lib/dates";
-import { stripBotProvenance } from "@/lib/sanitize";
+import { stripBotProvenance, withoutPublicPhones } from "@/lib/sanitize";
 import { cleanName } from "@/lib/display-name";
 import { joinTimeRange } from "@/lib/time";
 import { placeOnPaintedMap } from "@/lib/home-map";
@@ -86,10 +86,12 @@ export async function generateMetadata({
   // back to a direct findUnique only if the slug isn't in the cache
   // (newly published bhandara hitting on-demand generation).
   const all = await getAllApprovedBhandaras();
-  const record =
+  const rawRecord =
     all.find((r) => r.slug === slug) ??
     (await prisma.bhandara.findUnique({ where: { slug } }));
-  if (!record) return { title: "Bhandara not found" };
+  if (!rawRecord) return { title: "Bhandara not found" };
+  // No typed-in phone numbers in the title, description or share cards.
+  const record = withoutPublicPhones(rawRecord);
 
   const time = joinTimeRange(
     format12h(record.timeStart),
@@ -206,10 +208,14 @@ export default async function BhandaraDetailPage({
   // 70+. Direct findUnique only when an on-demand-generated page
   // serves a slug that wasn't in the build-time snapshot.
   const all = await getAllApprovedBhandaras();
-  const record =
+  const rawRecord =
     all.find((r) => r.slug === slug && r.status === "APPROVED") ??
     (await prisma.bhandara.findUnique({ where: { slug } }));
-  if (!record || record.status !== "APPROVED") notFound();
+  if (!rawRecord || rawRecord.status !== "APPROVED") notFound();
+  // Founder, 4 Nov 2026: no organiser phone numbers in public, on the
+  // bhandara's own page too. Strips numbers typed into the name,
+  // address, menu or description before anything below reads them.
+  const record = withoutPublicPhones(rawRecord);
 
   const b = toBhandara(record);
   // "Other bhandaras in <area>", only surface rows that still have
